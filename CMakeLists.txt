@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 project(Calculator)
 
+if(EXISTS "/opt/rh/gcc-toolset-13/root/usr/bin/g++")
+   set(CMAKE_CXX_COMPILER "/opt/rh/gcc-toolset-13/root/usr/bin/g++")
+endif()
+
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -15,8 +19,21 @@ include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_SOURCE_DIR}/grammar)
-include_directories(/usr/include/antlr4-runtime)
+include_directories(${CMAKE_SOURCE_DIR}/ToyCalculatorParser)
+
+# my ubuntu/WSL system:
+if(EXISTS "/usr/include/antlr4-runtime")
+    include_directories(/usr/include/antlr4-runtime)
+else()
+    set(ANTLR4_PREFIX "/home/pjoot/antlr4/usr/local")
+    include_directories(${ANTLR4_PREFIX}/include/antlr4-runtime)
+
+    message(STATUS "ANTLR4_PREFIX in: ${ANTLR4_PREFIX}")
+endif()
+
+if(NOT EXISTS "/usr/include/antlr4-runtime")
+    link_directories(${ANTLR4_PREFIX}/lib64)
+endif()
 
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
@@ -54,23 +71,23 @@ add_custom_command(
 
 set(TABLEGEN_OUTPUT ${DIALECT_H_INC} ${DIALECT_CPP_INC})
 
-add_executable(calculator
+add_executable(toycalculator
   src/driver.cpp
   src/ToyCalculatorDialect.cpp
-  grammar/calculatorBaseListener.cpp
-  grammar/calculatorLexer.cpp
-  grammar/calculatorListener.cpp
-  grammar/calculatorParser.cpp
+  ToyCalculatorParser/ToyCalculatorListener.cpp
+  ToyCalculatorParser/ToyCalculatorParser.cpp
+  ToyCalculatorParser/ToyCalculatorBaseListener.cpp
+  ToyCalculatorParser/ToyCalculatorLexer.cpp
 )
 
 add_custom_target(ToyCalculatorDialectInc DEPENDS ${TABLEGEN_OUTPUT})
-add_dependencies(calculator ToyCalculatorDialectInc)
+add_dependencies(toycalculator ToyCalculatorDialectInc)
 
-target_compile_options(calculator PRIVATE -Wall -Wextra -Wno-comment -Wno-overloaded-virtual -Wno-unused-parameter)
-#target_compile_options(calculator PRIVATE -O2)
-target_compile_options(calculator PRIVATE -g)
+target_compile_options(toycalculator PRIVATE -Wall -Wextra -Wno-comment -Wno-overloaded-virtual -Wno-unused-parameter)
+#target_compile_options(toycalculator PRIVATE -O2)
+target_compile_options(toycalculator PRIVATE -g)
 
-target_link_libraries(calculator
+target_link_libraries(toycalculator
   PRIVATE
   antlr4-runtime
   LLVMSupport

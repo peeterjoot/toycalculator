@@ -1,4 +1,4 @@
-grammar calculator;
+grammar ToyCalculator;
 
 startRule : statement* EOF;
 

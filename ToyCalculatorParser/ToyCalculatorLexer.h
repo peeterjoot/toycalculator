@@ -1,5 +1,5 @@
 
-// Generated from calculator.g4 by ANTLR 4.10
+// Generated from ToyCalculator.g4 by ANTLR 4.13.2
 
 #pragma once
 
@@ -9,7 +9,7 @@
 
 
 
-class  calculatorLexer : public antlr4::Lexer {
+class  ToyCalculatorLexer : public antlr4::Lexer {
 public:
   enum {
     EQUALS = 1, SEMICOLON = 2, MINUSCHAR = 3, TIMESCHAR = 4, DIVCHAR = 5, 
@@ -17,9 +17,9 @@ public:
     WS = 11
   };
 
-  explicit calculatorLexer(antlr4::CharStream *input);
+  explicit ToyCalculatorLexer(antlr4::CharStream *input);
 
-  ~calculatorLexer() override;
+  ~ToyCalculatorLexer() override;
 
 
   std::string getGrammarFileName() const override;

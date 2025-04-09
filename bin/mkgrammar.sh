@@ -1,9 +1,9 @@
-#java -Xmx500M -cp "/usr/local/lib/antlr-4.13.2-complete.jar:$CLASSPATH" org.antlr.v4.gui.TestRig -Dlanguage=Cpp calculator.g4 -listener
+#java -Xmx500M -cp "/usr/local/lib/antlr-4.13.2-complete.jar:$CLASSPATH" org.antlr.v4.gui.TestRig -Dlanguage=Cpp ToyCalculator.g4 -listener
 
-set -x
+#set -x
 
-rm -rf grammar build
-mkdir -p grammar
+rm -rf ToyCalculatorParser build
+mkdir -p ToyCalculatorParser
 
 # to use this version, we'd need the matching runtime
 #-cp "`pwd`/antlr-4.13.2-complete.jar:$CLASSPATH" \
@@ -17,18 +17,33 @@ mkdir -p grammar
 #/usr/share/java/stringtemplate4.jar \
 #org.antlr.v4.Tool \
 #-Dlanguage=Cpp \
-#calculator.g4 \
+#ToyCalculator.g4 \
 #-listener \
-#-o grammar
+#-o ToyCalculatorParser
 
-# Download and use 4.10 explicitly so the generated grammar files match the installed runtime:
+if grep -qi "Microsoft" /proc/version || uname -r | grep -qi "Microsoft"; then
+
+# Downloaded and use 4.10 explicitly so the generated ToyCalculatorParser files match the installed runtime:
 java \
 -Xmx500M \
 -cp `pwd`/antlr-4.10-complete.jar \
 org.antlr.v4.Tool \
 -Dlanguage=Cpp \
-calculator.g4 \
+ToyCalculator.g4 \
 -listener \
--o grammar
+-o ToyCalculatorParser
 
+else
 
+#ANTLR4_PREFIX=${HOME}/antlr4/usr/local
+ANTLR4=${HOME}/.local/bin/antlr4
+
+#CXXFLAGS += -I$(ANTLR4_PREFIX)/include/antlr4-runtime
+#LDFLAGS += -L$(ANTLR4_PREFIX)/lib64 -Wl,-rpath,$(ANTLR4_PREFIX)/lib64
+#LOADLIBES += -lantlr4-runtime
+
+set -x
+
+${ANTLR4} -Dlanguage=Cpp ToyCalculator.g4 -listener -o ToyCalculatorParser
+
+fi

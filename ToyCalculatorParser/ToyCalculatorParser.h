@@ -1,5 +1,5 @@
 
-// Generated from calculator.g4 by ANTLR 4.10
+// Generated from ToyCalculator.g4 by ANTLR 4.13.2
 
 #pragma once
 
@@ -9,7 +9,7 @@
 
 
 
-class  calculatorParser : public antlr4::Parser {
+class  ToyCalculatorParser : public antlr4::Parser {
 public:
   enum {
     EQUALS = 1, SEMICOLON = 2, MINUSCHAR = 3, TIMESCHAR = 4, DIVCHAR = 5, 
@@ -22,11 +22,11 @@ public:
     RuleAssignment = 4, RuleRhs = 5, RuleOpertype = 6, RuleElement = 7
   };
 
-  explicit calculatorParser(antlr4::TokenStream *input);
+  explicit ToyCalculatorParser(antlr4::TokenStream *input);
 
-  calculatorParser(antlr4::TokenStream *input, const antlr4::atn::ParserATNSimulatorOptions &options);
+  ToyCalculatorParser(antlr4::TokenStream *input, const antlr4::atn::ParserATNSimulatorOptions &options);
 
-  ~calculatorParser() override;
+  ~ToyCalculatorParser() override;
 
   std::string getGrammarFileName() const override;
 

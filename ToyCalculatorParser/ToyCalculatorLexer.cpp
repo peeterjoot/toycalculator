@@ -1,8 +1,8 @@
 
-// Generated from calculator.g4 by ANTLR 4.10
+// Generated from ToyCalculator.g4 by ANTLR 4.13.2
 
 
-#include "calculatorLexer.h"
+#include "ToyCalculatorLexer.h"
 
 
 using namespace antlr4;
@@ -13,8 +13,8 @@ using namespace antlr4;
 
 namespace {
 
-struct CalculatorLexerStaticData final {
-  CalculatorLexerStaticData(std::vector<std::string> ruleNames,
+struct ToyCalculatorLexerStaticData final {
+  ToyCalculatorLexerStaticData(std::vector<std::string> ruleNames,
                           std::vector<std::string> channelNames,
                           std::vector<std::string> modeNames,
                           std::vector<std::string> literalNames,
@@ -24,10 +24,10 @@ struct CalculatorLexerStaticData final {
         symbolicNames(std::move(symbolicNames)),
         vocabulary(this->literalNames, this->symbolicNames) {}
 
-  CalculatorLexerStaticData(const CalculatorLexerStaticData&) = delete;
-  CalculatorLexerStaticData(CalculatorLexerStaticData&&) = delete;
-  CalculatorLexerStaticData& operator=(const CalculatorLexerStaticData&) = delete;
-  CalculatorLexerStaticData& operator=(CalculatorLexerStaticData&&) = delete;
+  ToyCalculatorLexerStaticData(const ToyCalculatorLexerStaticData&) = delete;
+  ToyCalculatorLexerStaticData(ToyCalculatorLexerStaticData&&) = delete;
+  ToyCalculatorLexerStaticData& operator=(const ToyCalculatorLexerStaticData&) = delete;
+  ToyCalculatorLexerStaticData& operator=(ToyCalculatorLexerStaticData&&) = delete;
 
   std::vector<antlr4::dfa::DFA> decisionToDFA;
   antlr4::atn::PredictionContextCache sharedContextCache;
@@ -41,12 +41,21 @@ struct CalculatorLexerStaticData final {
   std::unique_ptr<antlr4::atn::ATN> atn;
 };
 
-std::once_flag calculatorlexerLexerOnceFlag;
-CalculatorLexerStaticData *calculatorlexerLexerStaticData = nullptr;
+::antlr4::internal::OnceFlag toycalculatorlexerLexerOnceFlag;
+#if ANTLR4_USE_THREAD_LOCAL_CACHE
+static thread_local
+#endif
+std::unique_ptr<ToyCalculatorLexerStaticData> toycalculatorlexerLexerStaticData = nullptr;
 
-void calculatorlexerLexerInitialize() {
-  assert(calculatorlexerLexerStaticData == nullptr);
-  auto staticData = std::make_unique<CalculatorLexerStaticData>(
+void toycalculatorlexerLexerInitialize() {
+#if ANTLR4_USE_THREAD_LOCAL_CACHE
+  if (toycalculatorlexerLexerStaticData != nullptr) {
+    return;
+  }
+#else
+  assert(toycalculatorlexerLexerStaticData == nullptr);
+#endif
+  auto staticData = std::make_unique<ToyCalculatorLexerStaticData>(
     std::vector<std::string>{
       "EQUALS", "SEMICOLON", "MINUSCHAR", "TIMESCHAR", "DIVCHAR", "PLUSCHAR", 
       "DCL", "PRINT", "INTEGERLITERAL", "VARIABLENAME", "WS"
@@ -98,51 +107,55 @@ void calculatorlexerLexerInitialize() {
   for (size_t i = 0; i < count; i++) { 
     staticData->decisionToDFA.emplace_back(staticData->atn->getDecisionState(i), i);
   }
-  calculatorlexerLexerStaticData = staticData.release();
+  toycalculatorlexerLexerStaticData = std::move(staticData);
 }
 
 }
 
-calculatorLexer::calculatorLexer(CharStream *input) : Lexer(input) {
-  calculatorLexer::initialize();
-  _interpreter = new atn::LexerATNSimulator(this, *calculatorlexerLexerStaticData->atn, calculatorlexerLexerStaticData->decisionToDFA, calculatorlexerLexerStaticData->sharedContextCache);
+ToyCalculatorLexer::ToyCalculatorLexer(CharStream *input) : Lexer(input) {
+  ToyCalculatorLexer::initialize();
+  _interpreter = new atn::LexerATNSimulator(this, *toycalculatorlexerLexerStaticData->atn, toycalculatorlexerLexerStaticData->decisionToDFA, toycalculatorlexerLexerStaticData->sharedContextCache);
 }
 
-calculatorLexer::~calculatorLexer() {
+ToyCalculatorLexer::~ToyCalculatorLexer() {
   delete _interpreter;
 }
 
-std::string calculatorLexer::getGrammarFileName() const {
-  return "calculator.g4";
+std::string ToyCalculatorLexer::getGrammarFileName() const {
+  return "ToyCalculator.g4";
 }
 
-const std::vector<std::string>& calculatorLexer::getRuleNames() const {
-  return calculatorlexerLexerStaticData->ruleNames;
+const std::vector<std::string>& ToyCalculatorLexer::getRuleNames() const {
+  return toycalculatorlexerLexerStaticData->ruleNames;
 }
 
-const std::vector<std::string>& calculatorLexer::getChannelNames() const {
-  return calculatorlexerLexerStaticData->channelNames;
+const std::vector<std::string>& ToyCalculatorLexer::getChannelNames() const {
+  return toycalculatorlexerLexerStaticData->channelNames;
 }
 
-const std::vector<std::string>& calculatorLexer::getModeNames() const {
-  return calculatorlexerLexerStaticData->modeNames;
+const std::vector<std::string>& ToyCalculatorLexer::getModeNames() const {
+  return toycalculatorlexerLexerStaticData->modeNames;
 }
 
-const dfa::Vocabulary& calculatorLexer::getVocabulary() const {
-  return calculatorlexerLexerStaticData->vocabulary;
+const dfa::Vocabulary& ToyCalculatorLexer::getVocabulary() const {
+  return toycalculatorlexerLexerStaticData->vocabulary;
 }
 
-antlr4::atn::SerializedATNView calculatorLexer::getSerializedATN() const {
-  return calculatorlexerLexerStaticData->serializedATN;
+antlr4::atn::SerializedATNView ToyCalculatorLexer::getSerializedATN() const {
+  return toycalculatorlexerLexerStaticData->serializedATN;
 }
 
-const atn::ATN& calculatorLexer::getATN() const {
-  return *calculatorlexerLexerStaticData->atn;
+const atn::ATN& ToyCalculatorLexer::getATN() const {
+  return *toycalculatorlexerLexerStaticData->atn;
 }
 
 
 
 
-void calculatorLexer::initialize() {
-  std::call_once(calculatorlexerLexerOnceFlag, calculatorlexerLexerInitialize);
+void ToyCalculatorLexer::initialize() {
+#if ANTLR4_USE_THREAD_LOCAL_CACHE
+  toycalculatorlexerLexerInitialize();
+#else
+  ::antlr4::internal::call_once(toycalculatorlexerLexerOnceFlag, toycalculatorlexerLexerInitialize);
+#endif
 }
