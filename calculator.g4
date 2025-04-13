@@ -1,46 +1,39 @@
 grammar calculator;
 
-STARTRULE : STATEMENT* EOF;
+startrule : statement* EOF;
 
-STATEMENT
-   : (DECLARE | ASSIGNMENT)+
+statement
+   : (declare | assignment)+
    ;
 
-DECLARE
+declare
    : DCL VARIABLENAME SEMICOLON
    ;
 
-ASSIGNMENT
-   : VARIABLENAME EQUALS RHS SEMICOLON
+assignment
+   : VARIABLENAME EQUALS rhs SEMICOLON
    ;
 
-RHS
-   : ELEMENT OPERATOR ELEMENT
+rhs
+   : element operator element
    ;
 
-OPERATOR
+operator
    : (MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR)
    ;
 
-ELEMENT
-   :
-   (INTEGERLITERAL | VARIABLENAME)
+element
+   : (INTEGERLITERAL | VARIABLENAME)
    ;
 
 EQUALS : '=';
-
 SEMICOLON : ';';   
-
 MINUSCHAR : '-';   
-
 TIMESCHAR : '*';   
-
 DIVCHAR : '/';   
-
 PLUSCHAR : '+';   
+DCL : 'DCL';
 
 INTEGERLITERAL : (PLUSCHAR | MINUSCHAR)? [0-9]+;               
                                                        
 VARIABLENAME : [a-zA-Z]+;
-
-DCL : 'DCL';

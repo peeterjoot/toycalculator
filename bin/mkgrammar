@@ -1,0 +1,13 @@
+#java -Xmx500M -cp "/usr/local/lib/antlr-4.13.2-complete.jar:$CLASSPATH" org.antlr.v4.gui.TestRig -Dlanguage=Cpp calculator.g4 -listener
+
+rm -rf grammar
+mkdir -p grammar
+
+java \
+-Xmx500M \
+-cp "`pwd`/antlr-4.13.2-complete.jar:$CLASSPATH" \
+org.antlr.v4.Tool \
+-Dlanguage=Cpp \
+calculator.g4 \
+-listener \
+-o grammar
