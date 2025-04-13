@@ -3,7 +3,7 @@ grammar calculator;
 STARTRULE : STATEMENT* EOF;
 
 STATEMENT
-   : (DECLARE | ASSIGNMENT)*
+   : (DECLARE | ASSIGNMENT)+
    ;
 
 DECLARE
@@ -11,14 +11,15 @@ DECLARE
    ;
 
 ASSIGNMENT
-   : VARIABLENAME = RHS SEMICOLON
+   : VARIABLENAME EQUALS RHS SEMICOLON
+   ;
 
 RHS
    : ELEMENT OPERATOR ELEMENT
    ;
 
 OPERATOR
-   : MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR
+   : (MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR)
    ;
 
 ELEMENT
@@ -26,13 +27,15 @@ ELEMENT
    (INTEGERLITERAL | VARIABLENAME)
    ;
 
+EQUALS : '=';
+
 SEMICOLON : ';';   
 
 MINUSCHAR : '-';   
 
-TIMESCHAR : '-';   
+TIMESCHAR : '*';   
 
-DIVCHAR : '-';   
+DIVCHAR : '/';   
 
 PLUSCHAR : '+';   
 
@@ -40,3 +43,4 @@ INTEGERLITERAL : (PLUSCHAR | MINUSCHAR)? [0-9]+;
                                                        
 VARIABLENAME : [a-zA-Z]+;
 
+DCL : 'DCL';
