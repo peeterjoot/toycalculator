@@ -3,7 +3,7 @@ grammar calculator;
 startRule : statement* EOF;
 
 statement
-   : (declare | assignment)+
+   : (declare | assignment | print)+
    ;
 
 declare
@@ -30,17 +30,15 @@ element
    : (INTEGERLITERAL | VARIABLENAME)
    ;
 
-EQUALS : '=';
-SEMICOLON : ';';   
-MINUSCHAR : '-';   
-TIMESCHAR : '*';   
-DIVCHAR : '/';   
-PLUSCHAR : '+';   
-DCL : 'DCL';
-PRINT : 'PRINT';
-
-INTEGERLITERAL : (PLUSCHAR | MINUSCHAR)? [0-9]+;               
-                                                       
-VARIABLENAME : [a-zA-Z]+;
+EQUALS         : '=';
+SEMICOLON      : ';';
+MINUSCHAR      : '-';
+TIMESCHAR      : '*';
+DIVCHAR        : '/';
+PLUSCHAR       : '+';
+DCL            : 'DCL';
+PRINT          : 'PRINT';
+INTEGERLITERAL : (PLUSCHAR | MINUSCHAR)? [0-9]+;
+VARIABLENAME   : [a-zA-Z]+;
 
 WS : [ \t\r\n]+ -> skip;  // Skip spaces, tabs, newlines

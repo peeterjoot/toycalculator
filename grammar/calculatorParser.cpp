@@ -43,30 +43,32 @@ void calculatorParserInitialize() {
   assert(calculatorParserStaticData == nullptr);
   auto staticData = std::make_unique<CalculatorParserStaticData>(
     std::vector<std::string>{
-      "startRule", "statement", "declare", "assignment", "rhs", "opertype", 
-      "element"
+      "startRule", "statement", "declare", "print", "assignment", "rhs", 
+      "opertype", "element"
     },
     std::vector<std::string>{
-      "", "'='", "';'", "'-'", "'*'", "'/'", "'+'", "'DCL'"
+      "", "'='", "';'", "'-'", "'*'", "'/'", "'+'", "'DCL'", "'PRINT'"
     },
     std::vector<std::string>{
       "", "EQUALS", "SEMICOLON", "MINUSCHAR", "TIMESCHAR", "DIVCHAR", "PLUSCHAR", 
-      "DCL", "INTEGERLITERAL", "VARIABLENAME", "WS"
+      "DCL", "PRINT", "INTEGERLITERAL", "VARIABLENAME", "WS"
     }
   );
   static const int32_t serializedATNSegment[] = {
-  	4,1,10,46,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,1,0,
-  	5,0,16,8,0,10,0,12,0,19,9,0,1,0,1,0,1,1,1,1,4,1,25,8,1,11,1,12,1,26,1,
-  	2,1,2,1,2,1,2,1,3,1,3,1,3,1,3,1,3,1,4,1,4,1,4,1,4,1,5,1,5,1,6,1,6,1,6,
-  	0,0,7,0,2,4,6,8,10,12,0,2,1,0,3,6,1,0,8,9,41,0,17,1,0,0,0,2,24,1,0,0,
-  	0,4,28,1,0,0,0,6,32,1,0,0,0,8,37,1,0,0,0,10,41,1,0,0,0,12,43,1,0,0,0,
-  	14,16,3,2,1,0,15,14,1,0,0,0,16,19,1,0,0,0,17,15,1,0,0,0,17,18,1,0,0,0,
-  	18,20,1,0,0,0,19,17,1,0,0,0,20,21,5,0,0,1,21,1,1,0,0,0,22,25,3,4,2,0,
-  	23,25,3,6,3,0,24,22,1,0,0,0,24,23,1,0,0,0,25,26,1,0,0,0,26,24,1,0,0,0,
-  	26,27,1,0,0,0,27,3,1,0,0,0,28,29,5,7,0,0,29,30,5,9,0,0,30,31,5,2,0,0,
-  	31,5,1,0,0,0,32,33,5,9,0,0,33,34,5,1,0,0,34,35,3,8,4,0,35,36,5,2,0,0,
-  	36,7,1,0,0,0,37,38,3,12,6,0,38,39,3,10,5,0,39,40,3,12,6,0,40,9,1,0,0,
-  	0,41,42,7,0,0,0,42,11,1,0,0,0,43,44,7,1,0,0,44,13,1,0,0,0,3,17,24,26
+  	4,1,11,53,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,2,7,
+  	7,7,1,0,5,0,18,8,0,10,0,12,0,21,9,0,1,0,1,0,1,1,1,1,1,1,4,1,28,8,1,11,
+  	1,12,1,29,1,2,1,2,1,2,1,2,1,3,1,3,1,3,1,3,1,4,1,4,1,4,1,4,1,4,1,5,1,5,
+  	1,5,1,5,1,6,1,6,1,7,1,7,1,7,0,0,8,0,2,4,6,8,10,12,14,0,2,1,0,3,6,1,0,
+  	9,10,48,0,19,1,0,0,0,2,27,1,0,0,0,4,31,1,0,0,0,6,35,1,0,0,0,8,39,1,0,
+  	0,0,10,44,1,0,0,0,12,48,1,0,0,0,14,50,1,0,0,0,16,18,3,2,1,0,17,16,1,0,
+  	0,0,18,21,1,0,0,0,19,17,1,0,0,0,19,20,1,0,0,0,20,22,1,0,0,0,21,19,1,0,
+  	0,0,22,23,5,0,0,1,23,1,1,0,0,0,24,28,3,4,2,0,25,28,3,8,4,0,26,28,3,6,
+  	3,0,27,24,1,0,0,0,27,25,1,0,0,0,27,26,1,0,0,0,28,29,1,0,0,0,29,27,1,0,
+  	0,0,29,30,1,0,0,0,30,3,1,0,0,0,31,32,5,7,0,0,32,33,5,10,0,0,33,34,5,2,
+  	0,0,34,5,1,0,0,0,35,36,5,8,0,0,36,37,5,10,0,0,37,38,5,2,0,0,38,7,1,0,
+  	0,0,39,40,5,10,0,0,40,41,5,1,0,0,41,42,3,10,5,0,42,43,5,2,0,0,43,9,1,
+  	0,0,0,44,45,3,14,7,0,45,46,3,12,6,0,46,47,3,14,7,0,47,11,1,0,0,0,48,49,
+  	7,0,0,0,49,13,1,0,0,0,50,51,7,1,0,0,51,15,1,0,0,0,3,19,27,29
   };
   staticData->serializedATN = antlr4::atn::SerializedATNView(serializedATNSegment, sizeof(serializedATNSegment) / sizeof(serializedATNSegment[0]));
 
@@ -164,19 +166,20 @@ calculatorParser::StartRuleContext* calculatorParser::startRule() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(17);
+    setState(19);
     _errHandler->sync(this);
     _la = _input->LA(1);
-    while (_la == calculatorParser::DCL
-
-    || _la == calculatorParser::VARIABLENAME) {
-      setState(14);
+    while ((((_la & ~ 0x3fULL) == 0) &&
+      ((1ULL << _la) & ((1ULL << calculatorParser::DCL)
+      | (1ULL << calculatorParser::PRINT)
+      | (1ULL << calculatorParser::VARIABLENAME))) != 0)) {
+      setState(16);
       statement();
-      setState(19);
+      setState(21);
       _errHandler->sync(this);
       _la = _input->LA(1);
     }
-    setState(20);
+    setState(22);
     match(calculatorParser::EOF);
    
   }
@@ -211,6 +214,14 @@ calculatorParser::AssignmentContext* calculatorParser::StatementContext::assignm
   return getRuleContext<calculatorParser::AssignmentContext>(i);
 }
 
+std::vector<calculatorParser::PrintContext *> calculatorParser::StatementContext::print() {
+  return getRuleContexts<calculatorParser::PrintContext>();
+}
+
+calculatorParser::PrintContext* calculatorParser::StatementContext::print(size_t i) {
+  return getRuleContext<calculatorParser::PrintContext>(i);
+}
+
 
 size_t calculatorParser::StatementContext::getRuleIndex() const {
   return calculatorParser::RuleStatement;
@@ -242,24 +253,30 @@ calculatorParser::StatementContext* calculatorParser::statement() {
   try {
     size_t alt;
     enterOuterAlt(_localctx, 1);
-    setState(24); 
+    setState(27); 
     _errHandler->sync(this);
     alt = 1;
     do {
       switch (alt) {
         case 1: {
-              setState(24);
+              setState(27);
               _errHandler->sync(this);
               switch (_input->LA(1)) {
                 case calculatorParser::DCL: {
-                  setState(22);
+                  setState(24);
                   declare();
                   break;
                 }
 
                 case calculatorParser::VARIABLENAME: {
-                  setState(23);
+                  setState(25);
                   assignment();
+                  break;
+                }
+
+                case calculatorParser::PRINT: {
+                  setState(26);
+                  print();
                   break;
                 }
 
@@ -272,7 +289,7 @@ calculatorParser::StatementContext* calculatorParser::statement() {
       default:
         throw NoViableAltException(this);
       }
-      setState(26); 
+      setState(29); 
       _errHandler->sync(this);
       alt = getInterpreter<atn::ParserATNSimulator>()->adaptivePredict(_input, 2, _ctx);
     } while (alt != 2 && alt != atn::ATN::INVALID_ALT_NUMBER);
@@ -335,11 +352,76 @@ calculatorParser::DeclareContext* calculatorParser::declare() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(28);
+    setState(31);
     match(calculatorParser::DCL);
-    setState(29);
+    setState(32);
     match(calculatorParser::VARIABLENAME);
-    setState(30);
+    setState(33);
+    match(calculatorParser::SEMICOLON);
+   
+  }
+  catch (RecognitionException &e) {
+    _errHandler->reportError(this, e);
+    _localctx->exception = std::current_exception();
+    _errHandler->recover(this, _localctx->exception);
+  }
+
+  return _localctx;
+}
+
+//----------------- PrintContext ------------------------------------------------------------------
+
+calculatorParser::PrintContext::PrintContext(ParserRuleContext *parent, size_t invokingState)
+  : ParserRuleContext(parent, invokingState) {
+}
+
+tree::TerminalNode* calculatorParser::PrintContext::PRINT() {
+  return getToken(calculatorParser::PRINT, 0);
+}
+
+tree::TerminalNode* calculatorParser::PrintContext::VARIABLENAME() {
+  return getToken(calculatorParser::VARIABLENAME, 0);
+}
+
+tree::TerminalNode* calculatorParser::PrintContext::SEMICOLON() {
+  return getToken(calculatorParser::SEMICOLON, 0);
+}
+
+
+size_t calculatorParser::PrintContext::getRuleIndex() const {
+  return calculatorParser::RulePrint;
+}
+
+void calculatorParser::PrintContext::enterRule(tree::ParseTreeListener *listener) {
+  auto parserListener = dynamic_cast<calculatorListener *>(listener);
+  if (parserListener != nullptr)
+    parserListener->enterPrint(this);
+}
+
+void calculatorParser::PrintContext::exitRule(tree::ParseTreeListener *listener) {
+  auto parserListener = dynamic_cast<calculatorListener *>(listener);
+  if (parserListener != nullptr)
+    parserListener->exitPrint(this);
+}
+
+calculatorParser::PrintContext* calculatorParser::print() {
+  PrintContext *_localctx = _tracker.createInstance<PrintContext>(_ctx, getState());
+  enterRule(_localctx, 6, calculatorParser::RulePrint);
+
+#if __cplusplus > 201703L
+  auto onExit = finally([=, this] {
+#else
+  auto onExit = finally([=] {
+#endif
+    exitRule();
+  });
+  try {
+    enterOuterAlt(_localctx, 1);
+    setState(35);
+    match(calculatorParser::PRINT);
+    setState(36);
+    match(calculatorParser::VARIABLENAME);
+    setState(37);
     match(calculatorParser::SEMICOLON);
    
   }
@@ -393,7 +475,7 @@ void calculatorParser::AssignmentContext::exitRule(tree::ParseTreeListener *list
 
 calculatorParser::AssignmentContext* calculatorParser::assignment() {
   AssignmentContext *_localctx = _tracker.createInstance<AssignmentContext>(_ctx, getState());
-  enterRule(_localctx, 6, calculatorParser::RuleAssignment);
+  enterRule(_localctx, 8, calculatorParser::RuleAssignment);
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -404,13 +486,13 @@ calculatorParser::AssignmentContext* calculatorParser::assignment() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(32);
+    setState(39);
     match(calculatorParser::VARIABLENAME);
-    setState(33);
+    setState(40);
     match(calculatorParser::EQUALS);
-    setState(34);
+    setState(41);
     rhs();
-    setState(35);
+    setState(42);
     match(calculatorParser::SEMICOLON);
    
   }
@@ -460,7 +542,7 @@ void calculatorParser::RhsContext::exitRule(tree::ParseTreeListener *listener) {
 
 calculatorParser::RhsContext* calculatorParser::rhs() {
   RhsContext *_localctx = _tracker.createInstance<RhsContext>(_ctx, getState());
-  enterRule(_localctx, 8, calculatorParser::RuleRhs);
+  enterRule(_localctx, 10, calculatorParser::RuleRhs);
 
 #if __cplusplus > 201703L
   auto onExit = finally([=, this] {
@@ -471,11 +553,11 @@ calculatorParser::RhsContext* calculatorParser::rhs() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(37);
+    setState(44);
     element();
-    setState(38);
+    setState(45);
     opertype();
-    setState(39);
+    setState(46);
     element();
    
   }
@@ -529,7 +611,7 @@ void calculatorParser::OpertypeContext::exitRule(tree::ParseTreeListener *listen
 
 calculatorParser::OpertypeContext* calculatorParser::opertype() {
   OpertypeContext *_localctx = _tracker.createInstance<OpertypeContext>(_ctx, getState());
-  enterRule(_localctx, 10, calculatorParser::RuleOpertype);
+  enterRule(_localctx, 12, calculatorParser::RuleOpertype);
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -541,7 +623,7 @@ calculatorParser::OpertypeContext* calculatorParser::opertype() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(41);
+    setState(48);
     _la = _input->LA(1);
     if (!((((_la & ~ 0x3fULL) == 0) &&
       ((1ULL << _la) & ((1ULL << calculatorParser::MINUSCHAR)
@@ -598,7 +680,7 @@ void calculatorParser::ElementContext::exitRule(tree::ParseTreeListener *listene
 
 calculatorParser::ElementContext* calculatorParser::element() {
   ElementContext *_localctx = _tracker.createInstance<ElementContext>(_ctx, getState());
-  enterRule(_localctx, 12, calculatorParser::RuleElement);
+  enterRule(_localctx, 14, calculatorParser::RuleElement);
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -610,7 +692,7 @@ calculatorParser::ElementContext* calculatorParser::element() {
   });
   try {
     enterOuterAlt(_localctx, 1);
-    setState(43);
+    setState(50);
     _la = _input->LA(1);
     if (!(_la == calculatorParser::INTEGERLITERAL
 

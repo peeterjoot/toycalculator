@@ -64,7 +64,7 @@ target_link_libraries(calculator
 add_definitions(${LLVM_DEFINITIONS})
 
 # Optional: Enable warnings and optimizations
-target_compile_options(calculator PRIVATE -Wall -Wextra -O2)
+target_compile_options(calculator PRIVATE -Wall -Wextra -O2 -Wno-overloaded-virtual -Werror)
 
 # Ensure MLIR/LLVM components are linked correctly
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})

@@ -23,6 +23,9 @@ public:
   virtual void enterDeclare(calculatorParser::DeclareContext *ctx) = 0;
   virtual void exitDeclare(calculatorParser::DeclareContext *ctx) = 0;
 
+  virtual void enterPrint(calculatorParser::PrintContext *ctx) = 0;
+  virtual void exitPrint(calculatorParser::PrintContext *ctx) = 0;
+
   virtual void enterAssignment(calculatorParser::AssignmentContext *ctx) = 0;
   virtual void exitAssignment(calculatorParser::AssignmentContext *ctx) = 0;
 

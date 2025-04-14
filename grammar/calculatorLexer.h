@@ -13,7 +13,8 @@ class  calculatorLexer : public antlr4::Lexer {
 public:
   enum {
     EQUALS = 1, SEMICOLON = 2, MINUSCHAR = 3, TIMESCHAR = 4, DIVCHAR = 5, 
-    PLUSCHAR = 6, DCL = 7, INTEGERLITERAL = 8, VARIABLENAME = 9, WS = 10
+    PLUSCHAR = 6, DCL = 7, PRINT = 8, INTEGERLITERAL = 9, VARIABLENAME = 10, 
+    WS = 11
   };
 
   explicit calculatorLexer(antlr4::CharStream *input);

@@ -13,12 +13,13 @@ class  calculatorParser : public antlr4::Parser {
 public:
   enum {
     EQUALS = 1, SEMICOLON = 2, MINUSCHAR = 3, TIMESCHAR = 4, DIVCHAR = 5, 
-    PLUSCHAR = 6, DCL = 7, INTEGERLITERAL = 8, VARIABLENAME = 9, WS = 10
+    PLUSCHAR = 6, DCL = 7, PRINT = 8, INTEGERLITERAL = 9, VARIABLENAME = 10, 
+    WS = 11
   };
 
   enum {
-    RuleStartRule = 0, RuleStatement = 1, RuleDeclare = 2, RuleAssignment = 3, 
-    RuleRhs = 4, RuleOpertype = 5, RuleElement = 6
+    RuleStartRule = 0, RuleStatement = 1, RuleDeclare = 2, RulePrint = 3, 
+    RuleAssignment = 4, RuleRhs = 5, RuleOpertype = 6, RuleElement = 7
   };
 
   explicit calculatorParser(antlr4::TokenStream *input);
@@ -41,6 +42,7 @@ public:
   class StartRuleContext;
   class StatementContext;
   class DeclareContext;
+  class PrintContext;
   class AssignmentContext;
   class RhsContext;
   class OpertypeContext;
@@ -69,6 +71,8 @@ public:
     DeclareContext* declare(size_t i);
     std::vector<AssignmentContext *> assignment();
     AssignmentContext* assignment(size_t i);
+    std::vector<PrintContext *> print();
+    PrintContext* print(size_t i);
 
     virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
@@ -91,6 +95,21 @@ public:
   };
 
   DeclareContext* declare();
+
+  class  PrintContext : public antlr4::ParserRuleContext {
+  public:
+    PrintContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    virtual size_t getRuleIndex() const override;
+    antlr4::tree::TerminalNode *PRINT();
+    antlr4::tree::TerminalNode *VARIABLENAME();
+    antlr4::tree::TerminalNode *SEMICOLON();
+
+    virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
+    virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
+   
+  };
+
+  PrintContext* print();
 
   class  AssignmentContext : public antlr4::ParserRuleContext {
   public:

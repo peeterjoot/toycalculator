@@ -25,6 +25,9 @@ public:
   virtual void enterDeclare(calculatorParser::DeclareContext * /*ctx*/) override { }
   virtual void exitDeclare(calculatorParser::DeclareContext * /*ctx*/) override { }
 
+  virtual void enterPrint(calculatorParser::PrintContext * /*ctx*/) override { }
+  virtual void exitPrint(calculatorParser::PrintContext * /*ctx*/) override { }
+
   virtual void enterAssignment(calculatorParser::AssignmentContext * /*ctx*/) override { }
   virtual void exitAssignment(calculatorParser::AssignmentContext * /*ctx*/) override { }
 

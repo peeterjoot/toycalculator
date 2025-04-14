@@ -1,2 +1,5 @@
 DCL x;
+DCL y;
 x = 5 + 3;
+y = x * 2;
+PRINT x;
