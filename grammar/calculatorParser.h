@@ -1,5 +1,5 @@
 
-// Generated from calculator.g4 by ANTLR 4.13.2
+// Generated from calculator.g4 by ANTLR 4.10
 
 #pragma once
 
@@ -13,12 +13,12 @@ class  calculatorParser : public antlr4::Parser {
 public:
   enum {
     EQUALS = 1, SEMICOLON = 2, MINUSCHAR = 3, TIMESCHAR = 4, DIVCHAR = 5, 
-    PLUSCHAR = 6, DCL = 7, INTEGERLITERAL = 8, VARIABLENAME = 9
+    PLUSCHAR = 6, DCL = 7, INTEGERLITERAL = 8, VARIABLENAME = 9, WS = 10
   };
 
   enum {
-    RuleStartrule = 0, RuleStatement = 1, RuleDeclare = 2, RuleAssignment = 3, 
-    RuleRhs = 4, RuleOperator = 5, RuleElement = 6
+    RuleStartRule = 0, RuleStatement = 1, RuleDeclare = 2, RuleAssignment = 3, 
+    RuleRhs = 4, RuleOpertype = 5, RuleElement = 6
   };
 
   explicit calculatorParser(antlr4::TokenStream *input);
@@ -38,17 +38,17 @@ public:
   antlr4::atn::SerializedATNView getSerializedATN() const override;
 
 
-  class StartruleContext;
+  class StartRuleContext;
   class StatementContext;
   class DeclareContext;
   class AssignmentContext;
   class RhsContext;
-  class OperatorContext;
+  class OpertypeContext;
   class ElementContext; 
 
-  class  StartruleContext : public antlr4::ParserRuleContext {
+  class  StartRuleContext : public antlr4::ParserRuleContext {
   public:
-    StartruleContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    StartRuleContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *EOF();
     std::vector<StatementContext *> statement();
@@ -59,7 +59,7 @@ public:
    
   };
 
-  StartruleContext* startrule();
+  StartRuleContext* startRule();
 
   class  StatementContext : public antlr4::ParserRuleContext {
   public:
@@ -114,7 +114,7 @@ public:
     virtual size_t getRuleIndex() const override;
     std::vector<ElementContext *> element();
     ElementContext* element(size_t i);
-    OperatorContext *operator_();
+    OpertypeContext *opertype();
 
     virtual void enterRule(antlr4::tree::ParseTreeListener *listener) override;
     virtual void exitRule(antlr4::tree::ParseTreeListener *listener) override;
@@ -123,9 +123,9 @@ public:
 
   RhsContext* rhs();
 
-  class  OperatorContext : public antlr4::ParserRuleContext {
+  class  OpertypeContext : public antlr4::ParserRuleContext {
   public:
-    OperatorContext(antlr4::ParserRuleContext *parent, size_t invokingState);
+    OpertypeContext(antlr4::ParserRuleContext *parent, size_t invokingState);
     virtual size_t getRuleIndex() const override;
     antlr4::tree::TerminalNode *MINUSCHAR();
     antlr4::tree::TerminalNode *PLUSCHAR();
@@ -137,7 +137,7 @@ public:
    
   };
 
-  OperatorContext* operator_();
+  OpertypeContext* opertype();
 
   class  ElementContext : public antlr4::ParserRuleContext {
   public:

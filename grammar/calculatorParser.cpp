@@ -1,5 +1,5 @@
 
-// Generated from calculator.g4 by ANTLR 4.13.2
+// Generated from calculator.g4 by ANTLR 4.10
 
 
 #include "calculatorListener.h"
@@ -36,23 +36,14 @@ struct CalculatorParserStaticData final {
   std::unique_ptr<antlr4::atn::ATN> atn;
 };
 
-::antlr4::internal::OnceFlag calculatorParserOnceFlag;
-#if ANTLR4_USE_THREAD_LOCAL_CACHE
-static thread_local
-#endif
-std::unique_ptr<CalculatorParserStaticData> calculatorParserStaticData = nullptr;
+std::once_flag calculatorParserOnceFlag;
+CalculatorParserStaticData *calculatorParserStaticData = nullptr;
 
 void calculatorParserInitialize() {
-#if ANTLR4_USE_THREAD_LOCAL_CACHE
-  if (calculatorParserStaticData != nullptr) {
-    return;
-  }
-#else
   assert(calculatorParserStaticData == nullptr);
-#endif
   auto staticData = std::make_unique<CalculatorParserStaticData>(
     std::vector<std::string>{
-      "startrule", "statement", "declare", "assignment", "rhs", "operator", 
+      "startRule", "statement", "declare", "assignment", "rhs", "opertype", 
       "element"
     },
     std::vector<std::string>{
@@ -60,11 +51,11 @@ void calculatorParserInitialize() {
     },
     std::vector<std::string>{
       "", "EQUALS", "SEMICOLON", "MINUSCHAR", "TIMESCHAR", "DIVCHAR", "PLUSCHAR", 
-      "DCL", "INTEGERLITERAL", "VARIABLENAME"
+      "DCL", "INTEGERLITERAL", "VARIABLENAME", "WS"
     }
   );
   static const int32_t serializedATNSegment[] = {
-  	4,1,9,46,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,1,0,
+  	4,1,10,46,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,6,1,0,
   	5,0,16,8,0,10,0,12,0,19,9,0,1,0,1,0,1,1,1,1,4,1,25,8,1,11,1,12,1,26,1,
   	2,1,2,1,2,1,2,1,3,1,3,1,3,1,3,1,3,1,4,1,4,1,4,1,4,1,5,1,5,1,6,1,6,1,6,
   	0,0,7,0,2,4,6,8,10,12,0,2,1,0,3,6,1,0,8,9,41,0,17,1,0,0,0,2,24,1,0,0,
@@ -87,7 +78,7 @@ void calculatorParserInitialize() {
   for (size_t i = 0; i < count; i++) { 
     staticData->decisionToDFA.emplace_back(staticData->atn->getDecisionState(i), i);
   }
-  calculatorParserStaticData = std::move(staticData);
+  calculatorParserStaticData = staticData.release();
 }
 
 }
@@ -124,44 +115,44 @@ antlr4::atn::SerializedATNView calculatorParser::getSerializedATN() const {
 }
 
 
-//----------------- StartruleContext ------------------------------------------------------------------
+//----------------- StartRuleContext ------------------------------------------------------------------
 
-calculatorParser::StartruleContext::StartruleContext(ParserRuleContext *parent, size_t invokingState)
+calculatorParser::StartRuleContext::StartRuleContext(ParserRuleContext *parent, size_t invokingState)
   : ParserRuleContext(parent, invokingState) {
 }
 
-tree::TerminalNode* calculatorParser::StartruleContext::EOF() {
+tree::TerminalNode* calculatorParser::StartRuleContext::EOF() {
   return getToken(calculatorParser::EOF, 0);
 }
 
-std::vector<calculatorParser::StatementContext *> calculatorParser::StartruleContext::statement() {
+std::vector<calculatorParser::StatementContext *> calculatorParser::StartRuleContext::statement() {
   return getRuleContexts<calculatorParser::StatementContext>();
 }
 
-calculatorParser::StatementContext* calculatorParser::StartruleContext::statement(size_t i) {
+calculatorParser::StatementContext* calculatorParser::StartRuleContext::statement(size_t i) {
   return getRuleContext<calculatorParser::StatementContext>(i);
 }
 
 
-size_t calculatorParser::StartruleContext::getRuleIndex() const {
-  return calculatorParser::RuleStartrule;
+size_t calculatorParser::StartRuleContext::getRuleIndex() const {
+  return calculatorParser::RuleStartRule;
 }
 
-void calculatorParser::StartruleContext::enterRule(tree::ParseTreeListener *listener) {
+void calculatorParser::StartRuleContext::enterRule(tree::ParseTreeListener *listener) {
   auto parserListener = dynamic_cast<calculatorListener *>(listener);
   if (parserListener != nullptr)
-    parserListener->enterStartrule(this);
+    parserListener->enterStartRule(this);
 }
 
-void calculatorParser::StartruleContext::exitRule(tree::ParseTreeListener *listener) {
+void calculatorParser::StartRuleContext::exitRule(tree::ParseTreeListener *listener) {
   auto parserListener = dynamic_cast<calculatorListener *>(listener);
   if (parserListener != nullptr)
-    parserListener->exitStartrule(this);
+    parserListener->exitStartRule(this);
 }
 
-calculatorParser::StartruleContext* calculatorParser::startrule() {
-  StartruleContext *_localctx = _tracker.createInstance<StartruleContext>(_ctx, getState());
-  enterRule(_localctx, 0, calculatorParser::RuleStartrule);
+calculatorParser::StartRuleContext* calculatorParser::startRule() {
+  StartRuleContext *_localctx = _tracker.createInstance<StartRuleContext>(_ctx, getState());
+  enterRule(_localctx, 0, calculatorParser::RuleStartRule);
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -446,8 +437,8 @@ calculatorParser::ElementContext* calculatorParser::RhsContext::element(size_t i
   return getRuleContext<calculatorParser::ElementContext>(i);
 }
 
-calculatorParser::OperatorContext* calculatorParser::RhsContext::operator_() {
-  return getRuleContext<calculatorParser::OperatorContext>(0);
+calculatorParser::OpertypeContext* calculatorParser::RhsContext::opertype() {
+  return getRuleContext<calculatorParser::OpertypeContext>(0);
 }
 
 
@@ -483,7 +474,7 @@ calculatorParser::RhsContext* calculatorParser::rhs() {
     setState(37);
     element();
     setState(38);
-    operator_();
+    opertype();
     setState(39);
     element();
    
@@ -497,48 +488,48 @@ calculatorParser::RhsContext* calculatorParser::rhs() {
   return _localctx;
 }
 
-//----------------- OperatorContext ------------------------------------------------------------------
+//----------------- OpertypeContext ------------------------------------------------------------------
 
-calculatorParser::OperatorContext::OperatorContext(ParserRuleContext *parent, size_t invokingState)
+calculatorParser::OpertypeContext::OpertypeContext(ParserRuleContext *parent, size_t invokingState)
   : ParserRuleContext(parent, invokingState) {
 }
 
-tree::TerminalNode* calculatorParser::OperatorContext::MINUSCHAR() {
+tree::TerminalNode* calculatorParser::OpertypeContext::MINUSCHAR() {
   return getToken(calculatorParser::MINUSCHAR, 0);
 }
 
-tree::TerminalNode* calculatorParser::OperatorContext::PLUSCHAR() {
+tree::TerminalNode* calculatorParser::OpertypeContext::PLUSCHAR() {
   return getToken(calculatorParser::PLUSCHAR, 0);
 }
 
-tree::TerminalNode* calculatorParser::OperatorContext::TIMESCHAR() {
+tree::TerminalNode* calculatorParser::OpertypeContext::TIMESCHAR() {
   return getToken(calculatorParser::TIMESCHAR, 0);
 }
 
-tree::TerminalNode* calculatorParser::OperatorContext::DIVCHAR() {
+tree::TerminalNode* calculatorParser::OpertypeContext::DIVCHAR() {
   return getToken(calculatorParser::DIVCHAR, 0);
 }
 
 
-size_t calculatorParser::OperatorContext::getRuleIndex() const {
-  return calculatorParser::RuleOperator;
+size_t calculatorParser::OpertypeContext::getRuleIndex() const {
+  return calculatorParser::RuleOpertype;
 }
 
-void calculatorParser::OperatorContext::enterRule(tree::ParseTreeListener *listener) {
+void calculatorParser::OpertypeContext::enterRule(tree::ParseTreeListener *listener) {
   auto parserListener = dynamic_cast<calculatorListener *>(listener);
   if (parserListener != nullptr)
-    parserListener->enterOperator(this);
+    parserListener->enterOpertype(this);
 }
 
-void calculatorParser::OperatorContext::exitRule(tree::ParseTreeListener *listener) {
+void calculatorParser::OpertypeContext::exitRule(tree::ParseTreeListener *listener) {
   auto parserListener = dynamic_cast<calculatorListener *>(listener);
   if (parserListener != nullptr)
-    parserListener->exitOperator(this);
+    parserListener->exitOpertype(this);
 }
 
-calculatorParser::OperatorContext* calculatorParser::operator_() {
-  OperatorContext *_localctx = _tracker.createInstance<OperatorContext>(_ctx, getState());
-  enterRule(_localctx, 10, calculatorParser::RuleOperator);
+calculatorParser::OpertypeContext* calculatorParser::opertype() {
+  OpertypeContext *_localctx = _tracker.createInstance<OpertypeContext>(_ctx, getState());
+  enterRule(_localctx, 10, calculatorParser::RuleOpertype);
   size_t _la = 0;
 
 #if __cplusplus > 201703L
@@ -553,7 +544,10 @@ calculatorParser::OperatorContext* calculatorParser::operator_() {
     setState(41);
     _la = _input->LA(1);
     if (!((((_la & ~ 0x3fULL) == 0) &&
-      ((1ULL << _la) & 120) != 0))) {
+      ((1ULL << _la) & ((1ULL << calculatorParser::MINUSCHAR)
+      | (1ULL << calculatorParser::TIMESCHAR)
+      | (1ULL << calculatorParser::DIVCHAR)
+      | (1ULL << calculatorParser::PLUSCHAR))) != 0))) {
     _errHandler->recoverInline(this);
     }
     else {
@@ -639,9 +633,5 @@ calculatorParser::ElementContext* calculatorParser::element() {
 }
 
 void calculatorParser::initialize() {
-#if ANTLR4_USE_THREAD_LOCAL_CACHE
-  calculatorParserInitialize();
-#else
-  ::antlr4::internal::call_once(calculatorParserOnceFlag, calculatorParserInitialize);
-#endif
+  std::call_once(calculatorParserOnceFlag, calculatorParserInitialize);
 }

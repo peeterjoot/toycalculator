@@ -1,5 +1,5 @@
 
-// Generated from calculator.g4 by ANTLR 4.13.2
+// Generated from calculator.g4 by ANTLR 4.10
 
 #pragma once
 
@@ -13,7 +13,7 @@ class  calculatorLexer : public antlr4::Lexer {
 public:
   enum {
     EQUALS = 1, SEMICOLON = 2, MINUSCHAR = 3, TIMESCHAR = 4, DIVCHAR = 5, 
-    PLUSCHAR = 6, DCL = 7, INTEGERLITERAL = 8, VARIABLENAME = 9
+    PLUSCHAR = 6, DCL = 7, INTEGERLITERAL = 8, VARIABLENAME = 9, WS = 10
   };
 
   explicit calculatorLexer(antlr4::CharStream *input);

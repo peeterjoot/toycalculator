@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(Calculator LANGUAGES CXX)
 
 # Set C++ standard
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find LLVM and MLIR
@@ -15,10 +15,16 @@ include_directories(${MLIR_INCLUDE_DIRS})
 link_directories(${LLVM_LIBRARY_DIRS})
 
 # Find ANTLR4 runtime
-find_library(ANTLR4_RUNTIME antlr4-runtime REQUIRED)
+find_library(ANTLR4_RUNTIME NAMES antlr4-runtime libantlr4-runtime HINTS /usr/lib /usr/lib/x86_64-linux-gnu)
+find_path(ANTLR4_INCLUDE_DIR NAMES antlr4-runtime.h HINTS /usr/include/antlr4-runtime /usr/local/include/antlr4-runtime)
 if(NOT ANTLR4_RUNTIME)
-  message(FATAL_ERROR "ANTLR4 runtime not found. Please install libantlr4-runtime or libantlr4-runtime-dev as appropriate.")
+  message(FATAL_ERROR "ANTLR4 runtime library not found. Please install libantlr4-runtime-dev.")
 endif()
+if(NOT ANTLR4_INCLUDE_DIR)
+  message(FATAL_ERROR "ANTLR4 headers not found. Please install libantlr4-runtime-dev.")
+endif()
+message(STATUS "Found ANTLR4 runtime: ${ANTLR4_RUNTIME}")
+message(STATUS "Found ANTLR4 include dir: ${ANTLR4_INCLUDE_DIR}")
 
 # Define directories
 set(GRAMMAR_DIR "${CMAKE_SOURCE_DIR}/grammar")
@@ -26,7 +32,7 @@ set(SOURCE_DIR "${CMAKE_SOURCE_DIR}/src")
 
 # Include directories for generated files and ANTLR runtime
 include_directories(${GRAMMAR_DIR})
-include_directories(${ANTLR4_INCLUDE_DIRS}) # Adjust if your ANTLR installation provides this
+include_directories(${ANTLR4_INCLUDE_DIR})
 
 # Collect ANTLR-generated source files
 file(GLOB GRAMMAR_SOURCES
@@ -51,7 +57,6 @@ target_link_libraries(calculator
   LLVMCore
   LLVMSupport
   MLIRIR
-  MLIRParser
   MLIRSupport
 )
 

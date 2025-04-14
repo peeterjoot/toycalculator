@@ -1,5 +1,5 @@
 
-// Generated from calculator.g4 by ANTLR 4.13.2
+// Generated from calculator.g4 by ANTLR 4.10
 
 #pragma once
 
@@ -16,8 +16,8 @@
 class  calculatorBaseListener : public calculatorListener {
 public:
 
-  virtual void enterStartrule(calculatorParser::StartruleContext * /*ctx*/) override { }
-  virtual void exitStartrule(calculatorParser::StartruleContext * /*ctx*/) override { }
+  virtual void enterStartRule(calculatorParser::StartRuleContext * /*ctx*/) override { }
+  virtual void exitStartRule(calculatorParser::StartRuleContext * /*ctx*/) override { }
 
   virtual void enterStatement(calculatorParser::StatementContext * /*ctx*/) override { }
   virtual void exitStatement(calculatorParser::StatementContext * /*ctx*/) override { }
@@ -31,8 +31,8 @@ public:
   virtual void enterRhs(calculatorParser::RhsContext * /*ctx*/) override { }
   virtual void exitRhs(calculatorParser::RhsContext * /*ctx*/) override { }
 
-  virtual void enterOperator(calculatorParser::OperatorContext * /*ctx*/) override { }
-  virtual void exitOperator(calculatorParser::OperatorContext * /*ctx*/) override { }
+  virtual void enterOpertype(calculatorParser::OpertypeContext * /*ctx*/) override { }
+  virtual void exitOpertype(calculatorParser::OpertypeContext * /*ctx*/) override { }
 
   virtual void enterElement(calculatorParser::ElementContext * /*ctx*/) override { }
   virtual void exitElement(calculatorParser::ElementContext * /*ctx*/) override { }

@@ -1,5 +1,5 @@
 
-// Generated from calculator.g4 by ANTLR 4.13.2
+// Generated from calculator.g4 by ANTLR 4.10
 
 #pragma once
 
@@ -14,8 +14,8 @@
 class  calculatorListener : public antlr4::tree::ParseTreeListener {
 public:
 
-  virtual void enterStartrule(calculatorParser::StartruleContext *ctx) = 0;
-  virtual void exitStartrule(calculatorParser::StartruleContext *ctx) = 0;
+  virtual void enterStartRule(calculatorParser::StartRuleContext *ctx) = 0;
+  virtual void exitStartRule(calculatorParser::StartRuleContext *ctx) = 0;
 
   virtual void enterStatement(calculatorParser::StatementContext *ctx) = 0;
   virtual void exitStatement(calculatorParser::StatementContext *ctx) = 0;
@@ -29,8 +29,8 @@ public:
   virtual void enterRhs(calculatorParser::RhsContext *ctx) = 0;
   virtual void exitRhs(calculatorParser::RhsContext *ctx) = 0;
 
-  virtual void enterOperator(calculatorParser::OperatorContext *ctx) = 0;
-  virtual void exitOperator(calculatorParser::OperatorContext *ctx) = 0;
+  virtual void enterOpertype(calculatorParser::OpertypeContext *ctx) = 0;
+  virtual void exitOpertype(calculatorParser::OpertypeContext *ctx) = 0;
 
   virtual void enterElement(calculatorParser::ElementContext *ctx) = 0;
   virtual void exitElement(calculatorParser::ElementContext *ctx) = 0;
