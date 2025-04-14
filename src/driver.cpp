@@ -23,6 +23,7 @@ private:
     MLIRContext *context;
     OpBuilder builder;
     ModuleOp module;
+    func::FuncOp mainFunc;
     std::map<std::string, Value> variables; // Maps variable names to MLIR Values
 
 public:
@@ -32,12 +33,12 @@ public:
         context->loadDialect<func::FuncDialect>();
         context->loadDialect<arith::ArithDialect>();
         // Create a main function
-        auto mainFunc = builder.create<func::FuncOp>(
+        mainFunc = builder.create<func::FuncOp>(
             builder.getUnknownLoc(),
             "main",
             builder.getFunctionType({}, {}) // No args, no results
         );
-        // Explicitly add func to module
+        // Add func to module
         module.push_back(mainFunc);
         // Create an entry block
         Block *entryBlock = mainFunc.addEntryBlock();
@@ -56,10 +57,7 @@ public:
             i32Type,
             builder.getI32IntegerAttr(0) // Initial value 0
         );
-        Value varValue = constantOp.getResult();
-        variables[varName] = varValue;
-        std::cout << std::format("Generated constant for {}: ", varName);
-        constantOp.dump();
+        variables[varName] = constantOp.getResult();
     }
 
     // Handle assignments
@@ -144,8 +142,6 @@ public:
         }
 
         variables[varName] = resultVal;
-        std::cout << std::format("Generated op for {}: ", varName);
-        resultVal.getDefiningOp()->dump();
     }
 
     // Handle print statements
@@ -164,13 +160,16 @@ public:
             builder.getI32Type(),
             builder.getI32IntegerAttr(0)
         );
-        auto addOp = builder.create<arith::AddIOp>(
+        builder.create<arith::AddIOp>(
             builder.getUnknownLoc(),
             varValue,
             zeroOp.getResult()
         );
-        std::cout << std::format("Generated print for {}: ", varName);
-        addOp.dump();
+    }
+
+    // Finalize the function with a return
+    void exitStartRule(calculatorParser::StartRuleContext *ctx) override {
+        builder.create<func::ReturnOp>(builder.getUnknownLoc());
     }
 
     // Get the generated module
