@@ -26,6 +26,13 @@ private:
     func::FuncOp mainFunc;
     std::map<std::string, Value> variables; // Maps variable names to MLIR Values
 
+    // Helper to get location from parse context
+    Location getLocation(ParserRuleContext *ctx) {
+        size_t line = ctx->getStart()->getLine();
+        size_t col = ctx->getStart()->getCharPositionInLine() + 1; // 1-based
+        return builder.getFileLineColLoc(builder.getStringAttr("input.toy"), line, col);
+    }
+
 public:
     MLIRListener(MLIRContext *ctx)
         : context(ctx), builder(ctx), module(ModuleOp::create(builder.getUnknownLoc())) {
@@ -38,7 +45,7 @@ public:
     void enterStartRule(calculatorParser::StartRuleContext *ctx) override {
         // Create a main function
         mainFunc = builder.create<func::FuncOp>(
-            builder.getUnknownLoc(),
+            getLocation(ctx),
             "main",
             builder.getFunctionType({}, {}) // No args, no results
         );
@@ -54,10 +61,10 @@ public:
         std::string varName = ctx->VARIABLENAME()->getText();
         std::cout << std::format("Declaration: {}\n", varName);
 
-        // Create an arith.constant as a placeholder for the variable (initial value 0)
+        // Create an arith.constant with location
         Type i32Type = builder.getI32Type();
         auto constantOp = builder.create<arith::ConstantOp>(
-            builder.getUnknownLoc(),
+            getLocation(ctx),
             i32Type,
             builder.getI32IntegerAttr(0) // Initial value 0
         );
@@ -83,7 +90,7 @@ public:
         if (leftCtx->INTEGERLITERAL()) {
             int64_t val = std::stoll(leftCtx->getText());
             leftVal = builder.create<arith::ConstantOp>(
-                builder.getUnknownLoc(),
+                getLocation(leftCtx),
                 builder.getI32Type(),
                 builder.getI32IntegerAttr(val)
             ).getResult();
@@ -100,7 +107,7 @@ public:
         if (rightCtx->INTEGERLITERAL()) {
             int64_t val = std::stoll(rightCtx->getText());
             rightVal = builder.create<arith::ConstantOp>(
-                builder.getUnknownLoc(),
+                getLocation(rightCtx),
                 builder.getI32Type(),
                 builder.getI32IntegerAttr(val)
             ).getResult();
@@ -118,25 +125,25 @@ public:
         Value resultVal;
         if (op == "+") {
             resultVal = builder.create<arith::AddIOp>(
-                builder.getUnknownLoc(),
+                getLocation(ctx),
                 leftVal,
                 rightVal
             ).getResult();
         } else if (op == "-") {
             resultVal = builder.create<arith::SubIOp>(
-                builder.getUnknownLoc(),
+                getLocation(ctx),
                 leftVal,
                 rightVal
             ).getResult();
         } else if (op == "*") {
             resultVal = builder.create<arith::MulIOp>(
-                builder.getUnknownLoc(),
+                getLocation(ctx),
                 leftVal,
                 rightVal
             ).getResult();
         } else if (op == "/") {
             resultVal = builder.create<arith::DivSIOp>(
-                builder.getUnknownLoc(),
+                getLocation(ctx),
                 leftVal,
                 rightVal
             ).getResult();
@@ -160,12 +167,12 @@ public:
         }
         Value varValue = variables[varName];
         auto zeroOp = builder.create<arith::ConstantOp>(
-            builder.getUnknownLoc(),
+            getLocation(ctx),
             builder.getI32Type(),
             builder.getI32IntegerAttr(0)
         );
         builder.create<arith::AddIOp>(
-            builder.getUnknownLoc(),
+            getLocation(ctx),
             varValue,
             zeroOp.getResult()
         );
@@ -173,7 +180,7 @@ public:
 
     // Finalize the function with a return
     void exitStartRule(calculatorParser::StartRuleContext *ctx) override {
-        builder.create<func::ReturnOp>(builder.getUnknownLoc());
+        builder.create<func::ReturnOp>(getLocation(ctx));
     }
 
     // Get the generated module
