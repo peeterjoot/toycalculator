@@ -32,6 +32,10 @@ public:
         // Load dialects
         context->loadDialect<func::FuncDialect>();
         context->loadDialect<arith::ArithDialect>();
+    }
+
+    // Set up the main function when entering startRule
+    void enterStartRule(calculatorParser::StartRuleContext *ctx) override {
         // Create a main function
         mainFunc = builder.create<func::FuncOp>(
             builder.getUnknownLoc(),
