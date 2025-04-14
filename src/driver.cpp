@@ -37,6 +37,8 @@ public:
             "main",
             builder.getFunctionType({}, {}) // No args, no results
         );
+        // Explicitly add func to module
+        module.push_back(mainFunc);
         // Create an entry block
         Block *entryBlock = mainFunc.addEntryBlock();
         builder.setInsertionPointToStart(entryBlock);
@@ -56,13 +58,94 @@ public:
         );
         Value varValue = constantOp.getResult();
         variables[varName] = varValue;
+        std::cout << std::format("Generated constant for {}: ", varName);
+        constantOp.dump();
     }
 
-    // Handle assignments (placeholder)
+    // Handle assignments
     void enterAssignment(calculatorParser::AssignmentContext *ctx) override {
         std::string varName = ctx->VARIABLENAME()->getText();
-        std::cout << std::format("Assignment: {} = {}\n", varName, ctx->rhs()->getText());
-        // TODO: Add MLIR codegen for assignments
+        auto rhs = ctx->rhs();
+        std::cout << std::format("Assignment: {} = {}\n", varName, rhs->getText());
+
+        if (variables.find(varName) == variables.end()) {
+            std::cerr << std::format("Error: Variable {} not declared\n", varName);
+            return;
+        }
+
+        auto leftCtx = rhs->element(0);
+        auto rightCtx = rhs->element(1);
+        Value leftVal, rightVal;
+
+        // Handle left operand
+        if (leftCtx->INTEGERLITERAL()) {
+            int64_t val = std::stoll(leftCtx->getText());
+            leftVal = builder.create<arith::ConstantOp>(
+                builder.getUnknownLoc(),
+                builder.getI32Type(),
+                builder.getI32IntegerAttr(val)
+            ).getResult();
+        } else {
+            std::string leftName = leftCtx->VARIABLENAME()->getText();
+            if (variables.find(leftName) == variables.end()) {
+                std::cerr << std::format("Error: Variable {} not declared\n", leftName);
+                return;
+            }
+            leftVal = variables[leftName];
+        }
+
+        // Handle right operand
+        if (rightCtx->INTEGERLITERAL()) {
+            int64_t val = std::stoll(rightCtx->getText());
+            rightVal = builder.create<arith::ConstantOp>(
+                builder.getUnknownLoc(),
+                builder.getI32Type(),
+                builder.getI32IntegerAttr(val)
+            ).getResult();
+        } else {
+            std::string rightName = rightCtx->VARIABLENAME()->getText();
+            if (variables.find(rightName) == variables.end()) {
+                std::cerr << std::format("Error: Variable {} not declared\n", rightName);
+                return;
+            }
+            rightVal = variables[rightName];
+        }
+
+        // Create operation based on opertype
+        std::string op = rhs->opertype()->getText();
+        Value resultVal;
+        if (op == "+") {
+            resultVal = builder.create<arith::AddIOp>(
+                builder.getUnknownLoc(),
+                leftVal,
+                rightVal
+            ).getResult();
+        } else if (op == "-") {
+            resultVal = builder.create<arith::SubIOp>(
+                builder.getUnknownLoc(),
+                leftVal,
+                rightVal
+            ).getResult();
+        } else if (op == "*") {
+            resultVal = builder.create<arith::MulIOp>(
+                builder.getUnknownLoc(),
+                leftVal,
+                rightVal
+            ).getResult();
+        } else if (op == "/") {
+            resultVal = builder.create<arith::DivSIOp>(
+                builder.getUnknownLoc(),
+                leftVal,
+                rightVal
+            ).getResult();
+        } else {
+            std::cerr << std::format("Error: Unknown operator {}\n", op);
+            return;
+        }
+
+        variables[varName] = resultVal;
+        std::cout << std::format("Generated op for {}: ", varName);
+        resultVal.getDefiningOp()->dump();
     }
 
     // Handle print statements
@@ -81,11 +164,13 @@ public:
             builder.getI32Type(),
             builder.getI32IntegerAttr(0)
         );
-        builder.create<arith::AddIOp>(
+        auto addOp = builder.create<arith::AddIOp>(
             builder.getUnknownLoc(),
             varValue,
             zeroOp.getResult()
         );
+        std::cout << std::format("Generated print for {}: ", varName);
+        addOp.dump();
     }
 
     // Get the generated module
