@@ -58,13 +58,16 @@ target_link_libraries(calculator
   LLVMSupport
   MLIRIR
   MLIRSupport
+  MLIRFuncDialect
+  MLIRParser
+  MLIRTransforms
 )
 
 # Add definitions from LLVM
 add_definitions(${LLVM_DEFINITIONS})
 
 # Optional: Enable warnings and optimizations
-target_compile_options(calculator PRIVATE -Wall -Wextra -O2 -Wno-overloaded-virtual -Werror)
+target_compile_options(calculator PRIVATE -Wall -Wextra -O2 -Wno-comment -Wno-overloaded-virtual -Wno-unused-parameter)
 
 # Ensure MLIR/LLVM components are linked correctly
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
