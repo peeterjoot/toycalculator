@@ -43,32 +43,41 @@ public:
     // Handle declarations
     void enterDeclare(calculatorParser::DeclareContext *ctx) override {
         std::string varName = ctx->VARIABLENAME()->getText();
-        std::cout << std::format( "Declaration: {}\n", varName );
+        std::cout << std::format("Declaration: {}\n", varName);
 
-        // Create a toy.declare operation (custom op)
-        // For simplicity, assume i32 type
+        // Create a toy.declare operation
         Type i32Type = builder.getI32Type();
-        // Create a fictional toy.declare op (we'll define it later)
-        auto declareOp = builder.create<Operation>(
-            builder.getUnknownLoc(),
-            "toy.declare",
-            { /* No operands */ },
-            i32Type, // Result type
-            builder.getStringAttr(varName) // Variable name as attribute
-        );
+        OperationState state(builder.getUnknownLoc(), "toy.declare");
+        state.addTypes(i32Type); // Result type
+        state.addAttribute("name", builder.getStringAttr(varName));
+        Operation *declareOp = builder.createOperation(state);
         Value varValue = declareOp->getResult(0);
         variables[varName] = varValue;
     }
 
-    // Handle assignments (placeholder for future MLIR generation)
+    // Handle assignments (placeholder)
     void enterAssignment(calculatorParser::AssignmentContext *ctx) override {
         std::string varName = ctx->VARIABLENAME()->getText();
-        std::cout << std::format("Assignment: {} = {}\n", varName, ctx->rhs()->getText() );
+        std::cout << std::format("Assignment: {} = {}\n", varName, ctx->rhs()->getText());
         // TODO: Add MLIR codegen for assignments
     }
 
+    // Handle print statements
     void enterPrint(calculatorParser::PrintContext *ctx) override {
-        std::cout << std::format( "Print: {}\n", ctx->VARIABLENAME()->getText() );
+        std::string varName = ctx->VARIABLENAME()->getText();
+        std::cout << std::format("Print: {}\n", varName);
+
+#if 0 // This also doesn't compile, but let's figure out declare first.
+        // Create a toy.print operation
+        if (variables.find(varName) == variables.end()) {
+            std::cerr << std::format("Error: Variable {} not declared\n", varName);
+            return;
+        }
+        Value varValue = variables[varName];
+        OperationState state(builder.getUnknownLoc(), "toy.print");
+        state.addOperands(varValue);
+        builder.createOperation(state);
+#endif
     }
 
     // Get the generated module
