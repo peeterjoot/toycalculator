@@ -12,6 +12,7 @@
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Verifier.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 
 using namespace antlr4;
 using namespace mlir;
@@ -29,6 +30,7 @@ public:
         : context(ctx), builder(ctx), module(ModuleOp::create(builder.getUnknownLoc())) {
         // Load dialects
         context->loadDialect<func::FuncDialect>();
+        context->loadDialect<arith::ArithDialect>();
         // Create a main function
         auto mainFunc = builder.create<func::FuncOp>(
             builder.getUnknownLoc(),
@@ -45,13 +47,14 @@ public:
         std::string varName = ctx->VARIABLENAME()->getText();
         std::cout << std::format("Declaration: {}\n", varName);
 
-        // Create a toy.declare operation
+        // Create an arith.constant as a placeholder for the variable (initial value 0)
         Type i32Type = builder.getI32Type();
-        OperationState state(builder.getUnknownLoc(), "toy.declare");
-        state.addTypes(i32Type); // Result type
-        state.addAttribute("name", builder.getStringAttr(varName));
-        Operation *declareOp = builder.createOperation(state);
-        Value varValue = declareOp->getResult(0);
+        auto constantOp = builder.create<arith::ConstantOp>(
+            builder.getUnknownLoc(),
+            i32Type,
+            builder.getI32IntegerAttr(0) // Initial value 0
+        );
+        Value varValue = constantOp.getResult();
         variables[varName] = varValue;
     }
 
@@ -67,17 +70,22 @@ public:
         std::string varName = ctx->VARIABLENAME()->getText();
         std::cout << std::format("Print: {}\n", varName);
 
-#if 0 // This also doesn't compile, but let's figure out declare first.
-        // Create a toy.print operation
+        // Create an arith.addi with zero to simulate using the variable
         if (variables.find(varName) == variables.end()) {
             std::cerr << std::format("Error: Variable {} not declared\n", varName);
             return;
         }
         Value varValue = variables[varName];
-        OperationState state(builder.getUnknownLoc(), "toy.print");
-        state.addOperands(varValue);
-        builder.createOperation(state);
-#endif
+        auto zeroOp = builder.create<arith::ConstantOp>(
+            builder.getUnknownLoc(),
+            builder.getI32Type(),
+            builder.getI32IntegerAttr(0)
+        );
+        builder.create<arith::AddIOp>(
+            builder.getUnknownLoc(),
+            varValue,
+            zeroOp.getResult()
+        );
     }
 
     // Get the generated module

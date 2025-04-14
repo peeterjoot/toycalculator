@@ -16,7 +16,7 @@ link_directories(${LLVM_LIBRARY_DIRS})
 
 # Find ANTLR4 runtime
 find_library(ANTLR4_RUNTIME NAMES antlr4-runtime libantlr4-runtime HINTS /usr/lib /usr/lib/x86_64-linux-gnu)
-find_path(ANTLR4_INCLUDE_DIR NAMES antlr4-runtime.h HINTS /usr/include/antlr4-runtime /usr/local/include/antlr4-runtime)
+find_path(ANTLR4_INCLUDE_DIR NAMES antlr4-runtime.h HINTS /usr/include/antlr4-runtime)
 if(NOT ANTLR4_RUNTIME)
   message(FATAL_ERROR "ANTLR4 runtime library not found. Please install libantlr4-runtime-dev.")
 endif()
@@ -59,6 +59,7 @@ target_link_libraries(calculator
   MLIRIR
   MLIRSupport
   MLIRFuncDialect
+  MLIRArithDialect
   MLIRParser
   MLIRTransforms
 )
@@ -67,7 +68,9 @@ target_link_libraries(calculator
 add_definitions(${LLVM_DEFINITIONS})
 
 # Optional: Enable warnings and optimizations
-target_compile_options(calculator PRIVATE -Wall -Wextra -O2 -Wno-comment -Wno-overloaded-virtual -Wno-unused-parameter)
+target_compile_options(calculator PRIVATE -Wall -Wextra -Wno-comment -Wno-overloaded-virtual -Wno-unused-parameter)
+#target_compile_options(calculator PRIVATE -O2)
+target_compile_options(calculator PRIVATE -g)
 
 # Ensure MLIR/LLVM components are linked correctly
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
