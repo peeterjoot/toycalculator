@@ -81,7 +81,8 @@ public:
             return;
         }
 
-        auto binaryOp = builder.create<toy::BinaryOp>(getLocation(ctx), builder.getStringAttr(op), lhsValue, rhsValue);
+
+        auto binaryOp = builder.create<toy::BinaryOp>(getLocation(ctx), builder.getF64Type(), builder.getStringAttr(op), lhsValue, rhsValue);
         if (!currentVarName.empty()) {
             builder.create<toy::AssignOp>(currentAssignLoc, builder.getStringAttr(currentVarName), binaryOp.getResult());
             currentVarName.clear();
