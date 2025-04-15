@@ -1,18 +1,21 @@
-#include <iostream>
-#include <string>
-#include <map>
 #include <format>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <string>
 #include "antlr4-runtime.h"
-#include "calculatorLexer.h"
-#include "calculatorParser.h"
-#include "calculatorListener.h"
 #include "calculatorBaseListener.h"
+#include "calculatorLexer.h"
+#include "calculatorListener.h"
+#include "calculatorParser.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/InitLLVM.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
 #include "mlir/IR/AsmState.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/Verifier.h"
-#include "mlir/Dialect/Func/IR/FuncOps.h"
-#include "mlir/Dialect/Arith/IR/Arith.h"
 
 using namespace antlr4;
 using namespace mlir;
@@ -25,12 +28,12 @@ private:
     ModuleOp module;
     func::FuncOp mainFunc;
     std::map<std::string, Value> variables; // Maps variable names to MLIR Values
+    std::string filename{"<stdin>"};
 
-    // Helper to get location from parse context
-    Location getLocation(ParserRuleContext *ctx) {
+    mlir::Location MLIRListener::getLocation(antlr4::ParserRuleContext *ctx) {
         size_t line = ctx->getStart()->getLine();
-        size_t col = ctx->getStart()->getCharPositionInLine() + 1; // 1-based
-        return builder.getFileLineColLoc(builder.getStringAttr("input.toy"), line, col);
+        size_t col = ctx->getStart()->getCharPositionInLine();
+        return mlir::FileLineColLoc::get(builder.getStringAttr(filename, line, col);
     }
 
 public:
@@ -39,6 +42,10 @@ public:
         // Load dialects
         context->loadDialect<func::FuncDialect>();
         context->loadDialect<arith::ArithDialect>();
+    }
+
+    void setFilename(const std::string &f) {
+        filename = f;
     }
 
     // Set up the main function when entering startRule
@@ -187,12 +194,23 @@ public:
     ModuleOp getModule() { return module; }
 };
 
-int main() {
-    // Read input
-    std::string input;
-    std::string line;
-    while (std::getline(std::cin, line)) {
-        input += line + "\n";
+static llvm::cl::opt<std::string> inputFilename(
+    llvm::cl::Positional, llvm::cl::desc("<input file>"),
+    llvm::cl::init("-"), llvm::cl::value_desc("filename"));
+
+int main( int argc, char ** argv) {
+    llvm::InitLLVM init(argc, argv);
+    llvm::cl::ParseCommandLineOptions(argc, argv, "calculator compiler\n");
+
+    std::ifstream inputStream;
+    if (inputFilename != "-") {
+        inputStream.open(inputFilename);
+        if (!inputStream.is_open()) {
+            llvm::errs() << "Error: Cannot open file " << inputFilename << "\n";
+            return 1;
+        }
+    } else {
+        inputStream.basic_ios<char>::rdbuf(std::cin.rdbuf());
     }
 
     // Parse input with ANTLR
@@ -219,3 +237,5 @@ int main() {
 
     return 0;
 }
+
+// vim: et ts=4 sw=4
