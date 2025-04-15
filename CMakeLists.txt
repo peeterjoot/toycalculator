@@ -47,6 +47,7 @@ file(GLOB GRAMMAR_SOURCES
 # Collect project source files
 set(PROJECT_SOURCES
   "${SOURCE_DIR}/driver.cpp"
+  "${SOURCE_DIR}/ToyCalculatorDialect.cpp"
 )
 
 # Define the executable
