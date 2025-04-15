@@ -1,4 +1,4 @@
-#include "calculatorListener.h"
+#include "grammar/calculatorListener.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Operation.h"
@@ -6,11 +6,12 @@
 #include "mlir/IR/Location.h"
 #include "ToyCalculatorDialect.h"
 #include <antlr4-runtime.h>
-#include "calculatorLexer.h"
-#include "calculatorParser.h"
+#include "grammar/calculatorLexer.h"
+#include "grammar/calculatorParser.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/InitLLVM.h"
 #include <fstream>
+#include <format>
 
 static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::Positional, llvm::cl::desc("<input file>"),
@@ -31,15 +32,72 @@ public:
         return mlir::FileLineColLoc::get(builder.getStringAttr(filename), line, col);
     }
 
-    void enterR(calculatorParser::RContext *ctx) override {
+    void enterStartRule(calculatorParser::StartRuleContext *ctx) override {
         auto loc = getLocation(ctx);
-        builder.create<toy::ValueOp>(loc, builder.getF64Type());
+        programOp = builder.create<toy::ProgramOp>(loc);
+        builder.setInsertionPointToStart(&programOp.getBody().front());
+    }
+
+    void exitStartRule(calculatorParser::StartRuleContext *ctx) override {
+        builder.setInsertionPointToEnd(module.getBody());
+    }
+
+    void enterDeclare(calculatorParser::DeclareContext *ctx) override {
+        auto loc = getLocation(ctx);
+        auto varName = ctx->VARIABLENAME()->getText();
+        builder.create<toy::DeclareOp>(loc, builder.getStringAttr(varName));
+    }
+
+    void enterPrint(calculatorParser::PrintContext *ctx) override {
+        auto loc = getLocation(ctx);
+        auto varName = ctx->VARIABLENAME()->getText();
+        builder.create<toy::PrintOp>(loc, builder.getStringAttr(varName));
+    }
+
+    void enterAssignment(calculatorParser::AssignmentContext *ctx) override {
+        auto loc = getLocation(ctx);
+        currentVarName = ctx->VARIABLENAME()->getText();
+        currentAssignLoc = loc;
+    }
+
+    void enterRhs(calculatorParser::RhsContext *ctx) override {
+        auto lhs = ctx->element()[0];
+        auto rhs = ctx->element()[1];
+        auto op = ctx->opertype()->getText();
+
+        mlir::Value lhsValue, rhsValue;
+        if (lhs->INTEGERLITERAL()) {
+            int64_t val = std::stoi(lhs->INTEGERLITERAL()->getText());
+            lhsValue = builder.create<mlir::arith::ConstantIntOp>(getLocation(lhs), val, 64);
+        } else {
+            llvm::errs() << std::format("Warning: Variable {} not supported yet at line {}\n",
+                                        lhs->VARIABLENAME()->getText(), ctx->getStart()->getLine());
+            return;
+        }
+
+        if (rhs->INTEGERLITERAL()) {
+            int64_t val = std::stoi(rhs->INTEGERLITERAL()->getText());
+            rhsValue = builder.create<mlir::arith::ConstantIntOp>(getLocation(rhs), val, 64);
+        } else {
+            llvm::errs() << std::format("Warning: Variable {} not supported yet at line {}\n",
+                                        rhs->VARIABLENAME()->getText(), ctx->getStart()->getLine());
+            return;
+        }
+
+        auto binaryOp = builder.create<toy::BinaryOp>(getLocation(ctx), builder.getStringAttr(op), lhsValue, rhsValue);
+        if (!currentVarName.empty()) {
+            builder.create<toy::AssignOp>(currentAssignLoc, builder.getStringAttr(currentVarName), binaryOp.getResult(0));
+            currentVarName.clear();
+        }
     }
 
 private:
     mlir::OpBuilder &builder;
     mlir::ModuleOp &module;
     std::string filename;
+    toy::ProgramOp programOp;
+    std::string currentVarName;
+    mlir::Location currentAssignLoc;
 };
 
 void processInput(std::ifstream &input, MLIRListener &listener, const std::string &filename) {
@@ -48,7 +106,7 @@ void processInput(std::ifstream &input, MLIRListener &listener, const std::strin
     antlr4::CommonTokenStream tokens(&lexer);
     calculatorParser parser(&tokens);
 
-    antlr4::tree::ParseTree *tree = parser.r();
+    antlr4::tree::ParseTree *tree = parser.startRule();
     listener.setFilename(filename);
     antlr4::tree::ParseTreeWalker::DEFAULT.walk(&listener, tree);
 }
@@ -59,6 +117,7 @@ int main(int argc, char **argv) {
 
     mlir::MLIRContext context;
     context.getOrLoadDialect<toy::ToyDialect>();
+    context.getOrLoadDialect<mlir::arith::ArithDialect>();
 
     mlir::OpBuilder builder(&context);
     auto module = mlir::ModuleOp::create(builder.getUnknownLoc());
@@ -68,7 +127,7 @@ int main(int argc, char **argv) {
     if (filename != "-") {
         inputStream.open(filename);
         if (!inputStream.is_open()) {
-            llvm::errs() << "Error: Cannot open file " << filename << "\n";
+            llvm::errs() << std::format("Error: Cannot open file {}\n", filename);
             return 1;
         }
     } else {

@@ -20,15 +20,15 @@ def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
   let results = (outs);
 }
 
-def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
-  let summary = "Assign a value to a variable";
-  let arguments = (ins StrAttr:$name, AnyType:$value);
-  let results = (outs);
-}
-
 def Toy_PrintOp : Op<Toy_Dialect, "print"> {
   let summary = "Print a variable";
   let arguments = (ins StrAttr:$name);
+  let results = (outs);
+}
+
+def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
+  let summary = "Assign a value to a variable";
+  let arguments = (ins StrAttr:$name, AnyType:$value);
   let results = (outs);
 }
 
