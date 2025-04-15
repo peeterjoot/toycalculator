@@ -19,10 +19,8 @@ static llvm::cl::opt<std::string> inputFilename(
 
 class MLIRListener : public calculatorListener {
 public:
-    MLIRListener(mlir::OpBuilder &b, mlir::ModuleOp &m)
-        : builder(b), module(m), filename("input.calc") {}
-
-    void setFilename(const std::string &f) { filename = f; }
+    MLIRListener(mlir::OpBuilder &b, mlir::ModuleOp &m, const std::string & _filename)
+        : builder(b), module(m), filename(_filename) {}
 
     mlir::Location getLocation(antlr4::ParserRuleContext *ctx) {
         size_t line = ctx->getStart()->getLine();
@@ -98,14 +96,13 @@ private:
     mlir::Location currentAssignLoc;
 };
 
-void processInput(std::ifstream &input, MLIRListener &listener, const std::string &filename) {
+void processInput(std::ifstream &input, MLIRListener &listener) {
     antlr4::ANTLRInputStream antlrInput(input);
     calculatorLexer lexer(&antlrInput);
     antlr4::CommonTokenStream tokens(&lexer);
     calculatorParser parser(&tokens);
 
     antlr4::tree::ParseTree *tree = parser.startRule();
-    listener.setFilename(filename);
     antlr4::tree::ParseTreeWalker::DEFAULT.walk(&listener, tree);
 }
 
@@ -133,8 +130,8 @@ int main(int argc, char **argv) {
         inputStream.basic_ios<char>::rdbuf(std::cin.rdbuf());
     }
 
-    MLIRListener listener(builder, module);
-    processInput(inputStream, listener, filename);
+    MLIRListener listener(builder, modulei, filename);
+    processInput(inputStream, listener);
 
     module.dump();
     return 0;
