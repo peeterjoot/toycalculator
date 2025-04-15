@@ -1,4 +1,4 @@
-#include "calculatorListener.h"
+#include "calculatorBaseListener.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Operation.h"
@@ -18,7 +18,7 @@ static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::Positional, llvm::cl::desc("<input file>"),
     llvm::cl::init("-"), llvm::cl::value_desc("filename"));
 
-class MLIRListener : public calculatorListener {
+class MLIRListener : public calculatorBaseListener {
 public:
     MLIRListener(mlir::OpBuilder &b, mlir::ModuleOp &m, const std::string & _filename)
         : builder(b), module(m), filename(_filename), currentAssignLoc(b.getUnknownLoc()) {}
@@ -83,7 +83,7 @@ public:
 
         auto binaryOp = builder.create<toy::BinaryOp>(getLocation(ctx), builder.getStringAttr(op), lhsValue, rhsValue);
         if (!currentVarName.empty()) {
-            builder.create<toy::AssignOp>(currentAssignLoc, builder.getStringAttr(currentVarName), binaryOp.getResult(0));
+            builder.create<toy::AssignOp>(currentAssignLoc, builder.getStringAttr(currentVarName), binaryOp.getResult());
             currentVarName.clear();
         }
     }
