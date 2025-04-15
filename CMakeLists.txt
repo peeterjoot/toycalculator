@@ -6,6 +6,9 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find LLVM and MLIR
+# these find_package's relied on:
+#      -DLLVM_DIR=/usr/lib/llvm-19/cmake \
+#      -DMLIR_DIR=/usr/lib/llvm-19/lib/cmake/mlir \
 #find_package(LLVM REQUIRED CONFIG)
 #find_package(MLIR REQUIRED CONFIG)
 set(LLVM_DIR /usr/local/llvm-20/lib64/cmake/llvm)
