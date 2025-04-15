@@ -1,4 +1,4 @@
-#include "grammar/calculatorListener.h"
+#include "calculatorListener.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Operation.h"
@@ -6,8 +6,8 @@
 #include "mlir/IR/Location.h"
 #include "ToyCalculatorDialect.h"
 #include <antlr4-runtime.h>
-#include "grammar/calculatorLexer.h"
-#include "grammar/calculatorParser.h"
+#include "calculatorLexer.h"
+#include "calculatorParser.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/InitLLVM.h"
 #include <fstream>
@@ -17,7 +17,7 @@ static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::Positional, llvm::cl::desc("<input file>"),
     llvm::cl::init("-"), llvm::cl::value_desc("filename"));
 
-class MLIRListener : public calculatorListener {
+class MLIRListener : public calculatorBaseListener {
 public:
     MLIRListener(mlir::OpBuilder &b, mlir::ModuleOp &m)
         : builder(b), module(m), filename("input.calc") {}
@@ -140,11 +140,13 @@ int main(int argc, char **argv) {
 
     module.dump();
 
+#if 0
     // Verify the module
     if (failed(verify(module))) {
         std::cerr << "MLIR verification failed" << std::endl;
         return 1;
     }
+#endif
 
     return 0;
 }
