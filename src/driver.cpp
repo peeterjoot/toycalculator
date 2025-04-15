@@ -4,6 +4,7 @@
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/Types.h"
 #include "mlir/IR/Location.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
 #include "ToyCalculatorDialect.h"
 #include <antlr4-runtime.h>
 #include "calculatorLexer.h"
@@ -20,7 +21,7 @@ static llvm::cl::opt<std::string> inputFilename(
 class MLIRListener : public calculatorListener {
 public:
     MLIRListener(mlir::OpBuilder &b, mlir::ModuleOp &m, const std::string & _filename)
-        : builder(b), module(m), filename(_filename) {}
+        : builder(b), module(m), filename(_filename), currentAssignLoc(b.getUnknownLoc()) {}
 
     mlir::Location getLocation(antlr4::ParserRuleContext *ctx) {
         size_t line = ctx->getStart()->getLine();
@@ -130,7 +131,7 @@ int main(int argc, char **argv) {
         inputStream.basic_ios<char>::rdbuf(std::cin.rdbuf());
     }
 
-    MLIRListener listener(builder, modulei, filename);
+    MLIRListener listener(builder, module, filename);
     processInput(inputStream, listener);
 
     module.dump();
