@@ -1,7 +1,7 @@
 #include "ToyCalculatorDialect.h"
 #include "mlir/IR/OpImplementation.h"
 
-using namespace toy;
+namespace toy {
 
 ToyDialect::ToyDialect(mlir::MLIRContext *context)
     : mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<ToyDialect>()) {
@@ -11,4 +11,8 @@ ToyDialect::ToyDialect(mlir::MLIRContext *context)
         >();
 }
 
+} // namespace toy
+
 #include "ToyCalculatorDialect.cpp.inc"
+
+// vim: et ts=4 sw=4

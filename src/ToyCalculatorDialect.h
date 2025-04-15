@@ -12,9 +12,11 @@ public:
     static llvm::StringRef getDialectNamespace() { return "toy"; }
 };
 
+} // namespace toy
+
 #define GET_OP_CLASSES
 #include "ToyCalculatorDialect.h.inc"
 
-} // namespace toy
-
 #endif // TOY_CALCULATOR_DIALECT_H
+
+// vim: et ts=4 sw=4

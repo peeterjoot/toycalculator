@@ -1,14 +1,13 @@
 include "mlir/IR/DialectBase.td"
-include "mlir/Interfaces/InferTypeOpInterface.td"
 
 def Toy_Dialect : Dialect {
   let name = "toy";
   let summary = "Toy dialect for a simple calculator";
-  let cppNamespace = "toy";
+  let cppNamespace = "::toy"; // Explicit global namespace
 }
 
 def Toy_ProgramOp : Op<Toy_Dialect, "program"> {
-  let summary = "Program operation for calculator";
+  let summary = "Program operation";
   let arguments = (ins);
   let results = (outs);
   let regions = (region AnyRegion:$body);
@@ -27,13 +26,13 @@ def Toy_PrintOp : Op<Toy_Dialect, "print"> {
 }
 
 def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
-  let summary = "Assign a value to a variable";
+  let summary = "Assign a value";
   let arguments = (ins StrAttr:$name, AnyType:$value);
   let results = (outs);
 }
 
 def Toy_BinaryOp : Op<Toy_Dialect, "binary"> {
-  let summary = "Binary operation (e.g., add, sub, mul, div)";
+  let summary = "Binary operation";
   let arguments = (ins StrAttr:$op, AnyType:$lhs, AnyType:$rhs);
   let results = (outs AnyType:$result);
 }

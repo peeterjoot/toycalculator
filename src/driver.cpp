@@ -17,14 +17,12 @@ static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::Positional, llvm::cl::desc("<input file>"),
     llvm::cl::init("-"), llvm::cl::value_desc("filename"));
 
-class MLIRListener : public calculatorBaseListener {
+class MLIRListener : public calculatorListener {
 public:
     MLIRListener(mlir::OpBuilder &b, mlir::ModuleOp &m)
         : builder(b), module(m), filename("input.calc") {}
 
-    void setFilename(const std::string &f) {
-        filename = f;
-    }
+    void setFilename(const std::string &f) { filename = f; }
 
     mlir::Location getLocation(antlr4::ParserRuleContext *ctx) {
         size_t line = ctx->getStart()->getLine();
@@ -70,7 +68,7 @@ public:
             int64_t val = std::stoi(lhs->INTEGERLITERAL()->getText());
             lhsValue = builder.create<mlir::arith::ConstantIntOp>(getLocation(lhs), val, 64);
         } else {
-            llvm::errs() << std::format("Warning: Variable {} not supported yet at line {}\n",
+            llvm::errs() << std::format("Warning: Variable {} not supported at line {}\n",
                                         lhs->VARIABLENAME()->getText(), ctx->getStart()->getLine());
             return;
         }
@@ -79,7 +77,7 @@ public:
             int64_t val = std::stoi(rhs->INTEGERLITERAL()->getText());
             rhsValue = builder.create<mlir::arith::ConstantIntOp>(getLocation(rhs), val, 64);
         } else {
-            llvm::errs() << std::format("Warning: Variable {} not supported yet at line {}\n",
+            llvm::errs() << std::format("Warning: Variable {} not supported at line {}\n",
                                         rhs->VARIABLENAME()->getText(), ctx->getStart()->getLine());
             return;
         }
@@ -139,15 +137,6 @@ int main(int argc, char **argv) {
     processInput(inputStream, listener, filename);
 
     module.dump();
-
-#if 0
-    // Verify the module
-    if (failed(verify(module))) {
-        std::cerr << "MLIR verification failed" << std::endl;
-        return 1;
-    }
-#endif
-
     return 0;
 }
 
