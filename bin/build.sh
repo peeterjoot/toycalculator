@@ -19,3 +19,5 @@ cmake -G Ninja \
 ..
 
 ninja
+
+my_cscope --build
