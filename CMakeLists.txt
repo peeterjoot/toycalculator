@@ -23,7 +23,12 @@ include_directories(${CMAKE_SOURCE_DIR}/ToyCalculatorParser)
 
 # Define paths
 set(ANTLR4_LOCAL "${CMAKE_CURRENT_SOURCE_DIR}/antlr-4.10-complete.jar")
-set(ANTLR4_SCRIPT "${HOME}/.local/bin/antlr4")
+if(EXISTS /usr/bin/antlr4)
+    set(ANTLR4_SCRIPT "/usr/bin/antlr4")
+    set(ANTLR4_PREFIX "/usr")
+else()
+    set(ANTLR4_SCRIPT "${HOME}/.local/bin/antlr4")
+endif()
 set(GRAMMAR_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ToyCalculator.g4")
 set(ANTLR_OUTPUT_DIR "${CMAKE_BINARY_DIR}/ToyCalculatorParser")
 
@@ -32,10 +37,9 @@ file(MAKE_DIRECTORY ${ANTLR_OUTPUT_DIR})
 
 # Check if ~/.local/bin/antlr4 exists
 if(EXISTS ${ANTLR4_SCRIPT})
-    set(ANTLR4_PREFIX "${HOME}/antlr4/usr/local")
-    include_directories(${ANTLR4_PREFIX}/include/antlr4-runtime)
 
     message(STATUS "ANTLR4_PREFIX in: ${ANTLR4_PREFIX}")
+    include_directories(${ANTLR4_PREFIX}/include/antlr4-runtime)
 
     # Use the local ANTLR4 script
     message(STATUS "Using ANTLR4 from ${ANTLR4_SCRIPT}")

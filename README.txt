@@ -13,3 +13,7 @@ sudo apt-get install antlr4
 wget https://www.antlr.org/download/antlr-4.10-complete.jar
 
 #wget https://www.antlr.org/download/antlr-4.13.2-complete.jar
+
+## anltlr4 setup (Fedora)
+
+sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-devel
