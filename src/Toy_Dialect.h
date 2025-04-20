@@ -1,22 +1,22 @@
-#ifndef TOY_CALCULATOR_DIALECT_H
-#define TOY_CALCULATOR_DIALECT_H
+#ifndef TOY_DIALECT_H
+#define TOY_DIALECT_H
 
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/OpDefinition.h"
 
 namespace toy {
 
-class ToyDialect : public mlir::Dialect {
+class Toy_Dialect : public mlir::Dialect {
 public:
-    ToyDialect(mlir::MLIRContext *context);
+    Toy_Dialect(mlir::MLIRContext *context);
     static llvm::StringRef getDialectNamespace() { return "toy"; }
 };
 
 } // namespace toy
 
 #define GET_OP_CLASSES
-#include "ToyCalculatorDialect.h.inc"
+#include "Toy_Dialect.h.inc"
 
-#endif // TOY_CALCULATOR_DIALECT_H
+#endif // TOY_DIALECT_H
 
 // vim: et ts=4 sw=4

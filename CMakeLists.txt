@@ -19,7 +19,7 @@ include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_SOURCE_DIR}/ToyCalculatorParser)
+include_directories(${CMAKE_SOURCE_DIR}/ToyParser)
 
 # Define paths
 set(ANTLR4_LOCAL "${CMAKE_CURRENT_SOURCE_DIR}/antlr-4.10-complete.jar")
@@ -29,8 +29,8 @@ if(EXISTS /usr/bin/antlr4)
 else()
     set(ANTLR4_SCRIPT "${HOME}/.local/bin/antlr4")
 endif()
-set(GRAMMAR_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ToyCalculator.g4")
-set(ANTLR_OUTPUT_DIR "${CMAKE_BINARY_DIR}/ToyCalculatorParser")
+set(GRAMMAR_FILE "${CMAKE_CURRENT_SOURCE_DIR}/Toy.g4")
+set(ANTLR_OUTPUT_DIR "${CMAKE_BINARY_DIR}/ToyParser")
 
 # Ensure output directory exists
 file(MAKE_DIRECTORY ${ANTLR_OUTPUT_DIR})
@@ -45,10 +45,10 @@ if(EXISTS ${ANTLR4_SCRIPT})
     message(STATUS "Using ANTLR4 from ${ANTLR4_SCRIPT}")
     add_custom_command(
         OUTPUT
-            ${ANTLR_OUTPUT_DIR}/ToyCalculatorBaseListener.cpp
-            ${ANTLR_OUTPUT_DIR}/ToyCalculatorListener.cpp
-            ${ANTLR_OUTPUT_DIR}/ToyCalculatorParser.cpp
-            ${ANTLR_OUTPUT_DIR}/ToyCalculatorLexer.cpp
+            ${ANTLR_OUTPUT_DIR}/ToyBaseListener.cpp
+            ${ANTLR_OUTPUT_DIR}/ToyListener.cpp
+            ${ANTLR_OUTPUT_DIR}/ToyParser.cpp
+            ${ANTLR_OUTPUT_DIR}/ToyLexer.cpp
         COMMAND
             ${ANTLR4_SCRIPT} -Dlanguage=Cpp ${GRAMMAR_FILE} -listener -o ${ANTLR_OUTPUT_DIR}
         DEPENDS
@@ -65,10 +65,10 @@ else()
     message(STATUS "Using ANTLR4 JAR from ${ANTLR4_LOCAL}")
     add_custom_command(
         OUTPUT
-            ${ANTLR_OUTPUT_DIR}/ToyCalculatorBaseListener.cpp
-            ${ANTLR_OUTPUT_DIR}/ToyCalculatorListener.cpp
-            ${ANTLR_OUTPUT_DIR}/ToyCalculatorParser.cpp
-            ${ANTLR_OUTPUT_DIR}/ToyCalculatorLexer.cpp
+            ${ANTLR_OUTPUT_DIR}/ToyBaseListener.cpp
+            ${ANTLR_OUTPUT_DIR}/ToyListener.cpp
+            ${ANTLR_OUTPUT_DIR}/ToyParser.cpp
+            ${ANTLR_OUTPUT_DIR}/ToyLexer.cpp
         COMMAND
             java -Xmx500M -cp ${ANTLR4_LOCAL} org.antlr.v4.Tool -Dlanguage=Cpp ${GRAMMAR_FILE} -listener -o ${ANTLR_OUTPUT_DIR}
         DEPENDS
@@ -87,10 +87,10 @@ endif()
 add_custom_target(
     GenerateANTLR
     DEPENDS
-        ${ANTLR_OUTPUT_DIR}/ToyCalculatorBaseListener.cpp
-        ${ANTLR_OUTPUT_DIR}/ToyCalculatorListener.cpp
-        ${ANTLR_OUTPUT_DIR}/ToyCalculatorParser.cpp
-        ${ANTLR_OUTPUT_DIR}/ToyCalculatorLexer.cpp
+        ${ANTLR_OUTPUT_DIR}/ToyBaseListener.cpp
+        ${ANTLR_OUTPUT_DIR}/ToyListener.cpp
+        ${ANTLR_OUTPUT_DIR}/ToyParser.cpp
+        ${ANTLR_OUTPUT_DIR}/ToyLexer.cpp
 )
 
 if(NOT EXISTS "/usr/include/antlr4-runtime")
@@ -105,9 +105,9 @@ set(MLIR_TABLEGEN_EXE mlir-tblgen)
 set(TABLEGEN_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
 file(MAKE_DIRECTORY ${TABLEGEN_OUTPUT_DIR})
 
-set(DIALECT_TD_FILE ${CMAKE_SOURCE_DIR}/src/ToyCalculatorDialect.td)
-set(DIALECT_H_INC ${TABLEGEN_OUTPUT_DIR}/ToyCalculatorDialect.h.inc)
-set(DIALECT_CPP_INC ${TABLEGEN_OUTPUT_DIR}/ToyCalculatorDialect.cpp.inc)
+set(DIALECT_TD_FILE ${CMAKE_SOURCE_DIR}/src/Toy_Dialect.td)
+set(DIALECT_H_INC ${TABLEGEN_OUTPUT_DIR}/Toy_Dialect.h.inc)
+set(DIALECT_CPP_INC ${TABLEGEN_OUTPUT_DIR}/Toy_Dialect.cpp.inc)
 
 add_custom_command(
   OUTPUT ${DIALECT_H_INC}
@@ -117,7 +117,7 @@ add_custom_command(
     -o ${DIALECT_H_INC}
     ${DIALECT_TD_FILE}
   DEPENDS ${DIALECT_TD_FILE}
-  COMMENT "Generating ToyCalculatorDialect.h.inc"
+  COMMENT "Generating Toy_Dialect.h.inc"
 )
 
 add_custom_command(
@@ -128,18 +128,18 @@ add_custom_command(
     -o ${DIALECT_CPP_INC}
     ${DIALECT_TD_FILE}
   DEPENDS ${DIALECT_TD_FILE}
-  COMMENT "Generating ToyCalculatorDialect.cpp.inc"
+  COMMENT "Generating Toy_Dialect.cpp.inc"
 )
 
 set(TABLEGEN_OUTPUT ${DIALECT_H_INC} ${DIALECT_CPP_INC})
 
 add_executable(toycalculator
   src/driver.cpp
-  src/ToyCalculatorDialect.cpp
-  ${ANTLR_OUTPUT_DIR}/ToyCalculatorBaseListener.cpp
-  ${ANTLR_OUTPUT_DIR}/ToyCalculatorListener.cpp
-  ${ANTLR_OUTPUT_DIR}/ToyCalculatorParser.cpp
-  ${ANTLR_OUTPUT_DIR}/ToyCalculatorLexer.cpp
+  src/Toy_Dialect.cpp
+  ${ANTLR_OUTPUT_DIR}/ToyBaseListener.cpp
+  ${ANTLR_OUTPUT_DIR}/ToyListener.cpp
+  ${ANTLR_OUTPUT_DIR}/ToyParser.cpp
+  ${ANTLR_OUTPUT_DIR}/ToyLexer.cpp
 )
 
 # Include the output directory for header files
@@ -148,8 +148,8 @@ target_include_directories(toycalculator PRIVATE ${ANTLR_OUTPUT_DIR})
 # Ensure the ANTLR generation runs before building the project
 add_dependencies(toycalculator GenerateANTLR)
 
-add_custom_target(ToyCalculatorDialectInc DEPENDS ${TABLEGEN_OUTPUT})
-add_dependencies(toycalculator ToyCalculatorDialectInc)
+add_custom_target(Toy_DialectInc DEPENDS ${TABLEGEN_OUTPUT})
+add_dependencies(toycalculator Toy_DialectInc)
 
 target_compile_options(toycalculator PRIVATE -Wall -Wextra -Wno-comment -Wno-overloaded-virtual -Wno-unused-parameter)
 #target_compile_options(toycalculator PRIVATE -O2)
