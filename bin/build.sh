@@ -21,6 +21,6 @@ cmake -G Ninja \
 -DMLIR_DIR=$PREFIX/lib64/cmake/mlir \
 ..
 
-ninja
+ninja -k 3 -j 1 2>&1 | tee o
 
 my_cscope --build
