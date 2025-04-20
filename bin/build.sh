@@ -12,6 +12,9 @@ fi
 if [ -d /usr/local/llvm-20.1.2 ] ; then
    PREFIX=/usr/local/llvm-20.1.2
 fi
+if [ -d /usr/local/llvm-20.1.3 ] ; then
+   PREFIX=/usr/local/llvm-20.1.3
+fi
 
 cmake -G Ninja \
 -DLLVM_DIR=$PREFIX/lib64/cmake/llvm \
