@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(Calculator)
+project(toycalculator)
 
 if(EXISTS "/opt/rh/gcc-toolset-13/root/usr/bin/g++")
    set(CMAKE_CXX_COMPILER "/opt/rh/gcc-toolset-13/root/usr/bin/g++")
@@ -7,13 +7,19 @@ endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS ON)
 
 find_package(LLVM REQUIRED CONFIG)
 find_package(MLIR REQUIRED CONFIG)
 
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-message(STATUS "Using MLIRConfig.cmake in: ${MLIR_DIR}")
+list(APPEND CMAKE_MODULE_PATH "${MLIR_CMAKE_DIR}")
+list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
+include(TableGen)
+include(AddLLVM)
+include(AddMLIR)
+
+message(STATUS "LLVM_INCLUDE_DIRS: ${LLVM_INCLUDE_DIRS}")
+message(STATUS "MLIR_INCLUDE_DIRS: ${MLIR_INCLUDE_DIRS}")
 
 include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
@@ -101,37 +107,12 @@ link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
 
 # TableGen for dialect
-set(MLIR_TABLEGEN_EXE mlir-tblgen)
-set(TABLEGEN_OUTPUT_DIR ${CMAKE_CURRENT_BINARY_DIR})
-file(MAKE_DIRECTORY ${TABLEGEN_OUTPUT_DIR})
+set(LLVM_TARGET_DEFINITIONS src/Toy_Dialect.td)
+mlir_tablegen(Toy_Dialect.h.inc -gen-op-decls)
+mlir_tablegen(Toy_Dialect.cpp.inc -gen-op-defs)
+add_public_tablegen_target(ToyDialectIncGen)
 
-set(DIALECT_TD_FILE ${CMAKE_SOURCE_DIR}/src/Toy_Dialect.td)
-set(DIALECT_H_INC ${TABLEGEN_OUTPUT_DIR}/Toy_Dialect.h.inc)
-set(DIALECT_CPP_INC ${TABLEGEN_OUTPUT_DIR}/Toy_Dialect.cpp.inc)
-
-add_custom_command(
-  OUTPUT ${DIALECT_H_INC}
-  COMMAND ${MLIR_TABLEGEN_EXE}
-    -gen-op-decls
-    -I ${MLIR_INCLUDE_DIRS}
-    -o ${DIALECT_H_INC}
-    ${DIALECT_TD_FILE}
-  DEPENDS ${DIALECT_TD_FILE}
-  COMMENT "Generating Toy_Dialect.h.inc"
-)
-
-add_custom_command(
-  OUTPUT ${DIALECT_CPP_INC}
-  COMMAND ${MLIR_TABLEGEN_EXE}
-    -gen-op-defs
-    -I ${MLIR_INCLUDE_DIRS}
-    -o ${DIALECT_CPP_INC}
-    ${DIALECT_TD_FILE}
-  DEPENDS ${DIALECT_TD_FILE}
-  COMMENT "Generating Toy_Dialect.cpp.inc"
-)
-
-set(TABLEGEN_OUTPUT ${DIALECT_H_INC} ${DIALECT_CPP_INC})
+add_mlir_dialect(Toy toy)
 
 add_executable(toycalculator
   src/driver.cpp
@@ -148,19 +129,54 @@ target_include_directories(toycalculator PRIVATE ${ANTLR_OUTPUT_DIR})
 # Ensure the ANTLR generation runs before building the project
 add_dependencies(toycalculator GenerateANTLR)
 
-add_custom_target(Toy_DialectInc DEPENDS ${TABLEGEN_OUTPUT})
-add_dependencies(toycalculator Toy_DialectInc)
+# -fno-rtti is for LLVM compatibility to avoid link errors for typeinfo symbols:
+target_compile_options(toycalculator PRIVATE
+  -Wall
+  -Wextra
+  -Wno-comment
+  -Wno-overloaded-virtual
+  -Wno-unused-parameter
+  -g
+  -fno-rtti
+)
 
-target_compile_options(toycalculator PRIVATE -Wall -Wextra -Wno-comment -Wno-overloaded-virtual -Wno-unused-parameter)
 #target_compile_options(toycalculator PRIVATE -O2)
-target_compile_options(toycalculator PRIVATE -g)
 
 target_link_libraries(toycalculator
   PRIVATE
   antlr4-runtime
   LLVMSupport
-  MLIRIR
   MLIRParser
-  MLIRSupport
   MLIRTransforms
+  MLIRBytecodeReader
+  MLIRAsmParser
+  MLIRMemorySlotInterfaces
+  MLIRRuntimeVerifiableOpInterface
+  MLIRTransformUtils
+  MLIRSubsetOpInterface
+  MLIRValueBoundsOpInterface
+  MLIRDestinationStyleOpInterface
+  MLIRRewrite
+  MLIRRewritePDL
+  MLIRPDLToPDLInterp
+  MLIRPass
+  MLIRAnalysis
+  MLIRLoopLikeInterface
+  MLIRCallInterfaces
+  MLIRControlFlowInterfaces
+  MLIRDataLayoutInterfaces
+  MLIRInferIntRangeInterface
+  MLIRPresburger
+  MLIRViewLikeInterface
+  MLIRPDLInterpDialect
+  MLIRFunctionInterfaces
+  MLIRPDLDialect
+  MLIRSideEffectInterfaces
+  MLIRInferTypeOpInterface
+  MLIRUBDialect
+  MLIRArithDialect
+  MLIRIR
+  MLIRSupport
 )
+
+add_dependencies(toycalculator ToyDialectIncGen)
