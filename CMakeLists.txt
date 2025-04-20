@@ -163,5 +163,4 @@ target_link_libraries(toycalculator
   MLIRParser
   MLIRSupport
   MLIRTransforms
-  MLIRBuiltin
 )

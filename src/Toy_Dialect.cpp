@@ -4,7 +4,7 @@
 namespace toy {
 
 Toy_Dialect::Toy_Dialect(mlir::MLIRContext *context)
-    : mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<ToyDialect>()) {
+    : mlir::Dialect(getDialectNamespace(), context, ::mlir::TypeID::get<Toy_Dialect>()) {
     addOperations<
 #define GET_OP_LIST
 #include "Toy_Dialect.cpp.inc"
