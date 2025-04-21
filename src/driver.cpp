@@ -184,17 +184,6 @@ int main( int argc, char **argv )
     llvm::InitLLVM init( argc, argv );
     llvm::cl::ParseCommandLineOptions( argc, argv, "Calculator compiler\n" );
 
-#if 0
-    llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> fileOrErr =
-        llvm::MemoryBuffer::getFileOrSTDIN( inputFilename );
-
-    if ( std::error_code ec = fileOrErr.getError() )
-    {
-        llvm::errs() << "Could not open input file: " << ec.message() << "\n";
-        return 1;
-    }
-#endif
-
     std::ifstream inputStream;
     std::string filename = inputFilename;
     if ( filename != "-" )
@@ -222,7 +211,7 @@ int main( int argc, char **argv )
     }
     catch( const std::exception &e )
     {
-        llvm::errs() << e.what() << '\n';
+        llvm::errs() << std::format( "FATAL ERROR: {}\n", e.what() );
         return 1;
     }
 
