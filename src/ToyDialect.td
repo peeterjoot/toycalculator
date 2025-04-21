@@ -36,6 +36,13 @@ def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
   //let traits = [OpTrait::ZeroRegions, OpTrait::ZeroResults, OpTrait::ZeroSuccessors, OpTrait::OpInvariants];
 }
 
+def Toy_UnaryOp : Op<Toy_Dialect, "unary"> {
+  let summary = "Unary operation";
+  let arguments = (ins StrAttr:$op, AnyType:$lhs);
+  let results = (outs AnyType:$result);
+  //let traits = [OpTrait::ZeroRegions, OpTrait::ZeroResults, OpTrait::ZeroSuccessors, OpTrait::OpInvariants];
+}
+
 def Toy_BinaryOp : Op<Toy_Dialect, "binary"> {
   let summary = "Binary operation";
   let arguments = (ins StrAttr:$op, AnyType:$lhs, AnyType:$rhs);

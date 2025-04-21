@@ -2,6 +2,7 @@
 
 #include <format>
 #include <fstream>
+#include <assert.h>
 
 #include "ToyBaseListener.h"
 #include "ToyDialect.h"
@@ -49,6 +50,7 @@ class MLIRListener : public ToyBaseListener
     {
         auto loc = getLocation( ctx );
         programOp = builder.create<toy::ProgramOp>( loc );
+        programOp.getBody().push_back( new mlir::Block() );
         builder.setInsertionPointToStart( &programOp.getBody().front() );
     }
 
@@ -80,11 +82,13 @@ class MLIRListener : public ToyBaseListener
 
     void enterRhs( ToyParser::RhsContext *ctx ) override
     {
-        auto lhs = ctx->element()[0];
-        auto rhs = ctx->element()[1];
+        auto sz = ctx->element().size();
         auto op = ctx->opertype()->getText();
+        auto lhs = ctx->element()[0];
 
-        mlir::Value lhsValue, rhsValue;
+        assert( sz == 1 || sz == 2 );
+
+        mlir::Value lhsValue;
         if ( lhs->INTEGERLITERAL() )
         {
             int64_t val = std::stoi( lhs->INTEGERLITERAL()->getText() );
@@ -99,30 +103,45 @@ class MLIRListener : public ToyBaseListener
             return;
         }
 
-        if ( rhs->INTEGERLITERAL() )
-        {
-            int64_t val = std::stoi( rhs->INTEGERLITERAL()->getText() );
-            rhsValue = builder.create<mlir::arith::ConstantIntOp>(
-                getLocation( rhs ), val, 64 );
-        }
-        else
-        {
-            llvm::errs() << std::format(
-                "Warning: Variable {} not supported at line {}\n",
-                rhs->VARIABLENAME()->getText(), ctx->getStart()->getLine() );
-            return;
-        }
+        if ( sz == 1 ) {
+            auto unaryOp = builder.create<toy::UnaryOp>(
+                getLocation( ctx ), builder.getF64Type(),
+                builder.getStringAttr( op ), lhsValue );
+            if ( !currentVarName.empty() )
+            {
+                builder.create<toy::AssignOp>(
+                    currentAssignLoc, builder.getStringAttr( currentVarName ),
+                    unaryOp.getResult() );
+                currentVarName.clear();
+            }
+        } else {
+            auto rhs = ctx->element()[1];
 
+            mlir::Value rhsValue;
+            if ( rhs->INTEGERLITERAL() )
+            {
+                int64_t val = std::stoi( rhs->INTEGERLITERAL()->getText() );
+                rhsValue = builder.create<mlir::arith::ConstantIntOp>(
+                    getLocation( rhs ), val, 64 );
+            }
+            else
+            {
+                llvm::errs() << std::format(
+                    "Warning: Variable {} not supported at line {}\n",
+                    rhs->VARIABLENAME()->getText(), ctx->getStart()->getLine() );
+                return;
+            }
 
-        auto binaryOp = builder.create<toy::BinaryOp>(
-            getLocation( ctx ), builder.getF64Type(),
-            builder.getStringAttr( op ), lhsValue, rhsValue );
-        if ( !currentVarName.empty() )
-        {
-            builder.create<toy::AssignOp>(
-                currentAssignLoc, builder.getStringAttr( currentVarName ),
-                binaryOp.getResult() );
-            currentVarName.clear();
+            auto binaryOp = builder.create<toy::BinaryOp>(
+                getLocation( ctx ), builder.getF64Type(),
+                builder.getStringAttr( op ), lhsValue, rhsValue );
+            if ( !currentVarName.empty() )
+            {
+                builder.create<toy::AssignOp>(
+                    currentAssignLoc, builder.getStringAttr( currentVarName ),
+                    binaryOp.getResult() );
+                currentVarName.clear();
+            }
         }
     }
 
