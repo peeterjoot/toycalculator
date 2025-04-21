@@ -1,5 +1,21 @@
 
-## anltlr4 setup (WSL2)
+## TODO
+
+1)
+./toycalculator ../samples/test.toy
+Warning: Variable x not supported at line 4
+
+think this was due to assignment with a variable.
+
+Want semantic checking for the variable to make sure it has a value -- > where did I leave that warning?
+
+2) Unary op is a place holder.  should be +, - (but do it properly in the grammar)
+
+3) LLVM IR lowering.
+
+## Building
+
+### anltlr4 setup (WSL2)
 
 sudo apt update
 sudo apt upgrade -y
@@ -12,13 +28,13 @@ sudo apt-get install antlr4
 
 wget https://www.antlr.org/download/antlr-4.10-complete.jar
 
-#wget https://www.antlr.org/download/antlr-4.13.2-complete.jar
+##wget https://www.antlr.org/download/antlr-4.13.2-complete.jar
 
-## anltlr4 setup (Fedora)
+### anltlr4 setup (Fedora)
 
 sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-devel
 
-## Building MLIR
+### Building MLIR
 
 I needed a custom build of llvm/mlir, as I didn't find a package that had the MLIR tablegen files.  Then had to refine that to enable rtti, as altlr4 uses dynamic_cast<>, so -fno-rtti
 breaks it (without -fno-rtti, I was getting typeinfo symbol link errors.)
