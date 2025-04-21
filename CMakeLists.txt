@@ -108,11 +108,27 @@ add_definitions(${LLVM_DEFINITIONS})
 
 # TableGen for dialect
 set(LLVM_TARGET_DEFINITIONS src/Toy_Dialect.td)
-mlir_tablegen(Toy_Dialect.h.inc -gen-op-decls)
-mlir_tablegen(Toy_Dialect.cpp.inc -gen-op-defs)
-add_public_tablegen_target(ToyDialectIncGen)
 
-add_mlir_dialect(Toy toy)
+# Generate dialect declarations
+mlir_tablegen(Toy_DialectDecls.h.inc -gen-dialect-decls)
+
+# Generate dialect definitions
+mlir_tablegen(Toy_DialectDefs.cpp.inc -gen-dialect-defs)
+
+# Generate operation declarations
+mlir_tablegen(Toy_Dialect.h.inc -gen-op-decls)
+
+# Generate operation definitions
+mlir_tablegen(Toy_Dialect.cpp.inc -gen-op-defs)
+
+# Create a single TableGen target for all generated files
+add_public_tablegen_target(Toy_DialectIncGen
+  DEPENDS
+    ${CMAKE_CURRENT_BINARY_DIR}/Toy_DialectDecls.h.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/Toy_DialectDefs.cpp.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/Toy_Dialect.h.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/Toy_Dialect.cpp.inc
+)
 
 add_executable(toycalculator
   src/driver.cpp
@@ -126,10 +142,9 @@ add_executable(toycalculator
 # Include the output directory for header files
 target_include_directories(toycalculator PRIVATE ${ANTLR_OUTPUT_DIR})
 
-# Ensure the ANTLR generation runs before building the project
-add_dependencies(toycalculator GenerateANTLR)
+# Ensure the ANTLR and TableGen generation runs before building the project
+add_dependencies(toycalculator GenerateANTLR Toy_DialectIncGen)
 
-# -fno-rtti is for LLVM compatibility to avoid link errors for typeinfo symbols:
 target_compile_options(toycalculator PRIVATE
   -Wall
   -Wextra
@@ -137,7 +152,6 @@ target_compile_options(toycalculator PRIVATE
   -Wno-overloaded-virtual
   -Wno-unused-parameter
   -g
-  -fno-rtti
 )
 
 #target_compile_options(toycalculator PRIVATE -O2)
@@ -178,5 +192,3 @@ target_link_libraries(toycalculator
   MLIRIR
   MLIRSupport
 )
-
-add_dependencies(toycalculator ToyDialectIncGen)

@@ -1,4 +1,3 @@
-#if 0
 #include "ToyBaseListener.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -108,10 +107,8 @@ void processInput(std::ifstream &input, MLIRListener &listener) {
     antlr4::tree::ParseTree *tree = parser.startRule();
     antlr4::tree::ParseTreeWalker::DEFAULT.walk(&listener, tree);
 }
-#endif
 
 int main(int argc, char **argv) {
-#if 0
     llvm::InitLLVM init(argc, argv);
     llvm::cl::ParseCommandLineOptions(argc, argv, "Calculator compiler\n");
 
@@ -139,7 +136,6 @@ int main(int argc, char **argv) {
     processInput(inputStream, listener);
 
     module.dump();
-#endif
 
     return 0;
 }
