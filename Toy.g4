@@ -19,7 +19,7 @@ assignment
    ;
 
 rhs
-   : element opertype element
+   : (element opertype element) | element
    ;
 
 opertype
