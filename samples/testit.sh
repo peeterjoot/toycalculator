@@ -1,3 +1,5 @@
+#../build/toycalculator ./unary.toy
+#exit
 ../build/toycalculator ./simplest.toy
 ../build/toycalculator ./foo.toy
 ../build/toycalculator ./test.toy

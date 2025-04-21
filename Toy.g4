@@ -19,11 +19,23 @@ assignment
    ;
 
 rhs
-   : (element opertype element) | element
+   : binaryexpression | unaryexpression
    ;
 
-opertype
+binaryexpression
+   : element binaryoperator element
+   ;
+
+unaryexpression
+   : unaryoperator element
+   ;
+
+binaryoperator
    : (MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR)
+   ;
+
+unaryoperator
+   : (MINUSCHAR | PLUSCHAR)?
    ;
 
 element

@@ -146,6 +146,7 @@ target_include_directories(toycalculator PRIVATE ${ANTLR_OUTPUT_DIR})
 add_dependencies(toycalculator GenerateANTLR ToyDialectIncGen)
 
 target_compile_options(toycalculator PRIVATE
+  -fdiagnostics-show-option
   -Wall
   -Wextra
   -Wno-comment
@@ -153,6 +154,8 @@ target_compile_options(toycalculator PRIVATE
   -Wno-unused-parameter
   -g
 )
+# an attempt to suppress all the rhs == lhs ambiguous messages from the mlir headers:
+#  -Wno-c++20-compat
 
 #target_compile_options(toycalculator PRIVATE -O2)
 
