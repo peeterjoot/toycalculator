@@ -1,8 +1,8 @@
 #include <antlr4-runtime.h>
+#include <assert.h>
 
 #include <format>
 #include <fstream>
-#include <assert.h>
 
 #include "ToyBaseListener.h"
 #include "ToyDialect.h"
@@ -26,12 +26,14 @@ static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::init( "-" ), llvm::cl::value_desc( "filename" ),
     llvm::cl::cat( ToyCategory ), llvm::cl::NotHidden );
 
-struct DialectCtx {
+struct DialectCtx
+{
     mlir::MLIRContext context;
 
-    DialectCtx() {
-        context.getOrLoadDialect< toy::ToyDialect >();
-        context.getOrLoadDialect< mlir::arith::ArithDialect >();
+    DialectCtx()
+    {
+        context.getOrLoadDialect<toy::ToyDialect>();
+        context.getOrLoadDialect<mlir::arith::ArithDialect>();
     }
 };
 
@@ -56,16 +58,17 @@ class MLIRListener : public ToyBaseListener
 
    public:
     MLIRListener( const std::string &_filename )
-        : dialect()
-        , builder( &dialect.context )
-        , mod( mlir::ModuleOp::create( builder.getUnknownLoc() ) )
-        , filename( _filename )
-        , currentAssignLoc( builder.getUnknownLoc() )
+        : dialect(),
+          builder( &dialect.context ),
+          mod( mlir::ModuleOp::create( builder.getUnknownLoc() ) ),
+          filename( _filename ),
+          currentAssignLoc( builder.getUnknownLoc() )
     {
         builder.setInsertionPointToStart( mod.getBody() );
     }
 
-    mlir::ModuleOp & getModule() {
+    mlir::ModuleOp &getModule()
+    {
         return mod;
     }
 
@@ -125,10 +128,13 @@ class MLIRListener : public ToyBaseListener
             return;
         }
 
-        if ( sz == 1 ) {
+        if ( sz == 1 )
+        {
             auto unaryOp = builder.create<toy::UnaryOp>(
                 getLocation( ctx ), builder.getF64Type(),
-                builder.getStringAttr( "+" ), lhsValue ); // fake a unary + for now.  generalize this appropriately later.
+                builder.getStringAttr( "+" ),
+                lhsValue );    // fake a unary + for now.  generalize this
+                               // appropriately later.
             if ( !currentVarName.empty() )
             {
                 builder.create<toy::AssignOp>(
@@ -136,7 +142,9 @@ class MLIRListener : public ToyBaseListener
                     unaryOp.getResult() );
                 currentVarName.clear();
             }
-        } else {
+        }
+        else
+        {
             auto rhs = ctx->element()[1];
             auto op = ctx->opertype()->getText();
 
@@ -151,7 +159,8 @@ class MLIRListener : public ToyBaseListener
             {
                 llvm::errs() << std::format(
                     "Warning: Variable {} not supported at line {}\n",
-                    rhs->VARIABLENAME()->getText(), ctx->getStart()->getLine() );
+                    rhs->VARIABLENAME()->getText(),
+                    ctx->getStart()->getLine() );
                 return;
             }
 
@@ -168,17 +177,6 @@ class MLIRListener : public ToyBaseListener
         }
     }
 };
-
-void processInput( std::ifstream &input, MLIRListener &listener )
-{
-    antlr4::ANTLRInputStream antlrInput( input );
-    ToyLexer lexer( &antlrInput );
-    antlr4::CommonTokenStream tokens( &lexer );
-    ToyParser parser( &tokens );
-
-    antlr4::tree::ParseTree *tree = parser.startRule();
-    antlr4::tree::ParseTreeWalker::DEFAULT.walk( &listener, tree );
-}
 
 int main( int argc, char **argv )
 {
@@ -206,11 +204,18 @@ int main( int argc, char **argv )
     try
     {
         MLIRListener listener( filename );
-        processInput( inputStream, listener );
+
+        antlr4::ANTLRInputStream antlrInput( inputStream );
+        ToyLexer lexer( &antlrInput );
+        antlr4::CommonTokenStream tokens( &lexer );
+        ToyParser parser( &tokens );
+
+        antlr4::tree::ParseTree *tree = parser.startRule();
+        antlr4::tree::ParseTreeWalker::DEFAULT.walk( &listener, tree );
 
         listener.getModule().dump();
     }
-    catch( const std::exception &e )
+    catch ( const std::exception &e )
     {
         llvm::errs() << std::format( "FATAL ERROR: {}\n", e.what() );
         return 1;
