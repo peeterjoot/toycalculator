@@ -26,16 +26,38 @@ static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::init( "-" ), llvm::cl::value_desc( "filename" ),
     llvm::cl::cat( ToyCategory ), llvm::cl::NotHidden );
 
+struct DialectCtx {
+    mlir::MLIRContext context;
+
+    DialectCtx() {
+        context.getOrLoadDialect< toy::ToyDialect >();
+        context.getOrLoadDialect< mlir::arith::ArithDialect >();
+    }
+};
+
 class MLIRListener : public ToyBaseListener
 {
+   private:
+    DialectCtx dialect;
+    mlir::OpBuilder builder;
+    mlir::ModuleOp mod;
+    std::string filename;
+    toy::ProgramOp programOp;
+    std::string currentVarName;
+    mlir::Location currentAssignLoc;
+
    public:
-    MLIRListener( mlir::OpBuilder &b, mlir::ModuleOp &m,
-                  const std::string &_filename )
-        : builder( b ),
-          module( m ),
-          filename( _filename ),
-          currentAssignLoc( b.getUnknownLoc() )
+    MLIRListener( const std::string &_filename )
+        : dialect()
+        , builder( &dialect.context )
+        , mod( mlir::ModuleOp::create( builder.getUnknownLoc() ) )
+        , filename( _filename )
+        , currentAssignLoc( builder.getUnknownLoc() )
     {
+    }
+
+    mlir::ModuleOp & getModule() {
+        return mod;
     }
 
     mlir::Location getLocation( antlr4::ParserRuleContext *ctx )
@@ -56,7 +78,7 @@ class MLIRListener : public ToyBaseListener
 
     void exitStartRule( ToyParser::StartRuleContext *ctx ) override
     {
-        builder.setInsertionPointToEnd( module.getBody() );
+        builder.setInsertionPointToEnd( mod.getBody() );
     }
 
     void enterDeclare( ToyParser::DeclareContext *ctx ) override
@@ -144,14 +166,6 @@ class MLIRListener : public ToyBaseListener
             }
         }
     }
-
-   private:
-    mlir::OpBuilder &builder;
-    mlir::ModuleOp &module;
-    std::string filename;
-    toy::ProgramOp programOp;
-    std::string currentVarName;
-    mlir::Location currentAssignLoc;
 };
 
 void processInput( std::ifstream &input, MLIRListener &listener )
@@ -181,13 +195,6 @@ int main( int argc, char **argv )
     }
 #endif
 
-    mlir::MLIRContext context;
-    context.getOrLoadDialect<toy::ToyDialect>();
-    context.getOrLoadDialect<mlir::arith::ArithDialect>();
-
-    mlir::OpBuilder builder( &context );
-    auto module = mlir::ModuleOp::create( builder.getUnknownLoc() );
-
     std::ifstream inputStream;
     std::string filename = inputFilename;
     if ( filename != "-" )
@@ -206,10 +213,18 @@ int main( int argc, char **argv )
         inputStream.basic_ios<char>::rdbuf( std::cin.rdbuf() );
     }
 
-    MLIRListener listener( builder, module, filename );
-    processInput( inputStream, listener );
+    try
+    {
+        MLIRListener listener( filename );
+        processInput( inputStream, listener );
 
-    module.dump();
+        listener.getModule().dump();
+    }
+    catch( const std::exception &e )
+    {
+        llvm::errs() << e.what() << '\n';
+        return 1;
+    }
 
     return 0;
 }
