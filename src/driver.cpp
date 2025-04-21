@@ -14,9 +14,14 @@
 #include <fstream>
 #include <format>
 
+// Define a category for Toy Calculator options
+static llvm::cl::OptionCategory ToyCategory("Toy Calculator Options");
+
+// Command-line option for input file
 static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::Positional, llvm::cl::desc("<input file>"),
-    llvm::cl::init("-"), llvm::cl::value_desc("filename"));
+    llvm::cl::init("-"), llvm::cl::value_desc("filename"),
+    llvm::cl::cat(ToyCategory));
 
 class MLIRListener : public ToyBaseListener {
 public:
