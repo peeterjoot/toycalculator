@@ -83,7 +83,6 @@ class MLIRListener : public ToyBaseListener
     void enterRhs( ToyParser::RhsContext *ctx ) override
     {
         auto sz = ctx->element().size();
-        auto op = ctx->opertype()->getText();
         auto lhs = ctx->element()[0];
 
         assert( sz == 1 || sz == 2 );
@@ -106,7 +105,7 @@ class MLIRListener : public ToyBaseListener
         if ( sz == 1 ) {
             auto unaryOp = builder.create<toy::UnaryOp>(
                 getLocation( ctx ), builder.getF64Type(),
-                builder.getStringAttr( op ), lhsValue );
+                builder.getStringAttr( "+" ), lhsValue ); // fake a unary + for now.  generalize this appropriately later.
             if ( !currentVarName.empty() )
             {
                 builder.create<toy::AssignOp>(
@@ -116,6 +115,7 @@ class MLIRListener : public ToyBaseListener
             }
         } else {
             auto rhs = ctx->element()[1];
+            auto op = ctx->opertype()->getText();
 
             mlir::Value rhsValue;
             if ( rhs->INTEGERLITERAL() )
