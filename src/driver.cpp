@@ -3,6 +3,7 @@
 
 #include <format>
 #include <fstream>
+#include <unordered_map>
 
 #include "ToyBaseListener.h"
 #include "ToyDialect.h"
@@ -26,8 +27,37 @@ static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::init( "-" ), llvm::cl::value_desc( "filename" ),
     llvm::cl::cat( ToyCategory ), llvm::cl::NotHidden );
 
-struct DialectCtx
+enum class semantic_errors : int
 {
+    not_an_error,
+    variable_already_declared,
+    variable_not_declared,
+    variable_not_assigned
+};
+
+enum class variable_state : int
+{
+    undeclared,
+    declared,
+    assigned
+};
+
+class semantic_exception : public std::exception
+{
+   public:
+    semantic_exception()
+    {
+    }
+
+    const char *what()
+    {
+        return "semantic error";
+    }
+};
+
+class DialectCtx
+{
+   public:
     mlir::MLIRContext context;
 
     DialectCtx()
@@ -47,13 +77,32 @@ class MLIRListener : public ToyBaseListener
     toy::ProgramOp programOp;
     std::string currentVarName;
     mlir::Location currentAssignLoc;
+    semantic_errors firstError{semantic_errors::not_an_error};
+    std::unordered_map<std::string, variable_state> variables;
 
     mlir::Location getLocation( antlr4::ParserRuleContext *ctx )
     {
-        size_t line = ctx->getStart()->getLine();
-        size_t col = ctx->getStart()->getCharPositionInLine();
-        return mlir::FileLineColLoc::get( builder.getStringAttr( filename ),
-                                          line, col );
+        if ( ctx )
+        {
+            size_t line = ctx->getStart()->getLine();
+            size_t col = ctx->getStart()->getCharPositionInLine();
+            return mlir::FileLineColLoc::get( builder.getStringAttr( filename ),
+                                              line, col );
+        }
+        else
+        {
+            return mlir::UnknownLoc::get( &dialect.context );
+        }
+    }
+
+    std::string formatLocation( mlir::Location loc )
+    {
+        if ( auto fileLoc = loc.dyn_cast<mlir::FileLineColLoc>() )
+        {
+            return std::format( "{}:{}:{}:", fileLoc.getFilename().str(),
+                                fileLoc.getLine(), fileLoc.getColumn() );
+        }
+        return "";
     }
 
    public:
@@ -83,6 +132,10 @@ class MLIRListener : public ToyBaseListener
     void exitStartRule( ToyParser::StartRuleContext *ctx ) override
     {
         builder.setInsertionPointToEnd( mod.getBody() );
+        if ( firstError != semantic_errors::not_an_error )
+        {
+            throw semantic_exception();
+        }
     }
 
     void enterDeclare( ToyParser::DeclareContext *ctx ) override
@@ -90,12 +143,32 @@ class MLIRListener : public ToyBaseListener
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
         builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ) );
+        auto varState = variables[varName];
+        if ( varState == variable_state::declared )
+        {
+            firstError = semantic_errors::variable_already_declared;
+            llvm::errs() << std::format(
+                "{}error: Variable {} already declared in DCL\n",
+                formatLocation( loc ), varName );
+        }
+        else if ( varState == variable_state::undeclared )
+        {
+            variables[varName] = variable_state::declared;
+        }
     }
 
     void enterPrint( ToyParser::PrintContext *ctx ) override
     {
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
+        auto varState = variables[varName];
+        if ( varState != variable_state::assigned )
+        {
+            firstError = semantic_errors::variable_not_assigned;
+            llvm::errs() << std::format(
+                "{}error: Variable {} not assigned in PRINT\n",
+                formatLocation( loc ), varName );
+        }
         builder.create<toy::PrintOp>( loc, builder.getStringAttr( varName ) );
     }
 
@@ -103,6 +176,18 @@ class MLIRListener : public ToyBaseListener
     {
         auto loc = getLocation( ctx );
         currentVarName = ctx->VARIABLENAME()->getText();
+        auto varState = variables[currentVarName];
+        if ( varState == variable_state::declared )
+        {
+            variables[currentVarName] = variable_state::assigned;
+        }
+        else if ( varState != variable_state::declared )
+        {
+            firstError = semantic_errors::variable_not_declared;
+            llvm::errs() << std::format(
+                "{}error: Variable {} not declared in assignment\n",
+                formatLocation( loc ), currentVarName );
+        }
         currentAssignLoc = loc;
     }
 
@@ -178,6 +263,14 @@ class MLIRListener : public ToyBaseListener
     }
 };
 
+enum class return_codes : int
+{
+    success,
+    cannot_open_file,
+    semantic_error,
+    unknown_error
+};
+
 int main( int argc, char **argv )
 {
     llvm::InitLLVM init( argc, argv );
@@ -192,7 +285,7 @@ int main( int argc, char **argv )
         {
             llvm::errs() << std::format( "Error: Cannot open file {}\n",
                                          filename );
-            return 1;
+            return (int)return_codes::cannot_open_file;
         }
     }
     else
@@ -215,13 +308,18 @@ int main( int argc, char **argv )
 
         listener.getModule().dump();
     }
+    catch ( const semantic_exception &e )
+    {
+        // already printed the message.  return something non-zero
+        return (int)return_codes::semantic_error;
+    }
     catch ( const std::exception &e )
     {
         llvm::errs() << std::format( "FATAL ERROR: {}\n", e.what() );
-        return 1;
+        return (int)return_codes::unknown_error;
     }
 
-    return 0;
+    return (int)return_codes::success;
 }
 
 // vim: et ts=4 sw=4
