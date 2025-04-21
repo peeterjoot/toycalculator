@@ -46,6 +46,14 @@ class MLIRListener : public ToyBaseListener
     std::string currentVarName;
     mlir::Location currentAssignLoc;
 
+    mlir::Location getLocation( antlr4::ParserRuleContext *ctx )
+    {
+        size_t line = ctx->getStart()->getLine();
+        size_t col = ctx->getStart()->getCharPositionInLine();
+        return mlir::FileLineColLoc::get( builder.getStringAttr( filename ),
+                                          line, col );
+    }
+
    public:
     MLIRListener( const std::string &_filename )
         : dialect()
@@ -59,14 +67,6 @@ class MLIRListener : public ToyBaseListener
 
     mlir::ModuleOp & getModule() {
         return mod;
-    }
-
-    mlir::Location getLocation( antlr4::ParserRuleContext *ctx )
-    {
-        size_t line = ctx->getStart()->getLine();
-        size_t col = ctx->getStart()->getCharPositionInLine();
-        return mlir::FileLineColLoc::get( builder.getStringAttr( filename ),
-                                          line, col );
     }
 
     void enterStartRule( ToyParser::StartRuleContext *ctx ) override
