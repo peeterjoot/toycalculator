@@ -23,7 +23,7 @@ static llvm::cl::OptionCategory ToyCategory( "Toy Calculator Options" );
 static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::Positional, llvm::cl::desc( "<input file>" ),
     llvm::cl::init( "-" ), llvm::cl::value_desc( "filename" ),
-    llvm::cl::cat( ToyCategory ) );
+    llvm::cl::cat( ToyCategory ), llvm::cl::NotHidden );
 
 class MLIRListener : public ToyBaseListener
 {
@@ -150,6 +150,17 @@ int main( int argc, char **argv )
 {
     llvm::InitLLVM init( argc, argv );
     llvm::cl::ParseCommandLineOptions( argc, argv, "Calculator compiler\n" );
+
+#if 0
+    llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> fileOrErr =
+        llvm::MemoryBuffer::getFileOrSTDIN( inputFilename );
+
+    if ( std::error_code ec = fileOrErr.getError() )
+    {
+        llvm::errs() << "Could not open input file: " << ec.message() << "\n";
+        return 1;
+    }
+#endif
 
     mlir::MLIRContext context;
     context.getOrLoadDialect<toy::ToyDialect>();
