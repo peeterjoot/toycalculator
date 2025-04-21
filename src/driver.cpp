@@ -54,6 +54,7 @@ class MLIRListener : public ToyBaseListener
         , filename( _filename )
         , currentAssignLoc( builder.getUnknownLoc() )
     {
+        builder.setInsertionPointToStart( mod.getBody() );
     }
 
     mlir::ModuleOp & getModule() {
