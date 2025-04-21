@@ -4,10 +4,7 @@ include "mlir/IR/OpBase.td"
 def Toy_Dialect : Dialect {
   let name = "toy";
   let summary = "Toy dialect for a simple calculator";
-  let cppNamespace = "::toy";
-
-  // default is CamelCase: ToyDialect.
-  let className = "Toy_Dialect";  // Explicitly set class name to Toy_Dialect
+  let cppNamespace = "toy";
 }
 
 def Toy_ProgramOp : Op<Toy_Dialect, "program"> {

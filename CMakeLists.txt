@@ -107,32 +107,32 @@ link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
 
 # TableGen for dialect
-set(LLVM_TARGET_DEFINITIONS src/Toy_Dialect.td)
+set(LLVM_TARGET_DEFINITIONS src/ToyDialect.td)
 
 # Generate dialect declarations
-mlir_tablegen(Toy_DialectDecls.h.inc -gen-dialect-decls)
+mlir_tablegen(ToyDialectDecls.h.inc -gen-dialect-decls)
 
 # Generate dialect definitions
-mlir_tablegen(Toy_DialectDefs.cpp.inc -gen-dialect-defs)
+mlir_tablegen(ToyDialectDefs.cpp.inc -gen-dialect-defs)
 
 # Generate operation declarations
-mlir_tablegen(Toy_Dialect.h.inc -gen-op-decls)
+mlir_tablegen(ToyDialect.h.inc -gen-op-decls)
 
 # Generate operation definitions
-mlir_tablegen(Toy_Dialect.cpp.inc -gen-op-defs)
+mlir_tablegen(ToyDialect.cpp.inc -gen-op-defs)
 
 # Create a single TableGen target for all generated files
-add_public_tablegen_target(Toy_DialectIncGen
+add_public_tablegen_target(ToyDialectIncGen
   DEPENDS
-    ${CMAKE_CURRENT_BINARY_DIR}/Toy_DialectDecls.h.inc
-    ${CMAKE_CURRENT_BINARY_DIR}/Toy_DialectDefs.cpp.inc
-    ${CMAKE_CURRENT_BINARY_DIR}/Toy_Dialect.h.inc
-    ${CMAKE_CURRENT_BINARY_DIR}/Toy_Dialect.cpp.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialectDecls.h.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialectDefs.cpp.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialect.h.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialect.cpp.inc
 )
 
 add_executable(toycalculator
   src/driver.cpp
-  src/Toy_Dialect.cpp
+  src/ToyDialect.cpp
   ${ANTLR_OUTPUT_DIR}/ToyBaseListener.cpp
   ${ANTLR_OUTPUT_DIR}/ToyListener.cpp
   ${ANTLR_OUTPUT_DIR}/ToyParser.cpp
@@ -143,7 +143,7 @@ add_executable(toycalculator
 target_include_directories(toycalculator PRIVATE ${ANTLR_OUTPUT_DIR})
 
 # Ensure the ANTLR and TableGen generation runs before building the project
-add_dependencies(toycalculator GenerateANTLR Toy_DialectIncGen)
+add_dependencies(toycalculator GenerateANTLR ToyDialectIncGen)
 
 target_compile_options(toycalculator PRIVATE
   -Wall

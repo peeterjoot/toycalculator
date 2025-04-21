@@ -5,7 +5,7 @@
 #include "mlir/IR/Types.h"
 #include "mlir/IR/Location.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
-#include "Toy_Dialect.h"
+#include "ToyDialect.h"
 #include <antlr4-runtime.h>
 #include "ToyLexer.h"
 #include "ToyParser.h"
@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
     llvm::cl::ParseCommandLineOptions(argc, argv, "Calculator compiler\n");
 
     mlir::MLIRContext context;
-    context.getOrLoadDialect<toy::Toy_Dialect>();
+    context.getOrLoadDialect<toy::ToyDialect>();
     context.getOrLoadDialect<mlir::arith::ArithDialect>();
 
     mlir::OpBuilder builder(&context);
