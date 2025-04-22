@@ -130,6 +130,10 @@ add_public_tablegen_target(ToyDialectIncGen
     ${CMAKE_CURRENT_BINARY_DIR}/ToyDialect.cpp.inc
 )
 
+# Add runtime library as a shared object
+add_library(toy_runtime SHARED runtime/Toy_runtime.cpp)
+set_target_properties(toy_runtime PROPERTIES OUTPUT_NAME "toy_runtime")
+
 add_executable(toycalculator
   src/driver.cpp
   src/ToyDialect.cpp
@@ -143,7 +147,7 @@ add_executable(toycalculator
 target_include_directories(toycalculator PRIVATE ${ANTLR_OUTPUT_DIR})
 
 # Ensure the ANTLR and TableGen generation runs before building the project
-add_dependencies(toycalculator GenerateANTLR ToyDialectIncGen)
+add_dependencies(toycalculator toy_runtime GenerateANTLR ToyDialectIncGen)
 
 target_compile_options(toycalculator PRIVATE
   -fdiagnostics-show-option
