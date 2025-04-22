@@ -1,0 +1,3 @@
+DCL x;
+DCL y;
+x = y ^ z;  // Invalid binary operator

@@ -1,0 +1,2 @@
+DCL x;
+x = %y;  // Invalid unary operator
