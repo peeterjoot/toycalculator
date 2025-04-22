@@ -16,6 +16,7 @@
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Location.h"
+#include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/Types.h"
 
@@ -27,6 +28,10 @@ static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::Positional, llvm::cl::desc( "<input file>" ),
     llvm::cl::init( "-" ), llvm::cl::value_desc( "filename" ),
     llvm::cl::cat( ToyCategory ), llvm::cl::NotHidden );
+
+static llvm::cl::opt<bool> enableLocation(
+    "location", llvm::cl::desc( "Enable MLIR location output" ),
+    llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
 
 enum class semantic_errors : int
 {
@@ -93,7 +98,7 @@ class MLIRListener : public ToyBaseListener
             size_t line = ctx->getStart()->getLine();
             size_t col = ctx->getStart()->getCharPositionInLine();
             return mlir::FileLineColLoc::get( builder.getStringAttr( filename ),
-                                              line, col );
+                                              line, col + 1 );
         }
         return mlir::UnknownLoc::get( &dialect.context );
     }
@@ -444,7 +449,12 @@ int main( int argc, char **argv )
         antlr4::tree::ParseTree *tree = parser.startRule();
         antlr4::tree::ParseTreeWalker::DEFAULT.walk( &listener, tree );
 
-        listener.getModule().dump();
+        mlir::OpPrintingFlags flags;
+        if ( enableLocation )
+        {
+            flags.printGenericOpForm().enableDebugInfo( true );
+        }
+        listener.getModule().print( llvm::outs(), flags );
     }
     catch ( const semantic_exception &e )
     {

@@ -7,7 +7,7 @@ statement
    ;
 
 declare
-   : DCL VARIABLENAME SEMICOLON
+   : (DCL|DECLARE) VARIABLENAME SEMICOLON
    ;
 
 print
@@ -49,6 +49,7 @@ TIMESCHAR      : '*';
 DIVCHAR        : '/';
 PLUSCHAR       : '+';
 DCL            : 'DCL';
+DECLARE        : 'DECLARE';
 PRINT          : 'PRINT';
 INTEGERLITERAL : (PLUSCHAR | MINUSCHAR)? [0-9]+;
 VARIABLENAME   : [a-zA-Z]+;
