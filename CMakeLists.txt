@@ -110,16 +110,16 @@ add_definitions(${LLVM_DEFINITIONS})
 set(LLVM_TARGET_DEFINITIONS src/ToyDialect.td)
 
 # Generate dialect declarations
-mlir_tablegen(ToyDialectDecls.h.inc -gen-dialect-decls)
+mlir_tablegen(ToyDialectDecls.h.inc -gen-dialect-decls -dialect toy)
 
 # Generate dialect definitions
-mlir_tablegen(ToyDialectDefs.cpp.inc -gen-dialect-defs)
+mlir_tablegen(ToyDialectDefs.cpp.inc -gen-dialect-defs -dialect toy)
 
 # Generate operation declarations
-mlir_tablegen(ToyDialect.h.inc -gen-op-decls)
+mlir_tablegen(ToyDialect.h.inc -gen-op-decls -dialect toy)
 
 # Generate operation definitions
-mlir_tablegen(ToyDialect.cpp.inc -gen-op-defs)
+mlir_tablegen(ToyDialect.cpp.inc -gen-op-defs -dialect toy)
 
 # Create a single TableGen target for all generated files
 add_public_tablegen_target(ToyDialectIncGen
