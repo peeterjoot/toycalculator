@@ -9,9 +9,13 @@
 #include "ToyDialect.h"
 #include "ToyLexer.h"
 #include "ToyParser.h"
+#include "ToyPasses.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/InitLLVM.h"
+#include "llvm/Support/TargetSelect.h"
+#include "mlir/Conversion/Passes.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
@@ -19,6 +23,8 @@
 #include "mlir/IR/OpImplementation.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/Types.h"
+#include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMIRToLLVMTranslation.h"
+#include "mlir/Target/LLVMIR/Export.h"
 
 // Define a category for Toy Calculator options
 static llvm::cl::OptionCategory ToyCategory( "Toy Calculator Options" );
@@ -31,6 +37,11 @@ static llvm::cl::opt<std::string> inputFilename(
 
 static llvm::cl::opt<bool> enableLocation(
     "location", llvm::cl::desc( "Enable MLIR location output" ),
+    llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
+
+// Add command-line option for LLVM IR emission
+static llvm::cl::opt<bool> emitLLVM(
+    "emit-llvm", llvm::cl::desc( "Emit LLVM IR instead of MLIR" ),
     llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
 
 enum class semantic_errors : int
@@ -416,6 +427,14 @@ enum class return_codes : int
 
 int main( int argc, char **argv )
 {
+    // Initialize LLVM targets for code generation.
+    llvm::InitializeAllTargetInfos();
+    llvm::InitializeAllTargets();
+    llvm::InitializeAllTargetMCs();
+    llvm::InitializeAllAsmParsers();
+    llvm::InitializeAllAsmPrinters();
+
+
     llvm::InitLLVM init( argc, argv );
     llvm::cl::ParseCommandLineOptions( argc, argv, "Calculator compiler\n" );
 
@@ -449,12 +468,37 @@ int main( int argc, char **argv )
         antlr4::tree::ParseTree *tree = parser.startRule();
         antlr4::tree::ParseTreeWalker::DEFAULT.walk( &listener, tree );
 
-        mlir::OpPrintingFlags flags;
-        if ( enableLocation )
+        if ( emitLLVM )
         {
-            flags.printGenericOpForm().enableDebugInfo( true );
+            // Set up pass manager for lowering.
+            mlir::PassManager pm( module.getContext() );
+            pm.addPass( mlir::createToyToLLVMLoweringPass() );
+            pm.addPass( mlir::createConvertSCFToCFPass() );
+            pm.addPass( mlir::createConvertFuncToLLVMPass() );
+            pm.addPass( mlir::createConvertMemRefToLLVMPass() );
+            pm.addPass( mlir::createConvertArithToLLVMPass() );
+            pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
+
+            if ( failed( pm.run( module ) ) )
+                throw std::runtime_error( "LLVM lowering failed" );
+
+            // Export to LLVM IR.
+            auto llvmModule =
+                mlir::translateModuleToLLVMIR( module, *module.getContext() );
+            if ( !llvmModule )
+                throw std::runtime_error( "Failed to translate to LLVM IR" );
+
+            llvmModule->print( llvm::outs(), nullptr );
         }
-        listener.getModule().print( llvm::outs(), flags );
+        else
+        {
+            mlir::OpPrintingFlags flags;
+            if ( enableLocation )
+            {
+                flags.printGenericOpForm().enableDebugInfo( true );
+            }
+            listener.getModule().print( llvm::outs(), flags );
+        }
     }
     catch ( const semantic_exception &e )
     {
