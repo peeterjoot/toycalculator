@@ -130,13 +130,13 @@ add_public_tablegen_target(ToyDialectIncGen
     ${CMAKE_CURRENT_BINARY_DIR}/ToyDialect.cpp.inc
 )
 
-mlir_tablegen(ToyPasses.h.inc -gen-pass-decls)
-mlir_tablegen(ToyPasses.cpp.inc -gen-pass-defs)
+# TableGen for passes
+set(LLVM_TARGET_DEFINITIONS src/ToyPasses.td)
+mlir_tablegen(ToyPasses.h.inc --gen-pass-decls -name Toy -I ${CMAKE_SOURCE_DIR}/src -I ${MLIR_INCLUDE_DIRS})
 
 add_public_tablegen_target(ToyPassesIncGen
   DEPENDS
     ${CMAKE_CURRENT_BINARY_DIR}/ToyPasses.h.inc
-    ${CMAKE_CURRENT_BINARY_DIR}/ToyPasses.cpp.inc
 )
 
 # Add runtime library as a shared object
@@ -210,4 +210,12 @@ target_link_libraries(toycalculator
   MLIRIR
   MLIRSupport
   MLIRMemRefDialect
+  MLIRLLVMDialect
+  MLIRFuncDialect
+  MLIRSCFDialect
+  MLIRControlFlowDialect
+  MLIRFuncToLLVM
+  MLIRMemRefToLLVM
+  MLIRArithToLLVM
+  MLIRControlFlowToLLVM
 )
