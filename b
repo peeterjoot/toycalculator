@@ -2,7 +2,8 @@ b enterStartRule
 b enterDeclare
 b enterPrint
 b enterAssignment
-b enterRhs
+b enterUnaryexpression
+b enterBinaryexpression
 
 ## firstError assignments:
 #b driver.cpp:149

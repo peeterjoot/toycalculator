@@ -1,8 +1,8 @@
+set -x
 #../build/toycalculator ./unary.toy
 #exit
-../build/toycalculator ./simplest.toy
-../build/toycalculator ./foo.toy
-../build/toycalculator ./test.toy
-../build/toycalculator ./error_redeclare.toy
-../build/toycalculator ./error_undeclare.toy
-../build/toycalculator ./error_unassigned.toy
+for i in simplest.toy foo.toy test.toy error_redeclare.toy error_unassigned.toy error_undeclare.toy ; do
+	echo $i
+	cat $i
+	../build/toycalculator $i
+done

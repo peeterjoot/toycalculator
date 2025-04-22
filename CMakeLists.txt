@@ -194,4 +194,5 @@ target_link_libraries(toycalculator
   MLIRArithDialect
   MLIRIR
   MLIRSupport
+  MLIRMemRefDialect
 )

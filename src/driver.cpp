@@ -12,6 +12,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/InitLLVM.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/IR/Builders.h"
 #include "mlir/IR/BuiltinOps.h"
 #include "mlir/IR/Location.h"
@@ -32,7 +33,8 @@ enum class semantic_errors : int
     not_an_error,
     variable_already_declared,
     variable_not_declared,
-    variable_not_assigned
+    variable_not_assigned,
+    unknown_error
 };
 
 enum class variable_state : int
@@ -64,6 +66,7 @@ class DialectCtx
     {
         context.getOrLoadDialect<toy::ToyDialect>();
         context.getOrLoadDialect<mlir::arith::ArithDialect>();
+        context.getOrLoadDialect<mlir::memref::MemRefDialect>();
     }
 };
 
@@ -78,7 +81,10 @@ class MLIRListener : public ToyBaseListener
     std::string currentVarName;
     mlir::Location currentAssignLoc;
     semantic_errors lastSemError{ semantic_errors::not_an_error };
-    std::unordered_map<std::string, variable_state> variables;
+    std::unordered_map<std::string, variable_state> var_states;
+    std::map<std::string, mlir::Value>
+        var_storage;    // Maps variable names to memref<f64>
+    bool assignmentTargetValid;
 
     mlir::Location getLocation( antlr4::ParserRuleContext *ctx )
     {
@@ -89,17 +95,14 @@ class MLIRListener : public ToyBaseListener
             return mlir::FileLineColLoc::get( builder.getStringAttr( filename ),
                                               line, col );
         }
-        else
-        {
-            return mlir::UnknownLoc::get( &dialect.context );
-        }
+        return mlir::UnknownLoc::get( &dialect.context );
     }
 
     std::string formatLocation( mlir::Location loc )
     {
         if ( auto fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc ) )
         {
-            return std::format( "{}:{}:{}:", fileLoc.getFilename().str(),
+            return std::format( "{}:{}:{}: ", fileLoc.getFilename().str(),
                                 fileLoc.getLine(), fileLoc.getColumn() );
         }
         return "";
@@ -144,18 +147,25 @@ class MLIRListener : public ToyBaseListener
     {
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
-        builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ) );
-        auto varState = variables[varName];
+        auto varState = var_states[varName];
         if ( varState == variable_state::declared )
         {
             lastSemError = semantic_errors::variable_already_declared;
             llvm::errs() << std::format(
                 "{}error: Variable {} already declared in DCL\n",
                 formatLocation( loc ), varName );
+            return;
         }
-        else if ( varState == variable_state::undeclared )
+        if ( varState == variable_state::undeclared )
         {
-            variables[varName] = variable_state::declared;
+            var_states[varName] = variable_state::declared;
+            // Allocate memref<f64> for the variable
+            auto memrefType = mlir::MemRefType::get( {}, builder.getF64Type() );
+            auto allocaOp =
+                builder.create<mlir::memref::AllocaOp>( loc, memrefType );
+            var_storage[varName] = allocaOp.getResult();
+            builder.create<toy::DeclareOp>( loc,
+                                            builder.getStringAttr( varName ) );
         }
     }
 
@@ -163,25 +173,35 @@ class MLIRListener : public ToyBaseListener
     {
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
-        auto varState = variables[varName];
+        auto varState = var_states[varName];
+        if ( varState == variable_state::undeclared )
+        {
+            lastSemError = semantic_errors::variable_not_declared;
+            llvm::errs() << std::format(
+                "{}error: Variable {} not declared in PRINT\n",
+                formatLocation( loc ), varName );
+            return;
+        }
         if ( varState != variable_state::assigned )
         {
             lastSemError = semantic_errors::variable_not_assigned;
             llvm::errs() << std::format(
                 "{}error: Variable {} not assigned in PRINT\n",
                 formatLocation( loc ), varName );
+            return;
         }
         builder.create<toy::PrintOp>( loc, builder.getStringAttr( varName ) );
     }
 
     void enterAssignment( ToyParser::AssignmentContext *ctx ) override
     {
+        assignmentTargetValid = true;
         auto loc = getLocation( ctx );
         currentVarName = ctx->VARIABLENAME()->getText();
-        auto varState = variables[currentVarName];
+        auto varState = var_states[currentVarName];
         if ( varState == variable_state::declared )
         {
-            variables[currentVarName] = variable_state::assigned;
+            var_states[currentVarName] = variable_state::assigned;
         }
         else if ( varState != variable_state::declared )
         {
@@ -189,12 +209,18 @@ class MLIRListener : public ToyBaseListener
             llvm::errs() << std::format(
                 "{}error: Variable {} not declared in assignment\n",
                 formatLocation( loc ), currentVarName );
+            assignmentTargetValid = false;
         }
         currentAssignLoc = loc;
     }
 
     void enterUnaryexpression( ToyParser::UnaryexpressionContext *ctx ) override
     {
+        if ( !assignmentTargetValid )
+        {
+            return;
+        }
+        auto loc = getLocation( ctx );
         auto lhs = ctx->element();
         auto op = ctx->unaryoperator()->getText();
 
@@ -202,27 +228,60 @@ class MLIRListener : public ToyBaseListener
         if ( lhs->INTEGERLITERAL() )
         {
             int64_t val = std::stoi( lhs->INTEGERLITERAL()->getText() );
-            lhsValue = builder.create<mlir::arith::ConstantIntOp>(
-                getLocation( lhs ), val, 64 );
+            lhsValue =
+                builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
+        }
+        else if ( lhs->VARIABLENAME() )
+        {
+            auto varName = lhs->VARIABLENAME()->getText();
+            auto varState = var_states[varName];
+            if ( varState == variable_state::undeclared )
+            {
+                lastSemError = semantic_errors::variable_not_declared;
+                llvm::errs() << std::format(
+                    "{}error: Variable {} not declared in unary expr\n",
+                    formatLocation( loc ), varName );
+                return;
+            }
+            if ( varState != variable_state::assigned )
+            {
+                lastSemError = semantic_errors::variable_not_assigned;
+                llvm::errs() << std::format(
+                    "{}error: Variable {} not assigned in unary expr\n",
+                    formatLocation( loc ), varName );
+                return;
+            }
+            // Load from memref<f64>
+            auto memref = var_storage[varName];
+            lhsValue = builder.create<mlir::memref::LoadOp>( loc, memref );
         }
         else
         {
-            llvm::errs() << std::format(
-                "Warning: Variable {} not supported at line {}\n",
-                lhs->VARIABLENAME()->getText(), ctx->getStart()->getLine() );
+            lastSemError = semantic_errors::unknown_error;
+            llvm::errs() << std::format( "{}error: Invalid unary operand\n",
+                                         formatLocation( loc ) );
             return;
         }
 
-        // FIXME: what about op == ""?
+        // Create UnaryOp (supports + or -)
+        if ( op == "" )
+        {
+            op = "+";
+        }
+
         auto unaryOp = builder.create<toy::UnaryOp>(
-            getLocation( ctx ), builder.getF64Type(),
-            builder.getStringAttr( op ), lhsValue );
+            loc, builder.getF64Type(), builder.getStringAttr( op ), lhsValue );
 
         if ( !currentVarName.empty() )
         {
+            // Store result to memref<f64>
+            auto memref = var_storage[currentVarName];
+            builder.create<mlir::memref::StoreOp>( loc, unaryOp.getResult(),
+                                                   memref );
             builder.create<toy::AssignOp>(
                 currentAssignLoc, builder.getStringAttr( currentVarName ),
                 unaryOp.getResult() );
+            var_states[currentVarName] = variable_state::assigned;
             currentVarName.clear();
         }
     }
@@ -230,6 +289,11 @@ class MLIRListener : public ToyBaseListener
     void enterBinaryexpression(
         ToyParser::BinaryexpressionContext *ctx ) override
     {
+        if ( !assignmentTargetValid )
+        {
+            return;
+        }
+        auto loc = getLocation( ctx );
         auto sz = ctx->element().size();
         auto lhs = ctx->element()[0];
         auto rhs = ctx->element()[1];
@@ -241,14 +305,39 @@ class MLIRListener : public ToyBaseListener
         if ( lhs->INTEGERLITERAL() )
         {
             int64_t val = std::stoi( lhs->INTEGERLITERAL()->getText() );
-            lhsValue = builder.create<mlir::arith::ConstantIntOp>(
-                getLocation( lhs ), val, 64 );
+            lhsValue =
+                builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
+        }
+        else if ( lhs->VARIABLENAME() )
+        {
+            auto varName = lhs->VARIABLENAME()->getText();
+            auto varState = var_states[varName];
+            if ( varState == variable_state::undeclared )
+            {
+                lastSemError = semantic_errors::variable_not_declared;
+                llvm::errs() << std::format(
+                    "{}error: Variable {} not declared in binary expr\n",
+                    formatLocation( loc ), varName );
+                return;
+            }
+            if ( varState != variable_state::assigned )
+            {
+                lastSemError = semantic_errors::variable_not_assigned;
+                llvm::errs() << std::format(
+                    "{}error: Variable {} not assigned in binary expr\n",
+                    formatLocation( loc ), varName );
+                return;
+            }
+            // Load from memref<f64>
+            auto memref = var_storage[varName];
+            lhsValue = builder.create<mlir::memref::LoadOp>( loc, memref );
         }
         else
         {
+            lastSemError = semantic_errors::unknown_error;
             llvm::errs() << std::format(
-                "Warning: Variable {} not supported at line {}\n",
-                lhs->VARIABLENAME()->getText(), ctx->getStart()->getLine() );
+                "{}error: Invalid binary lhs operand\n",
+                formatLocation( loc ) );
             return;
         }
 
@@ -256,25 +345,57 @@ class MLIRListener : public ToyBaseListener
         if ( rhs->INTEGERLITERAL() )
         {
             int64_t val = std::stoi( rhs->INTEGERLITERAL()->getText() );
-            rhsValue = builder.create<mlir::arith::ConstantIntOp>(
-                getLocation( rhs ), val, 64 );
+            rhsValue =
+                builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
+        }
+        else if ( rhs->VARIABLENAME() )
+        {
+            auto varName = rhs->VARIABLENAME()->getText();
+            auto varState = var_states[varName];
+            if ( varState == variable_state::undeclared )
+            {
+                lastSemError = semantic_errors::variable_not_declared;
+                llvm::errs() << std::format(
+                    "{}error: Variable {} not declared in binary expr\n",
+                    formatLocation( loc ), varName );
+                return;
+            }
+            if ( varState != variable_state::assigned )
+            {
+                lastSemError = semantic_errors::variable_not_assigned;
+                llvm::errs() << std::format(
+                    "{}error: Variable {} not assigned in binary expr\n",
+                    formatLocation( loc ), varName );
+                return;
+            }
+            // Load from memref<f64>
+            auto memref = var_storage[varName];
+            rhsValue = builder.create<mlir::memref::LoadOp>( loc, memref );
         }
         else
         {
+            lastSemError = semantic_errors::unknown_error;
             llvm::errs() << std::format(
-                "Warning: Variable {} not supported at line {}\n",
-                rhs->VARIABLENAME()->getText(), ctx->getStart()->getLine() );
+                "{}error: Invalid binary rhs operand\n",
+                formatLocation( loc ) );
             return;
         }
 
+        // Create BinaryOp (supports +, -, *, /)
         auto binaryOp = builder.create<toy::BinaryOp>(
-            getLocation( ctx ), builder.getF64Type(),
-            builder.getStringAttr( op ), lhsValue, rhsValue );
+            loc, builder.getF64Type(), builder.getStringAttr( op ), lhsValue,
+            rhsValue );
+
         if ( !currentVarName.empty() )
         {
+            // Store result to memref<f64>
+            auto memref = var_storage[currentVarName];
+            builder.create<mlir::memref::StoreOp>( loc, binaryOp.getResult(),
+                                                   memref );
             builder.create<toy::AssignOp>(
                 currentAssignLoc, builder.getStringAttr( currentVarName ),
                 binaryOp.getResult() );
+            var_states[currentVarName] = variable_state::assigned;
             currentVarName.clear();
         }
     }

@@ -82,7 +82,7 @@ cd build
 
 cmake -G Ninja -DLLVM_DIR=$prefix/lib64/cmake/llvm -DMLIR_DIR=$prefix/lib64/cmake/mlir ..
 
-ninja -v -k 3 -j 1 2>&1 | tee o
+ninja -v -k 3 -j 1 2>&1 | tee o | grep error: | tee e
 ));
 }
 
