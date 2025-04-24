@@ -10,6 +10,7 @@
 #include "ToyLexer.h"
 #include "ToyParser.h"
 #include "ToyPasses.h"
+#include "ToyToLLVMLowering.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/TargetSelect.h"
@@ -25,6 +26,7 @@
 #include "mlir/IR/Types.h"
 #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMIRToLLVMTranslation.h"
 #include "mlir/Target/LLVMIR/Export.h"
+#include "llvm/IR/PassManager.h"
 
 // Define a category for Toy Calculator options
 static llvm::cl::OptionCategory ToyCategory( "Toy Calculator Options" );
@@ -479,7 +481,7 @@ int main( int argc, char **argv )
             pm.addPass( mlir::createConvertArithToLLVMPass() );
             pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
 
-            if ( failed( pm.run( module ) ) )
+            if ( llvm::failed( pm.run( module ) ) )
                 throw std::runtime_error( "LLVM lowering failed" );
 
             // Export to LLVM IR.
