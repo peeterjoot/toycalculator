@@ -479,7 +479,8 @@ int main( int argc, char **argv )
             pm.addPass( mlir::createToyToLLVMLoweringPass() );
             pm.addPass( mlir::createConvertSCFToCFPass() );
             pm.addPass( mlir::createConvertFuncToLLVMPass() );
-            pm.addPass( mlir::createConvertMemRefToLLVMPass() );
+            //pm.addPass( mlir::createConvertMemRefToLLVMPass() );
+            pm.addPass( mlir::createFinalizeMemRefToLLVMConversionPass() );
             //pm.addPass( mlir::createConvertArithToLLVMPass() );
             pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
 
@@ -487,8 +488,9 @@ int main( int argc, char **argv )
                 throw std::runtime_error( "LLVM lowering failed" );
 
             // Export to LLVM IR.
+            llvm::LLVMContext llvmContext;
             auto llvmModule =
-                mlir::translateModuleToLLVMIR( module, *module.getContext() );
+                mlir::translateModuleToLLVMIR( module, llvmContext );
             if ( !llvmModule )
                 throw std::runtime_error( "Failed to translate to LLVM IR" );
 
