@@ -26,7 +26,7 @@
 #include "mlir/IR/Types.h"
 #include "mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMIRToLLVMTranslation.h"
 #include "mlir/Target/LLVMIR/Export.h"
-#include "llvm/IR/PassManager.h"
+#include "mlir/Pass/PassManager.h"
 
 // Define a category for Toy Calculator options
 static llvm::cl::OptionCategory ToyCategory( "Toy Calculator Options" );
