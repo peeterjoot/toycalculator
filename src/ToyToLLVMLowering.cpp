@@ -1,6 +1,11 @@
 #include "ToyDialect.h"
+#include "ToyToLLVMLowering.h"
+#include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h"
+#include "mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h"
+#include "mlir/Dialect/Arith/IR/Arith.h"
+#include "mlir/Dialect/ControlFlow/IR/ControlFlow.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
-#include "mlir/Dialect/StandardOps/IR/Ops.h"
+#include "mlir/Dialect/MemRef/IR/MemRef.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "llvm/ADT/StringRef.h"
@@ -11,7 +16,8 @@ namespace {
 class ToyToLLVMLoweringPass
     : public PassWrapper<ToyToLLVMLoweringPass, OperationPass<ModuleOp>> {
   void getDependentDialects(DialectRegistry &registry) const override {
-    registry.insert<LLVM::LLVMDialect, StandardOpsDialect>();
+    registry.insert<LLVM::LLVMDialect, arith::ArithDialect, memref::MemRefDialect,
+                    cf::ControlFlowDialect>();
   }
 
   void runOnOperation() override {
@@ -20,13 +26,14 @@ class ToyToLLVMLoweringPass
     // Define the conversion target: only LLVM dialect is allowed.
     ConversionTarget target(getContext());
     target.addLegalDialect<LLVM::LLVMDialect>();
-    target.addIllegalDialect<toy::ToyDialect>();
+    target.addIllegalDialect<toy::ToyDialect, arith::ArithDialect,
+                             memref::MemRefDialect>();
 
     // Define conversion patterns.
     RewritePatternSet patterns(&getContext());
     patterns.add<ProgramOpLowering, DeclareOpLowering, PrintOpLowering,
-                 AssignOpLowering, UnaryOpLowering, BinaryOpLowering>(
-        &getContext());
+                 AssignOpLowering, UnaryOpLowering, BinaryOpLowering,
+                 ConstantOpLowering>(&getContext());
 
     // Apply the conversion.
     if (failed(applyPartialConversion(module, target, std::move(patterns))))
@@ -158,10 +165,16 @@ struct UnaryOpLowering : public ConversionPattern {
     auto loc = unaryOp.getLoc();
     auto opName = unaryOp.getOp();
 
-    Value result = operands[0];
+    // Convert operand to f64 if necessary (e.g., from i64 constant).
+    auto f64Type = FloatType::getF64(rewriter.getContext());
+    Value operand = operands[0];
+    if (operand.getType().isInteger(64)) {
+      operand = rewriter.create<LLVM::SIToFPOp>(loc, f64Type, operand);
+    }
+
+    Value result = operand;
     if (opName == "-") {
       // Negate: fsub 0.0, value
-      auto f64Type = FloatType::getF64(rewriter.getContext());
       auto zero = rewriter.create<LLVM::ConstantOp>(
           loc, f64Type, rewriter.getF64FloatAttr(0.0));
       result = rewriter.create<LLVM::FSubOp>(loc, zero, result);
@@ -185,21 +198,55 @@ struct BinaryOpLowering : public ConversionPattern {
     auto loc = binaryOp.getLoc();
     auto opName = binaryOp.getOp();
 
+    // Convert operands to f64 if necessary (e.g., from i64 constants).
+    auto f64Type = FloatType::getF64(rewriter.getContext());
+    Value lhs = operands[0];
+    if (lhs.getType().isInteger(64)) {
+      lhs = rewriter.create<LLVM::SIToFPOp>(loc, f64Type, lhs);
+    }
+    Value rhs = operands[1];
+    if (rhs.getType().isInteger(64)) {
+      rhs = rewriter.create<LLVM::SIToFPOp>(loc, f64Type, rhs);
+    }
+
     Value result;
     if (opName == "+") {
-      result = rewriter.create<LLVM::FAddOp>(loc, operands[0], operands[1]);
+      result = rewriter.create<LLVM::FAddOp>(loc, lhs, rhs);
     } else if (opName == "-") {
-      result = rewriter.create<LLVM::FSubOp>(loc, operands[0], operands[1]);
+      result = rewriter.create<LLVM::FSubOp>(loc, lhs, rhs);
     } else if (opName == "*") {
-      result = rewriter.create<LLVM::FMulOp>(loc, operands[0], operands[1]);
+      result = rewriter.create<LLVM::FMulOp>(loc, lhs, rhs);
     } else if (opName == "/") {
-      result = rewriter.create<LLVM::FDivOp>(loc, operands[0], operands[1]);
+      result = rewriter.create<LLVM::FDivOp>(loc, lhs, rhs);
     } else {
       return failure(); // Invalid operator (should be caught by verify).
     }
 
     rewriter.replaceOp(op, result);
     return success();
+  }
+};
+
+// Lower arith.constant to LLVM constant.
+struct ConstantOpLowering : public ConversionPattern {
+  ConstantOpLowering(MLIRContext *ctx)
+      : ConversionPattern(arith::ConstantOp::getOperationName(), 1, ctx) {}
+
+  LogicalResult matchAndRewrite(
+      Operation *op, ArrayRef<Value> operands,
+      ConversionPatternRewriter &rewriter) const override {
+    auto constantOp = cast<arith::ConstantOp>(op);
+    auto loc = constantOp.getLoc();
+    auto valueAttr = constantOp.getValue();
+
+    if (auto intAttr = dyn_cast<IntegerAttr>(valueAttr)) {
+      auto i64Type = IntegerType::get(rewriter.getContext(), 64);
+      auto value = rewriter.create<LLVM::ConstantOp>(loc, i64Type, intAttr);
+      rewriter.replaceOp(op, value);
+      return success();
+    }
+
+    return failure(); // Only handle i64 constants for now.
   }
 };
 } // namespace

@@ -472,13 +472,15 @@ int main( int argc, char **argv )
 
         if ( emitLLVM )
         {
+            auto module = listener.getModule();
+
             // Set up pass manager for lowering.
             mlir::PassManager pm( module.getContext() );
             pm.addPass( mlir::createToyToLLVMLoweringPass() );
             pm.addPass( mlir::createConvertSCFToCFPass() );
             pm.addPass( mlir::createConvertFuncToLLVMPass() );
             pm.addPass( mlir::createConvertMemRefToLLVMPass() );
-            pm.addPass( mlir::createConvertArithToLLVMPass() );
+            //pm.addPass( mlir::createConvertArithToLLVMPass() );
             pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
 
             if ( llvm::failed( pm.run( module ) ) )
