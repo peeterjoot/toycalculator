@@ -474,8 +474,16 @@ int main( int argc, char **argv )
         {
             auto module = listener.getModule();
 
+            auto context = module.getContext();
+            // For debugging.  add an option for this later:
+            context->disableMultithreading(true);
+
             // Set up pass manager for lowering.
-            mlir::PassManager pm( module.getContext() );
+            mlir::PassManager pm( context );
+
+            // For debugging.  add an option for this later (requires the disable threads above.)
+            pm.enableIRPrinting();
+
             pm.addPass( mlir::createToyToLLVMLoweringPass() );
             pm.addPass( mlir::createConvertSCFToCFPass() );
             pm.addPass( mlir::createConvertFuncToLLVMPass() );

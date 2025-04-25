@@ -79,9 +79,6 @@ namespace
             Operation *op, ArrayRef<Value> operands,
             ConversionPatternRewriter &rewriter ) const override
         {
-            auto declareOp = cast<toy::DeclareOp>( op );
-            auto loc = declareOp.getLoc();
-
             // Erase the declare op (redundant with memref.alloca).
             rewriter.eraseOp( op );
             return success();
