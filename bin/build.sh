@@ -10,20 +10,9 @@ build.sh - <one-line-description>
 
 =head1 SYNOPSIS
 
-build.sh [--help] [<options>]
+build.sh [--help] [--serial] [--[no-]cscope] [--[no-]build]
 
 =head1 DESCRIPTION
-
-
-Options:
-
-=over 4
-
-=item --foo=bar
-
-Blah.
-
-=back
 
 =head1 SUPPORTED PLATFORMS
 
@@ -57,19 +46,25 @@ select STDOUT ; $| = 1 ;
 my $myName = '' ;
 my $doscope = 0;
 my $dobuild = 1;
+my $serial = 0;
 ($myName = $0) =~ s@.*[/\\]@@ ;
 
 #Getopt::Long::Configure( 'pass_through' ) ;
 GetOptions (
    'help'               => sub { pod2usage(-verbose => 2) ; },
-   'cscope!'		=> \$doscope,
-   'build!'		=> \$dobuild,
+   'cscope!'		      => \$doscope,
+   'build!'		         => \$dobuild,
+   'serial!'	         => \$serial,
 ) or pod2usage(-verbose => 0) ;
 
 # Didn't pick consistent install prefixes for my mlir builds (WSL2/Ubuntu, and Fedora-42)... find it:
 my @prefix = <"/usr/local/llvm-*">;
 die unless ( scalar(@prefix) eq 1 );
 my $prefix = $prefix[0];
+my $parallel = '';
+if ( $serial ) {
+   $parallel = '-j 1';
+}
 
 # Validate/handle options, and everything else...
 if ( $dobuild ) {
@@ -82,7 +77,7 @@ cd build
 
 cmake -G Ninja -DLLVM_DIR=$prefix/lib64/cmake/llvm -DMLIR_DIR=$prefix/lib64/cmake/mlir ..
 
-ninja -v -k 3 -j 1 2>&1 | tee o | grep error: | tee e
+ninja -v -k 3 ${parallel} 2>&1 | tee o | grep error: | tee e
 ));
 }
 

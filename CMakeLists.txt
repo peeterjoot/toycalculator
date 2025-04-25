@@ -178,44 +178,50 @@ target_link_libraries(toycalculator
   PRIVATE
   antlr4-runtime
   LLVMSupport
-  MLIRParser
-  MLIRTransforms
-  MLIRBytecodeReader
+  LLVMX86AsmParser         # LLVMInitializeX86AsmParser
+  LLVMX86CodeGen           # LLVMInitializeX86Target
+  LLVMX86Desc              # LLVMInitializeX86TargetMC
+  LLVMX86Info              # LLVMInitializeX86TargetInfo
+  MLIRAnalysis
+  MLIRArithDialect
+  MLIRArithToLLVM
   MLIRAsmParser
-  MLIRMemorySlotInterfaces
-  MLIRRuntimeVerifiableOpInterface
-  MLIRTransformUtils
-  MLIRSubsetOpInterface
-  MLIRValueBoundsOpInterface
+  MLIRBytecodeReader
+  MLIRCallInterfaces
+  MLIRControlFlowDialect
+  MLIRControlFlowInterfaces
+  MLIRControlFlowToLLVM
+  MLIRDataLayoutInterfaces
   MLIRDestinationStyleOpInterface
+  MLIRFuncDialect
+  MLIRFunctionInterfaces
+  MLIRFuncToLLVM
+  MLIRInferIntRangeInterface
+  MLIRInferTypeOpInterface
+  MLIRIR
+  MLIRLLVMDialect
+  MLIRLoopLikeInterface
+  MLIRMemorySlotInterfaces
+  MLIRMemRefDialect
+  MLIRMemRefToLLVM
+  MLIRParser
+  MLIRPass
+  MLIRPDLDialect
+  MLIRPDLInterpDialect
+  MLIRPDLToPDLInterp
+  MLIRPresburger
   MLIRRewrite
   MLIRRewritePDL
-  MLIRPDLToPDLInterp
-  MLIRPass
-  MLIRAnalysis
-  MLIRLoopLikeInterface
-  MLIRCallInterfaces
-  MLIRControlFlowInterfaces
-  MLIRDataLayoutInterfaces
-  MLIRInferIntRangeInterface
-  MLIRPresburger
-  MLIRViewLikeInterface
-  MLIRPDLInterpDialect
-  MLIRFunctionInterfaces
-  MLIRPDLDialect
-  MLIRSideEffectInterfaces
-  MLIRInferTypeOpInterface
-  MLIRUBDialect
-  MLIRArithDialect
-  MLIRIR
-  MLIRSupport
-  MLIRMemRefDialect
-  MLIRLLVMDialect
-  MLIRFuncDialect
+  MLIRRuntimeVerifiableOpInterface
   MLIRSCFDialect
-  MLIRControlFlowDialect
-  MLIRFuncToLLVM
-  MLIRMemRefToLLVM
-  MLIRArithToLLVM
-  MLIRControlFlowToLLVM
+  MLIRSCFToControlFlow      # createConvertSCFToCFPass
+  MLIRSideEffectInterfaces
+  MLIRSubsetOpInterface
+  MLIRSupport
+  MLIRTransforms
+  MLIRTransformUtils
+  MLIRUBDialect
+  MLIRValueBoundsOpInterface
+  MLIRViewLikeInterface
+  MLIRTargetLLVMIRExport    # mlir::translateModuleToLLVMIR
 )
