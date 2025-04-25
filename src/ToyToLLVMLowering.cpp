@@ -80,7 +80,8 @@ struct DeclareOpLowering : public ConversionPattern {
         loc, rewriter.getI64IntegerAttr(1));
     auto numElements = oneOp.getResult();
     auto alignAttr = rewriter.getI32IntegerAttr(0);
-    auto allocaOp = rewriter.create<LLVM::AllocaOp>(loc, ptrType, numElements, alignAttr);
+    auto elemType = rewriter.getF64Type();
+    auto allocaOp = rewriter.create<LLVM::AllocaOp>(loc, ptrType, numElements, alignAttr, elemType);
 
     // Replace the declare op.
     rewriter.replaceOp(op, allocaOp.getResult());
@@ -252,8 +253,8 @@ class ToyToLLVMLoweringPass
     // Define conversion patterns.
     RewritePatternSet patterns(&getContext());
     patterns.add<ProgramOpLowering, DeclareOpLowering, PrintOpLowering,
-                 AssignOpLowering, UnaryOpLowering, BinaryOpLowering,
-                 ConstantOpLowering>(getContext());
+             AssignOpLowering, UnaryOpLowering, BinaryOpLowering,
+             ConstantOpLowering>(&getContext());
 
     // Apply the conversion.
     if (failed(applyPartialConversion(module, target, std::move(patterns))))
