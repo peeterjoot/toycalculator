@@ -82,18 +82,8 @@ namespace
             auto declareOp = cast<toy::DeclareOp>( op );
             auto loc = declareOp.getLoc();
 
-            // Allocate memory for an f64 value.
-            auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
-            auto oneOp = rewriter.create<arith::ConstantOp>(
-                loc, rewriter.getI64IntegerAttr( 1 ) );
-            auto numElements = oneOp.getResult();
-            auto alignAttr = rewriter.getI32IntegerAttr( 0 );
-            auto elemType = rewriter.getF64Type();
-            auto allocaOp = rewriter.create<LLVM::AllocaOp>(
-                loc, ptrType, numElements, alignAttr, elemType );
-
-            // Replace the declare op.
-            rewriter.replaceOp( op, allocaOp.getResult() );
+            // Erase the declare op (redundant with memref.alloca).
+            rewriter.eraseOp( op );
             return success();
         }
     };
