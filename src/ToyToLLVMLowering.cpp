@@ -45,27 +45,24 @@ namespace
             auto funcOp = rewriter.create<LLVM::LLVMFuncOp>(
                 loc, "__toy_main", funcType, LLVM::Linkage::External );
 
-            // Add an entry block to the function.
+            // Add an entry block to the function and move operations into it.
             auto &entryBlock = funcOp.getBody().emplaceBlock();
-            rewriter.setInsertionPointToStart( &entryBlock );
-
-            // Convert operations from the program body.
             Region &body = programOp.getBody();
             if ( !body.empty() )
             {
                 Block &srcBlock = body.front();
-                for ( Operation &op : srcBlock.getOperations() )
-                {
-                    rewriter.insert( op.clone() );
-                }
+                entryBlock.getOperations().splice( entryBlock.begin(),
+                                                   srcBlock.getOperations() );
             }
 
-            // Insert return 0.
+            // Insert return 0 at the end of the entry block.
+            rewriter.setInsertionPointToEnd( &entryBlock );
             rewriter.create<LLVM::ReturnOp>(
                 loc, rewriter.create<LLVM::ConstantOp>( loc, i32Type, 0 ) );
 
-            // Replace the program op.
-            rewriter.replaceOp( op, {} );
+
+            // Erase the program op.
+            rewriter.eraseOp( op );
             return success();
         }
     };
@@ -303,7 +300,7 @@ namespace
             auto loc = allocaOp.getLoc();
 
             // Allocate memory for the memref type (e.g., f64).
-            auto memRefType = allocaOp.getType().cast<MemRefType>();
+            auto memRefType = mlir::cast<MemRefType>( allocaOp.getType() );
             auto elemType = memRefType.getElementType();
             auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
             auto oneOp = rewriter.create<arith::ConstantOp>(
