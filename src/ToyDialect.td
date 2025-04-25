@@ -3,6 +3,8 @@ include "mlir/IR/OpBase.td"
 include "mlir/IR/BuiltinTypes.td"
 include "mlir/Interfaces/InferTypeOpInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
+include "mlir/Dialect/MemRef/IR/MemRefBase.td"
+include "mlir/Dialect/MemRef/IR/MemRefOps.td"
 
 // Define the Toy dialect
 def Toy_Dialect : Dialect {
@@ -31,8 +33,9 @@ def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
 // Print operation
 def Toy_PrintOp : Op<Toy_Dialect, "print"> {
   let summary = "Print a variable";
-  let arguments = (ins StrAttr:$name);
+  let arguments = (ins MemRefType:$input);
   let results = (outs);
+  let assemblyFormat = "attr-dict";
   // No traits, as printing has side effects
 }
 

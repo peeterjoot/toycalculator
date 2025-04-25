@@ -99,7 +99,6 @@ namespace
         {
             auto printOp = cast<toy::PrintOp>( op );
             auto loc = printOp.getLoc();
-
             // Load the f64 value from the pointer.
             auto f64Type = rewriter.getF64Type();
             auto loadOp =
@@ -115,8 +114,8 @@ namespace
             // Call __toy_print with the loaded value.
             rewriter.create<LLVM::CallOp>( loc, funcOp, loadOp.getResult() );
 
-            // Replace the print op (no results).
-            rewriter.replaceOp( op, {} );
+            // Erase the print op (no results).
+            rewriter.eraseOp( op );
             return success();
         }
     };
@@ -329,7 +328,7 @@ namespace
             auto storeOp = cast<memref::StoreOp>( op );
             auto loc = storeOp.getLoc();
             rewriter.create<LLVM::StoreOp>( loc, operands[0], operands[1] );
-            rewriter.eraseOp(op);
+            rewriter.eraseOp( op );
             return success();
         }
     };
