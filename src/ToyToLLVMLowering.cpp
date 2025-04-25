@@ -134,7 +134,19 @@ namespace
             ConversionPatternRewriter &rewriter ) const override
         {
             auto assignOp = cast<toy::AssignOp>( op );
+
             auto loc = assignOp.getLoc();
+
+            // Skip if memref.store exists.
+            for ( auto &op :
+                  op->getParentOp()->getRegion( 0 ).front().getOperations() )
+            {
+                if ( op.getName().getStringRef() == "memref.store" )
+                {
+                    rewriter.eraseOp( &op );
+                    return success();
+                }
+            }
 
             // Store the value (operands[1]) into the pointer (operands[0]).
             rewriter.create<LLVM::StoreOp>( loc, operands[1], operands[0] );
@@ -317,7 +329,7 @@ namespace
             auto storeOp = cast<memref::StoreOp>( op );
             auto loc = storeOp.getLoc();
             rewriter.create<LLVM::StoreOp>( loc, operands[0], operands[1] );
-            rewriter.replaceOp( op, {} );
+            rewriter.eraseOp(op);
             return success();
         }
     };
