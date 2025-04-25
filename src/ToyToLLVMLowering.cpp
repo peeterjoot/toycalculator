@@ -1,11 +1,11 @@
 #include "ToyDialect.h"
 #include "ToyToLLVMLowering.h"
 #include "mlir/Conversion/FuncToLLVM/ConvertFuncToLLVM.h"
-#include "mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h"
 #include "mlir/Dialect/Arith/IR/Arith.h"
 #include "mlir/Dialect/ControlFlow/IR/ControlFlow.h"
 #include "mlir/Dialect/LLVMIR/LLVMDialect.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
+#include "mlir/IR/Block.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Transforms/DialectConversion.h"
 #include "llvm/ADT/StringRef.h"
@@ -13,6 +13,13 @@
 using namespace mlir;
 
 namespace {
+struct ProgramOpLowering;
+struct DeclareOpLowering;
+struct PrintOpLowering;
+struct AssignOpLowering;
+struct UnaryOpLowering;
+struct BinaryOpLowering;
+struct ConstantOpLowering;
 
 // Lower toy.program to an LLVM function.
 struct ProgramOpLowering : public ConversionPattern {
@@ -32,23 +39,26 @@ struct ProgramOpLowering : public ConversionPattern {
         loc, "main", funcType, LLVM::Linkage::External);
 
     // Create the entry block.
-    Block *entryBlock = funcOp.addEntryBlock();
+    funcOp.getBody().push_back(new Block());
+    Block *entryBlock = &funcOp.getBody().front();
     rewriter.setInsertionPointToStart(entryBlock);
 
-    // Convert the program body (region) to LLVM.
+    // Clone operations from the program body to the function block.
     Region &body = programOp.getBody();
     if (!body.empty()) {
-      if (failed(rewriter.convertRegionTypes(&body, *rewriter.getTypeConverter(),
-                                             entryBlock)))
-        return failure();
+      Block &srcBlock = body.front();
+      for (auto &op : srcBlock.getOperations()) {
+        Operation *clonedOp = rewriter.clone(op);
+        entryBlock->getOperations().push_back(clonedOp);
+      }
     }
 
     // Return 0.
-    rewriter.create<LLVM::ReturnOp>(loc, rewriter.create<LLVM::ConstantOp>(
-                                              loc, i32Type, 0));
+    rewriter.create<LLVM::ReturnOp>(
+        loc, rewriter.create<LLVM::ConstantOp>(loc, i32Type, 0));
 
-    // Replace the program op with the function.
-    rewriter.replaceOp(op, funcOp.getOperation()->getResults());
+    // Replace the program op.
+    rewriter.replaceOp(op, {});
     return success();
   }
 };
@@ -65,12 +75,14 @@ struct DeclareOpLowering : public ConversionPattern {
     auto loc = declareOp.getLoc();
 
     // Allocate memory for an f64 value.
-    auto f64Type = FloatType::getF64(rewriter.getContext());
-    auto ptrType = LLVM::LLVMPointerType::get(f64Type);
-    auto allocaOp = rewriter.create<LLVM::AllocaOp>(
-        loc, ptrType, rewriter.getI64IntegerAttr(1), 0);
+    auto ptrType = LLVM::LLVMPointerType::get(rewriter.getContext());
+    auto oneOp = rewriter.create<arith::ConstantOp>(
+        loc, rewriter.getI64IntegerAttr(1));
+    auto numElements = oneOp.getResult();
+    auto alignAttr = rewriter.getI32IntegerAttr(0);
+    auto allocaOp = rewriter.create<LLVM::AllocaOp>(loc, ptrType, numElements, alignAttr);
 
-    // Replace the declare op (no results).
+    // Replace the declare op.
     rewriter.replaceOp(op, allocaOp.getResult());
     return success();
   }
@@ -87,13 +99,13 @@ struct PrintOpLowering : public ConversionPattern {
     auto printOp = cast<toy::PrintOp>(op);
     auto loc = printOp.getLoc();
 
-    // Load the f64 value from the pointer (from toy.declare).
-    auto f64Type = FloatType::getF64(rewriter.getContext());
+    // Load the f64 value from the pointer.
+    auto f64Type = rewriter.getF64Type();
     auto loadOp = rewriter.create<LLVM::LoadOp>(loc, f64Type, operands[0]);
 
     // Declare the __toy_print function: void __toy_print(double).
     auto funcType = LLVM::LLVMFunctionType::get(
-        LLVM::LLVMVoidType::get(rewriter.getContext()), {f64Type}, false);
+        LLVM::LLVMVoidType::get(rewriter.getContext()), ArrayRef<Type>{f64Type}, false);
     auto funcOp = rewriter.create<LLVM::LLVMFuncOp>(
         loc, "__toy_print", funcType, LLVM::Linkage::External);
 
@@ -139,7 +151,7 @@ struct UnaryOpLowering : public ConversionPattern {
     auto opName = unaryOp.getOp();
 
     // Convert operand to f64 if necessary (e.g., from i64 constant).
-    auto f64Type = FloatType::getF64(rewriter.getContext());
+    auto f64Type = rewriter.getF64Type();
     Value operand = operands[0];
     if (operand.getType().isInteger(64)) {
       operand = rewriter.create<LLVM::SIToFPOp>(loc, f64Type, operand);
@@ -172,7 +184,7 @@ struct BinaryOpLowering : public ConversionPattern {
     auto opName = binaryOp.getOp();
 
     // Convert operands to f64 if necessary (e.g., from i64 constants).
-    auto f64Type = FloatType::getF64(rewriter.getContext());
+    auto f64Type = rewriter.getF64Type();
     Value lhs = operands[0];
     if (lhs.getType().isInteger(64)) {
       lhs = rewriter.create<LLVM::SIToFPOp>(loc, f64Type, lhs);
@@ -226,8 +238,7 @@ struct ConstantOpLowering : public ConversionPattern {
 class ToyToLLVMLoweringPass
     : public PassWrapper<ToyToLLVMLoweringPass, OperationPass<ModuleOp>> {
   void getDependentDialects(DialectRegistry &registry) const override {
-    registry.insert<LLVM::LLVMDialect, arith::ArithDialect, memref::MemRefDialect,
-                    cf::ControlFlowDialect>();
+    registry.insert<LLVM::LLVMDialect, arith::ArithDialect, cf::ControlFlowDialect>();
   }
 
   void runOnOperation() override {
@@ -236,14 +247,13 @@ class ToyToLLVMLoweringPass
     // Define the conversion target: only LLVM dialect is allowed.
     ConversionTarget target(getContext());
     target.addLegalDialect<LLVM::LLVMDialect>();
-    target.addIllegalDialect<toy::ToyDialect, arith::ArithDialect,
-                             memref::MemRefDialect>();
+    target.addIllegalDialect<toy::ToyDialect, arith::ArithDialect, memref::MemRefDialect>();
 
     // Define conversion patterns.
     RewritePatternSet patterns(&getContext());
     patterns.add<ProgramOpLowering, DeclareOpLowering, PrintOpLowering,
                  AssignOpLowering, UnaryOpLowering, BinaryOpLowering,
-                 ConstantOpLowering>(&getContext());
+                 ConstantOpLowering>(getContext());
 
     // Apply the conversion.
     if (failed(applyPartialConversion(module, target, std::move(patterns))))
@@ -252,6 +262,8 @@ class ToyToLLVMLoweringPass
 };
 } // namespace
 
+namespace mlir {
 std::unique_ptr<Pass> createToyToLLVMLoweringPass() {
   return std::make_unique<ToyToLLVMLoweringPass>();
 }
+} // namespace mlir
