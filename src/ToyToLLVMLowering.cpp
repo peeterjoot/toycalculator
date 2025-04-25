@@ -375,3 +375,5 @@ namespace mlir
         return std::make_unique<ToyToLLVMLoweringPass>();
     }
 }    // namespace mlir
+
+// vim: et ts=4 sw=4

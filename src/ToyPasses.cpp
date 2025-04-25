@@ -8,3 +8,5 @@ namespace mlir
         ::registerToyPasses();    // Call the generated inline function
     }
 }    // namespace mlir
+
+// vim: et ts=4 sw=4

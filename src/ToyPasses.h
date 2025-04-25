@@ -13,3 +13,5 @@ namespace mlir
 #include "ToyPasses.h.inc"
 
 #endif    // TOY_PASSES_H
+
+// vim: et ts=4 sw=4

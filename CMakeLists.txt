@@ -145,6 +145,7 @@ set_target_properties(toy_runtime PROPERTIES OUTPUT_NAME "toy_runtime")
 
 add_executable(toycalculator
   src/driver.cpp
+  src/ToyParser.cpp
   src/ToyDialect.cpp
   src/ToyPasses.cpp
   src/ToyToLLVMLowering.cpp

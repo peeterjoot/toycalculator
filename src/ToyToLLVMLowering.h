@@ -9,3 +9,5 @@ namespace mlir
 }    // namespace mlir
 
 #endif    // TOY_TO_LLVM_LOWERING_H
+
+// vim: et ts=4 sw=4
