@@ -20,6 +20,8 @@ struct AssignOpLowering;
 struct UnaryOpLowering;
 struct BinaryOpLowering;
 struct ConstantOpLowering;
+struct MemRefAllocaOpLowering;
+struct MemRefStoreOpLowering;
 
 // Lower toy.program to an LLVM function.
 struct ProgramOpLowering : public ConversionPattern {
@@ -30,30 +32,28 @@ struct ProgramOpLowering : public ConversionPattern {
       Operation *op, ArrayRef<Value> operands,
       ConversionPatternRewriter &rewriter) const override {
     auto programOp = cast<toy::ProgramOp>(op);
-    auto loc = programOp.getLoc();
+    auto loc = op->getLoc();
 
-    // Create an LLVM function: int main() { ... }
+    // Create an LLVM function: i32 main() { ... }
     auto i32Type = IntegerType::get(rewriter.getContext(), 32);
     auto funcType = LLVM::LLVMFunctionType::get(i32Type, {}, false);
     auto funcOp = rewriter.create<LLVM::LLVMFuncOp>(
-        loc, "main", funcType, LLVM::Linkage::External);
+        loc, "__toy_main", funcType, LLVM::Linkage::External);
 
-    // Create the entry block.
-    funcOp.getBody().push_back(new Block());
-    Block *entryBlock = &funcOp.getBody().front();
-    rewriter.setInsertionPointToStart(entryBlock);
+    // Add an entry block to the function.
+    auto &entryBlock = funcOp.getBody().emplaceBlock();
+    rewriter.setInsertionPointToStart(&entryBlock);
 
-    // Clone operations from the program body to the function block.
+    // Convert operations from the program body.
     Region &body = programOp.getBody();
     if (!body.empty()) {
       Block &srcBlock = body.front();
-      for (auto &op : srcBlock.getOperations()) {
-        Operation *clonedOp = rewriter.clone(op);
-        entryBlock->getOperations().push_back(clonedOp);
-      }
+	for (Operation &op : srcBlock.getOperations()) {
+        rewriter.insert(op.clone());
+       }
     }
 
-    // Return 0.
+    // Insert return 0.
     rewriter.create<LLVM::ReturnOp>(
         loc, rewriter.create<LLVM::ConstantOp>(loc, i32Type, 0));
 
@@ -236,6 +236,49 @@ struct ConstantOpLowering : public ConversionPattern {
   }
 };
 
+// Lower memref.alloca to llvm.alloca.
+struct MemRefAllocaOpLowering : public ConversionPattern {
+  MemRefAllocaOpLowering(MLIRContext *ctx)
+      : ConversionPattern(memref::AllocaOp::getOperationName(), 1, ctx) {}
+
+  LogicalResult matchAndRewrite(
+      Operation *op, ArrayRef<Value> operands,
+      ConversionPatternRewriter &rewriter) const override {
+    auto allocaOp = cast<memref::AllocaOp>(op);
+    auto loc = allocaOp.getLoc();
+
+    // Allocate memory for the memref type (e.g., f64).
+    auto memRefType = allocaOp.getType().cast<MemRefType>();
+    auto elemType = memRefType.getElementType();
+    auto ptrType = LLVM::LLVMPointerType::get(rewriter.getContext());
+    auto oneOp = rewriter.create<arith::ConstantOp>(
+        loc, rewriter.getI64IntegerAttr(1));
+    auto numElements = oneOp.getResult();
+    auto alignAttr = rewriter.getI32IntegerAttr(0);
+    auto newAllocaOp = rewriter.create<LLVM::AllocaOp>(
+        loc, ptrType, numElements, alignAttr, elemType);
+
+    rewriter.replaceOp(op, newAllocaOp.getResult());
+    return success();
+  }
+};
+
+// Lower memref.store to llvm.store.
+struct MemRefStoreOpLowering : public ConversionPattern {
+  MemRefStoreOpLowering(MLIRContext *ctx)
+      : ConversionPattern(memref::StoreOp::getOperationName(), 1, ctx) {}
+
+  LogicalResult matchAndRewrite(
+      Operation *op, ArrayRef<Value> operands,
+      ConversionPatternRewriter &rewriter) const override {
+    auto storeOp = cast<memref::StoreOp>(op);
+    auto loc = storeOp.getLoc();
+    rewriter.create<LLVM::StoreOp>(loc, operands[0], operands[1]);
+    rewriter.replaceOp(op, {});
+    return success();
+  }
+};
+
 class ToyToLLVMLoweringPass
     : public PassWrapper<ToyToLLVMLoweringPass, OperationPass<ModuleOp>> {
   void getDependentDialects(DialectRegistry &registry) const override {
@@ -253,8 +296,9 @@ class ToyToLLVMLoweringPass
     // Define conversion patterns.
     RewritePatternSet patterns(&getContext());
     patterns.add<ProgramOpLowering, DeclareOpLowering, PrintOpLowering,
-             AssignOpLowering, UnaryOpLowering, BinaryOpLowering,
-             ConstantOpLowering>(&getContext());
+                 MemRefAllocaOpLowering, MemRefStoreOpLowering,
+                 AssignOpLowering, UnaryOpLowering, BinaryOpLowering,
+                 ConstantOpLowering>(&getContext());
 
     // Apply the conversion.
     if (failed(applyPartialConversion(module, target, std::move(patterns))))
