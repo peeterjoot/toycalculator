@@ -13,33 +13,6 @@
 using namespace mlir;
 
 namespace {
-class ToyToLLVMLoweringPass
-    : public PassWrapper<ToyToLLVMLoweringPass, OperationPass<ModuleOp>> {
-  void getDependentDialects(DialectRegistry &registry) const override {
-    registry.insert<LLVM::LLVMDialect, arith::ArithDialect, memref::MemRefDialect,
-                    cf::ControlFlowDialect>();
-  }
-
-  void runOnOperation() override {
-    ModuleOp module = getOperation();
-
-    // Define the conversion target: only LLVM dialect is allowed.
-    ConversionTarget target(getContext());
-    target.addLegalDialect<LLVM::LLVMDialect>();
-    target.addIllegalDialect<toy::ToyDialect, arith::ArithDialect,
-                             memref::MemRefDialect>();
-
-    // Define conversion patterns.
-    RewritePatternSet patterns(&getContext());
-    patterns.add<ProgramOpLowering, DeclareOpLowering, PrintOpLowering,
-                 AssignOpLowering, UnaryOpLowering, BinaryOpLowering,
-                 ConstantOpLowering>(&getContext());
-
-    // Apply the conversion.
-    if (failed(applyPartialConversion(module, target, std::move(patterns))))
-      signalPassFailure();
-  }
-};
 
 // Lower toy.program to an LLVM function.
 struct ProgramOpLowering : public ConversionPattern {
@@ -247,6 +220,34 @@ struct ConstantOpLowering : public ConversionPattern {
     }
 
     return failure(); // Only handle i64 constants for now.
+  }
+};
+
+class ToyToLLVMLoweringPass
+    : public PassWrapper<ToyToLLVMLoweringPass, OperationPass<ModuleOp>> {
+  void getDependentDialects(DialectRegistry &registry) const override {
+    registry.insert<LLVM::LLVMDialect, arith::ArithDialect, memref::MemRefDialect,
+                    cf::ControlFlowDialect>();
+  }
+
+  void runOnOperation() override {
+    ModuleOp module = getOperation();
+
+    // Define the conversion target: only LLVM dialect is allowed.
+    ConversionTarget target(getContext());
+    target.addLegalDialect<LLVM::LLVMDialect>();
+    target.addIllegalDialect<toy::ToyDialect, arith::ArithDialect,
+                             memref::MemRefDialect>();
+
+    // Define conversion patterns.
+    RewritePatternSet patterns(&getContext());
+    patterns.add<ProgramOpLowering, DeclareOpLowering, PrintOpLowering,
+                 AssignOpLowering, UnaryOpLowering, BinaryOpLowering,
+                 ConstantOpLowering>(&getContext());
+
+    // Apply the conversion.
+    if (failed(applyPartialConversion(module, target, std::move(patterns))))
+      signalPassFailure();
   }
 };
 } // namespace
