@@ -119,7 +119,9 @@ namespace toy
                 formatLocation( loc ), varName );
             return;
         }
-        builder.create<toy::PrintOp>( loc, builder.getStringAttr( varName ) );
+
+        auto memref = var_storage[varName];
+        builder.create<toy::PrintOp>( loc, memref );
     }
 
     void MLIRListener::enterAssignment( ToyParser::AssignmentContext *ctx )
