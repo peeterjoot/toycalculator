@@ -4,11 +4,12 @@
 #include "ToyToLLVMLowering.h"
 #include "mlir/Pass/Pass.h"
 
-namespace mlir {
-void registerToyPasses();
-} // namespace mlir
+namespace mlir
+{
+    void registerToyPasses();
+}    // namespace mlir
 
 #define GEN_PASS_REGISTRATION
 #include "ToyPasses.h.inc"
 
-#endif // TOY_PASSES_H
+#endif    // TOY_PASSES_H

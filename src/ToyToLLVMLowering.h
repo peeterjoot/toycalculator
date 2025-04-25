@@ -3,8 +3,9 @@
 
 #include "mlir/Pass/Pass.h"
 
-namespace mlir {
-std::unique_ptr<Pass> createToyToLLVMLoweringPass();
-} // namespace mlir
+namespace mlir
+{
+    std::unique_ptr<Pass> createToyToLLVMLoweringPass();
+}    // namespace mlir
 
-#endif // TOY_TO_LLVM_LOWERING_H
+#endif    // TOY_TO_LLVM_LOWERING_H
