@@ -29,43 +29,43 @@ include_directories(${CMAKE_SOURCE_DIR}/ToyParser)
 
 # Define paths
 set(ANTLR4_LOCAL "${CMAKE_CURRENT_SOURCE_DIR}/antlr-4.10-complete.jar")
-if(EXISTS /usr/bin/antlr4)
-    set(ANTLR4_SCRIPT "/usr/bin/antlr4")
-    set(ANTLR4_PREFIX "/usr")
-else()
-    set(ANTLR4_SCRIPT "${HOME}/.local/bin/antlr4")
-endif()
+#if(EXISTS /usr/bin/antlr4)
+#    set(ANTLR4_SCRIPT "/usr/bin/antlr4")
+#    set(ANTLR4_PREFIX "/usr")
+#else()
+#    set(ANTLR4_SCRIPT "${HOME}/.local/bin/antlr4")
+#endif()
 set(GRAMMAR_FILE "${CMAKE_CURRENT_SOURCE_DIR}/Toy.g4")
 set(ANTLR_OUTPUT_DIR "${CMAKE_BINARY_DIR}/ToyParser")
 
 # Ensure output directory exists
 file(MAKE_DIRECTORY ${ANTLR_OUTPUT_DIR})
 
-# Check if ~/.local/bin/antlr4 exists
-if(EXISTS ${ANTLR4_SCRIPT})
-
-    message(STATUS "ANTLR4_PREFIX in: ${ANTLR4_PREFIX}")
-    include_directories(${ANTLR4_PREFIX}/include/antlr4-runtime)
-
-    # Use the local ANTLR4 script
-    message(STATUS "Using ANTLR4 from ${ANTLR4_SCRIPT}")
-    add_custom_command(
-        OUTPUT
-            ${ANTLR_OUTPUT_DIR}/ToyBaseListener.cpp
-            ${ANTLR_OUTPUT_DIR}/ToyListener.cpp
-            ${ANTLR_OUTPUT_DIR}/ToyParser.cpp
-            ${ANTLR_OUTPUT_DIR}/ToyLexer.cpp
-        COMMAND
-            ${ANTLR4_SCRIPT} -Dlanguage=Cpp ${GRAMMAR_FILE} -listener -o ${ANTLR_OUTPUT_DIR}
-        DEPENDS
-            ${GRAMMAR_FILE}
-        WORKING_DIRECTORY
-            ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMENT
-            "Generating ANTLR grammar files with ${ANTLR4_SCRIPT}"
-    )
-else()
-    # my ubuntu/WSL system:
+# Check if ~/.local/bin/antlr4 exists.
+#if(EXISTS ${ANTLR4_SCRIPT})
+#
+#    message(STATUS "ANTLR4_PREFIX in: ${ANTLR4_PREFIX}")
+#    include_directories(${ANTLR4_PREFIX}/include/antlr4-runtime)
+#
+#    # Use the local ANTLR4 script
+#    message(STATUS "Using ANTLR4 from ${ANTLR4_SCRIPT}")
+#    add_custom_command(
+#        OUTPUT
+#            ${ANTLR_OUTPUT_DIR}/ToyBaseListener.cpp
+#            ${ANTLR_OUTPUT_DIR}/ToyListener.cpp
+#            ${ANTLR_OUTPUT_DIR}/ToyParser.cpp
+#            ${ANTLR_OUTPUT_DIR}/ToyLexer.cpp
+#        COMMAND
+#            ${ANTLR4_SCRIPT} -Dlanguage=Cpp ${GRAMMAR_FILE} -listener -o ${ANTLR_OUTPUT_DIR}
+#        DEPENDS
+#            ${GRAMMAR_FILE}
+#        WORKING_DIRECTORY
+#            ${CMAKE_CURRENT_SOURCE_DIR}
+#        COMMENT
+#            "Generating ANTLR grammar files with ${ANTLR4_SCRIPT}"
+#    )
+#else()
+    # Ubuntu/WSL, Fedora 42, or Ambian/ubuntu:
 
     # Use the Java-based ANTLR4 with the JAR file
     message(STATUS "Using ANTLR4 JAR from ${ANTLR4_LOCAL}")
@@ -87,7 +87,20 @@ else()
     )
 
     include_directories(/usr/include/antlr4-runtime)
+#endif()
+
+# Check the target architecture
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+    set(IS_AARCH64 TRUE)
+    set(LLVM_TARGET_ARCH "ARM")
+else()
+    set(IS_AARCH64 FALSE)
+    set(LLVM_TARGET_ARCH "X86")
 endif()
+
+# Optional: Print the results
+message(STATUS "Architecture is aarch64: ${IS_AARCH64}")
+message(STATUS "LLVM Architecture specific libraries: ${LLVM_ARCH_LIBS}")
 
 # Create a custom target to ensure the grammar files are generated
 add_custom_target(
@@ -99,9 +112,9 @@ add_custom_target(
         ${ANTLR_OUTPUT_DIR}/ToyLexer.cpp
 )
 
-if(NOT EXISTS "/usr/include/antlr4-runtime")
-    link_directories(${ANTLR4_PREFIX}/lib64)
-endif()
+#if(NOT EXISTS "/usr/include/antlr4-runtime")
+#    link_directories(${ANTLR4_PREFIX}/lib64)
+#endif()
 
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
@@ -180,10 +193,10 @@ target_link_libraries(toycalculator
   PRIVATE
   antlr4-runtime
   LLVMSupport
-  LLVMX86AsmParser         # LLVMInitializeX86AsmParser
-  LLVMX86CodeGen           # LLVMInitializeX86Target
-  LLVMX86Desc              # LLVMInitializeX86TargetMC
-  LLVMX86Info              # LLVMInitializeX86TargetInfo
+  LLVM${LLVM_TARGET_ARCH}AsmParser
+  LLVM${LLVM_TARGET_ARCH}CodeGen
+  LLVM${LLVM_TARGET_ARCH}Desc
+  LLVM${LLVM_TARGET_ARCH}Info
   MLIRAnalysis
   MLIRArithDialect
   MLIRArithToLLVM
@@ -216,7 +229,7 @@ target_link_libraries(toycalculator
   MLIRRewritePDL
   MLIRRuntimeVerifiableOpInterface
   MLIRSCFDialect
-  MLIRSCFToControlFlow      # createConvertSCFToCFPass
+  MLIRSCFToControlFlow
   MLIRSideEffectInterfaces
   MLIRSubsetOpInterface
   MLIRSupport
@@ -227,3 +240,4 @@ target_link_libraries(toycalculator
   MLIRViewLikeInterface
   MLIRTargetLLVMIRExport    # mlir::translateModuleToLLVMIR
 )
+
