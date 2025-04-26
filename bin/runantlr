@@ -1,0 +1,98 @@
+#!/usr/bin/perl
+
+#-----------------------------------------------------------------------------
+# POD Format Documentation.  Read "perldoc perlpod" for an example.
+# When done, check syntax with "podchecker".
+
+=head1 NAME
+
+runantlr - <one-line-description>
+
+=head1 SYNOPSIS
+
+runantlr [--help] [<options>]
+
+=head1 DESCRIPTION
+
+Options:
+
+=over 4
+
+=item --foo=bar
+
+Blah.
+
+=back
+
+=head1 SUPPORTED PLATFORMS
+
+ Unix (Linux verified)
+
+=head1 SUPPORT
+
+ Send email to peeterjoot@pm.me
+
+=head1 AUTHORS
+
+ Peeter Joot
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+use strict ;
+use warnings ;
+use Getopt::Long ;
+use Pod::Usage ;
+
+# Suppress sourcing of users' .bashrc files in invoked shells
+delete $ENV{'ENV'} ;
+delete $ENV{'BASH_ENV'} ;
+
+# Set STDOUT and STDERR to unbuffered
+select STDERR ; $| = 1 ;
+select STDOUT ; $| = 1 ;
+
+my $myName = '' ;
+my $grammar = '';
+my $outdir = '';
+($myName = $0) =~ s@.*[/\\]@@ ;
+
+#Getopt::Long::Configure( 'pass_through' ) ;
+GetOptions (
+   'help'               => sub { pod2usage(-verbose => 2) ; },
+   'grammar=s'          => \$grammar,
+   'outdir=s'           => \$outdir,
+) or pod2usage(-verbose => 0) ;
+
+die "required argument: --grammar Toy.g4" unless ( $grammar );
+die "required argument: --outdir dir" unless ( $outdir );
+
+my $version;
+if ( -e "/etc/debian_version" )
+{
+   $version=`dpkg -l antlr4 | sed 's/-.*//'`
+}
+else
+{
+   $version=`rpm -q antlr4 | sed 's/antlr4-//;s/-.*//;'`
+}
+chomp $version;
+
+my $jar = "$ENV{'HOME'}/toycalculator/antlr-${version}-complete.jar";
+
+my $antlr4;
+if ( -e "$jar" )
+{
+   $antlr4 = "java -Xmx500M -cp ${jar} org.antlr.v4.Tool";
+}
+else
+{
+   $antlr4 = 'antlr4';
+}
+
+my $cmd= qq($antlr4 -Dlanguage=Cpp ${grammar} -listener -o ${outdir});
+print "# $cmd\n";
+exec( qq($antlr4 -Dlanguage=Cpp ${grammar} -listener -o ${outdir}) );
+
+# vim: et ts=3 sw=3

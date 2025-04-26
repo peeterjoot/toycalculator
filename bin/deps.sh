@@ -5,7 +5,8 @@ set -x
 if [ -e "/etc/debian_version" ] ; then
 	version=`dpkg -l antlr4 | sed 's/-.*//'`
 else
-	version=`rpm -q antlr4 | sed 's/-.*//'`
+	version=`rpm -q antlr4 | sed 's/antlr4-//;s/-.*//;'`
 fi
 
-echo wget https://www.antlr.org/download/antlr-${version}-complete.jar
+wget https://www.antlr.org/download/antlr-${version}-complete.jar
+
