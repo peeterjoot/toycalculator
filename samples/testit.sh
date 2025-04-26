@@ -1,6 +1,8 @@
 set -x
 
 for i in \
+empty.toy \
+dcl.toy \
 simplest.toy \
 foo.toy \
 test.toy \
