@@ -1,0 +1,55 @@
+#! /usr/bin/bash
+
+set -x
+
+cd 
+
+if [ -d "$HOME/llvm-project" ] ; then
+    echo "Found: $HOME/llvm-project"
+else
+    git clone https://github.com/llvm/llvm-project.git
+    git checkout llvmorg-20.1.3
+fi
+
+BUILDDIR=~/build-llvm
+rm -rf $BUILDDIR
+mkdir $BUILDDIR
+cd $BUILDDIR
+
+BUILD_TYPE=Debug
+#BUILD_TYPE=Release
+
+INSTDIR=/usr/local/llvm-20.1.3
+
+ARCH=`uname -m`
+
+if [ $ARCH eq "aarch64" ]; then
+    TARGETS='ARM'
+else
+    TARGETS='X86'
+fi
+
+# By default need to compile code that uses llvm/mlir with -fno-rtti, or else we get link errors.
+# However, antlr4 uses dynamic-cast, so we have to enable rtti if using that.
+
+cmake \
+-G \
+Ninja \
+../llvm-project/llvm \
+-DBUILD_SHARED_LIBS=true \
+-DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
+-DLLVM_ENABLE_ASSERTIONS=TRUE \
+-DLLVM_OPTIMIZED_TABLEGEN=ON \
+-DLLVM_LIBDIR_SUFFIX=64 \
+-DCMAKE_INSTALL_RPATH=${INSTDIR}/lib64 \
+-DLLVM_TARGETS_TO_BUILD="${TARGETS}" \
+-DCMAKE_INSTALL_PREFIX=${INSTDIR} \
+-DLLVM_ENABLE_RTTI=ON \
+-DLLVM_ENABLE_PROJECTS='mlir'
+
+#ninja
+
+#sudo rm -rf ${INSTDIR}
+#sudo ninja install
+
+# vim: et ts=4 sw=4

@@ -108,6 +108,8 @@ wget https://www.antlr.org/download/antlr-4.10-complete.jar
 
 This assumes that the antlr4 runtime, after installation, is 4.10 -- if not, change appropriately (but CMakeLists.txt will also need to be updated.)
 
+I had issues where the installed runtime didn't exactly match the generator.  I forget which system I saw that on.  That's why I had the separate jar download, but would have to verify which machine actualy required that.  Should abstract out the antlr4 invocation, instead of having complicated Cmake logic.
+
 ### anltlr4 setup (Fedora)
 
 ```
