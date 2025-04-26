@@ -37,7 +37,7 @@ namespace
             LLVM_DEBUG( llvm::dbgs()
                         << "Lowering toy.program: " << *op << "\n" );
 
-            // Create an LLVM function with an explicit entry block
+            // Create an LLVM function
             auto funcType =
                 LLVM::LLVMFunctionType::get( rewriter.getI32Type(), {} );
             auto funcOp = rewriter.create<LLVM::LLVMFuncOp>(
@@ -114,17 +114,29 @@ namespace
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.print: " << *op << "\n" );
 
-            // Verify memref type
-            if ( !mlir::isa<MemRefType>( memref.getType() ) )
+            // Handle both memref<f64> and !llvm.ptr
+            Type memrefType = memref.getType();
+            if ( !mlir::isa<MemRefType>( memrefType ) &&
+                 !mlir::isa<LLVM::LLVMPointerType>( memrefType ) )
             {
-                LLVM_DEBUG( llvm::dbgs() << "Invalid memref type: "
-                                         << memref.getType() << "\n" );
+                LLVM_DEBUG( llvm::dbgs()
+                            << "Invalid memref type: " << memrefType << "\n" );
                 return failure();
             }
 
-            // Load the f64 value from the memref
-            auto loadOp =
-                rewriter.create<memref::LoadOp>( loc, memref, ValueRange{} );
+            // If memref is already a pointer, use it directly; otherwise, load
+            // from memref
+            Value loadValue;
+            if ( mlir::isa<LLVM::LLVMPointerType>( memrefType ) )
+            {
+                loadValue = rewriter.create<LLVM::LoadOp>(
+                    loc, rewriter.getF64Type(), memref );
+            }
+            else
+            {
+                loadValue = rewriter.create<memref::LoadOp>( loc, memref,
+                                                             ValueRange{} );
+            }
 
             // Ensure print function exists
             auto module = op->getParentOfType<ModuleOp>();
@@ -143,7 +155,7 @@ namespace
 
             // Call the print function
             rewriter.create<LLVM::CallOp>( loc, printFunc,
-                                           ValueRange{ loadOp } );
+                                           ValueRange{ loadValue } );
 
             // Erase the print op
             rewriter.eraseOp( op );
@@ -186,19 +198,31 @@ namespace
         {
             auto unaryOp = cast<toy::UnaryOp>( op );
             auto loc = unaryOp.getLoc();
-            auto operand = operands[0];    // i64 value
+            auto operand = operands[0];
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.unary: " << *op << "\n" );
 
-            // Convert i64 to f64
-            Value result = rewriter.create<LLVM::SIToFPOp>(
-                loc, rewriter.getF64Type(), operand );
+            // Convert i64 to f64 if necessary
+            Value result = operand;
+            if ( operand.getType().isInteger( 64 ) )
+            {
+                result = rewriter.create<LLVM::SIToFPOp>(
+                    loc, rewriter.getF64Type(), operand );
+            }
+
+            // Apply unary operation
             if ( unaryOp.getOp() == "-" )
             {
                 auto zero = rewriter.create<LLVM::ConstantOp>(
                     loc, rewriter.getF64Type(),
                     rewriter.getF64FloatAttr( 0.0 ) );
                 result = rewriter.create<LLVM::FSubOp>( loc, zero, result );
+            }
+            else if ( unaryOp.getOp() != "+" )
+            {
+                LLVM_DEBUG( llvm::dbgs() << "Unsupported unary op: "
+                                         << unaryOp.getOp() << "\n" );
+                return failure();
             }
 
             rewriter.replaceOp( op, result );
@@ -260,8 +284,7 @@ namespace
                 return failure();
             }
 
-            rewriter.replaceOp( op, result );
-            return success();
+            return failure();    // Only handle i64 constants for now
         }
     };
 
@@ -293,7 +316,7 @@ namespace
                 return success();
             }
 
-            return failure();    // Only handle i64 constants for now
+            return failure();
         }
     };
 
@@ -315,7 +338,7 @@ namespace
             LLVM_DEBUG( llvm::dbgs()
                         << "Lowering memref.alloca: " << *op << "\n" );
 
-            // Allocate memory for the memref type (e.g., f64)
+            // Allocate memory for the memref type (f64)
             auto memRefType = mlir::cast<MemRefType>( allocaOp.getType() );
             auto elemType = memRefType.getElementType();
             auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
@@ -346,6 +369,15 @@ namespace
 
             LLVM_DEBUG( llvm::dbgs()
                         << "Lowering memref.store: " << *op << "\n" );
+
+            // Ensure the second operand is a pointer
+            if ( !mlir::isa<LLVM::LLVMPointerType>( operands[1].getType() ) &&
+                 !mlir::isa<MemRefType>( operands[1].getType() ) )
+            {
+                LLVM_DEBUG( llvm::dbgs() << "Invalid store pointer type: "
+                                         << operands[1].getType() << "\n" );
+                return failure();
+            }
 
             rewriter.create<LLVM::StoreOp>( loc, operands[0], operands[1] );
             rewriter.eraseOp( op );
@@ -388,9 +420,6 @@ namespace
 
         void getDependentDialects( DialectRegistry &registry ) const override
         {
-            // Note: func::FuncDialect is omitted because the input IR
-            // (toy.program) does not use func ops, and we avoid dependencies on
-            // FuncOps.h.
             registry.insert<LLVM::LLVMDialect, arith::ArithDialect>();
         }
 
@@ -420,9 +449,9 @@ namespace
             arith::populateArithToLLVMConversionPatterns( typeConverter,
                                                           patterns );
 
-            LLVM_DEBUG( llvm::dbgs() << "Applying full conversion\n" );
-            if ( failed( applyFullConversion( getOperation(), target,
-                                              std::move( patterns ) ) ) )
+            LLVM_DEBUG( llvm::dbgs() << "Applying partial conversion\n" );
+            if ( failed( applyPartialConversion( getOperation(), target,
+                                                 std::move( patterns ) ) ) )
             {
                 LLVM_DEBUG( llvm::dbgs() << "Conversion failed\n" );
                 signalPassFailure();
