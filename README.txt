@@ -56,7 +56,7 @@ This is how I build and installed my llvm:
 	INSTDIR=/usr/local/llvm-20.1.3
 
 	# By default need to compile code that uses llvm/mlir with -fno-rtti, or else we get link errors.  However, antlr4 uses dynamic-cast, so we have to enable rtti if using that.
-	TARGETS='X86'
+	TARGETS='X86;ARM'
 	cmake \
 	-G \
 	Ninja \
