@@ -3,7 +3,11 @@ grammar Toy;
 startRule : statement* EOF;
 
 statement
-   : (declare | assignment | print)+
+   : (declare | assignment | print | comment)+
+   ;
+
+comment
+   : COMMENT
    ;
 
 declare
@@ -41,6 +45,10 @@ unaryoperator
 element
    : (INTEGERLITERAL | VARIABLENAME)
    ;
+
+COMMENT
+    : '//' ~[\r\n]* -> skip
+    ;
 
 EQUALS         : '=';
 SEMICOLON      : ';';

@@ -7,6 +7,7 @@ It implements a toy calculator language that supports a few primitive linguistic
 * a DECLARE operation,
 * an ASSIGNMENT operator (=) with unary (+,-) and binary operators (+,-,*,/), and
 * a PRINT operation.
+* single line comments.
 
 Integer constants are allowed in the assignment, but compuations are (currently) floating point.
 
@@ -26,10 +27,12 @@ Example: samples/foo.toy
 ```
 DCL x;
 x = 3;
+// This indenting is to test location generation, and verify that the columnar count is right.
      PRINT x;
 ```
 
 This is not the simplest program, which would just be a DECLARE, but the simplest non-trivial program that generates enough IR to be interesting.
+Note that the reason that PRINT is indented here was to test the location info, and make sure the column counts were in the right place.
 
 Here is the MLIR for the code above:
 
