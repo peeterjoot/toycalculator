@@ -163,6 +163,7 @@ add_dependencies(toycalculator toy_runtime GenerateANTLR ToyDialectIncGen ToyPas
 
 target_compile_options(toycalculator PRIVATE
   -fdiagnostics-show-option
+  -fdiagnostics-all-candidates
   -Wall
   -Wextra
   -Wno-comment
