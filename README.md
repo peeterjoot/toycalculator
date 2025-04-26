@@ -19,6 +19,8 @@ AI tools (Grok and ChatGPT) were used to generate some of the initial framework 
 As of the time of this writing (Apr 2025), considerable effort is required to keep both Grok and ChatGPT from halucinating MLIR or LLVM APIs that don't exist,
 but the tools were invaluable for getting things started.
 
+As an example of the pain of working with AI tools, here's a trivial example: I asked Grok to add comments to my grammar and fix the indenting, but it took 20 minutes to coerse it to use the grammar that I asked it to use (as it claims the ability to read internet content), but it kept making stuff up and injecting changes to the semantics and making changing grammar element name changes that would have broken my listener class.
+
 I'd like to add enough language elements to the project to make it interesting, and now that I have the basic framework, I should be able to
 do that without bothering with AI tools that can be more work to use than just doing it yourself.
 
