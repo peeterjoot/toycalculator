@@ -3,19 +3,19 @@
 This project uses an antlr4 grammar, an MLIR builder, and MLIR lowering to LLVM IR.
 
 It implements a toy calculator language that supports a few primitive linguistic elements:
+
 * a DECLARE operation,
-* an ASSIGNMENT operator (=) with unary and binary operators (+-, +-*/), and
+* an ASSIGNMENT operator (=) with unary (+,-) and binary operators (+,-,*,/), and
 * a PRINT operation.
 
 Integer constants are allowed in the assignment, but compuations are (currently) floating point.
 
 The goal was to understand the MLIR ecosystem.
 I'd seen MLIR in action in prototype projects at work, but didn't get to play with it first hand.
-Overall, it just makes sense to use a structured mechanism to generate an AST equivalent (with built in semantic checking if desired), instead of handcoding
-the parser to AST stage of the compiler.
+Overall, it just makes sense to use a structured mechanism to generate an AST equivalent, with built in semantic checking as desired, instead of handcoding the parser to AST stage of the compiler.
 
 AI tools (Grok and ChatGPT) were used to generate some of the initial framework for this project.
-As of the time of this writing (Apr 2025), considerable effort is required to keep both Grok and ChatGPT from halucinating APIs that don't exist,
+As of the time of this writing (Apr 2025), considerable effort is required to keep both Grok and ChatGPT from halucinating MLIR or LLVM APIs that don't exist,
 but the tools were invaluable for getting things started.
 
 I'd like to add enough language elements to the project to make it interesting, and now that I have the basic framework, I should be able to
@@ -29,7 +29,9 @@ x = 3;
      PRINT x;
 ```
 
-Here is the MLIR for this little module:
+This is not the simplest program, which would just be a DECLARE, but the simplest non-trivial program that generates enough IR to be interesting.
+
+Here is the MLIR for the code above:
 
 ```> ./build/toycalculator  samples/foo.toy  --location
 "builtin.module"() ({
@@ -77,13 +79,13 @@ FATAL ERROR: LLVM lowering failed
 ```
 
 I don't like the llvm.func for PRINT runtime method embedded in the codegen for the fake "main" function for the program.
-It would be good to have a pass that finds all the global symbols and emits the LLVM IR for those upfront.
-It also makes things difficult not to have a notion of functions (esp. one for main), and adding that would simplify lowering.
+It would be good to have a pass that finds all the global symbols and emits the LLVM IR for those upfront.  Alternatively, the parse listener could collect all the global symbols (right now just PRINT, serialized as __toy_print), and generate an MLIR element for all such symbols that could be processed in a pass before any other codegen.
+It actually makes things difficult not to have a notion of functions (esp. one for main), and adding that would simplify lowering (and make the language have some utility.)
 
 ## TODO
 
 * LLVM IR lowering.  This is in progress.
-* Floating point constants (will touch the grammar, builder and lowering)
+* Floating point constants (will touch the grammar, builder and lowering.)
 * Types: fixed size integers and maybe floating point types of different sizes (not just double equivialent.)
 * Function calls (to more than the single PRINT runtime function.)
 * Implement a JIT so that the "language" has the capability of a static compilation mode, as well as interpretted.
@@ -107,21 +109,26 @@ Like above, this assumes that the antlr4 runtime is 4.10.
 
 ### Building MLIR
 
-I needed a custom build of llvm/mlir, as I didn't find a package that had the MLIR tablegen files.
-Then had to refine that to enable rtti, as altlr4 uses dynamic_cast<>, so -fno-rtti breaks it (without -fno-rtti, I was getting typeinfo symbol link errors.)
+On both ubuntu and fedora, I needed a custom build of llvm/mlir, as I didn't find a package that had the MLIR tablegen files.
+As it turned out, a custom llvm/mlir build was also required to specifically enable rtti, as altlr4 uses dynamic_cast<>.
+The -fno-rtti that is required by default to avoid typeinfo symbol link errors, explicitly breaks the antlr4 header files.
+I'm not actually sure if the llvm-project has a generic lexer/parser, or if those are all language specific.
+Having used antlr4 for previous prototyping, also generating a C++ listener, it made sense to me to use what I knew.
 
-See bin/buildllvm for how I built and installed my llvm+mlir.
+See bin/buildllvm for how I built and deployed the llvm+mlir installation used for this project.
 
 ### Building the project.
 
 . ./bin/env
 build.sh
 
-The build script current assumes that I'm the one building it, and is likely not sufficiently general for other people to use.
+The build script current assumes that I'm the one building it, and is likely not sufficiently general for other people to use, and will surely break as I upgrade the systems I attempt to build it on.
 
-Linux only is assumed.  Depending on what I currently have booted, this has been on a mix of:
+Linux-only is assumed.
 
-* Fedora 42/X64,
-* WSL ubuntu 24/X64, and
-* Ambian (ubuntu) on an (ARM) raspberry PI.
+Depending on what I currently have booted, this has been on a mix of:
+
+* Fedora 42/X64 (on a dual boot windows-11/Linux laptop)
+* WSL ubuntu 24/X64 (windows side, same laptop.)
+* Ambian (ubuntu), running on an raspberry PI (this is why there is an ARM case in buildllvm and CMakeLists.txt)
 
