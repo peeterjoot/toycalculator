@@ -11,6 +11,7 @@
 
 #include "ToyDialect.h"
 #include "ToyToLLVMLowering.h"
+
 #define DEBUG_TYPE "toy-lowering"
 
 using namespace mlir;
@@ -21,15 +22,15 @@ namespace
     class ProgramOpLowering : public ConversionPattern
     {
        public:
-        ProgramOpLowering( MLIRContext *context )
+        ProgramOpLowering( MLIRContext* context )
             : ConversionPattern( toy::ProgramOp::getOperationName(), 1,
                                  context )
         {
         }
 
         LogicalResult matchAndRewrite(
-            Operation *op, ArrayRef<Value> operands,
-            ConversionPatternRewriter &rewriter ) const override
+            Operation* op, ArrayRef<Value> operands,
+            ConversionPatternRewriter& rewriter ) const override
         {
             auto programOp = cast<toy::ProgramOp>( op );
             auto loc = programOp.getLoc();
@@ -44,15 +45,10 @@ namespace
                 loc, "__toy_main", funcType, LLVM::Linkage::External );
 
             // Ensure the function has an entry block
-            Region &funcRegion = funcOp.getBody();
-            if ( funcRegion.empty() )
-            {
-                funcRegion.push_back( new Block() );
-            }
-            Block *entryBlock = &funcRegion.front();
+            Block* entryBlock = funcOp.addEntryBlock( rewriter );
 
             // Inline the program's region into the entry block
-            Region &programRegion = programOp.getBody();
+            Region& programRegion = programOp.getBody();
             if ( !programRegion.empty() )
             {
                 rewriter.inlineRegionBefore( programRegion, entryBlock );
@@ -62,7 +58,7 @@ namespace
                 LLVM_DEBUG( llvm::dbgs() << "Program region is empty\n" );
             }
 
-            // Add a return operation
+            // Add a return operation at the end of the entry block
             rewriter.setInsertionPointToEnd( entryBlock );
             auto zero = rewriter.create<LLVM::ConstantOp>(
                 loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr( 0 ) );
@@ -78,15 +74,15 @@ namespace
     class DeclareOpLowering : public ConversionPattern
     {
        public:
-        DeclareOpLowering( MLIRContext *context )
+        DeclareOpLowering( MLIRContext* context )
             : ConversionPattern( toy::DeclareOp::getOperationName(), 1,
                                  context )
         {
         }
 
         LogicalResult matchAndRewrite(
-            Operation *op, ArrayRef<Value> operands,
-            ConversionPatternRewriter &rewriter ) const override
+            Operation* op, ArrayRef<Value> operands,
+            ConversionPatternRewriter& rewriter ) const override
         {
             LLVM_DEBUG( llvm::dbgs()
                         << "Lowering toy.declare: " << *op << "\n" );
@@ -99,14 +95,14 @@ namespace
     class PrintOpLowering : public ConversionPattern
     {
        public:
-        PrintOpLowering( MLIRContext *context )
+        PrintOpLowering( MLIRContext* context )
             : ConversionPattern( toy::PrintOp::getOperationName(), 1, context )
         {
         }
 
         LogicalResult matchAndRewrite(
-            Operation *op, ArrayRef<Value> operands,
-            ConversionPatternRewriter &rewriter ) const override
+            Operation* op, ArrayRef<Value> operands,
+            ConversionPatternRewriter& rewriter ) const override
         {
             auto printOp = cast<toy::PrintOp>( op );
             auto loc = printOp.getLoc();
@@ -124,8 +120,7 @@ namespace
                 return failure();
             }
 
-            // If memref is already a pointer, use it directly; otherwise, load
-            // from memref
+            // Load the value
             Value loadValue;
             if ( mlir::isa<LLVM::LLVMPointerType>( memrefType ) )
             {
@@ -167,14 +162,14 @@ namespace
     class AssignOpLowering : public ConversionPattern
     {
        public:
-        AssignOpLowering( MLIRContext *context )
+        AssignOpLowering( MLIRContext* context )
             : ConversionPattern( toy::AssignOp::getOperationName(), 1, context )
         {
         }
 
         LogicalResult matchAndRewrite(
-            Operation *op, ArrayRef<Value> operands,
-            ConversionPatternRewriter &rewriter ) const override
+            Operation* op, ArrayRef<Value> operands,
+            ConversionPatternRewriter& rewriter ) const override
         {
             LLVM_DEBUG( llvm::dbgs()
                         << "Lowering toy.assign: " << *op << "\n" );
@@ -187,14 +182,14 @@ namespace
     class UnaryOpLowering : public ConversionPattern
     {
        public:
-        UnaryOpLowering( MLIRContext *context )
+        UnaryOpLowering( MLIRContext* context )
             : ConversionPattern( toy::UnaryOp::getOperationName(), 1, context )
         {
         }
 
         LogicalResult matchAndRewrite(
-            Operation *op, ArrayRef<Value> operands,
-            ConversionPatternRewriter &rewriter ) const override
+            Operation* op, ArrayRef<Value> operands,
+            ConversionPatternRewriter& rewriter ) const override
         {
             auto unaryOp = cast<toy::UnaryOp>( op );
             auto loc = unaryOp.getLoc();
@@ -233,14 +228,14 @@ namespace
     // Lower toy.binary to LLVM arithmetic.
     struct BinaryOpLowering : public ConversionPattern
     {
-        BinaryOpLowering( MLIRContext *ctx )
+        BinaryOpLowering( MLIRContext* ctx )
             : ConversionPattern( toy::BinaryOp::getOperationName(), 1, ctx )
         {
         }
 
         LogicalResult matchAndRewrite(
-            Operation *op, ArrayRef<Value> operands,
-            ConversionPatternRewriter &rewriter ) const override
+            Operation* op, ArrayRef<Value> operands,
+            ConversionPatternRewriter& rewriter ) const override
         {
             auto binaryOp = cast<toy::BinaryOp>( op );
             auto loc = binaryOp.getLoc();
@@ -291,14 +286,14 @@ namespace
     // Lower arith.constant to LLVM constant.
     struct ConstantOpLowering : public ConversionPattern
     {
-        ConstantOpLowering( MLIRContext *ctx )
+        ConstantOpLowering( MLIRContext* ctx )
             : ConversionPattern( arith::ConstantOp::getOperationName(), 1, ctx )
         {
         }
 
         LogicalResult matchAndRewrite(
-            Operation *op, ArrayRef<Value> operands,
-            ConversionPatternRewriter &rewriter ) const override
+            Operation* op, ArrayRef<Value> operands,
+            ConversionPatternRewriter& rewriter ) const override
         {
             auto constantOp = cast<arith::ConstantOp>( op );
             auto loc = constantOp.getLoc();
@@ -323,14 +318,14 @@ namespace
     // Lower memref.alloca to llvm.alloca.
     struct MemRefAllocaOpLowering : public ConversionPattern
     {
-        MemRefAllocaOpLowering( MLIRContext *ctx )
+        MemRefAllocaOpLowering( MLIRContext* ctx )
             : ConversionPattern( memref::AllocaOp::getOperationName(), 1, ctx )
         {
         }
 
         LogicalResult matchAndRewrite(
-            Operation *op, ArrayRef<Value> operands,
-            ConversionPatternRewriter &rewriter ) const override
+            Operation* op, ArrayRef<Value> operands,
+            ConversionPatternRewriter& rewriter ) const override
         {
             auto allocaOp = cast<memref::AllocaOp>( op );
             auto loc = allocaOp.getLoc();
@@ -355,14 +350,14 @@ namespace
     // Lower memref.store to llvm.store.
     struct MemRefStoreOpLowering : public ConversionPattern
     {
-        MemRefStoreOpLowering( MLIRContext *ctx )
+        MemRefStoreOpLowering( MLIRContext* ctx )
             : ConversionPattern( memref::StoreOp::getOperationName(), 1, ctx )
         {
         }
 
         LogicalResult matchAndRewrite(
-            Operation *op, ArrayRef<Value> operands,
-            ConversionPatternRewriter &rewriter ) const override
+            Operation* op, ArrayRef<Value> operands,
+            ConversionPatternRewriter& rewriter ) const override
         {
             auto storeOp = cast<memref::StoreOp>( op );
             auto loc = storeOp.getLoc();
@@ -379,7 +374,15 @@ namespace
                 return failure();
             }
 
-            rewriter.create<LLVM::StoreOp>( loc, operands[0], operands[1] );
+            Value ptr = operands[1];
+            if ( mlir::isa<MemRefType>( ptr.getType() ) )
+            {
+                // If still a memref, assume it will be lowered to a pointer
+                ptr = rewriter.create<memref::LoadOp>( loc, ptr, ValueRange{} )
+                          .getResult();
+            }
+
+            rewriter.create<LLVM::StoreOp>( loc, operands[0], ptr );
             rewriter.eraseOp( op );
             return success();
         }
@@ -388,14 +391,14 @@ namespace
     // Lower memref.load to llvm.load.
     struct MemRefLoadOpLowering : public ConversionPattern
     {
-        MemRefLoadOpLowering( MLIRContext *ctx )
+        MemRefLoadOpLowering( MLIRContext* ctx )
             : ConversionPattern( memref::LoadOp::getOperationName(), 1, ctx )
         {
         }
 
         LogicalResult matchAndRewrite(
-            Operation *op, ArrayRef<Value> operands,
-            ConversionPatternRewriter &rewriter ) const override
+            Operation* op, ArrayRef<Value> operands,
+            ConversionPatternRewriter& rewriter ) const override
         {
             auto loadOp = cast<memref::LoadOp>( op );
             auto loc = loadOp.getLoc();
@@ -418,9 +421,10 @@ namespace
        public:
         MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID( ToyToLLVMLoweringPass )
 
-        void getDependentDialects( DialectRegistry &registry ) const override
+        void getDependentDialects( DialectRegistry& registry ) const override
         {
-            registry.insert<LLVM::LLVMDialect, arith::ArithDialect>();
+            registry.insert<LLVM::LLVMDialect, arith::ArithDialect,
+                            memref::MemRefDialect>();
         }
 
         void runOnOperation() override
@@ -442,16 +446,15 @@ namespace
 
             RewritePatternSet patterns( &getContext() );
             patterns.add<ProgramOpLowering, DeclareOpLowering, AssignOpLowering,
-                         UnaryOpLowering, BinaryOpLowering, PrintOpLowering,
-                         ConstantOpLowering, MemRefAllocaOpLowering,
-                         MemRefStoreOpLowering, MemRefLoadOpLowering>(
-                &getContext() );
+                         UnaryOpLowering, PrintOpLowering, ConstantOpLowering,
+                         MemRefAllocaOpLowering, MemRefStoreOpLowering,
+                         MemRefLoadOpLowering>( &getContext() );
             arith::populateArithToLLVMConversionPatterns( typeConverter,
                                                           patterns );
 
-            LLVM_DEBUG( llvm::dbgs() << "Applying partial conversion\n" );
-            if ( failed( applyPartialConversion( getOperation(), target,
-                                                 std::move( patterns ) ) ) )
+            LLVM_DEBUG( llvm::dbgs() << "Applying full conversion\n" );
+            if ( failed( applyFullConversion( getOperation(), target,
+                                              std::move( patterns ) ) ) )
             {
                 LLVM_DEBUG( llvm::dbgs() << "Conversion failed\n" );
                 signalPassFailure();
