@@ -94,16 +94,16 @@ It actually makes things difficult not to have a notion of functions (esp. one f
 
 ### anltlr4 setup (ubuntu)
 
-sudo apt-get install libantlr4-runtime-dev
+```sudo apt-get install libantlr4-runtime-dev
 sudo apt-get install antlr4
-wget https://www.antlr.org/download/antlr-4.10-complete.jar
+wget https://www.antlr.org/download/antlr-4.10-complete.jar```
 
 This assumes that the antlr4 runtime, after installation, is 4.10 -- if not, change appropriately (but CMakeLists.txt will also need to be updated.)
 
 ### anltlr4 setup (Fedora)
 
-sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-devel
-wget https://www.antlr.org/download/antlr-4.10-complete.jar
+```sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-devel
+wget https://www.antlr.org/download/antlr-4.10-complete.jar```
 
 Like above, this assumes that the antlr4 runtime is 4.10.
 
