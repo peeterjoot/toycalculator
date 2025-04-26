@@ -33,7 +33,8 @@ This is not the simplest program, which would just be a DECLARE, but the simples
 
 Here is the MLIR for the code above:
 
-```> ./build/toycalculator  samples/foo.toy  --location
+```
+> ./build/toycalculator  samples/foo.toy  --location
 "builtin.module"() ({
   "toy.program"() ({
     %0 = "memref.alloca"() <{operandSegmentSizes = array<i32: 0, 0>}> : () -> memref<f64> loc(#loc1)
@@ -54,7 +55,8 @@ Here is the MLIR for the code above:
 
 As currently coded, the LLVM IR lowering is broken, and gets as far as:
 
-``` >./build/toycalculator  samples/foo.toy --emit-llvm --debug
+```
+>./build/toycalculator  samples/foo.toy --emit-llvm --debug
 block with no terminator, has "llvm.call"(%4) <{CConv = #llvm.cconv<ccc>, TailCallKind = #llvm.tailcallkind<none>, callee = @__toy_print, fastmathFlags = #llvm.fastmath<none>, op_bundle_sizes = array<i32>, operandSegmentSizes = array<i32: 1, 0>}> : (f64) -> ()
 mlir-asm-printer: 'builtin.module' failed to verify and will be printed in generic form
 "builtin.module"() ({
@@ -94,7 +96,8 @@ It actually makes things difficult not to have a notion of functions (esp. one f
 
 ### anltlr4 setup (ubuntu)
 
-```sudo apt-get install libantlr4-runtime-dev
+```
+sudo apt-get install libantlr4-runtime-dev
 sudo apt-get install antlr4
 wget https://www.antlr.org/download/antlr-4.10-complete.jar
 ```
@@ -103,7 +106,8 @@ This assumes that the antlr4 runtime, after installation, is 4.10 -- if not, cha
 
 ### anltlr4 setup (Fedora)
 
-```sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-devel
+```
+sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-devel
 wget https://www.antlr.org/download/antlr-4.10-complete.jar
 ```
 
@@ -121,8 +125,10 @@ See bin/buildllvm for how I built and deployed the llvm+mlir installation used f
 
 ### Building the project.
 
+```
 . ./bin/env
 build.sh
+```
 
 The build script current assumes that I'm the one building it, and is likely not sufficiently general for other people to use, and will surely break as I upgrade the systems I attempt to build it on.
 
