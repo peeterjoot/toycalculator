@@ -24,7 +24,52 @@ As an example of the pain of working with AI tools, here's a trivial example: I 
 I'd like to add enough language elements to the project to make it interesting, and now that I have the basic framework, I should be able to
 do that without bothering with AI tools that can be more work to use than just doing it yourself.
 
-Example: samples/foo.toy
+Examples: 
+
+1. samples/empty.toy
+
+```
+// This should be allowed by the grammar.
+```
+
+The MLIR for this program is:
+
+```
+> ../build/toycalculator empty.toy  --location
+"builtin.module"() ({
+  "toy.program"() ({
+  ^bb0:
+  }) : () -> () loc(#loc1)
+}) : () -> () loc(#loc)
+#loc = loc(unknown)
+#loc1 = loc("empty.toy":2:1)
+```
+
+FIXME: why do I have '^bb0:' here, but no basic block markup for foo.toy below?
+
+2.  samples/dcl.toy
+
+```
+DCL x; // The simplest non-empty program.
+```
+
+Results in MLIR like:
+
+```
+> ../build/toycalculator dcl.toy  --location
+"builtin.module"() ({
+  "toy.program"() ({
+    %0 = "memref.alloca"() <{operandSegmentSizes = array<i32: 0, 0>}> : () -> memref<f64> loc(#loc1)
+    "toy.declare"() <{name = "x"}> : () -> () loc(#loc1)
+  }) : () -> () loc(#loc1)
+}) : () -> () loc(#loc)
+#loc = loc(unknown)
+#loc1 = loc("dcl.toy":1:1)
+```
+
+3. samples/foo.toy
+
+This is the simplest non-trivial program that generates enough IR to be interesting.
 
 ```
 DCL x;
@@ -32,8 +77,6 @@ x = 3;
 // This indenting is to test location generation, and to verify that the resulting columnar position is right.
      PRINT x;
 ```
-
-This is not the simplest program, which would just be a DECLARE, but the simplest non-trivial program that generates enough IR to be interesting.
 
 Here is the MLIR for the code above:
 

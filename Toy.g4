@@ -122,7 +122,7 @@ INTEGERLITERAL
 
 // Matches variable names (e.g., 'x', 'foo'), consisting of letters (any case) and numbers, but starting with a letter.
 VARIABLENAME
-  : [a-zA-Z][a-zA-Z0-9]+
+  : [a-zA-Z][a-zA-Z0-9]*
   ;
 
 // Matches whitespace (spaces, tabs, newlines) and skips it.
