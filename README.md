@@ -27,12 +27,11 @@ Example: samples/foo.toy
 ```
 DCL x;
 x = 3;
-// This indenting is to test location generation, and verify that the columnar count is right.
+// This indenting is to test location generation, and to verify that the resulting columnar position is right.
      PRINT x;
 ```
 
 This is not the simplest program, which would just be a DECLARE, but the simplest non-trivial program that generates enough IR to be interesting.
-Note that the reason that PRINT is indented here was to test the location info, and make sure the column counts were in the right place.
 
 Here is the MLIR for the code above:
 
@@ -50,10 +49,10 @@ Here is the MLIR for the code above:
   }) : () -> () loc(#loc1)
 }) : () -> () loc(#loc)
 #loc = loc(unknown)
-#loc1 = loc("samples/foo.toy":1:1)
-#loc2 = loc("samples/foo.toy":2:5)
-#loc3 = loc("samples/foo.toy":2:1)
-#loc4 = loc("samples/foo.toy":3:6)
+#loc1 = loc("../samples/foo.toy":1:1)
+#loc2 = loc("../samples/foo.toy":2:5)
+#loc3 = loc("../samples/foo.toy":2:1)
+#loc4 = loc("../samples/foo.toy":4:6)
 ```
 
 As currently coded, the LLVM IR lowering is broken, and gets as far as:
