@@ -1,12 +1,14 @@
 #include <assert.h>
 #include <llvm/Support/CommandLine.h>
+#include <llvm/Support/FileSystem.h>
 #include <llvm/Support/InitLLVM.h>
+#include <llvm/Support/Path.h>
 #include <llvm/Support/TargetSelect.h>
 #include <mlir/Conversion/Passes.h>
 #include <mlir/Pass/PassManager.h>
-#include <mlir/Target/LLVMIR/Export.h>
-#include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
 #include <mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h>
+#include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
+#include <mlir/Target/LLVMIR/Export.h>
 
 #include <format>
 #include <fstream>
@@ -31,11 +33,27 @@ static llvm::cl::opt<bool> enableLocation(
     "location", llvm::cl::desc( "Enable MLIR location output" ),
     llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
 
-// Add command-line option for LLVM IR emission
-static llvm::cl::opt<bool> emitLLVM(
-    "emit-llvm", llvm::cl::desc( "Emit LLVM IR instead of MLIR" ),
-    llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
+static llvm::cl::opt<std::string> outDir(
+    "output-directory", // Option name (used as --outdir)
+    llvm::cl::desc("Output directory for generated files (e.g., .mlir, .ll, .o)"),
+    llvm::cl::value_desc("directory"), // Placeholder in help text
+    llvm::cl::init(""), // Default value (empty string, meaning the path to the source file)
+    llvm::cl::cat(ToyCategory) // Group with other Toy options
+);
 
+// Add command-line option for LLVM IR emission
+static llvm::cl::opt<bool> emitLLVM( "emit-llvm",
+                                     llvm::cl::desc( "Emit LLVM IR" ),
+                                     llvm::cl::init( false ),
+                                     llvm::cl::cat( ToyCategory ) );
+
+// Add command-line option for MLIR emission
+static llvm::cl::opt<bool> emitMLIR( "emit-mlir",
+                                     llvm::cl::desc( "Emit MLIR IR" ),
+                                     llvm::cl::init( false ),
+                                     llvm::cl::cat( ToyCategory ) );
+
+// Noisy debugging output
 static llvm::cl::opt<bool> llvmDEBUG(
     "debug-llvm",
     llvm::cl::desc( "Include MLIR dump, and turn off multithreading" ),
@@ -93,50 +111,95 @@ int main( int argc, char **argv )
         antlr4::tree::ParseTree *tree = parser.startRule();
         antlr4::tree::ParseTreeWalker::DEFAULT.walk( &listener, tree );
 
-        // For now, always dump the original MLIR unconditionally, even if we are doing the LLVM IR lowering pass:
+        // For now, always dump the original MLIR unconditionally, even if we
+        // are doing the LLVM IR lowering pass:
         mlir::OpPrintingFlags flags;
         if ( enableLocation )
         {
             flags.printGenericOpForm().enableDebugInfo( true );
         }
-        listener.getModule().print( llvm::outs(), flags );
+        llvm::StringRef stem = llvm::sys::path::stem( filename );
+        if ( stem.empty() )
+        {
+            throw std::runtime_error( "Invalid filename: empty stem: '" +
+                                      filename + "'" );
+        }
+        llvm::StringRef dirname = llvm::sys::path::parent_path( filename );
+        llvm::SmallString<128> dirWithStem;
+        if ( outDir != "" )
+        {
+            dirWithStem = outDir;
+            llvm::sys::path::append( dirWithStem, stem );
+        }
+        else if ( dirname != "" )
+        {
+            dirWithStem = dirname;
+            llvm::sys::path::append( dirWithStem, stem );
+        }
+        else
+        {
+            dirWithStem = stem;
+        }
+
+        if ( emitMLIR )
+        {
+            llvm::SmallString<128> path = dirWithStem;
+            path += ".mlir";
+            std::error_code EC;
+            llvm::raw_fd_ostream out( path.str(), EC,
+                                      llvm::sys::fs::OF_Text );
+            if ( EC )
+                throw std::runtime_error( "Failed to open file: " +
+                                          EC.message() );
+
+            listener.getModule().print( out, flags );
+        }
+
+        auto module = listener.getModule();
+        auto context = module.getContext();
+
+        // Register dialect translations
+        mlir::registerLLVMDialectTranslation( *context );
+        mlir::registerBuiltinDialectTranslation( *context );
+
+        if ( llvmDEBUG )
+            context->disableMultithreading( true );
+
+        // Set up pass manager for lowering
+        mlir::PassManager pm( context );
+        if ( llvmDEBUG )
+            pm.enableIRPrinting();
+
+        pm.addPass( mlir::createToyToLLVMLoweringPass() );
+        pm.addPass( mlir::createConvertSCFToCFPass() );
+        pm.addPass( mlir::createConvertFuncToLLVMPass() );
+        // pm.addPass(mlir::createConvertMemRefToLLVMPass());
+        pm.addPass( mlir::createFinalizeMemRefToLLVMConversionPass() );
+        // pm.addPass(mlir::createConvertArithToLLVMPass());
+        pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
+
+        if ( llvm::failed( pm.run( module ) ) )
+            throw std::runtime_error( "LLVM lowering failed" );
+
+        // Export to LLVM IR
+        llvm::LLVMContext llvmContext;
+        auto llvmModule =
+            mlir::translateModuleToLLVMIR( module, llvmContext, filename );
+        if ( !llvmModule )
+            throw std::runtime_error( "Failed to translate to LLVM IR" );
 
         if ( emitLLVM )
         {
-            auto module = listener.getModule();
-            auto context = module.getContext();
+            llvm::SmallString<128> path = dirWithStem;
+            path += ".ll";
+            std::error_code EC;
+            llvm::raw_fd_ostream out( path.str(), EC,
+                                      llvm::sys::fs::OF_Text );
+            if ( EC )
+                throw std::runtime_error( "Failed to open file: " +
+                                          EC.message() );
 
-            // Register dialect translations
-            mlir::registerLLVMDialectTranslation( *context );
-            mlir::registerBuiltinDialectTranslation( *context );
-
-            if ( llvmDEBUG )
-                context->disableMultithreading( true );
-
-            // Set up pass manager for lowering
-            mlir::PassManager pm( context );
-            if ( llvmDEBUG )
-                pm.enableIRPrinting();
-
-            pm.addPass( mlir::createToyToLLVMLoweringPass() );
-            pm.addPass( mlir::createConvertSCFToCFPass() );
-            pm.addPass( mlir::createConvertFuncToLLVMPass() );
-            // pm.addPass(mlir::createConvertMemRefToLLVMPass());
-            pm.addPass( mlir::createFinalizeMemRefToLLVMConversionPass() );
-            // pm.addPass(mlir::createConvertArithToLLVMPass());
-            pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
-
-            if ( llvm::failed( pm.run( module ) ) )
-                throw std::runtime_error( "LLVM lowering failed" );
-
-            // Export to LLVM IR
-            llvm::LLVMContext llvmContext;
-            auto llvmModule =
-                mlir::translateModuleToLLVMIR( module, llvmContext, filename );
-            if ( !llvmModule )
-                throw std::runtime_error( "Failed to translate to LLVM IR" );
-
-            llvmModule->print( llvm::outs(), nullptr );
+            llvmModule->print( out, nullptr );
         }
     }
     catch ( const semantic_exception &e )
