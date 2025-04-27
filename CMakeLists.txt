@@ -168,6 +168,9 @@ target_link_libraries(toycalculator
   PRIVATE
   antlr4-runtime
   LLVMSupport
+  LLVMMC # llvm::TargetRegistry::lookupTarget
+  LLVMAnalysis # llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>::AnalysisManager()
+  LLVMPasses
   LLVM${LLVM_TARGET_ARCH}AsmParser
   LLVM${LLVM_TARGET_ARCH}CodeGen
   LLVM${LLVM_TARGET_ARCH}Desc
