@@ -65,8 +65,13 @@ namespace
             entryBlock->getOperations().splice( entryBlock->end(),
                                                 programBlock.getOperations() );
 
+            // Explicitly clear the program region to remove the empty block
+            programRegion.getBlocks().clear();
+
             // Erase the original program op
             rewriter.eraseOp( op );
+
+            LLVM_DEBUG( llvm::dbgs() << "Lowered toy.program: " << *op << '\n' );
 
             return success();
         }
