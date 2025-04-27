@@ -8,7 +8,6 @@
 b __assert_perror_fail
 
 b ProgramOpLowering::matchAndRewrite
-b ModuleOpLowering::matchAndRewrite
 b ReturnOpLowering::matchAndRewrite
 
 ## firstError assignments:

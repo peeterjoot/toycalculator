@@ -77,7 +77,7 @@ int main( int argc, char **argv )
     }
     else
     {
-        filename = "input.calc";
+        filename = "<stdin>.toy";
         inputStream.basic_ios<char>::rdbuf( std::cin.rdbuf() );
     }
 
@@ -132,7 +132,7 @@ int main( int argc, char **argv )
             // Export to LLVM IR
             llvm::LLVMContext llvmContext;
             auto llvmModule =
-                mlir::translateModuleToLLVMIR( module, llvmContext );
+                mlir::translateModuleToLLVMIR( module, llvmContext, filename );
             if ( !llvmModule )
                 throw std::runtime_error( "Failed to translate to LLVM IR" );
 
