@@ -1,55 +1,148 @@
-#! /usr/bin/bash
+#! /usr/bin/perl
 
-set -x
+#-----------------------------------------------------------------------------
+# POD Format Documentation.  Read "perldoc perlpod" for an example.
+# When done, check syntax with "podchecker".
 
-cd
+=head1 NAME
 
-if [ -d "$HOME/llvm-project" ] ; then
-    echo "Found: $HOME/llvm-project"
-else
-    git clone https://github.com/llvm/llvm-project.git
-    git checkout llvmorg-20.1.3
-fi
+buildllvm - build llvm/mlir with RTTI
 
-BUILDDIR=~/build-llvm
-rm -rf $BUILDDIR
-mkdir $BUILDDIR
-cd $BUILDDIR
+=head1 SYNOPSIS
 
-BUILD_TYPE=Debug
-#BUILD_TYPE=Release
+buildllvm [--help] [--dryrun]
 
-INSTDIR=/usr/local/llvm-20.1.3
+=head1 DESCRIPTION
 
-ARCH=`uname -m`
+Options:
 
-if [ $ARCH eq "aarch64" ]; then
-    TARGETS='ARM'
-else
-    TARGETS='X86'
-fi
+=over 4
+
+=item --dryrun
+
+Don't actually run the commands, just show them.
+
+=back
+
+=head1 SUPPORTED PLATFORMS
+
+ Unix (Linux verified)
+
+=head1 SUPPORT
+
+ Send email to peeterjoot@pm.me
+
+=head1 AUTHORS
+
+ Peeter Joot
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+use strict ;
+use warnings ;
+use Getopt::Long ;
+use Pod::Usage ;
+
+# Suppress sourcing of users' .bashrc files in invoked shells
+delete $ENV{'ENV'} ;
+delete $ENV{'BASH_ENV'} ;
+
+# Set STDOUT and STDERR to unbuffered
+select STDERR ; $| = 1 ;
+select STDOUT ; $| = 1 ;
+
+my $myName = '' ;
+my $dryrun = 0;
+
+($myName = $0) =~ s@.*[/\\]@@ ;
+
+#Getopt::Long::Configure( 'pass_through' ) ;
+GetOptions (
+   'help'               => sub { pod2usage(-verbose => 2) ; },
+   'dryrun!'            => \$dryrun,
+) or pod2usage(-verbose => 0) ;
+
+# Validate/handle options, and everything else...
+
+my $HOME = $ENV{'HOME'};
+
+my $builddir = "$HOME/build-llvm";
+mysystem( "(rm -rf $builddir && mkdir $builddir)" );
+mychdir( $builddir );
+
+if ( !(-d "$HOME/llvm-project") )
+{
+    mysystem( "(cd && git clone https://github.com/llvm/llvm-project.git && git checkout llvmorg-20.1.3)" );
+}
+
+my $arch = `uname -m` ; chomp $arch;
+my $targets = 'X86';
+if ( $arch eq 'aarch64' )
+{
+    $targets = 'ARM';
+}
 
 # By default need to compile code that uses llvm/mlir with -fno-rtti, or else we get link errors.
 # However, antlr4 uses dynamic-cast, so we have to enable rtti if using that.
 
-cmake \
--G \
-Ninja \
-../llvm-project/llvm \
--DBUILD_SHARED_LIBS=true \
--DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
--DLLVM_ENABLE_ASSERTIONS=TRUE \
--DLLVM_OPTIMIZED_TABLEGEN=ON \
--DLLVM_LIBDIR_SUFFIX=64 \
--DCMAKE_INSTALL_RPATH=${INSTDIR}/lib64 \
--DLLVM_TARGETS_TO_BUILD="${TARGETS}" \
--DCMAKE_INSTALL_PREFIX=${INSTDIR} \
--DLLVM_ENABLE_RTTI=ON \
--DLLVM_ENABLE_PROJECTS='mlir'
+my $instdir = '/usr/local/llvm-20.1.3';
+my $buildtype = 'Debug';
+#$buildtype = 'Release';
 
-#ninja
+my @cmds = ( qq(cmake ) .
+             qq(-G ) .
+             qq(Ninja ) .
+             qq(../llvm-project/llvm ) .
+             qq(-DBUILD_SHARED_LIBS=true ) .
+             qq(-DCMAKE_BUILD_TYPE=${buildtype} ) .
+             qq(-DLLVM_ENABLE_ASSERTIONS=TRUE ) .
+             qq(-DLLVM_OPTIMIZED_TABLEGEN=ON ) .
+             qq(-DLLVM_LIBDIR_SUFFIX=64 ) .
+             qq(-DCMAKE_INSTALL_RPATH=${instdir}/lib64 ) .
+             qq(-DLLVM_TARGETS_TO_BUILD="${targets}" ) .
+             qq(-DCMAKE_INSTALL_PREFIX=${instdir} ) .
+             qq(-DLLVM_ENABLE_RTTI=ON ) .
+             qq(-DLLVM_ENABLE_PROJECTS='mlir' ),
 
-#sudo rm -rf ${INSTDIR}
-#sudo ninja install
+             qq(ninja),
+
+             qq(sudo rm -rf ${instdir}),
+
+             qq(sudo ninja install) );
+
+foreach ( @cmds )
+{
+    mysystem( $_ );
+}
+
+exit;
+
+sub mysystem
+{
+    my ($cmd) = @_;
+
+    print "$cmd\n";
+
+    unless ( $dryrun ) {
+        system( $cmd );
+        my $rc = $? >> 8;
+
+        exit( $rc ) if ( $rc );
+    }
+}
+
+sub mychdir
+{
+    my ($dir) = @_;
+
+    print "cd $dir\n";
+
+    unless ( $dryrun )
+    {
+        chdir $dir or die;
+    }
+}
 
 # vim: et ts=4 sw=4
