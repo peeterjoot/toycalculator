@@ -1,9 +1,9 @@
-#b enterStartRule
-#b enterDeclare
-#b enterPrint
-#b enterAssignment
-#b enterUnaryexpression
-#b enterBinaryexpression
+b enterStartRule
+b enterDeclare
+b enterPrint
+b enterAssignment
+b enterUnaryexpression
+b enterBinaryexpression
 b __assert_perror_fail
 
 ## firstError assignments:

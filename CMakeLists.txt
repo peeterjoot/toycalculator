@@ -145,6 +145,9 @@ set(COMMON_COMPILE_OPTIONS
 # an attempt to suppress all the rhs == lhs ambiguous messages from the mlir headers:
 #  -Wno-c++20-compat
 
+target_compile_options(toy_runtime PRIVATE ${COMMON_COMPILE_OPTIONS})
+target_compile_options(toycalculator PRIVATE ${COMMON_COMPILE_OPTIONS})
+
 #------------------------------------------------------------------------------
 # Link rules for the toycalculator target:
 
