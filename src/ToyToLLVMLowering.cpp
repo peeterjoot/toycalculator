@@ -508,32 +508,10 @@ namespace
             arith::populateArithToLLVMConversionPatterns( typeConverter,
                                                           patterns );
 
-            LLVM_DEBUG( llvm::dbgs()
-                        << "Applying partial conversion (first phase)\n" );
-            if ( failed( applyPartialConversion( getOperation(), target,
-                                                 std::move( patterns ) ) ) )
+            if ( failed( applyFullConversion( getOperation(), target,
+                                              std::move( patterns ) ) ) )
             {
-                LLVM_DEBUG( llvm::dbgs() << "First phase conversion failed\n" );
-                signalPassFailure();
-                return;
-            }
-
-            // Second phase: No-op, as module is already legal
-            ConversionTarget moduleTarget( getContext() );
-            moduleTarget.addLegalDialect<LLVM::LLVMDialect>();
-            moduleTarget.addLegalOp<mlir::ModuleOp>();    // Keep module legal
-
-            // No patterns needed, as module is legal
-            RewritePatternSet modulePatterns( &getContext() );
-
-            LLVM_DEBUG( llvm::dbgs()
-                        << "Applying partial conversion (second phase)\n" );
-            if ( failed(
-                     applyPartialConversion( getOperation(), moduleTarget,
-                                             std::move( modulePatterns ) ) ) )
-            {
-                LLVM_DEBUG( llvm::dbgs()
-                            << "Second phase conversion failed\n" );
+                LLVM_DEBUG( llvm::dbgs() << "Conversion failed\n" );
                 signalPassFailure();
                 return;
             }
