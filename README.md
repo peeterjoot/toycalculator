@@ -33,7 +33,7 @@ Examples:
 // This should be allowed by the grammar.
 ```
 
-The MLIR for this program is:
+The MLIR for this program used to be:
 
 ```
 > ../build/toycalculator empty.toy  --location
@@ -46,18 +46,37 @@ The MLIR for this program is:
 #loc1 = loc("empty.toy":2:1)
 ```
 
-The '^bb0:' is the MLIR dump representation of an empty basic block.
-In ProgramOpLowering, we will insert a return zero, and will then have a non-empty BB.
-The goal is to be able to lower to LLVM-IR like:
+Where the '^bb0:' is the MLIR dump representation of an empty basic block.
+To help fix this, I introduced a return statement grammar element, and force an implicit return onto the program's BB in the builder, if return was not specified.
 
 ```
+"builtin.module"() ({
+  "toy.program"() ({
+    "toy.return"() : () -> () loc(#loc1)
+  }) : () -> () loc(#loc1)
+}) : () -> () loc(#loc)
+#loc = loc(unknown)
+#loc1 = loc("../samples/empty.toy":2:1)
+```
+
+(FIXME: where did line two come from in loc1 above for the return statement.  Why isn't that line 1 -- the only line in the file?  Also, it would look prettier to have unknown map to line of of the .toy file -- although does that matter since we strip the builtin.module in lowering?)
+
+With that return implemented, and a bunch of lowering tweaks (i.e.: so we don't crash in lowering ProgramOp and ReturnOp), we can now lower this to LLVM-IR:
+
+```
+; ModuleID = '../samples/empty.toy'
+source_filename = "../samples/empty.toy"
+
 define i32 @__toy_main() {
   ret i32 0
 }
+
+!llvm.module.flags = !{!0}
+
+!0 = !{i32 2, !"Debug Info Version", i32 3}
 ```
 
-I've added the RETURN operation, to facilitate lowering of this very simplest program, so that the BB will never be empty.
-If not specified, it will be added in the MLIR builder.
+FIXME: Whatever this "Debug Info" stuff is, it doesn't appear to correspond to the MLIR location info.
 
 2.  samples/dcl.toy
 
@@ -143,9 +162,18 @@ I don't like the llvm.func for PRINT runtime method embedded in the codegen for 
 It would be good to have a pass that finds all the global symbols and emits the LLVM IR for those upfront.  Alternatively, the parse listener could collect all the global symbols (right now just PRINT, serialized as __toy_print), and generate an MLIR element for all such symbols that could be processed in a pass before any other codegen.
 It actually makes things difficult not to have a notion of functions (esp. one for main), and adding that would simplify lowering (and make the language have some utility.)
 
+## Command line options
+
+* --output-directory
+* --emit-llvm
+* --emit-mlir
+* --debug (mlir default option.)
+* --debug-mlir
+* --location (show MLIR location info in the dump.)
+
 ## TODO
 
-* Add a RETURN statement (grammar, listener, builder, lowering.)
+* Add support for a numeric and symbol value for the RETURN statement (grammar, listener, builder, lowering.)
 * LLVM IR lowering.  This is in progress.
 * Floating point constants (will touch the grammar, builder and lowering.)
 * Types: fixed size integers and maybe floating point types of different sizes (not just double equivialent.)

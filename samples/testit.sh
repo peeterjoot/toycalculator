@@ -2,8 +2,8 @@ set -x
 
 for i in \
 empty.toy \
-dcl.toy \
 simplest.toy \
+dcl.toy \
 foo.toy \
 test.toy \
 error_redeclare.toy \

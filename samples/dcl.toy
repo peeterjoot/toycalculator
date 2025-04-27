@@ -1,1 +1,1 @@
-DCL x; // The simplest non-empty program.
+DCL x; // Like simplest.toy, this is the next simplest non-empty program (i.e.: also has a comment)
