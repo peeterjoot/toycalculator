@@ -28,7 +28,8 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_SOURCE_DIR}/ToyParser)
 
 #------------------------------------------------------------------------------
-# Define paths
+# antlr4 related rules:
+#
 set(GRAMMAR_FILE "${CMAKE_CURRENT_SOURCE_DIR}/Toy.g4")
 set(ANTLR_OUTPUT_DIR "${CMAKE_BINARY_DIR}/ToyParser")
 
@@ -53,20 +54,6 @@ COMMENT
 )
 
 include_directories(/usr/include/antlr4-runtime)
-#------------------------------------------------------------------------------
-
-# Check the target architecture
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-    set(IS_AARCH64 TRUE)
-    set(LLVM_TARGET_ARCH "ARM")
-else()
-    set(IS_AARCH64 FALSE)
-    set(LLVM_TARGET_ARCH "X86")
-endif()
-
-# Optional: Print the results
-message(STATUS "Architecture is aarch64: ${IS_AARCH64}")
-message(STATUS "LLVM Architecture specific libraries: ${LLVM_ARCH_LIBS}")
 
 # Create a custom target to ensure the grammar files are generated
 add_custom_target(
@@ -77,6 +64,9 @@ add_custom_target(
         ${ANTLR_OUTPUT_DIR}/ToyParser.cpp
         ${ANTLR_OUTPUT_DIR}/ToyLexer.cpp
 )
+#------------------------------------------------------------------------------
+# mostly tablegen rules:
+#
 
 link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
@@ -113,6 +103,8 @@ add_public_tablegen_target(ToyPassesIncGen
   DEPENDS
     ${CMAKE_CURRENT_BINARY_DIR}/ToyPasses.h.inc
 )
+#------------------------------------------------------------------------------
+# Targets:
 
 # Add runtime library as a shared object
 add_library(toy_runtime SHARED runtime/Toy_runtime.cpp)
@@ -130,13 +122,16 @@ add_executable(toycalculator
   ${ANTLR_OUTPUT_DIR}/ToyLexer.cpp
 )
 
+#------------------------------------------------------------------------------
+# compile options (and target dependencies)
+
 # Include the output directory for header files
 target_include_directories(toycalculator PRIVATE ${ANTLR_OUTPUT_DIR})
 
 # Ensure the ANTLR and TableGen generation runs before building the project
 add_dependencies(toycalculator toy_runtime GenerateANTLR ToyDialectIncGen ToyPassesIncGen)
 
-target_compile_options(toycalculator PRIVATE
+set(COMMON_COMPILE_OPTIONS
   -fdiagnostics-show-option
   -fdiagnostics-all-candidates
   -Wall
@@ -146,10 +141,25 @@ target_compile_options(toycalculator PRIVATE
   -Wno-unused-parameter
   -g
 )
+# -O2
 # an attempt to suppress all the rhs == lhs ambiguous messages from the mlir headers:
 #  -Wno-c++20-compat
 
-#target_compile_options(toycalculator PRIVATE -O2)
+#------------------------------------------------------------------------------
+# Link rules for the toycalculator target:
+
+# Check the target architecture
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+    set(IS_AARCH64 TRUE)
+    set(LLVM_TARGET_ARCH "ARM")
+else()
+    set(IS_AARCH64 FALSE)
+    set(LLVM_TARGET_ARCH "X86")
+endif()
+
+# Optional: Print the results
+message(STATUS "Architecture is aarch64: ${IS_AARCH64}")
+message(STATUS "LLVM Architecture specific libraries: ${LLVM_ARCH_LIBS}")
 
 target_link_libraries(toycalculator
   PRIVATE
