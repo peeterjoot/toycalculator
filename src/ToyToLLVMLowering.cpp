@@ -76,16 +76,18 @@ namespace
                     moduleOp, "toy.program must have exactly one block" );
             }
 
-            // Move the block's operations into the entry block
             Block& programBlock = programRegion.front();
             entryBlock->getOperations().splice( entryBlock->end(),
                                                 programBlock.getOperations() );
 
-            // Explicitly clear the program region to remove the empty block
+            // Clear the program region to avoid empty blocks
             programRegion.getBlocks().clear();
 
-            // Erase the original program op
+            // Erase the toy.program operation
             rewriter.eraseOp( programOp );
+
+            LLVM_DEBUG( llvm::dbgs()
+                        << "Lowered module: toy.program erased\n" );
 
             return success();
         }
@@ -123,8 +125,11 @@ namespace
                     "supported in the builder and here for now." );
             }
 
-            // Ensure the operation is erased
+            // Move insertion point to ensure correct block structure
+            Block* parentBlock = op->getBlock();
+            rewriter.setInsertionPointToEnd( parentBlock );
             rewriter.eraseOp( op );
+
             return success();
         }
     };
@@ -507,14 +512,15 @@ namespace
             // Initialize the type converter
             LLVMTypeConverter typeConverter( &getContext() );
 
-            // Conversion target: only LLVM dialect is legal
+            // Conversion target
             ConversionTarget target( getContext() );
-            target.addLegalDialect<LLVM::LLVMDialect>();
+            target.addLegalDialect<LLVM::LLVMDialect, arith::ArithDialect,
+                                   memref::MemRefDialect>();
             target.addIllegalDialect<toy::ToyDialect>();
             target.addIllegalOp<memref::AllocaOp, memref::StoreOp,
                                 memref::LoadOp, arith::ConstantOp>();
-            // builtin.module is legal until its contents are legalized
-            //target.addLegalOp<mlir::ModuleOp>();
+            // Do not mark ModuleOp as legal to allow ModuleOpLowering
+            // target.addLegalOp<mlir::ModuleOp>();
 
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns( &getContext() );
@@ -526,39 +532,16 @@ namespace
             arith::populateArithToLLVMConversionPatterns( typeConverter,
                                                           patterns );
 
-            LLVM_DEBUG( llvm::dbgs()
-                        << "Applying partial conversion (first phase)\n" );
-            if ( failed( applyPartialConversion( getOperation(), target,
-                                                 std::move( patterns ) ) ) )
+            if ( failed( applyFullConversion( getOperation(), target,
+                                              std::move( patterns ) ) ) )
             {
-                LLVM_DEBUG( llvm::dbgs() << "First phase conversion failed\n" );
-                signalPassFailure();
-                return;
-            }
-
-            // Second phase: No-op, as module is already legal
-            ConversionTarget moduleTarget( getContext() );
-            moduleTarget.addLegalDialect<LLVM::LLVMDialect>();
-            moduleTarget.addLegalOp<mlir::ModuleOp>();    // Keep module legal
-
-            // No patterns needed, as module is legal
-            RewritePatternSet modulePatterns( &getContext() );
-
-            LLVM_DEBUG( llvm::dbgs()
-                        << "Applying partial conversion (second phase)\n" );
-            if ( failed(
-                     applyPartialConversion( getOperation(), moduleTarget,
-                                             std::move( modulePatterns ) ) ) )
-            {
-                LLVM_DEBUG( llvm::dbgs()
-                            << "Second phase conversion failed\n" );
+                LLVM_DEBUG( llvm::dbgs() << "Conversion failed\n" );
                 signalPassFailure();
                 return;
             }
 
             LLVM_DEBUG( {
                 llvm::dbgs() << "After ToyToLLVMLoweringPass:\n";
-                // Print top-level operations directly
                 for ( Operation& op : getOperation()->getRegion( 0 ).front() )
                 {
                     op.dump();
