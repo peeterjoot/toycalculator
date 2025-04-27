@@ -60,14 +60,17 @@ namespace
                     programOp, "toy.program must have exactly one block" );
             }
 
-            // Move the block's operations into the entry block
+            // Move the block's operations (e.g., toy.return) into the entry
+            // block
             Block& programBlock = programRegion.front();
-            entryBlock->getOperations().splice( entryBlock->end(),
-                                                programBlock.getOperations() );
+            rewriter.inlineRegionBefore( programRegion, entryBlock );
+            rewriter.mergeBlocks( &programBlock, entryBlock,
+                                  /* argValues */ {} );
 
             // Erase the original program op
             rewriter.eraseOp( op );
 
+            // Recursively convert the inlined operations (e.g., toy.return)
             return success();
         }
     };
@@ -102,16 +105,8 @@ namespace
                 llvm_unreachable(
                     "toy.return expects 0 or 1 operands, but only 0 is "
                     "supported in the builder and here for now." );
-            }
-
-            // Ensure the operation is erased
-            rewriter.eraseOp( op );
-            return success();
-        }
-    };
-
-#if 0    // don't delete, want to adapt this later to implement lowering for
-         // non-empty arguments: RETURN 3; or RETURN x;
+#if 0
+                // RETURN 3; or RETURN x;
                 mlir::Value operand = adaptor.getRc()[0];
                 // Handle memref<f64> if needed (e.g., load the value)
                 if ( operand.getType().isa<mlir::MemRefType>() )
@@ -120,6 +115,12 @@ namespace
                 }
                 rewriter.create<LLVM::ReturnOp>( loc, operand );
 #endif
+            }
+
+            rewriter.eraseOp( op );
+            return success();
+        }
+    };
 
     // Lower toy.declare to nothing (erase).
     class DeclareOpLowering : public ConversionPattern
