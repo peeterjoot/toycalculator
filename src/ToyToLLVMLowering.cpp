@@ -22,13 +22,13 @@ using namespace mlir;
 
 namespace
 {
-    // Lower toy.program to an LLVM function.
-    class ProgramOpLowering : public ConversionPattern
+    // Lower toy.module's toy::ProgramOp to an LLVM function, and then delete
+    // it.
+    class ModuleOpLowering : public ConversionPattern
     {
        public:
-        ProgramOpLowering( MLIRContext* context )
-            : ConversionPattern( toy::ProgramOp::getOperationName(), 1,
-                                 context )
+        ModuleOpLowering( MLIRContext* context )
+            : ConversionPattern( ModuleOp::getOperationName(), 1, context )
         {
         }
 
@@ -36,11 +36,27 @@ namespace
             Operation* op, ArrayRef<Value> operands,
             ConversionPatternRewriter& rewriter ) const override
         {
-            auto programOp = cast<toy::ProgramOp>( op );
-            auto loc = programOp.getLoc();
+            auto moduleOp = cast<ModuleOp>( op );
+            auto loc = moduleOp.getLoc();
 
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.program: " << *op << '\n'
-                                     << loc << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "Lowering module: " << *op << '\n' );
+
+            // Find toy.program in the module
+            toy::ProgramOp programOp;
+            for ( Operation& childOp : moduleOp.getRegion().front() )
+            {
+                if ( auto prog = dyn_cast<toy::ProgramOp>( &childOp ) )
+                {
+                    programOp = prog;
+                    break;
+                }
+            }
+
+            if ( !programOp )
+            {
+                return rewriter.notifyMatchFailure(
+                    moduleOp, "No toy.program found in module" );
+            }
 
             // Create an LLVM function
             auto funcType =
@@ -52,12 +68,12 @@ namespace
             Block* entryBlock = funcOp.addEntryBlock( rewriter );
             rewriter.setInsertionPointToStart( entryBlock );
 
-            // Inline the toy.program's region into the function's entry block
+            // Move toy.program's operations into the function's entry block
             Region& programRegion = programOp.getRegion();
             if ( !programRegion.hasOneBlock() )
             {
                 return rewriter.notifyMatchFailure(
-                    programOp, "toy.program must have exactly one block" );
+                    moduleOp, "toy.program must have exactly one block" );
             }
 
             // Move the block's operations into the entry block
@@ -69,9 +85,7 @@ namespace
             programRegion.getBlocks().clear();
 
             // Erase the original program op
-            rewriter.eraseOp( op );
-
-            LLVM_DEBUG( llvm::dbgs() << "Lowered toy.program: " << *op << '\n' );
+            rewriter.eraseOp( programOp );
 
             return success();
         }
@@ -500,11 +514,11 @@ namespace
             target.addIllegalOp<memref::AllocaOp, memref::StoreOp,
                                 memref::LoadOp, arith::ConstantOp>();
             // builtin.module is legal until its contents are legalized
-            target.addLegalOp<mlir::ModuleOp>();
+            //target.addLegalOp<mlir::ModuleOp>();
 
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns( &getContext() );
-            patterns.add<ProgramOpLowering, ReturnOpLowering, DeclareOpLowering,
+            patterns.add<ModuleOpLowering, ReturnOpLowering, DeclareOpLowering,
                          AssignOpLowering, UnaryOpLowering, PrintOpLowering,
                          ConstantOpLowering, MemRefAllocaOpLowering,
                          MemRefStoreOpLowering, MemRefLoadOpLowering>(
