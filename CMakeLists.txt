@@ -214,5 +214,7 @@ target_link_libraries(toycalculator
   MLIRValueBoundsOpInterface
   MLIRViewLikeInterface
   MLIRTargetLLVMIRExport    # mlir::translateModuleToLLVMIR
+  MLIRBuiltinToLLVMIRTranslation
+  MLIRLLVMToLLVMIRTranslation
 )
 

@@ -34,6 +34,15 @@ namespace toy
         unknown_error
     };
 
+    enum class lastOperator : int
+    {
+        notAnOp,
+        declareOp,
+        printOp,
+        assignmentOp,
+        returnOp
+    };
+
     enum class variable_state : int
     {
         undeclared,
@@ -64,6 +73,7 @@ namespace toy
         std::map<std::string, mlir::Value>
             var_storage;    // Maps variable names to memref<f64>
         bool assignmentTargetValid;
+        lastOperator lastOp{lastOperator::notAnOp};
 
         inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx );
 
@@ -86,6 +96,8 @@ namespace toy
         void enterPrint( ToyParser::PrintContext *ctx ) override;
 
         void enterAssignment( ToyParser::AssignmentContext *ctx ) override;
+
+        void enterReturn( ToyParser::ReturnContext *ctx ) override;
 
         void enterUnaryexpression(
             ToyParser::UnaryexpressionContext *ctx ) override;
