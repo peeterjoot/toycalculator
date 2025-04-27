@@ -1,10 +1,15 @@
-b enterStartRule
-b enterDeclare
-b enterPrint
-b enterAssignment
-b enterUnaryexpression
-b enterBinaryexpression
+#b enterStartRule
+#b enterDeclare
+#b enterPrint
+#b enterAssignment
+#b enterUnaryexpression
+#b enterBinaryexpression
+#b enterReturn
 b __assert_perror_fail
+
+b ProgramOpLowering::matchAndRewrite
+b ModuleOpLowering::matchAndRewrite
+b ReturnOpLowering::matchAndRewrite
 
 ## firstError assignments:
 #b driver.cpp:149

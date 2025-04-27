@@ -4,7 +4,7 @@ grammar Toy;
 // ============
 // Entry point for the grammar, matching zero or more statements followed by EOF.
 startRule
-  : (statement|comment)* EOF
+  : (statement|comment)* (return ENDOFSTATEMENT)? EOF
   ;
 
 // A statement can be a declaration, assignment, print, or comment.
@@ -20,6 +20,11 @@ comment
 // A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').
 declare
   : (DCL|DECLARE) VARIABLENAME
+  ;
+
+// Early (or final) return from a program (e.g., 'RETURN;', 'RETURN 3;')  Return without value equivalent to 'RETURN 0;'
+return
+  : RETURN element*
   ;
 
 // A print statement that outputs a variable (e.g., 'PRINT x;').
@@ -113,6 +118,11 @@ DECLARE
 // Matches the 'PRINT' keyword for print statements.
 PRINT
   : 'PRINT'
+  ;
+
+// Matches the 'RETURN' keyword for print statements.
+RETURN
+  : 'RETURN'
   ;
 
 // Matches integer literals, optionally signed (e.g., '42', '-123', '+7').

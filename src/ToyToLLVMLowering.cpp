@@ -1,8 +1,12 @@
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Support/Debug.h>
+#include <llvm/Support/ErrorHandling.h>
 #include <mlir/Conversion/ArithToLLVM/ArithToLLVM.h>
+#include <mlir/Conversion/LLVMCommon/Pattern.h>
 #include <mlir/Conversion/LLVMCommon/TypeConverter.h>
+#include <mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
+#include <mlir/Dialect/Func/IR/FuncOps.h>    // For future multi-function support.
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
 #include <mlir/IR/Block.h>
@@ -35,8 +39,8 @@ namespace
             auto programOp = cast<toy::ProgramOp>( op );
             auto loc = programOp.getLoc();
 
-            LLVM_DEBUG( llvm::dbgs()
-                        << "Lowering toy.program: " << *op << "\n" );
+            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.program: " << *op << '\n'
+                                     << loc << '\n' );
 
             // Create an LLVM function
             auto funcType =
@@ -44,27 +48,75 @@ namespace
             auto funcOp = rewriter.create<LLVM::LLVMFuncOp>(
                 loc, "__toy_main", funcType, LLVM::Linkage::External );
 
-            // Ensure the function has an entry block
+            // Create an entry block in the function
             Block* entryBlock = funcOp.addEntryBlock( rewriter );
+            rewriter.setInsertionPointToStart( entryBlock );
 
-            // Inline the program's region into the entry block
-            Region& programRegion = programOp.getBody();
-            if ( !programRegion.empty() )
+            // Inline the toy.program's region into the function's entry block
+            Region& programRegion = programOp.getRegion();
+            if ( !programRegion.hasOneBlock() )
             {
-                rewriter.inlineRegionBefore( programRegion, entryBlock );
+                return rewriter.notifyMatchFailure(
+                    programOp, "toy.program must have exactly one block" );
+            }
+
+            // Move the block's operations (e.g., toy.return) into the entry
+            // block
+            Block& programBlock = programRegion.front();
+            rewriter.inlineRegionBefore( programRegion, entryBlock );
+            rewriter.mergeBlocks( &programBlock, entryBlock,
+                                  /* argValues */ {} );
+
+            // Erase the original program op
+            rewriter.eraseOp( op );
+
+            // Recursively convert the inlined operations (e.g., toy.return)
+            return success();
+        }
+    };
+
+    // Lower toy.return to nothing (erase).
+    class ReturnOpLowering : public ConversionPattern
+    {
+       public:
+        ReturnOpLowering( MLIRContext* context )
+            : ConversionPattern( toy::ReturnOp::getOperationName(), 1, context )
+        {
+        }
+
+        LogicalResult matchAndRewrite(
+            Operation* op, ArrayRef<Value> operands,
+            ConversionPatternRewriter& rewriter ) const override
+        {
+            LLVM_DEBUG( llvm::dbgs()
+                        << "Lowering toy.return: " << *op << '\n' );
+
+            mlir::Location loc = op->getLoc();
+            if ( op->getNumOperands() == 0 )
+            {
+                // RETURN; or default -> return 0
+                mlir::Value zero = rewriter.create<LLVM::ConstantOp>(
+                    loc, rewriter.getI32Type(),
+                    rewriter.getI32IntegerAttr( 0 ) );
+                rewriter.create<LLVM::ReturnOp>( loc, zero );
             }
             else
             {
-                LLVM_DEBUG( llvm::dbgs() << "Program region is empty\n" );
+                llvm_unreachable(
+                    "toy.return expects 0 or 1 operands, but only 0 is "
+                    "supported in the builder and here for now." );
+#if 0
+                // RETURN 3; or RETURN x;
+                mlir::Value operand = adaptor.getRc()[0];
+                // Handle memref<f64> if needed (e.g., load the value)
+                if ( operand.getType().isa<mlir::MemRefType>() )
+                {
+                    operand = rewriter.create<LLVM::LoadOp>( loc, operand );
+                }
+                rewriter.create<LLVM::ReturnOp>( loc, operand );
+#endif
             }
 
-            // Add a return operation at the end of the entry block
-            rewriter.setInsertionPointToEnd( entryBlock );
-            auto zero = rewriter.create<LLVM::ConstantOp>(
-                loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr( 0 ) );
-            rewriter.create<LLVM::ReturnOp>( loc, zero );
-
-            // Erase the original program op
             rewriter.eraseOp( op );
             return success();
         }
@@ -85,7 +137,7 @@ namespace
             ConversionPatternRewriter& rewriter ) const override
         {
             LLVM_DEBUG( llvm::dbgs()
-                        << "Lowering toy.declare: " << *op << "\n" );
+                        << "Lowering toy.declare: " << *op << '\n' );
             rewriter.eraseOp( op );
             return success();
         }
@@ -108,7 +160,7 @@ namespace
             auto loc = printOp.getLoc();
             auto memref = operands[0];
 
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.print: " << *op << "\n" );
+            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.print: " << *op << '\n' );
 
             // Handle both memref<f64> and !llvm.ptr
             Type memrefType = memref.getType();
@@ -116,7 +168,7 @@ namespace
                  !mlir::isa<LLVM::LLVMPointerType>( memrefType ) )
             {
                 LLVM_DEBUG( llvm::dbgs()
-                            << "Invalid memref type: " << memrefType << "\n" );
+                            << "Invalid memref type: " << memrefType << '\n' );
                 return failure();
             }
 
@@ -172,7 +224,7 @@ namespace
             ConversionPatternRewriter& rewriter ) const override
         {
             LLVM_DEBUG( llvm::dbgs()
-                        << "Lowering toy.assign: " << *op << "\n" );
+                        << "Lowering toy.assign: " << *op << '\n' );
             rewriter.eraseOp( op );
             return success();
         }
@@ -195,7 +247,7 @@ namespace
             auto loc = unaryOp.getLoc();
             auto operand = operands[0];
 
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.unary: " << *op << "\n" );
+            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.unary: " << *op << '\n' );
 
             // Convert i64 to f64 if necessary
             Value result = operand;
@@ -216,7 +268,7 @@ namespace
             else if ( unaryOp.getOp() != "+" )
             {
                 LLVM_DEBUG( llvm::dbgs() << "Unsupported unary op: "
-                                         << unaryOp.getOp() << "\n" );
+                                         << unaryOp.getOp() << '\n' );
                 return failure();
             }
 
@@ -242,7 +294,7 @@ namespace
             auto opName = binaryOp.getOp();
 
             LLVM_DEBUG( llvm::dbgs()
-                        << "Lowering toy.binary: " << *op << "\n" );
+                        << "Lowering toy.binary: " << *op << '\n' );
 
             // Convert operands to f64 if necessary
             auto f64Type = rewriter.getF64Type();
@@ -300,7 +352,7 @@ namespace
             auto valueAttr = constantOp.getValue();
 
             LLVM_DEBUG( llvm::dbgs()
-                        << "Lowering arith.constant: " << *op << "\n" );
+                        << "Lowering arith.constant: " << *op << '\n' );
 
             if ( auto intAttr = dyn_cast<IntegerAttr>( valueAttr ) )
             {
@@ -331,7 +383,7 @@ namespace
             auto loc = allocaOp.getLoc();
 
             LLVM_DEBUG( llvm::dbgs()
-                        << "Lowering memref.alloca: " << *op << "\n" );
+                        << "Lowering memref.alloca: " << *op << '\n' );
 
             // Allocate memory for the memref type (f64)
             auto memRefType = mlir::cast<MemRefType>( allocaOp.getType() );
@@ -363,14 +415,14 @@ namespace
             auto loc = storeOp.getLoc();
 
             LLVM_DEBUG( llvm::dbgs()
-                        << "Lowering memref.store: " << *op << "\n" );
+                        << "Lowering memref.store: " << *op << '\n' );
 
             // Ensure the second operand is a pointer
             if ( !mlir::isa<LLVM::LLVMPointerType>( operands[1].getType() ) &&
                  !mlir::isa<MemRefType>( operands[1].getType() ) )
             {
                 LLVM_DEBUG( llvm::dbgs() << "Invalid store pointer type: "
-                                         << operands[1].getType() << "\n" );
+                                         << operands[1].getType() << '\n' );
                 return failure();
             }
 
@@ -406,7 +458,7 @@ namespace
                 mlir::cast<MemRefType>( loadOp.getMemRef().getType() );
 
             LLVM_DEBUG( llvm::dbgs()
-                        << "Lowering memref.load: " << *op << "\n" );
+                        << "Lowering memref.load: " << *op << '\n' );
 
             auto newLoadOp = rewriter.create<LLVM::LoadOp>(
                 loc, memRefType.getElementType(), operands[0] );
@@ -437,32 +489,62 @@ namespace
             // Initialize the type converter
             LLVMTypeConverter typeConverter( &getContext() );
 
+            // Conversion target: only LLVM dialect is legal
             ConversionTarget target( getContext() );
             target.addLegalDialect<LLVM::LLVMDialect>();
-            target.addLegalOp<ModuleOp>();
             target.addIllegalDialect<toy::ToyDialect>();
             target.addIllegalOp<memref::AllocaOp, memref::StoreOp,
                                 memref::LoadOp, arith::ConstantOp>();
+            // builtin.module is legal until its contents are legalized
+            target.addLegalOp<mlir::ModuleOp>();
 
+            // Patterns for toy dialect and standard ops
             RewritePatternSet patterns( &getContext() );
-            patterns.add<ProgramOpLowering, DeclareOpLowering, AssignOpLowering,
-                         UnaryOpLowering, PrintOpLowering, ConstantOpLowering,
-                         MemRefAllocaOpLowering, MemRefStoreOpLowering,
-                         MemRefLoadOpLowering>( &getContext() );
+            patterns.add<ProgramOpLowering, ReturnOpLowering, DeclareOpLowering,
+                         AssignOpLowering, UnaryOpLowering, PrintOpLowering,
+                         ConstantOpLowering, MemRefAllocaOpLowering,
+                         MemRefStoreOpLowering, MemRefLoadOpLowering>(
+                &getContext() );
             arith::populateArithToLLVMConversionPatterns( typeConverter,
                                                           patterns );
 
-            LLVM_DEBUG( llvm::dbgs() << "Applying full conversion\n" );
-            if ( failed( applyFullConversion( getOperation(), target,
-                                              std::move( patterns ) ) ) )
+            LLVM_DEBUG( llvm::dbgs()
+                        << "Applying partial conversion (first phase)\n" );
+            if ( failed( applyPartialConversion( getOperation(), target,
+                                                 std::move( patterns ) ) ) )
             {
-                LLVM_DEBUG( llvm::dbgs() << "Conversion failed\n" );
+                LLVM_DEBUG( llvm::dbgs() << "First phase conversion failed\n" );
                 signalPassFailure();
+                return;
+            }
+
+            // Second phase: No-op, as module is already legal
+            ConversionTarget moduleTarget( getContext() );
+            moduleTarget.addLegalDialect<LLVM::LLVMDialect>();
+            moduleTarget.addLegalOp<mlir::ModuleOp>();    // Keep module legal
+
+            // No patterns needed, as module is legal
+            RewritePatternSet modulePatterns( &getContext() );
+
+            LLVM_DEBUG( llvm::dbgs()
+                        << "Applying partial conversion (second phase)\n" );
+            if ( failed(
+                     applyPartialConversion( getOperation(), moduleTarget,
+                                             std::move( modulePatterns ) ) ) )
+            {
+                LLVM_DEBUG( llvm::dbgs()
+                            << "Second phase conversion failed\n" );
+                signalPassFailure();
+                return;
             }
 
             LLVM_DEBUG( {
                 llvm::dbgs() << "After ToyToLLVMLoweringPass:\n";
-                getOperation()->dump();
+                // Print top-level operations directly
+                for ( Operation& op : getOperation()->getRegion( 0 ).front() )
+                {
+                    op.dump();
+                }
             } );
         }
     };

@@ -29,6 +29,25 @@ def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
   //let traits = [Pure];
 }
 
+// Return operation
+def Toy_ReturnOp : Op<Toy_Dialect, "return"> {
+  let summary = "Return from a program";
+  let arguments = (ins Variadic<AnyType>:$rc);
+  let results = (outs);
+  let traits = [Terminator];
+
+  // Letting $rc be optional to match the grammar (may not add builder support for values yet.)
+  let assemblyFormat = "($rc^ `:` type($rc))? attr-dict";
+
+  let extraClassDeclaration = [{
+    llvm::LogicalResult verify() {
+      if (getNumOperands() > 1)
+        return emitOpError("expects 0 or 1 operands");
+      return llvm::success();
+      }
+  }];
+}
+
 // Print operation
 def Toy_PrintOp : Op<Toy_Dialect, "print"> {
   let summary = "Print a variable";
@@ -61,7 +80,6 @@ def Toy_UnaryOp : Op<Toy_Dialect, "unary"> {
   //  SameOperandsAndResultType // Operands and result have the same type (f64)
   //];
   let extraClassDeclaration = [{
-    // Optional: Add custom verification for valid operators
     llvm::LogicalResult verify() {
       llvm::StringRef op = getOp();
       if (op != "+" && op != "-")
@@ -87,7 +105,6 @@ def Toy_BinaryOp : Op<Toy_Dialect, "binary"> {
   //  SameOperandsAndResultType // Operands and result have the same type (f64)
   //];
   let extraClassDeclaration = [{
-    // Optional: Add custom verification for valid operators
     llvm::LogicalResult verify() {
       llvm::StringRef op = getOp();
       if (op != "+" && op != "-" && op != "*" && op != "/")

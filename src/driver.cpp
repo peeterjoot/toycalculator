@@ -4,8 +4,9 @@
 #include <llvm/Support/TargetSelect.h>
 #include <mlir/Conversion/Passes.h>
 #include <mlir/Pass/PassManager.h>
-#include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMIRToLLVMTranslation.h>
 #include <mlir/Target/LLVMIR/Export.h>
+#include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
+#include <mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h>
 
 #include <format>
 #include <fstream>
@@ -92,33 +93,43 @@ int main( int argc, char **argv )
         antlr4::tree::ParseTree *tree = parser.startRule();
         antlr4::tree::ParseTreeWalker::DEFAULT.walk( &listener, tree );
 
+        // For now, always dump the original MLIR unconditionally, even if we are doing the LLVM IR lowering pass:
+        mlir::OpPrintingFlags flags;
+        if ( enableLocation )
+        {
+            flags.printGenericOpForm().enableDebugInfo( true );
+        }
+        listener.getModule().print( llvm::outs(), flags );
+
         if ( emitLLVM )
         {
             auto module = listener.getModule();
-
             auto context = module.getContext();
+
+            // Register dialect translations
+            mlir::registerLLVMDialectTranslation( *context );
+            mlir::registerBuiltinDialectTranslation( *context );
 
             if ( llvmDEBUG )
                 context->disableMultithreading( true );
 
-            // Set up pass manager for lowering.
+            // Set up pass manager for lowering
             mlir::PassManager pm( context );
-
             if ( llvmDEBUG )
                 pm.enableIRPrinting();
 
             pm.addPass( mlir::createToyToLLVMLoweringPass() );
             pm.addPass( mlir::createConvertSCFToCFPass() );
             pm.addPass( mlir::createConvertFuncToLLVMPass() );
-            // pm.addPass( mlir::createConvertMemRefToLLVMPass() );
+            // pm.addPass(mlir::createConvertMemRefToLLVMPass());
             pm.addPass( mlir::createFinalizeMemRefToLLVMConversionPass() );
-            // pm.addPass( mlir::createConvertArithToLLVMPass() );
+            // pm.addPass(mlir::createConvertArithToLLVMPass());
             pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
 
             if ( llvm::failed( pm.run( module ) ) )
                 throw std::runtime_error( "LLVM lowering failed" );
 
-            // Export to LLVM IR.
+            // Export to LLVM IR
             llvm::LLVMContext llvmContext;
             auto llvmModule =
                 mlir::translateModuleToLLVMIR( module, llvmContext );
@@ -126,15 +137,6 @@ int main( int argc, char **argv )
                 throw std::runtime_error( "Failed to translate to LLVM IR" );
 
             llvmModule->print( llvm::outs(), nullptr );
-        }
-        else
-        {
-            mlir::OpPrintingFlags flags;
-            if ( enableLocation )
-            {
-                flags.printGenericOpForm().enableDebugInfo( true );
-            }
-            listener.getModule().print( llvm::outs(), flags );
         }
     }
     catch ( const semantic_exception &e )

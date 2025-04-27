@@ -63,6 +63,16 @@ namespace toy
 
     void MLIRListener::exitStartRule( ToyParser::StartRuleContext *ctx )
     {
+        if ( lastOp != lastOperator::returnOp )
+        {
+            auto loc = getLocation( ctx );
+            //builder.create<toy::ReturnOp>( loc ); // doesn't work:
+            //
+            //need:
+            // Create toy.return with no operands (empty ValueRange)
+            builder.create<toy::ReturnOp>(loc, mlir::ValueRange{});
+        }
+
         builder.setInsertionPointToEnd( mod.getBody() );
         if ( lastSemError != semantic_errors::not_an_error )
         {
@@ -74,6 +84,7 @@ namespace toy
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
     {
+        lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
         auto varState = var_states[varName];
@@ -100,6 +111,7 @@ namespace toy
 
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
     {
+        lastOp = lastOperator::printOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
         auto varState = var_states[varName];
@@ -124,8 +136,43 @@ namespace toy
         builder.create<toy::PrintOp>( loc, memref );
     }
 
+    void MLIRListener::enterReturn( ToyParser::ReturnContext *ctx )
+    {
+        lastOp = lastOperator::returnOp;
+        auto loc = getLocation( ctx );
+
+        auto sz = ctx->element().size();
+        assert( sz == 0 );
+#if 0
+        auto varName = ctx->VARIABLENAME()->getText();
+        auto varState = var_states[varName];
+        if ( varState == variable_state::undeclared )
+        {
+            lastSemError = semantic_errors::variable_not_declared;
+            llvm::errs() << std::format(
+                "{}error: Variable {} not declared in PRINT\n",
+                formatLocation( loc ), varName );
+            return;
+        }
+        if ( varState != variable_state::assigned )
+        {
+            lastSemError = semantic_errors::variable_not_assigned;
+            llvm::errs() << std::format(
+                "{}error: Variable {} not assigned in PRINT\n",
+                formatLocation( loc ), varName );
+            return;
+        }
+
+        auto memref = var_storage[varName];
+#endif
+        //builder.create<toy::ReturnOp>( loc );
+        // Create toy.return with no operands (empty ValueRange)
+        builder.create<toy::ReturnOp>(loc, mlir::ValueRange{});
+    }
+
     void MLIRListener::enterAssignment( ToyParser::AssignmentContext *ctx )
     {
+        lastOp = lastOperator::assignmentOp;
         assignmentTargetValid = true;
         auto loc = getLocation( ctx );
         currentVarName = ctx->VARIABLENAME()->getText();

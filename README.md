@@ -5,9 +5,10 @@ This project uses an antlr4 grammar, an MLIR builder, and MLIR lowering to LLVM 
 It implements a toy calculator language that supports a few primitive linguistic elements:
 
 * a DECLARE operation,
-* an ASSIGNMENT operator (=) with unary (+,-) and binary operators (+,-,*,/), and
-* a PRINT operation.
-* single line comments.
+* a PRINT operation,
+* single line comments,
+* a RETURN operation,
+* an ASSIGNMENT operator (=) with unary (+,-) and binary operators (+,-,*,/).
 
 Integer constants are allowed in the assignment, but compuations are (currently) floating point.
 
@@ -45,7 +46,18 @@ The MLIR for this program is:
 #loc1 = loc("empty.toy":2:1)
 ```
 
-FIXME: why do I have '^bb0:' here, but no basic block markup for foo.toy below?
+The '^bb0:' is the MLIR dump representation of an empty basic block.
+In ProgramOpLowering, we will insert a return zero, and will then have a non-empty BB.
+The goal is to be able to lower to LLVM-IR like:
+
+```
+define i32 @__toy_main() {
+  ret i32 0
+}
+```
+
+I've added the RETURN operation, to facilitate lowering of this very simplest program, so that the BB will never be empty.
+If not specified, it will be added in the MLIR builder.
 
 2.  samples/dcl.toy
 
@@ -133,6 +145,7 @@ It actually makes things difficult not to have a notion of functions (esp. one f
 
 ## TODO
 
+* Add a RETURN statement (grammar, listener, builder, lowering.)
 * LLVM IR lowering.  This is in progress.
 * Floating point constants (will touch the grammar, builder and lowering.)
 * Types: fixed size integers and maybe floating point types of different sizes (not just double equivialent.)
@@ -188,4 +201,30 @@ Depending on what I currently have booted, this has been on a mix of:
 * Fedora 42/X64 (on a dual boot windows-11/Linux laptop)
 * WSL ubuntu 24/X64 (windows side, same laptop.)
 * Ambian (ubuntu), running on an raspberry PI (this is why there is an ARM case in buildllvm and CMakeLists.txt)
+
+## Debugging
+
+### Peeking into LLVM object internals
+
+LLVM uses it's own internal dynamic\_cast<> mechanism, so many types appear opaque.  Example:
+
+```
+(gdb) p loc
+$2 = {impl = {<mlir::Attribute> = {impl = 0x5528d8}, <No data fields>}}
+```
+
+If we happen to know the real underlying type, we can cast the impl part of the object
+
+```
+(gdb) p *(mlir::FileLineColLoc*)loc.impl
+$3 = {<mlir::FileLineColRange> = {<mlir::detail::StorageUserBase<mlir::FileLineColRange, mlir::LocationAttr, mlir::detail::FileLineColRangeAttrStorage, mlir::detail::AttributeUniquer, mlir::AttributeTrait::IsLocation>> = {<mlir::LocationAttr> = {<mlir::Attribute> = {
+          impl = 0x539330}, <No data fields>}, <mlir::AttributeTrait::IsLocation<mlir::FileLineColRange>> = {<mlir::detail::StorageUserTraitBase<mlir::FileLineColRange, mlir::AttributeTrait::IsLocation>> = {<No data fields>}, <No data fields>}, <No data fields>}, <No data fields>}, <No data fields>}
+```
+
+but that may not be any more illuminating.  Old fashioned printf style debugging does work:
+
+```
+             LLVM_DEBUG( llvm::dbgs()
+                         << "Lowering toy.program: " << *op << '\n' << loc << '\n' );
+```
 
