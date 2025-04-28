@@ -60,8 +60,8 @@ static llvm::cl::opt<bool> emitLLVM( "emit-llvm",
                                      llvm::cl::cat( ToyCategory ) );
 
 // Add command-line option for object file emission
-static llvm::cl::opt<bool> emitObject(
-    "emit-object", llvm::cl::desc( "Emit object file (.o)" ),
+static llvm::cl::opt<bool> noEmitObject(
+    "no-emit-object", llvm::cl::desc( "Skip emit object file (.o)" ),
     llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
 
 // Noisy debugging output
@@ -233,7 +233,7 @@ int main( int argc, char **argv )
             throw std::runtime_error( "Failed to translate to LLVM IR" );
         }
 
-        if ( emitLLVM || emitObject )
+        if ( emitLLVM || !noEmitObject )
         {
             if ( emitLLVM )
             {
@@ -264,7 +264,7 @@ int main( int argc, char **argv )
                 }
             }
 
-            if ( emitObject )
+            if ( !noEmitObject )
             {
                 // Set target triple
                 std::string targetTriple = llvm::sys::getProcessTriple();

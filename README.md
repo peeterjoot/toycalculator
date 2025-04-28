@@ -25,7 +25,7 @@ As an example of the pain of working with AI tools, here's a trivial example: I 
 I'd like to add enough language elements to the project to make it interesting, and now that I have the basic framework, I should be able to
 do that without bothering with AI tools that can be more work to use than just doing it yourself.
 
-Examples: 
+Examples:
 
 1. samples/empty.toy
 
@@ -131,36 +131,48 @@ Here is the MLIR for the code above:
 #loc4 = loc("../samples/foo.toy":4:6)
 ```
 
-As currently coded, the LLVM IR lowering is broken, and gets as far as:
+The LLVM IR lowering looks like:
 
 ```
->./build/toycalculator  samples/foo.toy --emit-llvm --debug
-block with no terminator, has "llvm.call"(%4) <{CConv = #llvm.cconv<ccc>, TailCallKind = #llvm.tailcallkind<none>, callee = @__toy_print, fastmathFlags = #llvm.fastmath<none>, op_bundle_sizes = array<i32>, operandSegmentSizes = array<i32: 1, 0>}> : (f64) -> ()
-mlir-asm-printer: 'builtin.module' failed to verify and will be printed in generic form
-"builtin.module"() ({
-  "llvm.func"() <{CConv = #llvm.cconv<ccc>, function_type = !llvm.func<i32 ()>, linkage = #llvm.linkage<external>, sym_name = "__toy_main", visibility_ = 0 : i64}> ({
-    %0 = "llvm.mlir.constant"() <{value = 1 : i64}> : () -> i64
-    %1 = "llvm.alloca"(%0) <{alignment = 8 : i64, elem_type = f64}> : (i64) -> !llvm.ptr
-    %2 = "llvm.mlir.constant"() <{value = 3 : i64}> : () -> i64
-    %3 = "llvm.sitofp"(%2) : (i64) -> f64
-    "llvm.store"(%3, %1) <{ordering = 0 : i64}> : (f64, !llvm.ptr) -> ()
-    %4 = "llvm.load"(%1) <{ordering = 0 : i64}> : (!llvm.ptr) -> f64
-    "llvm.func"() <{CConv = #llvm.cconv<ccc>, function_type = !llvm.func<void (f64)>, linkage = #llvm.linkage<external>, sym_name = "__toy_print", sym_visibility = "private", visibility_ = 0 : i64}> ({
-    }) : () -> ()
-    "llvm.call"(%4) <{CConv = #llvm.cconv<ccc>, TailCallKind = #llvm.tailcallkind<none>, callee = @__toy_print, fastmathFlags = #llvm.fastmath<none>, op_bundle_sizes = array<i32>, operandSegmentSizes = array<i32: 1, 0>}> : (f64) -> ()
-  ^bb1:  // no predecessors
-    %5 = "llvm.mlir.constant"() <{value = 0 : i32}> : () -> i32
-    "llvm.return"(%5) : (i32) -> ()
-  }) : () -> ()
-}) : () -> ()
-...
-loc("samples/foo.toy":3:6): error: block with no terminator, has "llvm.call"(%4) <{CConv = #llvm.cconv<ccc>, TailCallKind = #llvm.tailcallkind<none>, callee = @__toy_print, fastmathFlags = #llvm.fastmath<none>, op_bundle_sizes = array<i32>, operandSegmentSizes = array<i32: 1, 0>}> : (f64) -> ()
-FATAL ERROR: LLVM lowering failed
+; ModuleID = 'foo.toy'
+source_filename = "foo.toy"
+
+declare void @__toy_print(double)
+
+define i32 @__toy_main() {
+  %1 = alloca double, i64 1, align 8
+  store double 3.000000e+00, ptr %1, align 8
+  %2 = load double, ptr %1, align 8
+  call void @__toy_print(double %2)
+  ret i32 0
+}
+
+!llvm.module.flags = !{!0}
+
+!0 = !{i32 2, !"Debug Info Version", i32 3}
 ```
 
-I don't like the llvm.func for PRINT runtime method embedded in the codegen for the fake "main" function for the program.
-It would be good to have a pass that finds all the global symbols and emits the LLVM IR for those upfront.  Alternatively, the parse listener could collect all the global symbols (right now just PRINT, serialized as __toy_print), and generate an MLIR element for all such symbols that could be processed in a pass before any other codegen.
-It actually makes things difficult not to have a notion of functions (esp. one for main), and adding that would simplify lowering (and make the language have some utility.)
+Notice that the !dbg location info is MIA, despite it having been in the MLIR dump.
+
+However, we can actually link and run the code without error:
+
+```
+> ../build/toycalculator foo.toy --output-directory out
+Generated object file: out/foo.o
+
+> cat main.c
+int __toy_main();
+
+int main()
+{
+    return __toy_main();
+}
+
+> clang main.c -o foo ../samples/out/foo.o -L ../build -l toy_runtime -Wl,-rpath,`pwd`/../build
+
+> ./foo
+3.000000
+```
 
 ## Command line options
 
@@ -170,6 +182,7 @@ It actually makes things difficult not to have a notion of functions (esp. one f
 * --debug (mlir default option.)
 * --debug-mlir
 * --location (show MLIR location info in the dump.)
+* -O[0123] -- the usual.
 
 ## TODO
 

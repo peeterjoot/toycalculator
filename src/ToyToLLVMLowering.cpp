@@ -189,16 +189,6 @@ namespace
             auto module = op->getParentOfType<ModuleOp>();
             auto printFunc =
                 module.lookupSymbol<LLVM::LLVMFuncOp>( "__toy_print" );
-            if ( !printFunc )
-            {
-                auto printFuncType = LLVM::LLVMFunctionType::get(
-                    LLVM::LLVMVoidType::get( rewriter.getContext() ),
-                    { rewriter.getF64Type() } );
-                printFunc = rewriter.create<LLVM::LLVMFuncOp>(
-                    loc, "__toy_print", printFuncType,
-                    LLVM::Linkage::External );
-                printFunc.setPrivate();
-            }
 
             // Call the print function
             rewriter.create<LLVM::CallOp>( loc, printFunc,
@@ -481,9 +471,11 @@ namespace
 
         void runOnOperation() override
         {
+            ModuleOp module = getOperation();
+
             LLVM_DEBUG( {
                 llvm::dbgs() << "Starting ToyToLLVMLoweringPass on:\n";
-                getOperation()->dump();
+                module->dump();
             } );
 
             // Initialize the type converter
@@ -498,6 +490,18 @@ namespace
             // builtin.module is legal until its contents are legalized
             target.addLegalOp<mlir::ModuleOp>();
 
+            // Add __toy_print declaration at module level
+            // Add __toy_print declaration at module level
+            OpBuilder builder( module.getRegion() );
+            builder.setInsertionPointToStart( module.getBody() );
+            auto llvmContext = module.getContext();
+            auto funcType = LLVM::LLVMFunctionType::get(
+                LLVM::LLVMVoidType::get( llvmContext ),
+                { builder.getF64Type() }, false );
+            builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print",
+                                              funcType,
+                                              LLVM::Linkage::External );
+
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns( &getContext() );
             patterns.add<ProgramOpLowering, ReturnOpLowering, DeclareOpLowering,
@@ -508,7 +512,7 @@ namespace
             arith::populateArithToLLVMConversionPatterns( typeConverter,
                                                           patterns );
 
-            if ( failed( applyFullConversion( getOperation(), target,
+            if ( failed( applyFullConversion( module, target,
                                               std::move( patterns ) ) ) )
             {
                 LLVM_DEBUG( llvm::dbgs() << "Conversion failed\n" );
@@ -519,7 +523,7 @@ namespace
             LLVM_DEBUG( {
                 llvm::dbgs() << "After ToyToLLVMLoweringPass:\n";
                 // Print top-level operations directly
-                for ( Operation& op : getOperation()->getRegion( 0 ).front() )
+                for ( Operation& op : module->getRegion( 0 ).front() )
                 {
                     op.dump();
                 }
