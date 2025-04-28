@@ -178,8 +178,9 @@ Generated object file: out/foo.o
 
 ## TODO
 
+* LLVM IR lowering has lost the !dbg (i.e.: dwarf instrumentation) elements.
 * Add support for a numeric and symbol value for the RETURN statement (grammar, listener, builder, lowering.)
-* LLVM IR lowering.  This is in progress.
+* LLVM IR lowering for binaryOp.
 * Floating point constants (will touch the grammar, builder and lowering.)
 * Types: fixed size integers and maybe floating point types of different sizes (not just double equivialent.)
 * Function calls (to more than the single PRINT runtime function.)
