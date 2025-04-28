@@ -6,7 +6,7 @@
 
 =head1 NAME
 
-runantlr - <one-line-description>
+runantlr --grammar g.g4 --outdir dirname/
 
 =head1 SYNOPSIS
 
@@ -18,9 +18,13 @@ Options:
 
 =over 4
 
-=item --foo=bar
+=item --grammar Toy.g4
 
-Blah.
+The grammar file.
+
+=item --outdir dir/
+
+Where to put all the generated files.
 
 =back
 
@@ -68,23 +72,14 @@ GetOptions (
 die "required argument: --grammar Toy.g4" unless ( $grammar );
 die "required argument: --outdir dir" unless ( $outdir );
 
-my $version;
-if ( -e "/etc/debian_version" )
-{
-   $version=`dpkg -l antlr4 | sed 's/-.*//'`
-}
-else
-{
-   $version=`rpm -q antlr4 | sed 's/antlr4-//;s/-.*//;'`
-}
-chomp $version;
-
-my $jar = "$ENV{'HOME'}/toycalculator/antlr-${version}-complete.jar";
+my @jar = <"$ENV{'HOME'}/toycalculator/antlr-*-complete.jar">;
 
 my $antlr4;
-if ( -e "$jar" )
+my $havejar = scalar( @jar );
+if ( $havejar )
 {
-   $antlr4 = "java -Xmx500M -cp ${jar} org.antlr.v4.Tool";
+   die if ( $havejar > 1 );
+   $antlr4 = "java -Xmx500M -cp $jar[0] org.antlr.v4.Tool";
 }
 else
 {
