@@ -17,4 +17,6 @@ foo.toy \
     ./out/${i%.*}
 done
 
+# ../build/toycalculator empty.toy --location --stdout --no-emit-object --emit-mlir --emit-llvm --debug
+
 # vim: et ts=4 sw=4

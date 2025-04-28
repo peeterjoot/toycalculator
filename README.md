@@ -175,9 +175,14 @@ Generated object file: out/foo.o
 * --debug-mlir
 * --location (show MLIR location info in the dump.)
 * -O[0123] -- the usual.
+* --stdout.  MLIR and LLVM-IR output to stdout instead of to files.
 
 ## TODO
 
+* ../build/toycalculator foo.toy --location --stdout --no-emit-object --emit-mlir --emit-llvm --debug 2>&1 | less
+   'memref.alloca' op requires an ancestor op with AutomaticAllocationScope trait
+foo.toy:
+   'toy.unary' op operand #0 must be 64-bit float, but got 'i64'
 * LLVM IR lowering has lost the !dbg (i.e.: dwarf instrumentation) elements.
 * Add support for a numeric and symbol value for the RETURN statement (grammar, listener, builder, lowering.)
 * LLVM IR lowering for binaryOp.

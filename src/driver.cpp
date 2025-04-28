@@ -47,6 +47,11 @@ static llvm::cl::opt<std::string> outDir(
     llvm::cl::value_desc( "directory" ), llvm::cl::init( "" ),
     llvm::cl::cat( ToyCategory ) );
 
+static llvm::cl::opt<bool> toStdout( "stdout",
+                                     llvm::cl::desc( "LLVM and MLIR on stdout instead of to a file" ),
+                                     llvm::cl::init( false ),
+                                     llvm::cl::cat( ToyCategory ) );
+
 // Add command-line option for MLIR emission
 static llvm::cl::opt<bool> emitMLIR( "emit-mlir",
                                      llvm::cl::desc( "Emit MLIR IR" ),
@@ -182,16 +187,23 @@ int main( int argc, char **argv )
 
         if ( emitMLIR )
         {
-            llvm::SmallString<128> path = dirWithStem;
-            path += ".mlir";
-            std::error_code EC;
-            llvm::raw_fd_ostream out( path.str(), EC, llvm::sys::fs::OF_Text );
-            if ( EC )
+            if ( toStdout )
             {
-                throw std::runtime_error( "Failed to open file: " +
-                                          EC.message() );
+                listener.getModule().print( llvm::outs(), flags );
             }
-            listener.getModule().print( out, flags );
+            else
+            {
+                llvm::SmallString<128> path = dirWithStem;
+                path += ".mlir";
+                std::error_code EC;
+                llvm::raw_fd_ostream out( path.str(), EC, llvm::sys::fs::OF_Text );
+                if ( EC )
+                {
+                    throw std::runtime_error( "Failed to open file: " +
+                                              EC.message() );
+                }
+                listener.getModule().print( out, flags );
+            }
         }
 
         auto module = listener.getModule();
@@ -237,30 +249,30 @@ int main( int argc, char **argv )
         {
             if ( emitLLVM )
             {
-                llvm::SmallString<128> path = dirWithStem;
-                path += ".ll";
-                std::error_code EC;
-                llvm::raw_fd_ostream out( path.str(), EC,
-                                          llvm::sys::fs::OF_Text );
-                if ( EC )
+                // Verify the module to ensure debug info is valid
+                if ( llvm::verifyModule( *llvmModule, &llvm::errs() ) )
                 {
-                    throw std::runtime_error( "Failed to open file: " +
-                                              EC.message() );
+                    throw std::runtime_error( "Invalid LLVM IR module" );
                 }
-                if ( enableLocation )
+
+                if ( toStdout )
                 {
-                    // Verify the module to ensure debug info is valid
-                    if ( llvm::verifyModule( *llvmModule, &llvm::errs() ) )
-                    {
-                        throw std::runtime_error( "Invalid LLVM IR module" );
-                    }
-                    // Print with debug info (metadata is included by default)
-                    llvmModule->print( out, nullptr,
-                                       true /* print debug info */ );
+                    llvmModule->print( llvm::outs(), nullptr, enableLocation /* print debug info */ );
                 }
                 else
                 {
-                    llvmModule->print( out, nullptr );
+                    llvm::SmallString<128> path = dirWithStem;
+                    path += ".ll";
+                    std::error_code EC;
+                    llvm::raw_fd_ostream out( path.str(), EC,
+                                              llvm::sys::fs::OF_Text );
+                    if ( EC )
+                    {
+                        throw std::runtime_error( "Failed to open file: " +
+                                                  EC.message() );
+                    }
+
+                    llvmModule->print( out, nullptr, enableLocation /* print debug info */ );
                 }
             }
 
