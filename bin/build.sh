@@ -6,13 +6,15 @@
 
 =head1 NAME
 
-build.sh - <one-line-description>
+build.sh - delete and recreate the build directory, run the cmake ninja generator and ninja.
 
 =head1 SYNOPSIS
 
 build.sh [--help] [--serial] [--[no-]cscope] [--[no-]build]
 
 =head1 DESCRIPTION
+
+Configure, build, and optionally run cscope database build step.
 
 =head1 SUPPORTED PLATFORMS
 
@@ -66,7 +68,19 @@ if ( $serial ) {
    $parallel = '-j 1';
 }
 
-# Validate/handle options, and everything else...
+my $flags = '';
+
+# gcc-13 is too old:
+#
+#  c++: error: unrecognized command-line option ‘-fdiagnostics-all-candidates’
+#
+# ... which is very useful for all the MLIR template overloads.
+if ( defined $ENV{'WSL_DISTRO_NAME'} )
+{
+   $flags .= '-DCMAKE_CXX_COMPILER=/usr/bin/g++-14 ';
+   $flags .= '-DCMAKE_C_COMPILER=/usr/bin/gcc-14 ';
+}
+
 if ( $dobuild ) {
    mysystem(qq(
 set -x
@@ -75,7 +89,7 @@ rm -rf build
 mkdir build
 cd build
 
-cmake -G Ninja -DLLVM_DIR=$prefix/lib64/cmake/llvm -DMLIR_DIR=$prefix/lib64/cmake/mlir ..
+cmake -G Ninja $flags -DLLVM_DIR=$prefix/lib64/cmake/llvm -DMLIR_DIR=$prefix/lib64/cmake/mlir ..
 
 ninja -v -k 3 ${parallel} 2>&1 | tee o | grep error: | tee e
 

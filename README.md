@@ -270,11 +270,18 @@ but that may not be any more illuminating.  Old fashioned printf style debugging
 
 ## Build timings:
 
-Fedora ; antlr4-4.13.2
+Fedora 42 ; antlr4-4.13.2
 ```
 real    0m2.034s
 user    0m2.654s
 sys     0m0.688s
+```
+
+Windows-11 w/ WSL2 ubuntu-24 ; antlr4 4.10 (same machine as above, a dual boot windows/fedora system.)
+```
+real    0m42.288s
+user    1m17.337s
+sys     0m8.481s
 ```
 
 Raspberry PI (ubuntu) ; antlr4 4.9.2
@@ -283,3 +290,5 @@ real    0m54.584s
 user    2m9.977s
 sys     0m9.730s
 ```
+
+Interesting that the little PI is almost as fast as the WSL2 ubuntu instance.  Not much justification to keep Windows booted as the primary OS.  Wonder how a Linux VM on Windows would fare compared to WSL2?
