@@ -10,11 +10,12 @@ dcl.toy \
 foo.toy \
     ; do
 
+    stem=${i%.*}
     echo "### $i"
     ../build/toycalculator $i --output-directory out --location
-    objdump -dr out/${i%.*}.o
-    clang -o out/${i%.*} out/${i%.*}.o -L ../build -l toy_runtime -Wl,-rpath,`pwd`/../build
-    ./out/${i%.*}
+    objdump -dr out/${stem}.o
+    clang -o out/${stem} out/${stem}.o -L ../build -l toy_runtime -Wl,-rpath,`pwd`/../build
+    ./out/${stem}
 done
 
 # ../build/toycalculator empty.toy --location --stdout --no-emit-object --emit-mlir --emit-llvm --debug
