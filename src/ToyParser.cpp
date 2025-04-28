@@ -136,7 +136,7 @@ namespace toy
         builder.create<toy::PrintOp>( loc, memref );
     }
 
-    void MLIRListener::enterReturn( ToyParser::ReturnContext *ctx )
+    void MLIRListener::enterReturnstatement( ToyParser::ReturnstatementContext *ctx )
     {
         lastOp = lastOperator::returnOp;
         auto loc = getLocation( ctx );

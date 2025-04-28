@@ -4,7 +4,7 @@ grammar Toy;
 // ============
 // Entry point for the grammar, matching zero or more statements followed by EOF.
 startRule
-  : (statement|comment)* (return ENDOFSTATEMENT)? EOF
+  : (statement|comment)* (returnstatement ENDOFSTATEMENT)? EOF
   ;
 
 // A statement can be a declaration, assignment, print, or comment.
@@ -22,8 +22,8 @@ declare
   : (DCL|DECLARE) VARIABLENAME
   ;
 
-// Early (or final) return from a program (e.g., 'RETURN;', 'RETURN 3;')  Return without value equivalent to 'RETURN 0;'
-return
+// Implicit or explicit return from a program (e.g., 'RETURN;', 'RETURN 3;')  Return without value equivalent to 'RETURN 0;'
+returnstatement
   : RETURN element*
   ;
 

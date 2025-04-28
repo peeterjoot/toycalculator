@@ -97,7 +97,7 @@ namespace toy
 
         void enterAssignment( ToyParser::AssignmentContext *ctx ) override;
 
-        void enterReturn( ToyParser::ReturnContext *ctx ) override;
+        void enterReturnstatement( ToyParser::ReturnstatementContext *ctx ) override;
 
         void enterUnaryexpression(
             ToyParser::UnaryexpressionContext *ctx ) override;
