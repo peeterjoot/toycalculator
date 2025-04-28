@@ -267,3 +267,19 @@ but that may not be any more illuminating.  Old fashioned printf style debugging
                          << "Lowering toy.program: " << *op << '\n' << loc << '\n' );
 ```
 
+
+## Build timings:
+
+Fedora ; antlr4-4.13.2
+```
+real    0m2.034s
+user    0m2.654s
+sys     0m0.688s
+```
+
+Raspberry PI (ubuntu) ; antlr4 4.9.2
+```
+real    0m54.584s
+user    2m9.977s
+sys     0m9.730s
+```
