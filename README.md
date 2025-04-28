@@ -67,7 +67,7 @@ With that return implemented, and a bunch of lowering tweaks (i.e.: so we don't 
 ; ModuleID = '../samples/empty.toy'
 source_filename = "../samples/empty.toy"
 
-define i32 @__toy_main() {
+define i32 @main() {
   ret i32 0
 }
 
@@ -139,7 +139,7 @@ source_filename = "foo.toy"
 
 declare void @__toy_print(double)
 
-define i32 @__toy_main() {
+define i32 @main() {
   %1 = alloca double, i64 1, align 8
   store double 3.000000e+00, ptr %1, align 8
   %2 = load double, ptr %1, align 8
@@ -160,15 +160,7 @@ However, we can actually link and run the code without error:
 > ../build/toycalculator foo.toy --output-directory out
 Generated object file: out/foo.o
 
-> cat main.c
-int __toy_main();
-
-int main()
-{
-    return __toy_main();
-}
-
-> clang main.c -o foo ../samples/out/foo.o -L ../build -l toy_runtime -Wl,-rpath,`pwd`/../build
+> clang -o foo ../samples/out/foo.o -L ../build -l toy_runtime -Wl,-rpath,`pwd`/../build
 
 > ./foo
 3.000000

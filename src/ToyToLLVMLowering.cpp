@@ -46,7 +46,7 @@ namespace
             auto funcType =
                 LLVM::LLVMFunctionType::get( rewriter.getI32Type(), {} );
             auto funcOp = rewriter.create<LLVM::LLVMFuncOp>(
-                loc, "__toy_main", funcType, LLVM::Linkage::External );
+                loc, "main", funcType, LLVM::Linkage::External );
 
             // Create an entry block in the function
             Block* entryBlock = funcOp.addEntryBlock( rewriter );
