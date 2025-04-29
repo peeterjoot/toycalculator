@@ -7,8 +7,12 @@
 #b enterReturn
 b __assert_perror_fail
 
-b ProgramOpLowering::matchAndRewrite
-b ReturnOpLowering::matchAndRewrite
+b createDICompileUnitAttr
+b createDISubprogram
+b ToyToLLVMLoweringPass::runOnOperation
+
+#b ProgramOpLowering::matchAndRewrite
+#b ReturnOpLowering::matchAndRewrite
 #b driver.cpp:114
 
 ## firstError assignments:

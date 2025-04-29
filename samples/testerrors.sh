@@ -9,7 +9,7 @@ error_undeclare.toy \
 error_invalid_binary.toy \
 error_invalid_unary.toy \
     ; do
-    ../build/toycalculator --location $i --emit-mlir --emit-llvm --no-emit-object --output-directory out
+    ../build/toycalculator -g $i --emit-mlir --emit-llvm --no-emit-object --output-directory out
     cat out/$i.mlir
 done
 

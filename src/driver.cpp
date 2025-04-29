@@ -37,7 +37,7 @@ static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::cat( ToyCategory ), llvm::cl::NotHidden );
 
 static llvm::cl::opt<bool> enableLocation(
-    "location", llvm::cl::desc( "Enable location output (MLIR and LLVM IR)" ),
+    "g", llvm::cl::desc( "Enable location output in MLIR, and dwarf metadata creation in the lowered LLVM IR)" ),
     llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
 
 static llvm::cl::opt<std::string> outDir(
