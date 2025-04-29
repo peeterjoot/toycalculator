@@ -14,7 +14,7 @@ test.toy \
 
     echo "### $i"
     cat $i
-    ../build/toycalculator --location $i --emit-mlir --emit-llvm --no-emit-object --output-directory out
+    ../build/toycalculator -g $i --emit-mlir --emit-llvm --no-emit-object --output-directory out
     cat out/${i%.*}.mlir
 done
 

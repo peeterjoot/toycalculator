@@ -36,7 +36,7 @@ Examples:
 The MLIR for this program used to be:
 
 ```
-> ../build/toycalculator empty.toy  --location
+> ../build/toycalculator empty.toy  -g
 "builtin.module"() ({
   "toy.program"() ({
   ^bb0:
@@ -87,7 +87,7 @@ DCL x; // The simplest non-empty program.
 Results in MLIR like:
 
 ```
-> ../build/toycalculator dcl.toy  --location
+> ../build/toycalculator dcl.toy  -g
 "builtin.module"() ({
   "toy.program"() ({
     %0 = "memref.alloca"() <{operandSegmentSizes = array<i32: 0, 0>}> : () -> memref<f64> loc(#loc1)
@@ -112,7 +112,7 @@ x = 3;
 Here is the MLIR for the code above:
 
 ```
-> ./build/toycalculator  samples/foo.toy  --location
+> ./build/toycalculator  samples/foo.toy  -g
 "builtin.module"() ({
   "toy.program"() ({
     %0 = "memref.alloca"() <{operandSegmentSizes = array<i32: 0, 0>}> : () -> memref<f64> loc(#loc1)
@@ -173,13 +173,13 @@ Generated object file: out/foo.o
 * --emit-mlir
 * --debug (mlir default option.)
 * --debug-mlir
-* --location (show MLIR location info in the dump.)
+* -g (show MLIR location info in the dump, and generate DWARF metadata in the lowered LLVM-IR.)
 * -O[0123] -- the usual.
 * --stdout.  MLIR and LLVM-IR output to stdout instead of to files.
 
 ## TODO
 
-* ../build/toycalculator foo.toy --location --stdout --no-emit-object --emit-mlir --emit-llvm --debug 2>&1 | less
+* ../build/toycalculator foo.toy -g --stdout --no-emit-object --emit-mlir --emit-llvm --debug 2>&1 | less
    'memref.alloca' op requires an ancestor op with AutomaticAllocationScope trait
 foo.toy:
    'toy.unary' op operand #0 must be 64-bit float, but got 'i64'
