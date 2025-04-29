@@ -15,6 +15,7 @@
 #include <mlir/IR/Location.h>    // For FileLineColLoc
 #include <mlir/Pass/Pass.h>
 #include <mlir/Transforms/DialectConversion.h>
+#include <mlir/IR/BuiltinAttributes.h> // DistinctAttributeUniquer, for DistinctAttr
 
 #include "ToyDialect.h"
 #include "ToyToLLVMLowering.h"
@@ -26,8 +27,8 @@ using namespace mlir;
 namespace
 {
     mlir::LLVM::DICompileUnitAttr createDICompileUnitAttr(
-        mlir::OpBuilder& builder, mlir::ModuleOp module,
-        mlir::Location loc, bool isOptimized = false )
+        mlir::OpBuilder& builder, mlir::ModuleOp module, mlir::Location loc,
+        bool isOptimized = false )
     {
         auto ctx = builder.getContext();
 
@@ -59,11 +60,11 @@ namespace
     }
 
     mlir::LLVM::DISubprogramAttr createDISubprogram(
-        mlir::OpBuilder& builder,
-        mlir::ModuleOp module,
-        llvm::StringRef name, // function name
-        mlir::Location loc, // module.getLoc()
-        mlir::LLVM::DICompileUnitAttr& compileUnit, // from createDICompileUnitAttr
+        mlir::OpBuilder& builder, mlir::ModuleOp module,
+        llvm::StringRef name,    // function name
+        mlir::Location loc,      // module.getLoc()
+        mlir::LLVM::DICompileUnitAttr&
+            compileUnit,    // from createDICompileUnitAttr
         bool isOptimized = false )
     {
         auto ctx = builder.getContext();
@@ -140,14 +141,9 @@ namespace
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.program: " << *op << '\n'
                                      << loc << '\n' );
 
-            // Create an LLVM function
-            auto funcType =
-                LLVM::LLVMFunctionType::get( rewriter.getI32Type(), {} );
-            auto funcOp = rewriter.create<LLVM::LLVMFuncOp>(
-                loc, "main", funcType, LLVM::Linkage::External );
+            // Lookup the LLVM function for "main", created in runOnOperation
             auto module = op->getParentOfType<ModuleOp>();
-            OpBuilder builder( module.getRegion() );
-            funcOp.setSubprogram( createDISubprogram( builder, module, "main", loc, compileUnit ) );
+            auto funcOp = module.lookupSymbol<LLVM::LLVMFuncOp>( "main" );
 
             // Create an entry block in the function
             Block* entryBlock = funcOp.addEntryBlock( rewriter );
@@ -594,47 +590,51 @@ namespace
             target.addIllegalDialect<toy::ToyDialect>();
             target.addIllegalOp<memref::AllocaOp, memref::StoreOp,
                                 memref::LoadOp, arith::ConstantOp>();
-            // builtin.module is legal until its contents are legalized
             target.addLegalOp<mlir::ModuleOp>();
 
-            // Add __toy_print declaration at module level
+            // Create DICompileUnit
             OpBuilder builder( module.getRegion() );
+            mlir::LLVM::DICompileUnitAttr compileUnit =
+                createDICompileUnitAttr( builder, module, module.getLoc() );
 
-            mlir::LLVM::DICompileUnitAttr compileUnit = createDICompileUnitAttr( builder, module, module.getLoc() );
+            // Set debug metadata
+            auto ctx = builder.getContext();
+            module->setAttr( "llvm.dbg.cu",
+                             mlir::ArrayAttr::get( ctx, { compileUnit } ) );
 
-            {
-                auto ctx = builder.getContext();
+            // Set module flags for debug info
+            SmallVector<NamedAttribute> moduleFlags;
+            moduleFlags.push_back(
+                NamedAttribute( builder.getStringAttr( "Debug Info Version" ),
+                                builder.getI32IntegerAttr( 3 ) ) );
+            moduleFlags.push_back(
+                NamedAttribute( builder.getStringAttr( "Dwarf Version" ),
+                                builder.getI32IntegerAttr( 4 ) ) );
+            module->setAttr( "llvm.module.flags",
+                             mlir::ArrayAttr::get( ctx, moduleFlags ) );
 
-                // Set llvm.dbg.cu
-                module.setAttr( "llvm.dbg.cu",
-                                mlir::ArrayAttr::get( ctx, { compileUnit } ) );
-
-                // Set module flags for debug info
-                module.setAttr(
-                    "llvm.module.flags",
-                    mlir::ArrayAttr::get(
-                        ctx,
-                        { // Debug Info Version
-                          mlir::NamedAttribute(
-                              builder.getStringAttr( "Debug Info Version" ),
-                              builder.getI32IntegerAttr( 3 ) ),
-                          // DWARF Version
-                          mlir::NamedAttribute(
-                              builder.getStringAttr( "Dwarf Version" ),
-                              builder.getI32IntegerAttr( 4 ) ) } ) );
-            }
-
-            auto llvmContext = module.getContext();
-
+            // Add __toy_print declaration
             builder.setInsertionPointToStart( module.getBody() );
-            auto funcType = LLVM::LLVMFunctionType::get(
-                LLVM::LLVMVoidType::get( llvmContext ),
-                { builder.getF64Type() }, false );
-            auto tp = builder.create<LLVM::LLVMFuncOp>(
+            auto funcType =
+                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ),
+                                             { builder.getF64Type() }, false );
+            auto printFunc = builder.create<LLVM::LLVMFuncOp>(
                 module.getLoc(), "__toy_print", funcType,
                 LLVM::Linkage::External );
-            tp.setSubprogram( createDISubprogram( builder, module, "__toy_print",
-                                                  module.getLoc(), compileUnit ) );
+            printFunc->setAttr(
+                "llvm.DISubprogram",
+                createDISubprogram( builder, module, "__toy_print",
+                                    module.getLoc(), compileUnit ) );
+
+            // Create main function
+            funcType =
+                LLVM::LLVMFunctionType::get( builder.getI32Type(), {}, false );
+            auto mainFunc = builder.create<LLVM::LLVMFuncOp>(
+                module.getLoc(), "main", funcType, LLVM::Linkage::External );
+            mainFunc->setAttr(
+                "llvm.DISubprogram",
+                createDISubprogram( builder, module, "main", module.getLoc(),
+                                    compileUnit ) );
 
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns( &getContext() );
@@ -656,7 +656,6 @@ namespace
 
             LLVM_DEBUG( {
                 llvm::dbgs() << "After ToyToLLVMLoweringPass:\n";
-                // Print top-level operations directly
                 for ( Operation& op : module->getRegion( 0 ).front() )
                 {
                     op.dump();
