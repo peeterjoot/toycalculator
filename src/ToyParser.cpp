@@ -46,10 +46,10 @@ namespace toy
     }
 
     MLIRListener::MLIRListener( const std::string &_filename )
-        : dialect(),
+        : filename( _filename ),
+          dialect(),
           builder( &dialect.context ),
           mod( mlir::ModuleOp::create( getLocation( nullptr ) ) ),
-          filename( _filename ),
           currentAssignLoc( getLocation( nullptr ) )
     {
         builder.setInsertionPointToStart( mod.getBody() );

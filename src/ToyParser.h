@@ -61,10 +61,10 @@ namespace toy
     class MLIRListener : public ToyBaseListener
     {
        private:
+        std::string filename;
         DialectCtx dialect;
         mlir::OpBuilder builder;
         mlir::ModuleOp mod;
-        std::string filename;
         toy::ProgramOp programOp;
         std::string currentVarName;
         mlir::Location currentAssignLoc;
