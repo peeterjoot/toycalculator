@@ -1,4 +1,5 @@
 #include <llvm/ADT/StringRef.h>
+#include <llvm/BinaryFormat/Dwarf.h> // For DW_LANG_C, DW_ATE_*
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/ErrorHandling.h>
 #include <mlir/Conversion/ArithToLLVM/ArithToLLVM.h>
@@ -12,6 +13,8 @@
 #include <mlir/IR/Block.h>
 #include <mlir/Pass/Pass.h>
 #include <mlir/Transforms/DialectConversion.h>
+#include <mlir/Dialect/LLVMIR/LLVMAttrs.h>
+#include <mlir/IR/BuiltinLocationAttributes.h> // For FileLineColLoc
 
 #include "ToyDialect.h"
 #include "ToyToLLVMLowering.h"
@@ -22,6 +25,113 @@ using namespace mlir;
 
 namespace
 {
+    mlir::LLVM::DISubprogramAttr createDISubprogram( OpBuilder& builder,
+                                                     ModuleOp module,
+                                                     StringRef name,
+                                                     Location loc )
+    {
+        auto fileLineLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc );
+        if ( !fileLineLoc )
+        {
+            throw std::runtime_error(
+                "Internal error: Expected only FileLineColLoc Location info." );
+        }
+
+        auto ctx = builder.getContext();
+
+        auto file =
+            mlir::LLVM::DIFileAttr::get( ctx, fileLineLoc.getFilename(), "" );
+
+        auto compileUnit = mlir::LLVM::DICompileUnitAttr::get(
+            ctx, mlir::DistinctAttr::get( ctx ), llvm::dwarf::DW_LANG_C,
+            file,                                       // Source file
+            builder.getStringAttr( "Toy Compiler" ),    // Producer
+            false,    // isOptimized.  FIXME: this doesn't match driver.cpp
+                      // -O[0123] settings.
+            mlir::LLVM::DIEmissionKind::Full,       // Emission kind
+            mlir::LLVM::DINameTableKind::Default    // Name table kind
+        );
+
+        auto voidType = mlir::LLVM::DIBasicTypeAttr::get(
+            ctx, 0, "void", 0, mlir::LLVM::DITypeAttr::Encoding::None );
+        auto doubleType = mlir::LLVM::DIBasicTypeAttr::get(
+            ctx, 0, "double", 64, mlir::LLVM::DITypeAttr::Encoding::Double );
+        auto int32Type = mlir::LLVM::DIBasicTypeAttr::get(
+            ctx, 0, "int", 32, mlir::LLVM::DITypeAttr::Encoding::Signed );
+        mlir::TypeAttr resultType = ( name == "main" ) ? int32Type : voidType;
+        llvm::SmallVector<mlir::TypeAttr> paramTypes;
+        if ( name == "__toy_print" )
+        {
+            paramTypes.push_back( doubleType );
+        }
+        auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get(
+            ctx, mlir::LLVM::DIFlags::Zero, resultType, paramTypes );
+
+        auto subprogram = mlir::LLVM::DISubprogramAttr::get(
+            ctx,                               // MLIRContext
+            mlir::DistinctAttr::get( ctx ),    // DistinctAttr (id)
+            compileUnit,                       // DICompileUnitAttr
+            file,                              // DIScopeAttr (file as scope)
+            builder.getStringAttr( name ),     // Function name
+            builder.getStringAttr( name ),     // Linkage name
+            file,                              // Source file
+            fileLineLoc.getLine(),             // Line number
+            fileLineLoc.getLine(),             // Scope line
+            mlir::LLVM::DISubprogramFlags::Definition,    // Subprogram flags
+            subprogramType,                               // Subroutine type
+            llvm::ArrayRef<mlir::LLVM::DINodeAttr>{},     // Retained nodes
+            llvm::ArrayRef<mlir::LLVM::DINodeAttr>{}      // Annotations
+        );
+
+        return subprogram;
+    }
+
+    void addDebugMetadata( mlir::ModuleOp module, mlir::OpBuilder& builder,
+                           Location loc )
+    {
+        auto ctx = builder.getContext();
+
+        auto fileLineLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc );
+        if ( !fileLineLoc )
+        {
+            throw std::runtime_error(
+                "Internal error: Expected only FileLineColLoc Location info." );
+        }
+
+        // Create DIFile for the source file
+        auto file =
+            mlir::LLVM::DIFileAttr::get( ctx, fileLineLoc.getFilename(), "" );
+
+        // Create DICompileUnit
+        auto compileUnit = mlir::LLVM::DICompileUnitAttr::get(
+            ctx,    // MLIRContext
+            mlir::DistinctAttr::get( ctx ), llvm::dwarf::DW_LANG_C,
+            file,                                       // Source file
+            builder.getStringAttr( "Toy Compiler" ),    // Producer
+            false,    // isOptimized.  FIXME: this doesn't match driver.cpp
+                      // -O[0123] settings.
+            mlir::LLVM::DIEmissionKind::Full,       // Emission kind
+            mlir::LLVM::DINameTableKind::Default    // Name table kind
+        );
+
+        // Set llvm.dbg.cu
+        module->setAttr( "llvm.dbg.cu",
+                         mlir::ArrayAttr::get( ctx, { compileUnit } ) );
+
+        // Set module flags for debug info
+        module->setAttr(
+            "llvm.module.flags",
+            mlir::ArrayAttr::get(
+                ctx, { // Debug Info Version
+                       mlir::NamedAttribute(
+                           builder.getStringAttr( "Debug Info Version" ),
+                           builder.getI32IntegerAttr( 3 ) ),
+                       // DWARF Version
+                       mlir::NamedAttribute(
+                           builder.getStringAttr( "Dwarf Version" ),
+                           builder.getI32IntegerAttr( 4 ) ) } ) );
+    }
+
     // Lower toy.program to an LLVM function.
     class ProgramOpLowering : public ConversionPattern
     {
@@ -47,6 +157,10 @@ namespace
                 LLVM::LLVMFunctionType::get( rewriter.getI32Type(), {} );
             auto funcOp = rewriter.create<LLVM::LLVMFuncOp>(
                 loc, "main", funcType, LLVM::Linkage::External );
+            ModuleOp module = getOperation();
+            OpBuilder builder( module.getRegion() );
+            funcOp.setSubprogram(
+                createDISubprogram( builder, module, "main", loc ) );
 
             // Create an entry block in the function
             Block* entryBlock = funcOp.addEntryBlock( rewriter );
@@ -98,7 +212,13 @@ namespace
                 mlir::Value zero = rewriter.create<LLVM::ConstantOp>(
                     loc, rewriter.getI32Type(),
                     rewriter.getI32IntegerAttr( 0 ) );
+                // zero->setAttr("debugLoc", mlir::LLVM::DILocationAttr::get(
+                // rewriter.getContext(), loc.getLine(), loc.getColumn(),
+                // subprogram));
                 rewriter.create<LLVM::ReturnOp>( loc, zero );
+                // c->setAttr("debugLoc", mlir::LLVM::DILocationAttr::get(
+                // rewriter.getContext(), loc.getLine(), loc.getColumn(),
+                // subprogram));
             }
             else
             {
@@ -489,11 +609,12 @@ namespace
                                 memref::LoadOp, arith::ConstantOp>();
             // builtin.module is legal until its contents are legalized
             target.addLegalOp<mlir::ModuleOp>();
+            target.addDebugInfo();
 
             // Add __toy_print declaration at module level
-            // Add __toy_print declaration at module level
             OpBuilder builder( module.getRegion() );
-            builder.setInsertionPointToStart( module.getBody() );
+            addDebugMetadata( module, builder, module.getLoc() )
+                builder.setInsertionPointToStart( module.getBody() );
             auto llvmContext = module.getContext();
             auto funcType = LLVM::LLVMFunctionType::get(
                 LLVM::LLVMVoidType::get( llvmContext ),

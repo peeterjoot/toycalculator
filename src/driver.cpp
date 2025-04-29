@@ -47,10 +47,9 @@ static llvm::cl::opt<std::string> outDir(
     llvm::cl::value_desc( "directory" ), llvm::cl::init( "" ),
     llvm::cl::cat( ToyCategory ) );
 
-static llvm::cl::opt<bool> toStdout( "stdout",
-                                     llvm::cl::desc( "LLVM and MLIR on stdout instead of to a file" ),
-                                     llvm::cl::init( false ),
-                                     llvm::cl::cat( ToyCategory ) );
+static llvm::cl::opt<bool> toStdout(
+    "stdout", llvm::cl::desc( "LLVM and MLIR on stdout instead of to a file" ),
+    llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
 
 // Add command-line option for MLIR emission
 static llvm::cl::opt<bool> emitMLIR( "emit-mlir",
@@ -196,7 +195,8 @@ int main( int argc, char **argv )
                 llvm::SmallString<128> path = dirWithStem;
                 path += ".mlir";
                 std::error_code EC;
-                llvm::raw_fd_ostream out( path.str(), EC, llvm::sys::fs::OF_Text );
+                llvm::raw_fd_ostream out( path.str(), EC,
+                                          llvm::sys::fs::OF_Text );
                 if ( EC )
                 {
                     throw std::runtime_error( "Failed to open file: " +
@@ -245,7 +245,8 @@ int main( int argc, char **argv )
             throw std::runtime_error( "Failed to translate to LLVM IR" );
         }
 
-        if ( emitLLVM || !noEmitObject )
+        auto emitObject = !noEmitObject;
+        if ( emitLLVM || emitObject )
         {
             if ( emitLLVM )
             {
@@ -257,7 +258,8 @@ int main( int argc, char **argv )
 
                 if ( toStdout )
                 {
-                    llvmModule->print( llvm::outs(), nullptr, enableLocation /* print debug info */ );
+                    llvmModule->print( llvm::outs(), nullptr,
+                                       enableLocation /* print debug info */ );
                 }
                 else
                 {
@@ -272,11 +274,12 @@ int main( int argc, char **argv )
                                                   EC.message() );
                     }
 
-                    llvmModule->print( out, nullptr, enableLocation /* print debug info */ );
+                    llvmModule->print( out, nullptr,
+                                       enableLocation /* print debug info */ );
                 }
             }
 
-            if ( !noEmitObject )
+            if ( emitObject )
             {
                 // Set target triple
                 std::string targetTriple = llvm::sys::getProcessTriple();
