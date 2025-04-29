@@ -6,7 +6,11 @@
 
 namespace mlir
 {
-    void registerToyPasses();
+    void registerToyToLLVMLoweringPass( bool isOptimized = false );
+    inline void registerToyPasses( bool isOptimized = false )
+    {
+        registerToyToLLVMLoweringPass( isOptimized );
+    }
 }    // namespace mlir
 
 #define GEN_PASS_REGISTRATION

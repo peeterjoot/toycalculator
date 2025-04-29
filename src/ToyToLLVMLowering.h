@@ -5,7 +5,7 @@
 
 namespace mlir
 {
-    std::unique_ptr<Pass> createToyToLLVMLoweringPass();
+    std::unique_ptr<Pass> createToyToLLVMLoweringPass( bool isOptimized = false );
 }    // namespace mlir
 
 #endif    // TOY_TO_LLVM_LOWERING_H
