@@ -225,7 +225,7 @@ int main( int argc, char **argv )
             pm.enableIRPrinting();
         }
 
-        pm.addPass( mlir::createToyToLLVMLoweringPass() );
+        pm.addPass( mlir::createToyToLLVMLoweringPass( optLevel != OptLevel::O0 ? true : false ) );
         pm.addPass( mlir::createConvertSCFToCFPass() );
         pm.addPass( mlir::createConvertFuncToLLVMPass() );
         pm.addPass( mlir::createFinalizeMemRefToLLVMConversionPass() );

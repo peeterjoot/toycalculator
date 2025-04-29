@@ -15,7 +15,6 @@
 #include <mlir/IR/Location.h>    // For FileLineColLoc
 #include <mlir/Pass/Pass.h>
 #include <mlir/Transforms/DialectConversion.h>
-#include <mlir/IR/BuiltinAttributes.h> // DistinctAttributeUniquer, for DistinctAttr
 
 #include "ToyDialect.h"
 #include "ToyToLLVMLowering.h"
@@ -28,7 +27,7 @@ namespace
 {
     mlir::LLVM::DICompileUnitAttr createDICompileUnitAttr(
         mlir::OpBuilder& builder, mlir::ModuleOp module, mlir::Location loc,
-        bool isOptimized = false )
+        bool isOptimized )
     {
         auto ctx = builder.getContext();
 
@@ -47,7 +46,8 @@ namespace
         // Create DICompileUnit
         auto compileUnit = mlir::LLVM::DICompileUnitAttr::get(
             ctx,
-            mlir::DistinctAttr::get( ctx ),             // DistinctAttr
+            nullptr,    // mlir::DistinctAttr::get( ctx ),             //
+                        // DistinctAttr
             llvm::dwarf::DW_LANG_C,                     // Source language
             file,                                       // Source file
             builder.getStringAttr( "Toy Compiler" ),    // Producer
@@ -65,7 +65,7 @@ namespace
         mlir::Location loc,      // module.getLoc()
         mlir::LLVM::DICompileUnitAttr&
             compileUnit,    // from createDICompileUnitAttr
-        bool isOptimized = false )
+        bool isOptimized )
     {
         auto ctx = builder.getContext();
 
@@ -103,15 +103,16 @@ namespace
 
         // Create DISubprogram
         auto subprogram = mlir::LLVM::DISubprogramAttr::get(
-            ctx,                               // MLIRContext
-            mlir::DistinctAttr::get( ctx ),    // DistinctAttr (id)
-            compileUnit,                       // DICompileUnitAttr
-            file,                              // DIScopeAttr (file as scope)
-            builder.getStringAttr( name ),     // Function name
-            builder.getStringAttr( name ),     // Linkage name
-            file,                              // Source file
-            fileLineLoc.getLine(),             // Line number
-            fileLineLoc.getLine(),             // Scope line
+            ctx,        // MLIRContext
+            nullptr,    // mlir::DistinctAttr::get( ctx ),    // DistinctAttr
+                        // (id)
+            compileUnit,                      // DICompileUnitAttr
+            file,                             // DIScopeAttr (file as scope)
+            builder.getStringAttr( name ),    // Function name
+            builder.getStringAttr( name ),    // Linkage name
+            file,                             // Source file
+            fileLineLoc.getLine(),            // Line number
+            fileLineLoc.getLine(),            // Scope line
             mlir::LLVM::DISubprogramFlags::Definition,    // Subprogram flags
             subprogramType,                               // Subroutine type
             llvm::ArrayRef<mlir::LLVM::DINodeAttr>{},     // Retained nodes
@@ -566,6 +567,10 @@ namespace
        public:
         MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID( ToyToLLVMLoweringPass )
 
+        ToyToLLVMLoweringPass( bool opt_ ) : isOptimized( opt_ )
+        {
+        }
+
         void getDependentDialects( DialectRegistry& registry ) const override
         {
             registry.insert<LLVM::LLVMDialect, arith::ArithDialect,
@@ -594,15 +599,15 @@ namespace
 
             // Create DICompileUnit
             OpBuilder builder( module.getRegion() );
-            mlir::LLVM::DICompileUnitAttr compileUnit =
-                createDICompileUnitAttr( builder, module, module.getLoc() );
+            mlir::LLVM::DICompileUnitAttr compileUnit = createDICompileUnitAttr(
+                builder, module, module.getLoc(), isOptimized );
 
             // Set debug metadata
             auto ctx = builder.getContext();
             module->setAttr( "llvm.dbg.cu",
                              mlir::ArrayAttr::get( ctx, { compileUnit } ) );
 
-            // Set module flags for debug info
+            // Create module flags as NamedAttributes
             SmallVector<NamedAttribute> moduleFlags;
             moduleFlags.push_back(
                 NamedAttribute( builder.getStringAttr( "Debug Info Version" ),
@@ -610,8 +615,10 @@ namespace
             moduleFlags.push_back(
                 NamedAttribute( builder.getStringAttr( "Dwarf Version" ),
                                 builder.getI32IntegerAttr( 4 ) ) );
+
+            // Set module flags using DictionaryAttr
             module->setAttr( "llvm.module.flags",
-                             mlir::ArrayAttr::get( ctx, moduleFlags ) );
+                             mlir::DictionaryAttr::get( ctx, moduleFlags ) );
 
             // Add __toy_print declaration
             builder.setInsertionPointToStart( module.getBody() );
@@ -624,7 +631,8 @@ namespace
             printFunc->setAttr(
                 "llvm.DISubprogram",
                 createDISubprogram( builder, module, "__toy_print",
-                                    module.getLoc(), compileUnit ) );
+                                    module.getLoc(), compileUnit,
+                                    isOptimized ) );
 
             // Create main function
             funcType =
@@ -634,7 +642,7 @@ namespace
             mainFunc->setAttr(
                 "llvm.DISubprogram",
                 createDISubprogram( builder, module, "main", module.getLoc(),
-                                    compileUnit ) );
+                                    compileUnit, isOptimized ) );
 
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns( &getContext() );
@@ -662,15 +670,34 @@ namespace
                 }
             } );
         }
+
+       private:
+        bool isOptimized;
     };
 
 }    // namespace
 
 namespace mlir
 {
+    // Parameterless version for TableGen
     std::unique_ptr<Pass> createToyToLLVMLoweringPass()
     {
-        return std::make_unique<ToyToLLVMLoweringPass>();
+        return createToyToLLVMLoweringPass(
+            false );    // Default to no optimization
+    }
+
+    // Parameterized version
+    std::unique_ptr<Pass> createToyToLLVMLoweringPass( bool isOptimized )
+    {
+        return std::make_unique<ToyToLLVMLoweringPass>( isOptimized );
+    }
+
+    // Custom registration with bool parameter
+    void registerToyToLLVMLoweringPass( bool isOptimized )
+    {
+        ::mlir::registerPass(
+            [isOptimized]() -> std::unique_ptr<::mlir::Pass>
+            { return mlir::createToyToLLVMLoweringPass( isOptimized ); } );
     }
 }    // namespace mlir
 
