@@ -14,7 +14,7 @@ foo.toy \
     echo "### $i"
     ../build/toycalculator $i --output-directory out --location
     objdump -dr out/${stem}.o
-    clang -o out/${stem} out/${stem}.o -L ../build -l toy_runtime -Wl,-rpath,`pwd`/../build
+    clang -g -o out/${stem} out/${stem}.o -L ../build -l toy_runtime -Wl,-rpath,`pwd`/../build
     ./out/${stem}
 done
 

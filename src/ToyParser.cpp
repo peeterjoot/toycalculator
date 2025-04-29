@@ -23,14 +23,16 @@ namespace toy
     inline mlir::Location MLIRListener::getLocation(
         antlr4::ParserRuleContext *ctx )
     {
+        size_t line = 1;
+        size_t col = 1;
         if ( ctx )
         {
-            size_t line = ctx->getStart()->getLine();
-            size_t col = ctx->getStart()->getCharPositionInLine();
-            return mlir::FileLineColLoc::get( builder.getStringAttr( filename ),
-                                              line, col + 1 );
+            line = ctx->getStart()->getLine();
+            col = ctx->getStart()->getCharPositionInLine();
         }
-        return mlir::UnknownLoc::get( &dialect.context );
+
+        return mlir::FileLineColLoc::get( builder.getStringAttr( filename ),
+                                          line, col + 1 );
     }
 
     inline std::string MLIRListener::formatLocation( mlir::Location loc )
