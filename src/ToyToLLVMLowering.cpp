@@ -25,6 +25,11 @@ using namespace mlir;
 
 namespace
 {
+    struct loweringContext
+    {
+        // for future use.
+    };
+
     mlir::LLVM::DICompileUnitAttr createDICompileUnitAttr(
         mlir::OpBuilder& builder, mlir::ModuleOp module, mlir::Location loc,
         bool isOptimized )
@@ -125,10 +130,14 @@ namespace
     // Lower toy.program to an LLVM function.
     class ProgramOpLowering : public ConversionPattern
     {
+       private:
+        loweringContext& lState;
+
        public:
-        ProgramOpLowering( MLIRContext* context )
+        ProgramOpLowering( loweringContext& lState_, MLIRContext* context )
             : ConversionPattern( toy::ProgramOp::getOperationName(), 1,
-                                 context )
+                                 context ),
+              lState{ lState_ }
         {
         }
 
@@ -176,9 +185,14 @@ namespace
     // Lower toy.return to nothing (erase).
     class ReturnOpLowering : public ConversionPattern
     {
+       private:
+        loweringContext& lState;
+
        public:
-        ReturnOpLowering( MLIRContext* context )
-            : ConversionPattern( toy::ReturnOp::getOperationName(), 1, context )
+        ReturnOpLowering( loweringContext& lState_, MLIRContext* context )
+            : ConversionPattern( toy::ReturnOp::getOperationName(), 1,
+                                 context ),
+              lState{ lState_ }
         {
         }
 
@@ -229,10 +243,14 @@ namespace
     // Lower toy.declare to nothing (erase).
     class DeclareOpLowering : public ConversionPattern
     {
+       private:
+        loweringContext& lState;
+
        public:
-        DeclareOpLowering( MLIRContext* context )
+        DeclareOpLowering( loweringContext& lState_, MLIRContext* context )
             : ConversionPattern( toy::DeclareOp::getOperationName(), 1,
-                                 context )
+                                 context ),
+              lState{ lState_ }
         {
         }
 
@@ -250,9 +268,13 @@ namespace
     // Lower toy.print to a call to __toy_print.
     class PrintOpLowering : public ConversionPattern
     {
+       private:
+        loweringContext& lState;
+
        public:
-        PrintOpLowering( MLIRContext* context )
-            : ConversionPattern( toy::PrintOp::getOperationName(), 1, context )
+        PrintOpLowering( loweringContext& lState_, MLIRContext* context )
+            : ConversionPattern( toy::PrintOp::getOperationName(), 1, context ),
+              lState{ lState_ }
         {
         }
 
@@ -307,9 +329,14 @@ namespace
     // Lower toy.assign to nothing (erase).
     class AssignOpLowering : public ConversionPattern
     {
+       private:
+        loweringContext& lState;
+
        public:
-        AssignOpLowering( MLIRContext* context )
-            : ConversionPattern( toy::AssignOp::getOperationName(), 1, context )
+        AssignOpLowering( loweringContext& lState_, MLIRContext* context )
+            : ConversionPattern( toy::AssignOp::getOperationName(), 1,
+                                 context ),
+              lState{ lState_ }
         {
         }
 
@@ -327,9 +354,13 @@ namespace
     // Lower toy.unary to LLVM arithmetic.
     class UnaryOpLowering : public ConversionPattern
     {
+       private:
+        loweringContext& lState;
+
        public:
-        UnaryOpLowering( MLIRContext* context )
-            : ConversionPattern( toy::UnaryOp::getOperationName(), 1, context )
+        UnaryOpLowering( loweringContext& lState_, MLIRContext* context )
+            : ConversionPattern( toy::UnaryOp::getOperationName(), 1, context ),
+              lState{ lState_ }
         {
         }
 
@@ -372,10 +403,15 @@ namespace
     };
 
     // Lower toy.binary to LLVM arithmetic.
-    struct BinaryOpLowering : public ConversionPattern
+    class BinaryOpLowering : public ConversionPattern
     {
-        BinaryOpLowering( MLIRContext* ctx )
-            : ConversionPattern( toy::BinaryOp::getOperationName(), 1, ctx )
+       private:
+        loweringContext& lState;
+
+       public:
+        BinaryOpLowering( loweringContext& lState_, MLIRContext* ctx )
+            : ConversionPattern( toy::BinaryOp::getOperationName(), 1, ctx ),
+              lState{ lState_ }
         {
         }
 
@@ -430,10 +466,16 @@ namespace
     };
 
     // Lower arith.constant to LLVM constant.
-    struct ConstantOpLowering : public ConversionPattern
+    class ConstantOpLowering : public ConversionPattern
     {
-        ConstantOpLowering( MLIRContext* ctx )
-            : ConversionPattern( arith::ConstantOp::getOperationName(), 1, ctx )
+       private:
+        loweringContext& lState;
+
+       public:
+        ConstantOpLowering( loweringContext& lState_, MLIRContext* ctx )
+            : ConversionPattern( arith::ConstantOp::getOperationName(), 1,
+                                 ctx ),
+              lState{ lState_ }
         {
         }
 
@@ -462,10 +504,15 @@ namespace
     };
 
     // Lower memref.alloca to llvm.alloca.
-    struct MemRefAllocaOpLowering : public ConversionPattern
+    class MemRefAllocaOpLowering : public ConversionPattern
     {
-        MemRefAllocaOpLowering( MLIRContext* ctx )
-            : ConversionPattern( memref::AllocaOp::getOperationName(), 1, ctx )
+       private:
+        loweringContext& lState;
+
+       public:
+        MemRefAllocaOpLowering( loweringContext& lState_, MLIRContext* ctx )
+            : ConversionPattern( memref::AllocaOp::getOperationName(), 1, ctx ),
+              lState{ lState_ }
         {
         }
 
@@ -494,10 +541,15 @@ namespace
     };
 
     // Lower memref.store to llvm.store.
-    struct MemRefStoreOpLowering : public ConversionPattern
+    class MemRefStoreOpLowering : public ConversionPattern
     {
-        MemRefStoreOpLowering( MLIRContext* ctx )
-            : ConversionPattern( memref::StoreOp::getOperationName(), 1, ctx )
+       private:
+        loweringContext& lState;
+
+       public:
+        MemRefStoreOpLowering( loweringContext& lState_, MLIRContext* ctx )
+            : ConversionPattern( memref::StoreOp::getOperationName(), 1, ctx ),
+              lState{ lState_ }
         {
         }
 
@@ -535,10 +587,15 @@ namespace
     };
 
     // Lower memref.load to llvm.load.
-    struct MemRefLoadOpLowering : public ConversionPattern
+    class MemRefLoadOpLowering : public ConversionPattern
     {
-        MemRefLoadOpLowering( MLIRContext* ctx )
-            : ConversionPattern( memref::LoadOp::getOperationName(), 1, ctx )
+       private:
+        loweringContext& lState;
+
+       public:
+        MemRefLoadOpLowering( loweringContext& lState_, MLIRContext* ctx )
+            : ConversionPattern( memref::LoadOp::getOperationName(), 1, ctx ),
+              lState{ lState_ }
         {
         }
 
@@ -567,7 +624,7 @@ namespace
        public:
         MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID( ToyToLLVMLoweringPass )
 
-        ToyToLLVMLoweringPass( toy::driverState * pst_ ) : pDriverState{ pst_ }
+        ToyToLLVMLoweringPass( toy::driverState* pst_ ) : pDriverState{ pst_ }
         {
         }
 
@@ -646,11 +703,18 @@ namespace
 
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns( &getContext() );
-            patterns.add<ProgramOpLowering, ReturnOpLowering, DeclareOpLowering,
-                         AssignOpLowering, UnaryOpLowering, PrintOpLowering,
-                         ConstantOpLowering, MemRefAllocaOpLowering,
-                         MemRefStoreOpLowering, MemRefLoadOpLowering>(
-                &getContext() );
+            loweringContext lState;
+            patterns.insert<ProgramOpLowering>( lState, &getContext() );
+            patterns.insert<ReturnOpLowering>( lState, &getContext() );
+            patterns.insert<DeclareOpLowering>( lState, &getContext() );
+            patterns.insert<AssignOpLowering>( lState, &getContext() );
+            patterns.insert<UnaryOpLowering>( lState, &getContext() );
+            patterns.insert<PrintOpLowering>( lState, &getContext() );
+            patterns.insert<ConstantOpLowering>( lState, &getContext() );
+            patterns.insert<MemRefAllocaOpLowering>( lState, &getContext() );
+            patterns.insert<MemRefStoreOpLowering>( lState, &getContext() );
+            patterns.insert<MemRefLoadOpLowering>( lState, &getContext() );
+
             arith::populateArithToLLVMConversionPatterns( typeConverter,
                                                           patterns );
 
@@ -672,7 +736,7 @@ namespace
         }
 
        private:
-        toy::driverState * pDriverState;
+        toy::driverState* pDriverState;
     };
 
 }    // namespace
