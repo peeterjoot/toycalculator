@@ -567,7 +567,7 @@ namespace
        public:
         MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID( ToyToLLVMLoweringPass )
 
-        ToyToLLVMLoweringPass( bool opt_ ) : isOptimized( opt_ )
+        ToyToLLVMLoweringPass( toy::driverState * pst_ ) : pDriverState{ pst_ }
         {
         }
 
@@ -600,7 +600,7 @@ namespace
             // Create DICompileUnit
             OpBuilder builder( module.getRegion() );
             mlir::LLVM::DICompileUnitAttr compileUnit = createDICompileUnitAttr(
-                builder, module, module.getLoc(), isOptimized );
+                builder, module, module.getLoc(), pDriverState->isOptimized );
 
             // Set debug metadata
             auto ctx = builder.getContext();
@@ -632,7 +632,7 @@ namespace
                 "llvm.DISubprogram",
                 createDISubprogram( builder, module, "__toy_print",
                                     module.getLoc(), compileUnit,
-                                    isOptimized ) );
+                                    pDriverState->isOptimized ) );
 
             // Create main function
             funcType =
@@ -642,7 +642,7 @@ namespace
             mainFunc->setAttr(
                 "llvm.DISubprogram",
                 createDISubprogram( builder, module, "main", module.getLoc(),
-                                    compileUnit, isOptimized ) );
+                                    compileUnit, pDriverState->isOptimized ) );
 
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns( &getContext() );
@@ -672,7 +672,7 @@ namespace
         }
 
        private:
-        bool isOptimized;
+        toy::driverState * pDriverState;
     };
 
 }    // namespace
@@ -683,21 +683,21 @@ namespace mlir
     std::unique_ptr<Pass> createToyToLLVMLoweringPass()
     {
         return createToyToLLVMLoweringPass(
-            false );    // Default to no optimization
+            nullptr );    // Default to no optimization
     }
 
     // Parameterized version
-    std::unique_ptr<Pass> createToyToLLVMLoweringPass( bool isOptimized )
+    std::unique_ptr<Pass> createToyToLLVMLoweringPass( toy::driverState* pst )
     {
-        return std::make_unique<ToyToLLVMLoweringPass>( isOptimized );
+        return std::make_unique<ToyToLLVMLoweringPass>( pst );
     }
 
     // Custom registration with bool parameter
-    void registerToyToLLVMLoweringPass( bool isOptimized )
+    void registerToyToLLVMLoweringPass( toy::driverState* pst )
     {
         ::mlir::registerPass(
-            [isOptimized]() -> std::unique_ptr<::mlir::Pass>
-            { return mlir::createToyToLLVMLoweringPass( isOptimized ); } );
+            [pst]() -> std::unique_ptr<::mlir::Pass>
+            { return mlir::createToyToLLVMLoweringPass( pst ); } );
     }
 }    // namespace mlir
 

@@ -1,15 +1,17 @@
 #ifndef TOY_PASSES_H
 #define TOY_PASSES_H
 
+#include <mlir/Pass/Pass.h>
+
 #include "ToyToLLVMLowering.h"
-#include "mlir/Pass/Pass.h"
+#include "driver.h"
 
 namespace mlir
 {
-    void registerToyToLLVMLoweringPass( bool isOptimized = false );
-    inline void registerToyPasses( bool isOptimized = false )
+    void registerToyToLLVMLoweringPass( toy::driverState* pst = nullptr );
+    inline void registerToyPasses( toy::driverState* pst = nullptr )
     {
-        registerToyToLLVMLoweringPass( isOptimized );
+        registerToyToLLVMLoweringPass( pst );
     }
 }    // namespace mlir
 

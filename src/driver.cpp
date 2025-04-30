@@ -26,6 +26,7 @@
 #include "ToyParser.h"
 #include "ToyPasses.h"
 #include "ToyToLLVMLowering.h"
+#include "driver.h"
 
 // Define a category for Toy Calculator options
 static llvm::cl::OptionCategory ToyCategory( "Toy Calculator Options" );
@@ -225,7 +226,10 @@ int main( int argc, char **argv )
             pm.enableIRPrinting();
         }
 
-        pm.addPass( mlir::createToyToLLVMLoweringPass( optLevel != OptLevel::O0 ? true : false ) );
+        driverState st;
+        st.isOptimized = optLevel != OptLevel::O0 ? true : false;
+
+        pm.addPass( mlir::createToyToLLVMLoweringPass( &st ) );
         pm.addPass( mlir::createConvertSCFToCFPass() );
         pm.addPass( mlir::createConvertFuncToLLVMPass() );
         pm.addPass( mlir::createFinalizeMemRefToLLVMConversionPass() );
