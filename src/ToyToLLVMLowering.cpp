@@ -27,15 +27,23 @@ namespace
 {
     struct loweringContext
     {
-        // for future use.
+// My LLVM IR dump is not showing the normal DI info that gets translated to DWARF.
+// I suspect that this is because there's a new way of doing this, described in:
+// https://llvm.org/docs/RemoveDIsDebugInfo.html
+//
+// This new way is hidden by default.  Why I don't get DWARF in the end is probably a different issue.
+// This was an attempt to inject it manually, which is problematic in various ways.
+//#define TRY_DI_MANUALLY
+#ifdef TRY_DI_MANUALLY
+        mlir::LLVM::DISubprogramAttr mainSubprogram;    // DISubprogram for main
+        mlir::LLVM::DICompileUnitAttr
+            compileUnit;    // Compile unit for file info
+#endif
     };
 
-    mlir::LLVM::DICompileUnitAttr createDICompileUnitAttr(
-        mlir::OpBuilder& builder, mlir::ModuleOp module, mlir::Location loc,
-        bool isOptimized )
+#ifdef TRY_DI_MANUALLY
+    mlir::FileLineColLoc getLocation( mlir::Location loc )
     {
-        auto ctx = builder.getContext();
-
         // Cast Location to FileLineColLoc
         auto fileLineLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc );
         if ( !fileLineLoc )
@@ -43,6 +51,17 @@ namespace
             throw std::runtime_error(
                 "Internal error: Expected only FileLineColLoc Location info." );
         }
+
+        return fileLineLoc;
+    }
+
+    mlir::LLVM::DICompileUnitAttr createDICompileUnitAttr(
+        mlir::OpBuilder& builder, mlir::ModuleOp module, mlir::Location loc,
+        bool isOptimized )
+    {
+        auto ctx = builder.getContext();
+
+        auto fileLineLoc = getLocation( loc );
 
         // Create DIFile for the source file
         auto file =
@@ -74,13 +93,7 @@ namespace
     {
         auto ctx = builder.getContext();
 
-        // Cast Location to FileLineColLoc
-        auto fileLineLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc );
-        if ( !fileLineLoc )
-        {
-            throw std::runtime_error(
-                "Internal error: Expected only FileLineColLoc Location info." );
-        }
+        auto fileLineLoc = getLocation( loc );
 
         // Create DIFile for the source file
         auto file =
@@ -126,6 +139,7 @@ namespace
 
         return subprogram;
     }
+#endif
 
     // Lower toy.program to an LLVM function.
     class ProgramOpLowering : public ConversionPattern
@@ -204,19 +218,25 @@ namespace
                         << "Lowering toy.return: " << *op << '\n' );
 
             mlir::Location loc = op->getLoc();
+
+#ifdef TRY_DI_MANUALLY
+            auto fileLineLoc = getLocation( loc );
+#endif
+
+            // auto diLoc = mlir::LLVM::DILocation::get(
+            //     rewriter.getContext(), fileLineLoc.getLine(),
+            //     fileLineLoc.getColumn(), lState.mainSubprogram );
+
             if ( op->getNumOperands() == 0 )
             {
                 // RETURN; or default -> return 0
                 mlir::Value zero = rewriter.create<LLVM::ConstantOp>(
                     loc, rewriter.getI32Type(),
                     rewriter.getI32IntegerAttr( 0 ) );
-                // zero->setAttr("debugLoc", mlir::LLVM::DILocationAttr::get(
-                // rewriter.getContext(), loc.getLine(), loc.getColumn(),
-                // subprogram));
-                rewriter.create<LLVM::ReturnOp>( loc, zero );
-                // c->setAttr("debugLoc", mlir::LLVM::DILocationAttr::get(
-                // rewriter.getContext(), loc.getLine(), loc.getColumn(),
-                // subprogram));
+
+                //auto returnOp = 
+                    rewriter.create<LLVM::ReturnOp>( loc, zero );
+                // returnOp->setAttr( "!dbg", diLoc );
             }
             else
             {
@@ -656,13 +676,17 @@ namespace
 
             // Create DICompileUnit
             OpBuilder builder( module.getRegion() );
-            mlir::LLVM::DICompileUnitAttr compileUnit = createDICompileUnitAttr(
+            loweringContext lState;
+#ifdef TRY_DI_MANUALLY
+            lState.compileUnit = createDICompileUnitAttr(
                 builder, module, module.getLoc(), pDriverState->isOptimized );
+#endif
 
             // Set debug metadata
             auto ctx = builder.getContext();
-            module->setAttr( "llvm.dbg.cu",
-                             mlir::ArrayAttr::get( ctx, { compileUnit } ) );
+#ifdef TRY_DI_MANUALLY
+            module->setAttr( "llvm.dbg.cu", mlir::ArrayAttr::get(
+                                                ctx, { lState.compileUnit } ) );
 
             // Create module flags as NamedAttributes
             SmallVector<NamedAttribute> moduleFlags;
@@ -676,34 +700,46 @@ namespace
             // Set module flags using DictionaryAttr
             module->setAttr( "llvm.module.flags",
                              mlir::DictionaryAttr::get( ctx, moduleFlags ) );
+#endif
 
             // Add __toy_print declaration
             builder.setInsertionPointToStart( module.getBody() );
             auto funcType =
                 LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ),
                                              { builder.getF64Type() }, false );
-            auto printFunc = builder.create<LLVM::LLVMFuncOp>(
+#ifdef TRY_DI_MANUALLY
+            auto printFunc = 
+#endif
+                builder.create<LLVM::LLVMFuncOp>(
                 module.getLoc(), "__toy_print", funcType,
                 LLVM::Linkage::External );
-            printFunc->setAttr(
-                "llvm.DISubprogram",
-                createDISubprogram( builder, module, "__toy_print",
-                                    module.getLoc(), compileUnit,
-                                    pDriverState->isOptimized ) );
+#ifdef TRY_DI_MANUALLY
+            auto printSub = createDISubprogram(
+                builder, module, "__toy_print", module.getLoc(),
+                lState.compileUnit, pDriverState->isOptimized );
+            printFunc->setAttr( "llvm.DISubprogram", printSub );
+#endif
 
             // Create main function
+#ifdef TRY_DI_MANUALLY
             funcType =
+#endif
                 LLVM::LLVMFunctionType::get( builder.getI32Type(), {}, false );
-            auto mainFunc = builder.create<LLVM::LLVMFuncOp>(
+#ifdef TRY_DI_MANUALLY
+            auto mainFunc = 
+#endif
+                builder.create<LLVM::LLVMFuncOp>(
                 module.getLoc(), "main", funcType, LLVM::Linkage::External );
-            mainFunc->setAttr(
-                "llvm.DISubprogram",
-                createDISubprogram( builder, module, "main", module.getLoc(),
-                                    compileUnit, pDriverState->isOptimized ) );
+#ifdef TRY_DI_MANUALLY
+            lState.mainSubprogram = createDISubprogram(
+                builder, module, "main", module.getLoc(), lState.compileUnit,
+                pDriverState->isOptimized );
+            mainFunc->setAttr( "llvm.DISubprogram", lState.mainSubprogram );
+#endif
 
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns( &getContext() );
-            loweringContext lState;
+
             patterns.insert<ProgramOpLowering>( lState, &getContext() );
             patterns.insert<ReturnOpLowering>( lState, &getContext() );
             patterns.insert<DeclareOpLowering>( lState, &getContext() );
@@ -738,8 +774,8 @@ namespace
        private:
         toy::driverState* pDriverState;
     };
-
 }    // namespace
+
 
 namespace mlir
 {

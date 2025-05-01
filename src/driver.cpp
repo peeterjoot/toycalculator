@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <llvm/Support/Debug.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/IR/Verifier.h>
@@ -11,6 +12,7 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/TargetParser/Host.h>
+#include <llvm/IR/DebugProgramInstruction.h>
 #include <mlir/Conversion/Passes.h>
 #include <mlir/Pass/PassManager.h>
 #include <mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h>
@@ -28,6 +30,8 @@
 #include "ToyToLLVMLowering.h"
 #include "driver.h"
 
+#define DEBUG_TYPE "toy-driver"
+
 // Define a category for Toy Calculator options
 static llvm::cl::OptionCategory ToyCategory( "Toy Calculator Options" );
 
@@ -37,8 +41,10 @@ static llvm::cl::opt<std::string> inputFilename(
     llvm::cl::init( "-" ), llvm::cl::value_desc( "filename" ),
     llvm::cl::cat( ToyCategory ), llvm::cl::NotHidden );
 
-static llvm::cl::opt<bool> enableLocation(
-    "g", llvm::cl::desc( "Enable location output in MLIR, and dwarf metadata creation in the lowered LLVM IR)" ),
+static llvm::cl::opt<bool> debugInfo(
+    "g",
+    llvm::cl::desc( "Enable location output in MLIR, and dwarf metadata "
+                    "creation in the lowered LLVM IR)" ),
     llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
 
 static llvm::cl::opt<std::string> outDir(
@@ -102,7 +108,7 @@ enum class return_codes : int
 
 using namespace toy;
 
-int main( int argc, char **argv )
+int main( int argc, char** argv )
 {
     // Initialize LLVM targets for code generation
     llvm::InitializeAllTargetInfos();
@@ -144,13 +150,13 @@ int main( int argc, char **argv )
         antlr4::CommonTokenStream tokens( &lexer );
         ToyParser parser( &tokens );
 
-        antlr4::tree::ParseTree *tree = parser.startRule();
+        antlr4::tree::ParseTree* tree = parser.startRule();
         antlr4::tree::ParseTreeWalker::DEFAULT.walk( &listener, tree );
 
         // For now, always dump the original MLIR unconditionally, even if we
         // are doing the LLVM IR lowering pass:
         mlir::OpPrintingFlags flags;
-        if ( enableLocation )
+        if ( debugInfo )
         {
             flags.printGenericOpForm().enableDebugInfo( true );
         }
@@ -242,12 +248,37 @@ int main( int argc, char **argv )
 
         // Export to LLVM IR
         llvm::LLVMContext llvmContext;
-        auto llvmModule =
+        std::unique_ptr<llvm::Module> llvmModule =
             mlir::translateModuleToLLVMIR( module, llvmContext, filename );
         if ( !llvmModule )
         {
             throw std::runtime_error( "Failed to translate to LLVM IR" );
         }
+
+#if 0
+        if (debugInfo) {
+            llvmModule->setIsNewDbgInfoFormat(false);
+        }
+#endif
+
+//        LLVM_DEBUG( {
+            llvm::dbgs() << "Checking debug locations:\n";
+            for ( llvm::Function& func : *llvmModule )
+            {
+                for ( llvm::BasicBlock& bb : func )
+                {
+                    for ( llvm::Instruction& inst : bb )
+                    {
+                        for ( llvm::DbgRecord&DR : inst.getDbgRecordRange() )
+                        {
+                            DR.dump();
+                        }
+
+                        inst.dump();
+                    }
+                }
+            }
+//        } );
 
         auto emitObject = !noEmitObject;
         if ( emitLLVM || emitObject )
@@ -263,7 +294,7 @@ int main( int argc, char **argv )
                 if ( toStdout )
                 {
                     llvmModule->print( llvm::outs(), nullptr,
-                                       enableLocation /* print debug info */ );
+                                       debugInfo /* print debug info */ );
                 }
                 else
                 {
@@ -279,7 +310,7 @@ int main( int argc, char **argv )
                     }
 
                     llvmModule->print( out, nullptr,
-                                       enableLocation /* print debug info */ );
+                                       debugInfo /* print debug info */ );
                 }
             }
 
@@ -291,7 +322,7 @@ int main( int argc, char **argv )
 
                 // Lookup the target
                 std::string error;
-                const llvm::Target *target =
+                const llvm::Target* target =
                     llvm::TargetRegistry::lookupTarget( targetTriple, error );
                 if ( !target )
                 {
@@ -374,12 +405,12 @@ int main( int argc, char **argv )
             }
         }
     }
-    catch ( const semantic_exception &e )
+    catch ( const semantic_exception& e )
     {
         // already printed the message. return something non-zero
         return (int)return_codes::semantic_error;
     }
-    catch ( const std::exception &e )
+    catch ( const std::exception& e )
     {
         llvm::errs() << std::format( "FATAL ERROR: {}\n", e.what() );
         return (int)return_codes::unknown_error;
