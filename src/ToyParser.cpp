@@ -24,7 +24,7 @@ namespace toy
         antlr4::ParserRuleContext *ctx )
     {
         size_t line = 1;
-        size_t col = 1;
+        size_t col = 0;
         if ( ctx )
         {
             line = ctx->getStart()->getLine();

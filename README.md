@@ -55,11 +55,11 @@ To help fix this, I introduced a return statement grammar element, and force an 
     "toy.return"() : () -> () loc(#loc1)
   }) : () -> () loc(#loc1)
 }) : () -> () loc(#loc)
-#loc = loc(unknown)
+#loc = loc("../samples/empty.toy":1:1)
 #loc1 = loc("../samples/empty.toy":2:1)
 ```
 
-(FIXME: where did line two come from in loc1 above for the return statement.  Why isn't that line 1 -- the only line in the file?  Also, it would look prettier to have unknown map to line of of the .toy file -- although does that matter since we strip the builtin.module in lowering?)
+FIXME: where did location 2:1 come from in `#loc1` above for the return statement?
 
 With that return implemented, and a bunch of lowering tweaks (i.e.: so we don't crash in lowering ProgramOp and ReturnOp), we can now lower this to LLVM-IR:
 
@@ -92,10 +92,11 @@ Results in MLIR like:
   "toy.program"() ({
     %0 = "memref.alloca"() <{operandSegmentSizes = array<i32: 0, 0>}> : () -> memref<f64> loc(#loc1)
     "toy.declare"() <{name = "x"}> : () -> () loc(#loc1)
+    "toy.return"() : () -> () loc(#loc1)
   }) : () -> () loc(#loc1)
 }) : () -> () loc(#loc)
-#loc = loc(unknown)
-#loc1 = loc("dcl.toy":1:1)
+#loc = loc("../samples/dcl.toy":1:1)
+#loc1 = loc("../samples/dcl.toy":1:1)
 ```
 
 3. samples/foo.toy
@@ -122,9 +123,10 @@ Here is the MLIR for the code above:
     "memref.store"(%2, %0) : (f64, memref<f64>) -> () loc(#loc2)
     "toy.assign"(%2) <{name = "x"}> : (f64) -> () loc(#loc3)
     "toy.print"(%0) : (memref<f64>) -> () loc(#loc4)
+    "toy.return"() : () -> () loc(#loc1)
   }) : () -> () loc(#loc1)
 }) : () -> () loc(#loc)
-#loc = loc(unknown)
+#loc = loc("../samples/foo.toy":1:1)
 #loc1 = loc("../samples/foo.toy":1:1)
 #loc2 = loc("../samples/foo.toy":2:5)
 #loc3 = loc("../samples/foo.toy":2:1)
