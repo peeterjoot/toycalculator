@@ -8,7 +8,9 @@ for i in \
 empty.toy \
 simplest.toy \
 dcl.toy \
+unary.toy \
 foo.toy \
+bin.toy \
 test.toy \
     ; do
 

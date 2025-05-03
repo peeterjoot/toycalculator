@@ -161,17 +161,13 @@ namespace
         }
     };
 
-    // Lower toy.declare to nothing (erase).
-    class DeclareOpLowering : public ConversionPattern
+    template <class toyOpType>
+    class LowerByDeletion : public ConversionPattern
     {
-       private:
-        loweringContext& lState;
-
        public:
-        DeclareOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( toy::DeclareOp::getOperationName(), 1,
-                                 context ),
-              lState{ lState_ }
+        LowerByDeletion( MLIRContext* context )
+            : ConversionPattern( toyOpType::getOperationName(), 1,
+                                 context )
         {
         }
 
@@ -180,7 +176,7 @@ namespace
             ConversionPatternRewriter& rewriter ) const override
         {
             LLVM_DEBUG( llvm::dbgs()
-                        << "Lowering toy.declare: " << *op << '\n' );
+                        << "Lowering (by erase): " << *op << '\n' );
             rewriter.eraseOp( op );
             return success();
         }
@@ -247,30 +243,8 @@ namespace
         }
     };
 
-    // Lower toy.assign to nothing (erase).
-    class AssignOpLowering : public ConversionPattern
-    {
-       private:
-        loweringContext& lState;
-
-       public:
-        AssignOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( toy::AssignOp::getOperationName(), 1,
-                                 context ),
-              lState{ lState_ }
-        {
-        }
-
-        LogicalResult matchAndRewrite(
-            Operation* op, ArrayRef<Value> operands,
-            ConversionPatternRewriter& rewriter ) const override
-        {
-            LLVM_DEBUG( llvm::dbgs()
-                        << "Lowering toy.assign: " << *op << '\n' );
-            rewriter.eraseOp( op );
-            return success();
-        }
-    };
+    using DeclareOpLowering = LowerByDeletion<toy::DeclareOp>;
+    using AssignOpLowering = LowerByDeletion<toy::AssignOp>;
 
     // Lower toy.unary to LLVM arithmetic.
     class UnaryOpLowering : public ConversionPattern
@@ -324,6 +298,7 @@ namespace
     };
 
     // Lower toy.binary to LLVM arithmetic.
+    template <class ToyBinaryOpType, class llvmOpType>
     class BinaryOpLowering : public ConversionPattern
     {
        private:
@@ -331,7 +306,7 @@ namespace
 
        public:
         BinaryOpLowering( loweringContext& lState_, MLIRContext* ctx )
-            : ConversionPattern( toy::BinaryOp::getOperationName(), 1, ctx ),
+            : ConversionPattern( ToyBinaryOpType::getOperationName(), 1, ctx ),
               lState{ lState_ }
         {
         }
@@ -340,9 +315,8 @@ namespace
             Operation* op, ArrayRef<Value> operands,
             ConversionPatternRewriter& rewriter ) const override
         {
-            auto binaryOp = cast<toy::BinaryOp>( op );
+            auto binaryOp = cast<ToyBinaryOpType>( op );
             auto loc = binaryOp.getLoc();
-            auto opName = binaryOp.getOp();
 
             LLVM_DEBUG( llvm::dbgs()
                         << "Lowering toy.binary: " << *op << '\n' );
@@ -360,31 +334,16 @@ namespace
                 rhs = rewriter.create<LLVM::SIToFPOp>( loc, f64Type, rhs );
             }
 
-            Value result;
-            if ( opName == "+" )
-            {
-                result = rewriter.create<LLVM::FAddOp>( loc, lhs, rhs );
-            }
-            else if ( opName == "-" )
-            {
-                result = rewriter.create<LLVM::FSubOp>( loc, lhs, rhs );
-            }
-            else if ( opName == "*" )
-            {
-                result = rewriter.create<LLVM::FMulOp>( loc, lhs, rhs );
-            }
-            else if ( opName == "/" )
-            {
-                result = rewriter.create<LLVM::FDivOp>( loc, lhs, rhs );
-            }
-            else
-            {
-                return failure();
-            }
-
-            return failure();    // Only handle i64 constants for now
+            auto result = rewriter.create<llvmOpType>( loc, lhs, rhs );
+            rewriter.replaceOp( op, result );
+            return success();
         }
     };
+
+    using AddOpLowering = BinaryOpLowering<toy::AddOp, LLVM::FAddOp>;
+    using SubOpLowering = BinaryOpLowering<toy::SubOp, LLVM::FSubOp>;
+    using MulOpLowering = BinaryOpLowering<toy::MulOp, LLVM::FMulOp>;
+    using DivOpLowering = BinaryOpLowering<toy::DivOp, LLVM::FDivOp>;
 
     // Lower arith.constant to LLVM constant.
     class ConstantOpLowering : public ConversionPattern
@@ -602,8 +561,12 @@ namespace
 
             patterns.insert<ProgramOpLowering>( lState, &getContext() );
             patterns.insert<ReturnOpLowering>( lState, &getContext() );
-            patterns.insert<DeclareOpLowering>( lState, &getContext() );
-            patterns.insert<AssignOpLowering>( lState, &getContext() );
+            patterns.insert<AddOpLowering>( lState, &getContext() );
+            patterns.insert<SubOpLowering>( lState, &getContext() );
+            patterns.insert<MulOpLowering>( lState, &getContext() );
+            patterns.insert<DivOpLowering>( lState, &getContext() );
+            patterns.insert<DeclareOpLowering>( &getContext() );
+            patterns.insert<AssignOpLowering>( &getContext() );
             patterns.insert<UnaryOpLowering>( lState, &getContext() );
             patterns.insert<PrintOpLowering>( lState, &getContext() );
             patterns.insert<ConstantOpLowering>( lState, &getContext() );

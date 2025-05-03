@@ -73,11 +73,16 @@ namespace toy
         std::map<std::string, mlir::Value>
             var_storage;    // Maps variable names to memref<f64>
         bool assignmentTargetValid;
-        lastOperator lastOp{lastOperator::notAnOp};
+        lastOperator lastOp{ lastOperator::notAnOp };
 
         inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx );
 
         inline std::string formatLocation( mlir::Location loc );
+
+        inline bool buildUnaryExpression(
+            antlr4::tree::TerminalNode *integerNode,
+            antlr4::tree::TerminalNode *variableNode, mlir::Location loc,
+            mlir::Value &value );
 
        public:
         MLIRListener( const std::string &_filename );
@@ -97,7 +102,8 @@ namespace toy
 
         void enterAssignment( ToyParser::AssignmentContext *ctx ) override;
 
-        void enterReturnstatement( ToyParser::ReturnstatementContext *ctx ) override;
+        void enterReturnstatement(
+            ToyParser::ReturnstatementContext *ctx ) override;
 
         void enterUnaryexpression(
             ToyParser::UnaryexpressionContext *ctx ) override;

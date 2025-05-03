@@ -168,6 +168,57 @@ Generated object file: out/foo.o
 3.000000
 ```
 
+4. samples/test.toy
+
+```
+DCL x;
+DCL y;
+x = 5 + 3;
+y = x * 2;
+PRINT x;
+PRINT y;
+```
+
+The LL lowering results look pretty nice:
+```
+; ModuleID = 'test.toy'
+source_filename = "test.toy"
+
+declare void @__toy_print(double)
+
+define i32 @main() {
+  %1 = alloca double, i64 1, align 8
+  %2 = alloca double, i64 1, align 8
+  store double 8.000000e+00, ptr %1, align 8
+  %3 = load double, ptr %1, align 8
+  %4 = fmul double %3, 2.000000e+00
+  store double %4, ptr %2, align 8
+  %5 = load double, ptr %1, align 8
+  call void @__toy_print(double %5)
+  %6 = load double, ptr %2, align 8
+  call void @__toy_print(double %6)
+  ret i32 0
+}
+
+!llvm.module.flags = !{!0}
+
+!0 = !{i32 2, !"Debug Info Version", i32 3}
+```
+
+The assembler printer (with -O 2) reduces all the double operations to constant lookups:
+```
+> objdump -d samples/out/test --no-show-raw-insn | grep -A8 '<main>:'
+0000000000400470 <main>:
+  400470:       push   %rax
+  400471:       movsd  0xd27(%rip),%xmm0        # 4011a0 <__dso_handle+0x8>
+  400479:       call   400370 <__toy_print@plt>
+  40047e:       movsd  0xd22(%rip),%xmm0        # 4011a8 <__dso_handle+0x10>
+  400486:       call   400370 <__toy_print@plt>
+  40048b:       xor    %eax,%eax
+  40048d:       pop    %rcx
+  40048e:       ret
+```
+
 ## Command line options
 
 * --output-directory
@@ -183,11 +234,8 @@ Generated object file: out/foo.o
 
 * ../build/toycalculator foo.toy -g --stdout --no-emit-object --emit-mlir --emit-llvm --debug 2>&1 | less
    'memref.alloca' op requires an ancestor op with AutomaticAllocationScope trait
-foo.toy:
-   'toy.unary' op operand #0 must be 64-bit float, but got 'i64'
 * LLVM IR lowering has lost the !dbg (i.e.: dwarf instrumentation) elements.
 * Add support for a numeric and symbol value for the RETURN statement (grammar, listener, builder, lowering.)
-* LLVM IR lowering for binaryOp.
 * Floating point constants (will touch the grammar, builder and lowering.)
 * Types: fixed size integers and maybe floating point types of different sizes (not just double equivialent.)
 * Function calls (to more than the single PRINT runtime function.)
