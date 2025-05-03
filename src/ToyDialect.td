@@ -69,8 +69,9 @@ def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
 def Toy_UnaryOp : Op<Toy_Dialect, "unary"> {
   let summary = "Unary operation (e.g., +x, -x)";
   let arguments = (ins
-    StrAttr:$op,              // Operator name (e.g., "+", "-")
-    F64:$lhs              // Input operand (f64)
+    StrAttr:$op,          // Operator name (e.g., "+", "-")
+    AnyType:$lhs            // Input operand (f64, i64)
+//    F64:$lhs              // Input operand (f64)
   );
   let results = (outs
     F64:$result           // Output (f64)
@@ -89,27 +90,31 @@ def Toy_UnaryOp : Op<Toy_Dialect, "unary"> {
   }];
 }
 
-// Binary operation
-def Toy_BinaryOp : Op<Toy_Dialect, "binary"> {
-  let summary = "Binary operation (e.g., x + y, x * y)";
-  let arguments = (ins
-    StrAttr:$op,              // Operator name (e.g., "+", "-", "*", "/")
-    F64:$lhs,             // Left operand (f64)
-    F64:$rhs              // Right operand (f64)
-  );
-  let results = (outs
-    F64:$result           // Output (f64)
-  );
-  //let traits = [
-  //  Pure,                     // No side effects
-  //  SameOperandsAndResultType // Operands and result have the same type (f64)
-  //];
-  let extraClassDeclaration = [{
-    llvm::LogicalResult verify() {
-      llvm::StringRef op = getOp();
-      if (op != "+" && op != "-" && op != "*" && op != "/")
-        return emitOpError("invalid binary operator: ") << op;
-      return llvm::success();
-    }
-  }];
+// let traits = [Pure, SameOperandsAndResultType];
+def Toy_AddOp : Op<Toy_Dialect, "add"> {
+  let summary = "Addition operation (e.g., x + y)";
+  //let arguments = (ins F64:$lhs, F64:$rhs);
+  let arguments = (ins AnyType:$lhs, AnyType:$rhs);
+  let results = (outs F64:$result);
+}
+
+def Toy_SubOp : Op<Toy_Dialect, "sub"> {
+  let summary = "Subtraction operation (e.g., x - y)";
+  //let arguments = (ins F64:$lhs, F64:$rhs);
+  let arguments = (ins AnyType:$lhs, AnyType:$rhs);
+  let results = (outs F64:$result);
+}
+
+def Toy_MulOp : Op<Toy_Dialect, "mul"> {
+  let summary = "Multiplication operation (e.g., x * y)";
+  //let arguments = (ins F64:$lhs, F64:$rhs);
+  let arguments = (ins AnyType:$lhs, AnyType:$rhs);
+  let results = (outs F64:$result);
+}
+
+def Toy_DivOp : Op<Toy_Dialect, "div"> {
+  let summary = "Division operation (e.g., x / y)";
+  //let arguments = (ins F64:$lhs, F64:$rhs);
+  let arguments = (ins AnyType:$lhs, AnyType:$rhs);
+  let results = (outs F64:$result);
 }

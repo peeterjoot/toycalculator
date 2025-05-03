@@ -1,3 +1,10 @@
+b main
+#run -g --stdout ../samples/bin.toy --no-emit-object  --debug
+run -g --stdout ../samples/unary.toy --no-emit-object  --debug --emit-mlir
+b driver.cpp:194
+#run -g --stdout ../samples/unary.toy --no-emit-object  --debug
+
+
 #b enterStartRule
 #b enterDeclare
 #b enterPrint
@@ -12,8 +19,10 @@ b __assert_perror_fail
 #b ToyToLLVMLoweringPass::runOnOperation
 #b translateModuleToLLVMIR
 #b DebugTranslation::DebugTranslation
-b driver.cpp:284
-b getDbgRecordRange
+#b driver.cpp:284
+#b getDbgRecordRange
+
+#b toy::MLIRListener::enterAssignment
 
 #b ProgramOpLowering::matchAndRewrite
 #b ReturnOpLowering::matchAndRewrite
@@ -26,4 +35,3 @@ b getDbgRecordRange
 ## throw point:
 #b driver.cpp:137
 
-run -g --stdout ../samples/foo.toy --no-emit-object  --debug
