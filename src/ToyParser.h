@@ -82,7 +82,7 @@ namespace toy
         inline bool buildUnaryExpression(
             antlr4::tree::TerminalNode *integerNode,
             antlr4::tree::TerminalNode *variableNode, mlir::Location loc,
-            mlir::Value &value );
+            mlir::Value &value, bool asFloat = true );
 
        public:
         MLIRListener( const std::string &_filename );

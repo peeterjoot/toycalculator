@@ -45,6 +45,70 @@ namespace toy
         return "";
     }
 
+    // \retval true if error
+    inline bool MLIRListener::buildUnaryExpression(
+        antlr4::tree::TerminalNode *integerNode,
+        antlr4::tree::TerminalNode *variableNode, mlir::Location loc,
+        mlir::Value &value,
+        bool asFloat )
+    {
+        if ( integerNode )
+        {
+            int64_t val = std::stoi( integerNode->getText() );
+
+            if ( asFloat )
+            {
+                // Niavely assuming that this integer value can be represented in a double:
+                llvm::APFloat apVal(llvm::APFloat::IEEEdouble(), val);
+
+                value = builder.create<mlir::arith::ConstantFloatOp>(loc, apVal, builder.getF64Type());
+            }
+            else
+            {
+                int64_t val = std::stoi( integerNode->getText() );
+
+                value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
+            }
+        }
+        else if ( variableNode )
+        {
+            auto varName = variableNode->getText();
+
+            auto varState = var_states[varName];
+
+            if ( varState == variable_state::undeclared )
+            {
+                lastSemError = semantic_errors::variable_not_declared;
+                llvm::errs() << std::format(
+                    "{}error: Variable {} not declared in expr\n",
+                    formatLocation( loc ), varName );
+                return true;
+            }
+
+            if ( varState != variable_state::assigned )
+            {
+                lastSemError = semantic_errors::variable_not_assigned;
+                llvm::errs() << std::format(
+                    "{}error: Variable {} not assigned in expr\n",
+                    formatLocation( loc ), varName );
+                return true;
+            }
+
+            // Load from memref<f64>
+            auto memref = var_storage[varName];
+            value = builder.create<mlir::memref::LoadOp>( loc, memref );
+        }
+        else
+        {
+            lastSemError = semantic_errors::unknown_error;
+            llvm::errs() << std::format( "{}error: Invalid operand\n",
+                                         formatLocation( loc ) );
+            return true;
+        }
+
+        return false;
+    }
+
     MLIRListener::MLIRListener( const std::string &_filename )
         : filename( _filename ),
           dialect(),
@@ -145,32 +209,28 @@ namespace toy
         auto loc = getLocation( ctx );
 
         auto sz = ctx->element().size();
-        assert( sz == 0 );
-#if 0
-        auto varName = ctx->VARIABLENAME()->getText();
-        auto varState = var_states[varName];
-        if ( varState == variable_state::undeclared )
-        {
-            lastSemError = semantic_errors::variable_not_declared;
-            llvm::errs() << std::format(
-                "{}error: Variable {} not declared in PRINT\n",
-                formatLocation( loc ), varName );
-            return;
-        }
-        if ( varState != variable_state::assigned )
-        {
-            lastSemError = semantic_errors::variable_not_assigned;
-            llvm::errs() << std::format(
-                "{}error: Variable {} not assigned in PRINT\n",
-                formatLocation( loc ), varName );
-            return;
-        }
 
-        auto memref = var_storage[varName];
-#endif
-        // builder.create<toy::ReturnOp>( loc );
-        //  Create toy.return with no operands (empty ValueRange)
-        builder.create<toy::ReturnOp>( loc, mlir::ValueRange{} );
+        if ( sz == 0 )
+        {
+            //  Create toy.return with no operands (empty ValueRange)
+            builder.create<toy::ReturnOp>( loc, mlir::ValueRange{} );
+        }
+        else
+        {
+            mlir::Value value;
+            assert( sz == 1 );
+
+            auto n = ctx->element()[0];
+
+            bool error = buildUnaryExpression( n->INTEGERLITERAL(),
+                                               n->VARIABLENAME(), loc, value, false );
+            if ( error )
+            {
+                return;
+            }
+
+            builder.create<toy::ReturnOp>( loc, mlir::ValueRange{ value } );
+        }
     }
 
     void MLIRListener::enterAssignment( ToyParser::AssignmentContext *ctx )
@@ -195,60 +255,6 @@ namespace toy
         currentAssignLoc = loc;
     }
 
-    // \retval true if error
-    inline bool MLIRListener::buildUnaryExpression(
-        antlr4::tree::TerminalNode *integerNode,
-        antlr4::tree::TerminalNode *variableNode, mlir::Location loc,
-        mlir::Value &value )
-    {
-        if ( integerNode )
-        {
-            int64_t val = std::stoi( integerNode->getText() );
-            //value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
-
-            // Niavely assuming that this integer value can be represented in a double:
-            llvm::APFloat apVal(llvm::APFloat::IEEEdouble(), val);
-
-            value = builder.create<mlir::arith::ConstantFloatOp>(loc, apVal, builder.getF64Type());
-        }
-        else if ( variableNode )
-        {
-            auto varName = variableNode->getText();
-
-            auto varState = var_states[varName];
-
-            if ( varState == variable_state::undeclared )
-            {
-                lastSemError = semantic_errors::variable_not_declared;
-                llvm::errs() << std::format(
-                    "{}error: Variable {} not declared in expr\n",
-                    formatLocation( loc ), varName );
-                return true;
-            }
-
-            if ( varState != variable_state::assigned )
-            {
-                lastSemError = semantic_errors::variable_not_assigned;
-                llvm::errs() << std::format(
-                    "{}error: Variable {} not assigned in expr\n",
-                    formatLocation( loc ), varName );
-                return true;
-            }
-
-            // Load from memref<f64>
-            auto memref = var_storage[varName];
-            value = builder.create<mlir::memref::LoadOp>( loc, memref );
-        }
-        else
-        {
-            lastSemError = semantic_errors::unknown_error;
-            llvm::errs() << std::format( "{}error: Invalid operand\n",
-                                         formatLocation( loc ) );
-            return true;
-        }
-
-        return false;
-    }
 
     void MLIRListener::enterUnaryexpression(
         ToyParser::UnaryexpressionContext *ctx )

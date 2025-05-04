@@ -13,6 +13,8 @@ unary.toy \
 foo.toy \
 bin.toy \
 test.toy \
+return3.toy \
+returnx.toy \
     ; do
 
     stem=${i%.*}

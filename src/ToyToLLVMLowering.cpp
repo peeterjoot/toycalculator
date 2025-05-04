@@ -129,6 +129,7 @@ namespace
             Operation* op, ArrayRef<Value> operands,
             ConversionPatternRewriter& rewriter ) const override
         {
+            toy::ReturnOp returnOp = cast<toy::ReturnOp>( op );
             LLVM_DEBUG( llvm::dbgs()
                         << "Lowering toy.return: " << *op << '\n' );
 
@@ -143,21 +144,57 @@ namespace
 
                 rewriter.create<LLVM::ReturnOp>( loc, zero );
             }
+            else if ( op->getNumOperands() == 1 )
+            {
+                // RETURN 3; or RETURN x;
+                auto operand = returnOp.getRc()[0];
+
+                LLVM_DEBUG( {
+                    llvm::dbgs() << "Operand before type conversions:\n";
+                    operand.dump();
+                } );
+
+                // Handle memref<f64> if needed (e.g., load the value)
+                if ( mlir::isa<mlir::MemRefType>( operand.getType() ) )
+                {
+                    auto memrefType =
+                        mlir::cast<mlir::MemRefType>( operand.getType() );
+
+                    if ( !mlir::isa<mlir::Float64Type>(memrefType.getElementType()) )
+                    {
+                        returnOp->emitError(
+                            "Expected memref<f64> for return operand" );
+                        return failure();
+                    }
+
+                    operand = rewriter.create<mlir::LLVM::LoadOp>(
+                        loc, rewriter.getF64Type(), operand );
+                }
+
+                if ( mlir::isa<mlir::Float64Type>( operand.getType() ) )
+                {
+                    operand = rewriter.create<LLVM::FPToSIOp>(
+                        loc, rewriter.getI32Type(), operand );
+                }
+
+                auto intType =
+                    mlir::cast<mlir::IntegerType>( operand.getType() );
+                if ( intType.getWidth() != 32 )
+                {
+                    operand = rewriter.create<mlir::LLVM::TruncOp>(
+                        loc, rewriter.getI32Type(), operand );
+                }
+
+                LLVM_DEBUG( {
+                    llvm::dbgs() << "Final return operand:\n";
+                    operand.dump();
+                } );
+
+                rewriter.create<LLVM::ReturnOp>( loc, operand );
+            }
             else
             {
-                llvm_unreachable(
-                    "toy.return expects 0 or 1 operands, but only 0 is "
-                    "supported in the builder and here for now." );
-#if 0
-                // RETURN 3; or RETURN x;
-                mlir::Value operand = adaptor.getRc()[0];
-                // Handle memref<f64> if needed (e.g., load the value)
-                if ( operand.getType().isa<mlir::MemRefType>() )
-                {
-                    operand = rewriter.create<LLVM::LoadOp>( loc, operand );
-                }
-                rewriter.create<LLVM::ReturnOp>( loc, operand );
-#endif
+                llvm_unreachable( "toy.return expects 0 or 1 operands" );
             }
 
             rewriter.eraseOp( op );
@@ -275,7 +312,7 @@ namespace
 
             // Convert i64 to f64 if necessary
             Value result = operand;
-#if 0 // dead code now.
+#if 0    // dead code now.
             if ( operand.getType().isInteger( 64 ) )
             {
                 result = rewriter.create<LLVM::SIToFPOp>(
@@ -318,14 +355,14 @@ namespace
 
             // Convert operands to f64 if necessary
             Value lhs = operands[0];
-#if 0 // dead code now.
+#if 0    // dead code now.
             if ( lhs.getType().isInteger( 64 ) )
             {
                 lhs = rewriter.create<LLVM::SIToFPOp>( loc, rewriter.getF64Type(), lhs );
             }
 #endif
             Value rhs = operands[1];
-#if 0 // dead code now.
+#if 0    // dead code now.
             if ( rhs.getType().isInteger( 64 ) )
             {
                 rhs = rewriter.create<LLVM::SIToFPOp>( loc, rewriter.getF64Type(), rhs );
@@ -370,13 +407,13 @@ namespace
 
             if ( auto fAttr = dyn_cast<FloatAttr>( valueAttr ) )
             {
-                auto f64Type = rewriter.getF64Type(); // Returns Float64Type for f64
+                auto f64Type =
+                    rewriter.getF64Type();    // Returns Float64Type for f64
                 auto value =
                     rewriter.create<LLVM::ConstantOp>( loc, f64Type, fAttr );
                 rewriter.replaceOp( op, value );
                 return success();
             }
-#if 0 // dead code now.
             else if ( auto intAttr = dyn_cast<IntegerAttr>( valueAttr ) )
             {
                 auto i64Type = IntegerType::get( rewriter.getContext(), 64 );
@@ -385,7 +422,6 @@ namespace
                 rewriter.replaceOp( op, value );
                 return success();
             }
-#endif
 
             return failure();
         }
@@ -569,7 +605,6 @@ namespace
             RewritePatternSet patterns( &getContext() );
 
             patterns.insert<ProgramOpLowering>( lState, &getContext() );
-            patterns.insert<ReturnOpLowering>( lState, &getContext() );
             patterns.insert<AddOpLowering>( lState, &getContext() );
             patterns.insert<SubOpLowering>( lState, &getContext() );
             patterns.insert<MulOpLowering>( lState, &getContext() );
@@ -582,6 +617,7 @@ namespace
             patterns.insert<MemRefAllocaOpLowering>( lState, &getContext() );
             patterns.insert<MemRefStoreOpLowering>( lState, &getContext() );
             patterns.insert<MemRefLoadOpLowering>( lState, &getContext() );
+            patterns.insert<ReturnOpLowering>( lState, &getContext() );
 
             arith::populateArithToLLVMConversionPatterns( typeConverter,
                                                           patterns );
