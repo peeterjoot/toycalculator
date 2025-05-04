@@ -85,6 +85,9 @@ namespace toy
             antlr4::tree::TerminalNode *variableNode, mlir::Location loc,
             mlir::Value &value, bool asFloat = true );
 
+        inline bool registerDeclaration( mlir::Location loc,
+                                         const std::string &varName );
+
        public:
         MLIRListener( const std::string &_filename );
 
@@ -99,22 +102,24 @@ namespace toy
 
         void enterDeclare( ToyParser::DeclareContext *ctx ) override;
 
-        void enterIntdeclare( ToyParser::IntdeclareContext *ctx ) override;
+        void enterBoolDeclare( ToyParser::BoolDeclareContext *ctx ) override;
 
-        void enterFloatdeclare( ToyParser::FloatdeclareContext *ctx ) override;
+        void enterIntDeclare( ToyParser::IntDeclareContext *ctx ) override;
+
+        void enterFloatDeclare( ToyParser::FloatDeclareContext *ctx ) override;
 
         void enterPrint( ToyParser::PrintContext *ctx ) override;
 
         void enterAssignment( ToyParser::AssignmentContext *ctx ) override;
 
-        void enterReturnstatement(
-            ToyParser::ReturnstatementContext *ctx ) override;
+        void enterReturnStatement(
+            ToyParser::ReturnStatementContext *ctx ) override;
 
-        void enterUnaryexpression(
-            ToyParser::UnaryexpressionContext *ctx ) override;
+        void enterUnaryExpression(
+            ToyParser::UnaryExpressionContext *ctx ) override;
 
-        void enterBinaryexpression(
-            ToyParser::BinaryexpressionContext *ctx ) override;
+        void enterBinaryExpression(
+            ToyParser::BinaryExpressionContext *ctx ) override;
     };
 }    // namespace toy
 

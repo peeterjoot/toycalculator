@@ -2,14 +2,15 @@ grammar Toy;
 
 // Parser Rules
 // ============
-// Entry point for the grammar, matching zero or more statements followed by EOF.
+// Entry point for the grammar, matching zero or more statements followed by optional RETURN, and then EOF.
+// FIXME: this should prohibit comments after RETURN.
 startRule
-  : (statement|comment)* (returnstatement ENDOFSTATEMENT)? EOF
+  : (statement|comment)* (returnStatement ENDOFSTATEMENT)? EOF
   ;
 
 // A statement can be a declaration, assignment, print, or comment.
 statement
-  : (declare | intdeclare | floatdeclare | assignment | print) ENDOFSTATEMENT
+  : (declare | boolDeclare | intDeclare | floatDeclare | assignment | print) ENDOFSTATEMENT
   ;
 
 // A single-line comment, handled by the COMMENT lexer token.
@@ -22,16 +23,20 @@ declare
   : (DCL|DECLARE) VARIABLENAME
   ;
 
-intdeclare
+boolDeclare
+  : BOOL VARIABLENAME
+  ;
+
+intDeclare
   : (INT8|INT16|INT32|INT64) VARIABLENAME
   ;
 
-floatdeclare
+floatDeclare
   : (FLOAT32|FLOAT64) VARIABLENAME
   ;
 
 // Implicit or explicit return from a program (e.g., 'RETURN;', 'RETURN 3;')  Return without value equivalent to 'RETURN 0;'
-returnstatement
+returnStatement
   : RETURN element*
   ;
 
@@ -47,33 +52,33 @@ assignment
 
 // The right-hand side of an assignment, either a binary or unary expression.
 rhs
-  : binaryexpression
-  | unaryexpression
+  : binaryExpression
+  | unaryExpression
   ;
 
 // A binary expression with two elements and an operator (e.g., 'x + 42').
-binaryexpression
-  : element binaryoperator element
+binaryExpression
+  : element binaryOperator element
   ;
 
 // A unary expression with an optional operator and an element (e.g., '-x').
-unaryexpression
-  : unaryoperator element
+unaryExpression
+  : unaryOperator element
   ;
 
 // A binary operator for addition, subtraction, multiplication, or division.
-binaryoperator
+binaryOperator
   : (MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR)
   ;
 
 // An optional unary operator for positive or negative (e.g., '+' or '-').
-unaryoperator
+unaryOperator
   : (MINUSCHAR | PLUSCHAR)?
   ;
 
 // An element in an expression, either an integer literal or a variable name.
 element
-  : (INTEGERLITERAL | VARIABLENAME | FLOATLITERAL)
+  : (INTEGERLITERAL | VARIABLENAME | FLOATLITERAL | TRUE | FALSE)
   ;
 
 // Lexer Rules
@@ -135,6 +140,11 @@ INT32 : 'INT32' ;
 INT64 : 'INT64' ;
 FLOAT32 : 'FLOAT32' ;
 FLOAT64 : 'FLOAT64' ;
+
+// Boolean tokens:
+BOOL : 'BOOL' ;
+TRUE : 'TRUE' ;
+FALSE : 'FALSE' ;
 
 // Matches the 'DECLARE' keyword for declarations.
 DECLARE
