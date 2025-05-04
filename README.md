@@ -179,6 +179,8 @@ PRINT x;
 PRINT y;
 ```
 
+Note: The cut and paste above no longer matches the repo, as samples/test.toy now uses 3.14E0 instead of 3, since I added floating point constants to the grammar and parse listener.
+
 The LL lowering results look pretty nice:
 ```
 ; ModuleID = 'test.toy'
