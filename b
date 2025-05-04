@@ -1,12 +1,16 @@
+# gdb ./toycalculator ; source ../b
+
 b main
 #run -g --stdout ../samples/bin.toy --no-emit-object  --debug
+run -g --stdout ../samples/types.toy --no-emit-object  --debug --emit-mlir
 #run -g --stdout ../samples/unary.toy --no-emit-object  --debug --emit-mlir
 #run -g --stdout ../samples/return3.toy  --debug --emit-mlir --no-emit-object
-run -g --stdout ../samples/returnx.toy  --debug --emit-mlir --no-emit-object
+#run -g --stdout ../samples/returnx.toy  --debug --emit-mlir --no-emit-object
 #b driver.cpp:194
 #run -g --stdout ../samples/unary.toy --no-emit-object  --debug
 
 
+b ToyToLLVMLowering.cpp:455
 #b enterStartRule
 #b enterDeclare
 #b enterPrint
@@ -14,8 +18,8 @@ run -g --stdout ../samples/returnx.toy  --debug --emit-mlir --no-emit-object
 #b enterUnaryexpression
 #b enterBinaryexpression
 #b enterReturn
-b enterReturnstatement
-b ReturnOpLowering::matchAndRewrite
+#b enterReturnstatement
+#b ReturnOpLowering::matchAndRewrite
 #b exitReturnstatement
 b __assert_perror_fail
 #b _ZN3toy12MLIRListener20enterReturnstatementEPN9ToyParser22ReturnstatementContextE

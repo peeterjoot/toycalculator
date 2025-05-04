@@ -99,6 +99,10 @@ namespace toy
 
         void enterDeclare( ToyParser::DeclareContext *ctx ) override;
 
+        void enterIntdeclare( ToyParser::IntdeclareContext *ctx ) override;
+
+        void enterFloatdeclare( ToyParser::FloatdeclareContext *ctx ) override;
+
         void enterPrint( ToyParser::PrintContext *ctx ) override;
 
         void enterAssignment( ToyParser::AssignmentContext *ctx ) override;

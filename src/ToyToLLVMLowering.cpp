@@ -16,6 +16,8 @@
 #include <mlir/Pass/Pass.h>
 #include <mlir/Transforms/DialectConversion.h>
 
+#include <numeric>
+
 #include "ToyDialect.h"
 #include "ToyToLLVMLowering.h"
 
@@ -160,7 +162,8 @@ namespace
                     auto memrefType =
                         mlir::cast<mlir::MemRefType>( operand.getType() );
 
-                    if ( !mlir::isa<mlir::Float64Type>(memrefType.getElementType()) )
+                    if ( !mlir::isa<mlir::Float64Type>(
+                             memrefType.getElementType() ) )
                     {
                         returnOp->emitError(
                             "Expected memref<f64> for return operand" );
@@ -456,8 +459,28 @@ namespace
             auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
             auto one = rewriter.create<LLVM::ConstantOp>(
                 loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( 1 ) );
+
+            auto shape = memRefType.getShape();
+            int64_t numElements = 1;    // Default for scalar MemRef
+            if ( !shape.empty() )
+            {
+                llvm_unreachable( "Currently only expect scalar types." );
+
+                numElements =
+                    std::accumulate( shape.begin(), shape.end(), int64_t{ 1 },
+                                     std::multiplies<int64_t>() );
+            }
+
+            unsigned elemSizeInBits =
+                elemType.getIntOrFloatBitWidth();    // Example: For i16, this
+                                                     // is 16 bits
+            unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
+
+            // Compute total size in bytes
+            int64_t totalSizeInBytes = numElements * elemSizeInBytes;
+
             auto newAllocaOp = rewriter.create<LLVM::AllocaOp>(
-                loc, ptrType, elemType, one, /*alignment=*/8 );
+                loc, ptrType, elemType, one, totalSizeInBytes );
 
             rewriter.replaceOp( op, newAllocaOp.getResult() );
             return success();

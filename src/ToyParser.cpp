@@ -189,6 +189,113 @@ namespace toy
         }
     }
 
+    void MLIRListener::enterIntdeclare( ToyParser::IntdeclareContext *ctx )
+    {
+        lastOp = lastOperator::declareOp;
+        auto loc = getLocation( ctx );
+        auto varName = ctx->VARIABLENAME()->getText();
+        auto varState = var_states[varName];
+        if ( varState == variable_state::declared )
+        {
+            lastSemError = semantic_errors::variable_already_declared;
+            llvm::errs() << std::format(
+                "{}error: Variable {} already declared in DCL\n",
+                formatLocation( loc ), varName );
+            return;
+        }
+        if ( varState == variable_state::undeclared )
+        {
+            var_states[varName] = variable_state::declared;
+            // Allocate memref<...> for the variable
+            if ( ctx->INT8() )
+            {
+                auto memrefType =
+                    mlir::MemRefType::get( {}, builder.getI8Type() );
+                auto allocaOp =
+                    builder.create<mlir::memref::AllocaOp>( loc, memrefType );
+                var_storage[varName] = allocaOp.getResult();
+            }
+            else if ( ctx->INT16() )
+            {
+                auto memrefType =
+                    mlir::MemRefType::get( {}, builder.getI16Type() );
+                auto allocaOp =
+                    builder.create<mlir::memref::AllocaOp>( loc, memrefType );
+                var_storage[varName] = allocaOp.getResult();
+            }
+            else if ( ctx->INT32() )
+            {
+                auto memrefType =
+                    mlir::MemRefType::get( {}, builder.getI32Type() );
+                auto allocaOp =
+                    builder.create<mlir::memref::AllocaOp>( loc, memrefType );
+                var_storage[varName] = allocaOp.getResult();
+            }
+            else if ( ctx->INT64() )
+            {
+                auto memrefType =
+                    mlir::MemRefType::get( {}, builder.getI64Type() );
+                auto allocaOp =
+                    builder.create<mlir::memref::AllocaOp>( loc, memrefType );
+                var_storage[varName] = allocaOp.getResult();
+            }
+            else
+            {
+                llvm::errs() << "Internal error: Unsupported signed integer "
+                                "declaration size.\n";
+                throw semantic_exception();
+            }
+
+            builder.create<toy::DeclareOp>( loc,
+                                            builder.getStringAttr( varName ) );
+        }
+    }
+
+    void MLIRListener::enterFloatdeclare( ToyParser::FloatdeclareContext *ctx )
+    {
+        lastOp = lastOperator::declareOp;
+        auto loc = getLocation( ctx );
+        auto varName = ctx->VARIABLENAME()->getText();
+        auto varState = var_states[varName];
+        if ( varState == variable_state::declared )
+        {
+            lastSemError = semantic_errors::variable_already_declared;
+            llvm::errs() << std::format(
+                "{}error: Variable {} already declared in DCL\n",
+                formatLocation( loc ), varName );
+            return;
+        }
+        if ( varState == variable_state::undeclared )
+        {
+            var_states[varName] = variable_state::declared;
+            // Allocate memref<...> for the variable
+            if ( ctx->FLOAT32() )
+            {
+                auto memrefType =
+                    mlir::MemRefType::get( {}, builder.getF32Type() );
+                auto allocaOp =
+                    builder.create<mlir::memref::AllocaOp>( loc, memrefType );
+                var_storage[varName] = allocaOp.getResult();
+            }
+            else if ( ctx->FLOAT64() )
+            {
+                auto memrefType =
+                    mlir::MemRefType::get( {}, builder.getF64Type() );
+                auto allocaOp =
+                    builder.create<mlir::memref::AllocaOp>( loc, memrefType );
+                var_storage[varName] = allocaOp.getResult();
+            }
+            else
+            {
+                llvm::errs() << "Internal error: Unsupported floating point "
+                                "declaration size.\n";
+                throw semantic_exception();
+            }
+            builder.create<toy::DeclareOp>( loc,
+                                            builder.getStringAttr( varName ) );
+        }
+    }
+
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
     {
         lastOp = lastOperator::printOp;

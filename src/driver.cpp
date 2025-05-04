@@ -261,8 +261,8 @@ int main( int argc, char** argv )
         }
 #endif
 
-//        LLVM_DEBUG( {
-            llvm::dbgs() << "Checking debug locations:\n";
+        LLVM_DEBUG( {
+            llvm::dbgs() << "Instruction dump after lowering:\n";
             for ( llvm::Function& func : *llvmModule )
             {
                 for ( llvm::BasicBlock& bb : func )
@@ -278,7 +278,7 @@ int main( int argc, char** argv )
                     }
                 }
             }
-//        } );
+        } );
 
         auto emitObject = !noEmitObject;
         if ( emitLLVM || emitObject )

@@ -9,7 +9,7 @@ startRule
 
 // A statement can be a declaration, assignment, print, or comment.
 statement
-  : (declare | assignment | print) ENDOFSTATEMENT
+  : (declare | intdeclare | floatdeclare | assignment | print) ENDOFSTATEMENT
   ;
 
 // A single-line comment, handled by the COMMENT lexer token.
@@ -17,9 +17,17 @@ comment
   : COMMENT
   ;
 
-// A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').
+// A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').  These are currently implicitly double.
 declare
   : (DCL|DECLARE) VARIABLENAME
+  ;
+
+intdeclare
+  : (INT8|INT16|INT32|INT64) VARIABLENAME
+  ;
+
+floatdeclare
+  : (FLOAT32|FLOAT64) VARIABLENAME
   ;
 
 // Implicit or explicit return from a program (e.g., 'RETURN;', 'RETURN 3;')  Return without value equivalent to 'RETURN 0;'
@@ -119,6 +127,14 @@ PLUSCHAR
 DCL
   : 'DCL'
   ;
+
+// signed integers of various sizes, and ieee float/double types:
+INT8 : 'INT8' ;
+INT16 : 'INT16' ;
+INT32 : 'INT32' ;
+INT64 : 'INT64' ;
+FLOAT32 : 'FLOAT32' ;
+FLOAT64 : 'FLOAT64' ;
 
 // Matches the 'DECLARE' keyword for declarations.
 DECLARE

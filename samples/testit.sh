@@ -6,16 +6,17 @@ rm -rf out
 
 #test.toy # need binaryop lowering first.
 for i in \
-empty.toy \
-simplest.toy \
-dcl.toy \
-unary.toy \
-foo.toy \
-bin.toy \
-test.toy \
-return3.toy \
-returnx.toy \
-    ; do
+    types.toy \
+    empty.toy \
+    simplest.toy \
+    dcl.toy \
+    unary.toy \
+    foo.toy \
+    bin.toy \
+    test.toy \
+    return3.toy \
+    returnx.toy \
+; do
 
     stem=${i%.*}
     echo "##########################################################################"
