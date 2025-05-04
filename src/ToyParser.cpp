@@ -264,24 +264,27 @@ namespace toy
             return;
         }
 
-        // Create UnaryOp (supports + or -)
-        if ( op == "" )
+        mlir::Value resultValue;
+        if ( op == "" || op == "+" )
         {
-            op = "+";
+            resultValue = lhsValue;
         }
-
-        auto unaryOp = builder.create<toy::UnaryOp>(
-            loc, builder.getF64Type(), builder.getStringAttr( op ), lhsValue );
+        else
+        {
+            auto negOp = builder.create<toy::NegOp>(
+                loc, builder.getF64Type(), lhsValue );
+            resultValue = negOp.getResult();
+        }
 
         if ( !currentVarName.empty() )
         {
             // Store result to memref<f64>
             auto memref = var_storage[currentVarName];
-            builder.create<mlir::memref::StoreOp>( loc, unaryOp.getResult(),
+            builder.create<mlir::memref::StoreOp>( loc, resultValue,
                                                    memref );
             builder.create<toy::AssignOp>(
                 currentAssignLoc, builder.getStringAttr( currentVarName ),
-                unaryOp.getResult() );
+                resultValue );
             var_states[currentVarName] = variable_state::assigned;
             currentVarName.clear();
         }

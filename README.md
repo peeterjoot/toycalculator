@@ -110,7 +110,7 @@ x = 3;
      PRINT x;
 ```
 
-Here is the MLIR for the code above:
+Here is the MLIR for the code above (for an older version of this project, now toy.unary is replaced with either toy.negate, or nothing):
 
 ```
 > ./build/toycalculator  samples/foo.toy  -g

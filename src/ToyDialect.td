@@ -1,8 +1,6 @@
 include "mlir/IR/DialectBase.td"
 include "mlir/IR/OpBase.td"
 include "mlir/IR/BuiltinTypes.td"
-//include "mlir/Interfaces/InferTypeOpInterface.td"
-//include "mlir/Interfaces/SideEffectInterfaces.td" // Pure
 
 // Define the Toy dialect
 def Toy_Dialect : Dialect {
@@ -65,11 +63,9 @@ def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
   //let traits = [Pure];
 }
 
-// Unary operation
-def Toy_UnaryOp : Op<Toy_Dialect, "unary"> {
-  let summary = "Unary operation (e.g., +x, -x)";
+def Toy_NegOp : Op<Toy_Dialect, "negate"> {
+  let summary = "Negation operation (e.g., -x)";
   let arguments = (ins
-    StrAttr:$op,          // Operator name (e.g., "+", "-")
     AnyType:$lhs            // Input operand (f64, i64)
 //    F64:$lhs              // Input operand (f64)
   );
@@ -77,17 +73,8 @@ def Toy_UnaryOp : Op<Toy_Dialect, "unary"> {
     F64:$result           // Output (f64)
   );
   //let traits = [
-  //  Pure,                     // No side effects
-  //  SameOperandsAndResultType // Operands and result have the same type (f64)
+  //  Pure                      // No side effects
   //];
-  let extraClassDeclaration = [{
-    llvm::LogicalResult verify() {
-      llvm::StringRef op = getOp();
-      if (op != "+" && op != "-")
-        return emitOpError("invalid unary operator: ") << op;
-      return llvm::success();
-    }
-  }];
 }
 
 // let traits = [Pure, SameOperandsAndResultType];

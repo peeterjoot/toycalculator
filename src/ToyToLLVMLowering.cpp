@@ -246,15 +246,15 @@ namespace
     using DeclareOpLowering = LowerByDeletion<toy::DeclareOp>;
     using AssignOpLowering = LowerByDeletion<toy::AssignOp>;
 
-    // Lower toy.unary to LLVM arithmetic.
-    class UnaryOpLowering : public ConversionPattern
+    // Lower toy.negate to LLVM arithmetic.
+    class NegOpLowering : public ConversionPattern
     {
        private:
         loweringContext& lState;
 
        public:
-        UnaryOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( toy::UnaryOp::getOperationName(), 1, context ),
+        NegOpLowering( loweringContext& lState_, MLIRContext* context )
+            : ConversionPattern( toy::NegOp::getOperationName(), 1, context ),
               lState{ lState_ }
         {
         }
@@ -263,11 +263,11 @@ namespace
             Operation* op, ArrayRef<Value> operands,
             ConversionPatternRewriter& rewriter ) const override
         {
-            auto unaryOp = cast<toy::UnaryOp>( op );
+            auto unaryOp = cast<toy::NegOp>( op );
             auto loc = unaryOp.getLoc();
             auto operand = operands[0];
 
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.unary: " << *op << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.negate: " << *op << '\n' );
 
             // Convert i64 to f64 if necessary
             Value result = operand;
@@ -277,20 +277,10 @@ namespace
                     loc, rewriter.getF64Type(), operand );
             }
 
-            // Apply unary operation
-            if ( unaryOp.getOp() == "-" )
-            {
-                auto zero = rewriter.create<LLVM::ConstantOp>(
-                    loc, rewriter.getF64Type(),
-                    rewriter.getF64FloatAttr( 0.0 ) );
-                result = rewriter.create<LLVM::FSubOp>( loc, zero, result );
-            }
-            else if ( unaryOp.getOp() != "+" )
-            {
-                LLVM_DEBUG( llvm::dbgs() << "Unsupported unary op: "
-                                         << unaryOp.getOp() << '\n' );
-                return failure();
-            }
+            auto zero = rewriter.create<LLVM::ConstantOp>(
+                loc, rewriter.getF64Type(),
+                rewriter.getF64FloatAttr( 0.0 ) );
+            result = rewriter.create<LLVM::FSubOp>( loc, zero, result );
 
             rewriter.replaceOp( op, result );
             return success();
@@ -567,7 +557,7 @@ namespace
             patterns.insert<DivOpLowering>( lState, &getContext() );
             patterns.insert<DeclareOpLowering>( &getContext() );
             patterns.insert<AssignOpLowering>( &getContext() );
-            patterns.insert<UnaryOpLowering>( lState, &getContext() );
+            patterns.insert<NegOpLowering>( lState, &getContext() );
             patterns.insert<PrintOpLowering>( lState, &getContext() );
             patterns.insert<ConstantOpLowering>( lState, &getContext() );
             patterns.insert<MemRefAllocaOpLowering>( lState, &getContext() );
