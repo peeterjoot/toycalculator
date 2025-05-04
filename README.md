@@ -231,6 +231,7 @@ The assembler printer (with -O 2) reduces all the double operations to constant 
 * -g (show MLIR location info in the dump, and generate DWARF metadata in the lowered LLVM-IR.)
 * -O[0123] -- the usual.
 * --stdout.  MLIR and LLVM-IR output to stdout instead of to files.
+* --no-emit-object.
 
 ## TODO
 
