@@ -204,7 +204,12 @@ namespace toy
         if ( integerNode )
         {
             int64_t val = std::stoi( integerNode->getText() );
-            value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
+            //value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
+
+            // Niavely assuming that this integer value can be represented in a double:
+            llvm::APFloat apVal(llvm::APFloat::IEEEdouble(), val);
+
+            value = builder.create<mlir::arith::ConstantFloatOp>(loc, apVal, builder.getF64Type());
         }
         else if ( variableNode )
         {

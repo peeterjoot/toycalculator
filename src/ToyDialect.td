@@ -15,8 +15,7 @@ def Toy_ProgramOp : Op<Toy_Dialect, "program"> {
   let arguments = (ins);
   let results = (outs);
   let regions = (region AnyRegion:$body);
-  //let traits = [Pure, NoTerminator];
-  //let traits = [AutomaticAllocationScope]; 
+  let traits = [AutomaticAllocationScope];
 }
 
 // Declare operation

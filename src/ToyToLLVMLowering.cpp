@@ -25,14 +25,18 @@ using namespace mlir;
 
 namespace
 {
-    // This structure was to pass state from runOnOperation to the lowering class, now unused.
+    // This structure was to pass state from runOnOperation to the lowering
+    // class, now unused.
     //
-    // I added this initially because my LLVM IR dump is not showing the normal DI info that gets translated to DWARF.
+    // I added this initially because my LLVM IR dump is not showing the normal
+    // DI info that gets translated to DWARF.
     //
-    // I suspect that this is because there's a new way of doing this, described in:
+    // I suspect that this is because there's a new way of doing this, described
+    // in:
     //    https://llvm.org/docs/RemoveDIsDebugInfo.html
     //
-    // This new way is hidden by default.  Why I don't get DWARF in the end is probably a different issue?
+    // This new way is hidden by default.  Why I don't get DWARF in the end is
+    // probably a different issue?
     struct loweringContext
     {
     };
@@ -166,8 +170,7 @@ namespace
     {
        public:
         LowerByDeletion( MLIRContext* context )
-            : ConversionPattern( toyOpType::getOperationName(), 1,
-                                 context )
+            : ConversionPattern( toyOpType::getOperationName(), 1, context )
         {
         }
 
@@ -267,19 +270,21 @@ namespace
             auto loc = unaryOp.getLoc();
             auto operand = operands[0];
 
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.negate: " << *op << '\n' );
+            LLVM_DEBUG( llvm::dbgs()
+                        << "Lowering toy.negate: " << *op << '\n' );
 
             // Convert i64 to f64 if necessary
             Value result = operand;
+#if 0 // dead code now.
             if ( operand.getType().isInteger( 64 ) )
             {
                 result = rewriter.create<LLVM::SIToFPOp>(
                     loc, rewriter.getF64Type(), operand );
             }
+#endif
 
             auto zero = rewriter.create<LLVM::ConstantOp>(
-                loc, rewriter.getF64Type(),
-                rewriter.getF64FloatAttr( 0.0 ) );
+                loc, rewriter.getF64Type(), rewriter.getF64FloatAttr( 0.0 ) );
             result = rewriter.create<LLVM::FSubOp>( loc, zero, result );
 
             rewriter.replaceOp( op, result );
@@ -312,17 +317,20 @@ namespace
                         << "Lowering toy.binary: " << *op << '\n' );
 
             // Convert operands to f64 if necessary
-            auto f64Type = rewriter.getF64Type();
             Value lhs = operands[0];
+#if 0 // dead code now.
             if ( lhs.getType().isInteger( 64 ) )
             {
-                lhs = rewriter.create<LLVM::SIToFPOp>( loc, f64Type, lhs );
+                lhs = rewriter.create<LLVM::SIToFPOp>( loc, rewriter.getF64Type(), lhs );
             }
+#endif
             Value rhs = operands[1];
+#if 0 // dead code now.
             if ( rhs.getType().isInteger( 64 ) )
             {
-                rhs = rewriter.create<LLVM::SIToFPOp>( loc, f64Type, rhs );
+                rhs = rewriter.create<LLVM::SIToFPOp>( loc, rewriter.getF64Type(), rhs );
             }
+#endif
 
             auto result = rewriter.create<llvmOpType>( loc, lhs, rhs );
             rewriter.replaceOp( op, result );
@@ -360,7 +368,16 @@ namespace
             LLVM_DEBUG( llvm::dbgs()
                         << "Lowering arith.constant: " << *op << '\n' );
 
-            if ( auto intAttr = dyn_cast<IntegerAttr>( valueAttr ) )
+            if ( auto fAttr = dyn_cast<FloatAttr>( valueAttr ) )
+            {
+                auto f64Type = rewriter.getF64Type(); // Returns Float64Type for f64
+                auto value =
+                    rewriter.create<LLVM::ConstantOp>( loc, f64Type, fAttr );
+                rewriter.replaceOp( op, value );
+                return success();
+            }
+#if 0 // dead code now.
+            else if ( auto intAttr = dyn_cast<IntegerAttr>( valueAttr ) )
             {
                 auto i64Type = IntegerType::get( rewriter.getContext(), 64 );
                 auto value =
@@ -368,6 +385,7 @@ namespace
                 rewriter.replaceOp( op, value );
                 return success();
             }
+#endif
 
             return failure();
         }
@@ -536,15 +554,16 @@ namespace
             auto printFuncType =
                 LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ),
                                              { builder.getF64Type() }, false );
-            builder.create<LLVM::LLVMFuncOp>(
-                module.getLoc(), "__toy_print", printFuncType,
-                LLVM::Linkage::External );
+            builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print",
+                                              printFuncType,
+                                              LLVM::Linkage::External );
 
             // Create main function
             auto mainFuncType =
                 LLVM::LLVMFunctionType::get( builder.getI32Type(), {}, false );
-            builder.create<LLVM::LLVMFuncOp>(
-                module.getLoc(), "main", mainFuncType, LLVM::Linkage::External );
+            builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "main",
+                                              mainFuncType,
+                                              LLVM::Linkage::External );
 
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns( &getContext() );

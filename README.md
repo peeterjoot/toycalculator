@@ -232,8 +232,6 @@ The assembler printer (with -O 2) reduces all the double operations to constant 
 
 ## TODO
 
-* ../build/toycalculator foo.toy -g --stdout --no-emit-object --emit-mlir --emit-llvm --debug 2>&1 | less
-   'memref.alloca' op requires an ancestor op with AutomaticAllocationScope trait
 * LLVM IR lowering has lost the !dbg (i.e.: dwarf instrumentation) elements.
 * Add support for a numeric and symbol value for the RETURN statement (grammar, listener, builder, lowering.)
 * Floating point constants (will touch the grammar, builder and lowering.)
