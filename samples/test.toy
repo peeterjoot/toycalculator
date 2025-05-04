@@ -1,6 +1,6 @@
 DCL x;
 DCL y;
-x = 5 + 3;
+x = 5 + 3.3E0;
 y = x * 2;
 PRINT x;
 PRINT y;

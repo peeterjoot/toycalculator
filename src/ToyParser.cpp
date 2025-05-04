@@ -48,9 +48,9 @@ namespace toy
     // \retval true if error
     inline bool MLIRListener::buildUnaryExpression(
         antlr4::tree::TerminalNode *integerNode,
+        antlr4::tree::TerminalNode *floatNode,
         antlr4::tree::TerminalNode *variableNode, mlir::Location loc,
-        mlir::Value &value,
-        bool asFloat )
+        mlir::Value &value, bool asFloat )
     {
         if ( integerNode )
         {
@@ -58,17 +58,31 @@ namespace toy
 
             if ( asFloat )
             {
-                // Niavely assuming that this integer value can be represented in a double:
-                llvm::APFloat apVal(llvm::APFloat::IEEEdouble(), val);
+                // Niavely assuming that this integer value can be represented
+                // in a double:
+                llvm::APFloat apVal( llvm::APFloat::IEEEdouble(), val );
 
-                value = builder.create<mlir::arith::ConstantFloatOp>(loc, apVal, builder.getF64Type());
+                value = builder.create<mlir::arith::ConstantFloatOp>(
+                    loc, apVal, builder.getF64Type() );
             }
             else
             {
                 int64_t val = std::stoi( integerNode->getText() );
 
-                value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
+                value =
+                    builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
             }
+        }
+        else if ( floatNode )
+        {
+            assert( asFloat );
+
+            double val = std::stod( floatNode->getText() );
+
+            llvm::APFloat apVal( val );
+
+            value = builder.create<mlir::arith::ConstantFloatOp>(
+                loc, apVal, builder.getF64Type() );
         }
         else if ( variableNode )
         {
@@ -222,8 +236,9 @@ namespace toy
 
             auto n = ctx->element()[0];
 
-            bool error = buildUnaryExpression( n->INTEGERLITERAL(),
-                                               n->VARIABLENAME(), loc, value, false );
+            bool error =
+                buildUnaryExpression( n->INTEGERLITERAL(), n->FLOATLITERAL(),
+                                      n->VARIABLENAME(), loc, value, false );
             if ( error )
             {
                 return;
@@ -268,8 +283,9 @@ namespace toy
         auto op = ctx->unaryoperator()->getText();
 
         mlir::Value lhsValue;
-        bool error = buildUnaryExpression( lhs->INTEGERLITERAL(),
-                                           lhs->VARIABLENAME(), loc, lhsValue );
+        bool error =
+            buildUnaryExpression( lhs->INTEGERLITERAL(), lhs->FLOATLITERAL(),
+                                  lhs->VARIABLENAME(), loc, lhsValue );
         if ( error )
         {
             return;
@@ -282,8 +298,8 @@ namespace toy
         }
         else
         {
-            auto negOp = builder.create<toy::NegOp>(
-                loc, builder.getF64Type(), lhsValue );
+            auto negOp = builder.create<toy::NegOp>( loc, builder.getF64Type(),
+                                                     lhsValue );
             resultValue = negOp.getResult();
         }
 
@@ -291,8 +307,7 @@ namespace toy
         {
             // Store result to memref<f64>
             auto memref = var_storage[currentVarName];
-            builder.create<mlir::memref::StoreOp>( loc, resultValue,
-                                                   memref );
+            builder.create<mlir::memref::StoreOp>( loc, resultValue, memref );
             builder.create<toy::AssignOp>(
                 currentAssignLoc, builder.getStringAttr( currentVarName ),
                 resultValue );
@@ -318,16 +333,18 @@ namespace toy
         assert( sz == 2 );
 
         mlir::Value lhsValue;
-        error = buildUnaryExpression( lhs->INTEGERLITERAL(),
-                                      lhs->VARIABLENAME(), loc, lhsValue );
+        error =
+            buildUnaryExpression( lhs->INTEGERLITERAL(), lhs->FLOATLITERAL(),
+                                  lhs->VARIABLENAME(), loc, lhsValue );
         if ( error )
         {
             return;
         }
 
         mlir::Value rhsValue;
-        error = buildUnaryExpression( rhs->INTEGERLITERAL(),
-                                      rhs->VARIABLENAME(), loc, rhsValue );
+        error =
+            buildUnaryExpression( rhs->INTEGERLITERAL(), rhs->FLOATLITERAL(),
+                                  rhs->VARIABLENAME(), loc, rhsValue );
         if ( error )
         {
             return;

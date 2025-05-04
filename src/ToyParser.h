@@ -81,6 +81,7 @@ namespace toy
 
         inline bool buildUnaryExpression(
             antlr4::tree::TerminalNode *integerNode,
+            antlr4::tree::TerminalNode *floatNode,
             antlr4::tree::TerminalNode *variableNode, mlir::Location loc,
             mlir::Value &value, bool asFloat = true );
 

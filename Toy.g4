@@ -65,7 +65,7 @@ unaryoperator
 
 // An element in an expression, either an integer literal or a variable name.
 element
-  : (INTEGERLITERAL | VARIABLENAME)
+  : (INTEGERLITERAL | VARIABLENAME | FLOATLITERAL)
   ;
 
 // Lexer Rules
@@ -93,6 +93,16 @@ MINUSCHAR
 // Matches the multiplication operator (e.g., '*').
 TIMESCHAR
   : '*'
+  ;
+
+// Matches a North american decimal separator
+DECIMALSEP
+  : '.'
+  ;
+
+// Matches a North american decimal separator
+EXPONENT
+  : 'E'
   ;
 
 // Matches the division operator (e.g., '/').
@@ -128,6 +138,20 @@ RETURN
 // Matches integer literals, optionally signed (e.g., '42', '-123', '+7').
 INTEGERLITERAL
   : (PLUSCHAR | MINUSCHAR)? [0-9]+
+  ;
+
+// Matches floating point literal.  Examples:
+// 42
+// -123
+// +7
+// 42.3334
+// -123.3334
+// +7.3334
+// 42.3334E7
+// -123.3334E0
+// +7.3334E-1
+FLOATLITERAL
+  : (PLUSCHAR | MINUSCHAR)? [0-9]+( DECIMALSEP [0-9]+)? (EXPONENT MINUSCHAR? [0-9]+)?
   ;
 
 // Matches variable names (e.g., 'x', 'foo'), consisting of letters (any case) and numbers, but starting with a letter.

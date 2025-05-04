@@ -233,11 +233,11 @@ The assembler printer (with -O 2) reduces all the double operations to constant 
 ## TODO
 
 Basic language constructs to make things more interesting:
+* Rename RETURN to EXIT, and enforce i8 return type in the MLIR layer (i.e.: UNIX semantics.)
 * Implement IF/WHILE/DO/BREAK/CONTINUE statements.
 * Function calls (to more than the single PRINT runtime function.)
 * Types: fixed size integers and maybe floating point types of different sizes (not just double equivialent.)
-* Allow RETURN for more than the end of program marker (currently enforced in the grammar.)
-* Floating point constants (will touch the grammar, builder and lowering.)
+* Allow RETURN/EXIT at more than the end of program (currently enforced in the grammar.)
 
 Trickier, but fun stuff:
 * LLVM IR lowering has lost the !dbg (i.e.: dwarf instrumentation) elements.
