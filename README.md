@@ -232,10 +232,15 @@ The assembler printer (with -O 2) reduces all the double operations to constant 
 
 ## TODO
 
-* LLVM IR lowering has lost the !dbg (i.e.: dwarf instrumentation) elements.
-* Floating point constants (will touch the grammar, builder and lowering.)
-* Types: fixed size integers and maybe floating point types of different sizes (not just double equivialent.)
+Basic language constructs to make things more interesting:
+* Implement IF/WHILE/DO/BREAK/CONTINUE statements.
 * Function calls (to more than the single PRINT runtime function.)
+* Types: fixed size integers and maybe floating point types of different sizes (not just double equivialent.)
+* Allow RETURN for more than the end of program marker (currently enforced in the grammar.)
+* Floating point constants (will touch the grammar, builder and lowering.)
+
+Trickier, but fun stuff:
+* LLVM IR lowering has lost the !dbg (i.e.: dwarf instrumentation) elements.
 * Implement a JIT so that the "language" has the capability of a static compilation mode, as well as interpretted.
 
 ## Building
@@ -245,18 +250,20 @@ The assembler printer (with -O 2) reduces all the double operations to constant 
 ```
 sudo apt-get install libantlr4-runtime-dev
 sudo apt-get install antlr4
-wget https://www.antlr.org/download/antlr-4.10-complete.jar
 ```
 
-This assumes that the antlr4 runtime, after installation, is 4.10 -- if not, change appropriately (but CMakeLists.txt will also need to be updated.)
+This assumes that the antlr4 runtime, after installation, is 4.10 -- if not, change appropriately (update bin/runantlr)
 
-I had issues where the installed runtime didn't exactly match the generator.  I forget which system I saw that on.  That's why I had the separate jar download, but would have to verify which machine actualy required that.  Should abstract out the antlr4 invocation, instead of having complicated Cmake logic.
+On WSL2/ubuntu, this will result in the installed runtime version not matching the generator.  Workaround:
+
+```
+wget https://www.antlr.org/download/antlr-4.10-complete.jar
+```
 
 ### anltlr4 setup (Fedora)
 
 ```
 sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-devel
-wget https://www.antlr.org/download/antlr-4.10-complete.jar
 ```
 
 Like above, this assumes that the antlr4 runtime is 4.10.
