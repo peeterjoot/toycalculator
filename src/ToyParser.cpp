@@ -25,8 +25,7 @@ namespace toy
         context.getOrLoadDialect<mlir::memref::MemRefDialect>();
     }
 
-    inline mlir::Location MLIRListener::getLocation(
-        antlr4::ParserRuleContext *ctx )
+    inline mlir::Location MLIRListener::getLocation( antlr4::ParserRuleContext *ctx )
     {
         size_t line = 1;
         size_t col = 0;
@@ -36,25 +35,22 @@ namespace toy
             col = ctx->getStart()->getCharPositionInLine();
         }
 
-        return mlir::FileLineColLoc::get( builder.getStringAttr( filename ),
-                                          line, col + 1 );
+        return mlir::FileLineColLoc::get( builder.getStringAttr( filename ), line, col + 1 );
     }
 
     inline std::string MLIRListener::formatLocation( mlir::Location loc )
     {
         if ( auto fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc ) )
         {
-            return std::format( "{}:{}:{}: ", fileLoc.getFilename().str(),
-                                fileLoc.getLine(), fileLoc.getColumn() );
+            return std::format( "{}:{}:{}: ", fileLoc.getFilename().str(), fileLoc.getLine(), fileLoc.getColumn() );
         }
         return "";
     }
 
     // \retval true if error
-    inline bool MLIRListener::buildUnaryExpression(
-        tNode *booleanNode, tNode *integerNode, tNode *floatNode,
-        tNode *variableNode, mlir::Location loc, mlir::Value &value,
-        theTypes &ty )
+    inline bool MLIRListener::buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
+                                                    tNode *variableNode, mlir::Location loc, mlir::Value &value,
+                                                    theTypes &ty )
     {
         if ( booleanNode )
         {
@@ -85,18 +81,6 @@ namespace toy
             int64_t val = std::stoi( integerNode->getText() );
             value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
             ty = theTypes::integer64;
-
-#if 0
-            if ( asFloat )
-            {
-                // Niavely assuming that this integer value can be represented
-                // in a double:
-                llvm::APFloat apVal( llvm::APFloat::IEEEdouble(), val );
-
-                value = builder.create<mlir::arith::ConstantFloatOp>(
-                    loc, apVal, builder.getF64Type() );
-            }
-#endif
         }
         else if ( floatNode )
         {
@@ -107,8 +91,7 @@ namespace toy
             // Like the INTEGERLITERAL node above, create the float literal with
             // the max sized type. Would need a grammar change to have a
             // specific type (i.e.: size) associated with literals.
-            value = builder.create<mlir::arith::ConstantFloatOp>(
-                loc, apVal, builder.getF64Type() );
+            value = builder.create<mlir::arith::ConstantFloatOp>( loc, apVal, builder.getF64Type() );
             ty = theTypes::float64;
         }
         else if ( variableNode )
@@ -120,18 +103,16 @@ namespace toy
             if ( varState == variable_state::undeclared )
             {
                 lastSemError = semantic_errors::variable_not_declared;
-                llvm::errs() << std::format(
-                    "{}error: Variable {} not declared in expr\n",
-                    formatLocation( loc ), varName );
+                llvm::errs() << std::format( "{}error: Variable {} not declared in expr\n", formatLocation( loc ),
+                                             varName );
                 return true;
             }
 
             if ( varState != variable_state::assigned )
             {
                 lastSemError = semantic_errors::variable_not_assigned;
-                llvm::errs() << std::format(
-                    "{}error: Variable {} not assigned in expr\n",
-                    formatLocation( loc ), varName );
+                llvm::errs() << std::format( "{}error: Variable {} not assigned in expr\n", formatLocation( loc ),
+                                             varName );
                 return true;
             }
 
@@ -140,7 +121,7 @@ namespace toy
             value = builder.create<mlir::memref::LoadOp>( loc, memref );
 
             auto mtype = memref.getType();
-            if ( auto intType = mlir::dyn_cast<mlir::IntegerType>(mtype) )
+            if ( auto intType = mlir::dyn_cast<mlir::IntegerType>( mtype ) )
             {
                 switch ( intType.getWidth() )
                 {
@@ -163,7 +144,7 @@ namespace toy
                         throw internal_exception();
                 }
             }
-            if ( auto floatType = mlir::dyn_cast<mlir::FloatType>(mtype) )
+            if ( auto floatType = mlir::dyn_cast<mlir::FloatType>( mtype ) )
             {
                 switch ( floatType.getWidth() )
                 {
@@ -181,8 +162,7 @@ namespace toy
         else
         {
             lastSemError = semantic_errors::unknown_error;
-            llvm::errs() << std::format( "{}error: Invalid operand\n",
-                                         formatLocation( loc ) );
+            llvm::errs() << std::format( "{}error: Invalid operand\n", formatLocation( loc ) );
             return true;
         }
 
@@ -190,16 +170,13 @@ namespace toy
     }
 
     // \retval true if error
-    inline bool MLIRListener::registerDeclaration( mlir::Location loc,
-                                                   const std::string &varName )
+    inline bool MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName )
     {
         auto varState = var_states[varName];
         if ( varState != variable_state::undeclared )
         {
             lastSemError = semantic_errors::variable_already_declared;
-            llvm::errs() << std::format(
-                "{}error: Variable {} already declared\n",
-                formatLocation( loc ), varName );
+            llvm::errs() << std::format( "{}error: Variable {} already declared\n", formatLocation( loc ), varName );
             return true;
         }
 
@@ -258,8 +235,7 @@ namespace toy
         var_states[varName] = variable_state::declared;
         // Allocate memref<f64> for the variable
         auto memrefType = mlir::MemRefType::get( {}, builder.getF64Type() );
-        auto allocaOp =
-            builder.create<mlir::memref::AllocaOp>( loc, memrefType );
+        auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
         var_storage[varName] = allocaOp.getResult();
         builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ) );
     }
@@ -277,8 +253,7 @@ namespace toy
 
         // Allocate memref<i1> for the variable
         auto memrefType = mlir::MemRefType::get( {}, builder.getI1Type() );
-        auto allocaOp =
-            builder.create<mlir::memref::AllocaOp>( loc, memrefType );
+        auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
         var_storage[varName] = allocaOp.getResult();
 
         builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ) );
@@ -299,29 +274,25 @@ namespace toy
         if ( ctx->INT8() )
         {
             auto memrefType = mlir::MemRefType::get( {}, builder.getI8Type() );
-            auto allocaOp =
-                builder.create<mlir::memref::AllocaOp>( loc, memrefType );
+            auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
             var_storage[varName] = allocaOp.getResult();
         }
         else if ( ctx->INT16() )
         {
             auto memrefType = mlir::MemRefType::get( {}, builder.getI16Type() );
-            auto allocaOp =
-                builder.create<mlir::memref::AllocaOp>( loc, memrefType );
+            auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
             var_storage[varName] = allocaOp.getResult();
         }
         else if ( ctx->INT32() )
         {
             auto memrefType = mlir::MemRefType::get( {}, builder.getI32Type() );
-            auto allocaOp =
-                builder.create<mlir::memref::AllocaOp>( loc, memrefType );
+            auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
             var_storage[varName] = allocaOp.getResult();
         }
         else if ( ctx->INT64() )
         {
             auto memrefType = mlir::MemRefType::get( {}, builder.getI64Type() );
-            auto allocaOp =
-                builder.create<mlir::memref::AllocaOp>( loc, memrefType );
+            auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
             var_storage[varName] = allocaOp.getResult();
         }
         else
@@ -349,15 +320,13 @@ namespace toy
         if ( ctx->FLOAT32() )
         {
             auto memrefType = mlir::MemRefType::get( {}, builder.getF32Type() );
-            auto allocaOp =
-                builder.create<mlir::memref::AllocaOp>( loc, memrefType );
+            auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
             var_storage[varName] = allocaOp.getResult();
         }
         else if ( ctx->FLOAT64() )
         {
             auto memrefType = mlir::MemRefType::get( {}, builder.getF64Type() );
-            auto allocaOp =
-                builder.create<mlir::memref::AllocaOp>( loc, memrefType );
+            auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
             var_storage[varName] = allocaOp.getResult();
         }
         else
@@ -378,17 +347,15 @@ namespace toy
         if ( varState == variable_state::undeclared )
         {
             lastSemError = semantic_errors::variable_not_declared;
-            llvm::errs() << std::format(
-                "{}error: Variable {} not declared in PRINT\n",
-                formatLocation( loc ), varName );
+            llvm::errs() << std::format( "{}error: Variable {} not declared in PRINT\n", formatLocation( loc ),
+                                         varName );
             return;
         }
         if ( varState != variable_state::assigned )
         {
             lastSemError = semantic_errors::variable_not_assigned;
-            llvm::errs() << std::format(
-                "{}error: Variable {} not assigned in PRINT\n",
-                formatLocation( loc ), varName );
+            llvm::errs() << std::format( "{}error: Variable {} not assigned in PRINT\n", formatLocation( loc ),
+                                         varName );
             return;
         }
 
@@ -396,15 +363,15 @@ namespace toy
         builder.create<toy::PrintOp>( loc, memref );
     }
 
-    void MLIRListener::enterExitStatement(
-        ToyParser::ExitStatementContext *ctx )
+    void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )
     {
         lastOp = lastOperator::returnOp;
         auto loc = getLocation( ctx );
 
-        auto sz = ctx->unaryExpression().size();
+        auto lit = ctx->numericLiteral();
+        auto var = ctx->VARIABLENAME();
 
-        if ( sz == 0 )
+        if ( ( lit == nullptr ) && ( var == nullptr ) )
         {
             //  Create toy.return with no operands (empty ValueRange)
             builder.create<toy::ExitOp>( loc, mlir::ValueRange{} );
@@ -412,19 +379,10 @@ namespace toy
         else
         {
             mlir::Value value;
-            assert( sz == 1 );
 
-            auto n = ctx->unaryExpression()[0];
-
-            assert( !n->unaryOperator()->MINUSCHAR() );    // TODO.
-
-            auto lit = n->literal();
             theTypes ty;
-            bool error = buildUnaryExpression(
-                lit ? lit->BOOLEANLITERAL() : nullptr,
-                lit ? lit->INTEGERLITERAL() : nullptr,
-                lit ? lit->FLOATLITERAL() : nullptr,
-                lit ? n->VARIABLENAME() : nullptr, loc, value, ty );
+            bool error = buildUnaryExpression( nullptr, lit ? lit->INTEGERLITERAL() : nullptr,
+                                               lit ? lit->FLOATLITERAL() : nullptr, var, loc, value, ty );
             if ( error )
             {
                 return;
@@ -448,67 +406,14 @@ namespace toy
         else if ( varState == variable_state::undeclared )
         {
             lastSemError = semantic_errors::variable_not_declared;
-            llvm::errs() << std::format(
-                "{}error: Variable {} not declared in assignment\n",
-                formatLocation( loc ), currentVarName );
+            llvm::errs() << std::format( "{}error: Variable {} not declared in assignment\n", formatLocation( loc ),
+                                         currentVarName );
             assignmentTargetValid = false;
         }
         currentAssignLoc = loc;
     }
 
-
-    void MLIRListener::enterUnaryExpression(
-        ToyParser::UnaryExpressionContext *ctx )
-    {
-        if ( !assignmentTargetValid )
-        {
-            return;
-        }
-
-        auto loc = getLocation( ctx );
-        auto op = ctx->unaryOperator()->getText();
-
-        mlir::Value lhsValue;
-
-        auto lit = ctx->literal();
-
-        theTypes ty;
-        bool error = buildUnaryExpression(
-            lit ? lit->BOOLEANLITERAL() : nullptr,
-            lit ? lit->INTEGERLITERAL() : nullptr,
-            lit ? lit->FLOATLITERAL() : nullptr,
-            lit ? ctx->VARIABLENAME() : nullptr, loc, lhsValue, ty );
-        if ( error )
-        {
-            return;
-        }
-
-        mlir::Value resultValue;
-        if ( op == "" || op == "+" )
-        {
-            resultValue = lhsValue;
-        }
-        else
-        {
-            auto negOp =
-                builder.create<toy::NegOp>( loc, lhsValue.getType(), lhsValue );
-            resultValue = negOp.getResult();
-        }
-
-        assert( !currentVarName.empty() );
-
-        // Store result to memref<...>
-        auto memref = var_storage[currentVarName];
-        builder.create<mlir::memref::StoreOp>( loc, resultValue, memref );
-        builder.create<toy::AssignOp>( currentAssignLoc,
-                                       builder.getStringAttr( currentVarName ),
-                                       resultValue );
-        var_states[currentVarName] = variable_state::assigned;
-        currentVarName.clear();
-    }
-
-    void MLIRListener::enterBinaryExpression(
-        ToyParser::BinaryExpressionContext *ctx )
+    void MLIRListener::enterAssignmentExpression( ToyParser::AssignmentExpressionContext *ctx )
     {
         if ( !assignmentTargetValid )
         {
@@ -516,87 +421,110 @@ namespace toy
         }
         auto loc = getLocation( ctx );
         auto sz = ctx->binaryElement().size();
-        auto lhs = ctx->binaryElement()[0];
-        auto rhs = ctx->binaryElement()[1];
-        auto op = ctx->binaryOperator()->getText();
+        assert( sz && ( sz <= 2 ) );
         bool error;
-
-        assert( sz == 2 );
+        mlir::Value resultValue;
 
         mlir::Value lhsValue;
         theTypes lty;
-        auto llit = lhs->numericLiteral();
-        error = buildUnaryExpression(
-            nullptr, llit ? llit->INTEGERLITERAL() : nullptr,
-            llit ? llit->FLOATLITERAL() : nullptr,
-            llit ? lhs->VARIABLENAME() : nullptr, loc, lhsValue, lty );
-        if ( error )
+        if ( sz == 1 )
         {
-            return;
-        }
+            auto op = ctx->unaryOperator()->getText();
 
-        mlir::Value rhsValue;
-        theTypes rty;
-        auto rlit = rhs->numericLiteral();
-        error = buildUnaryExpression(
-            nullptr, rlit ? rlit->INTEGERLITERAL() : nullptr,
-            rlit ? rlit->FLOATLITERAL() : nullptr,
-            rlit ? lhs->VARIABLENAME() : nullptr, loc, rhsValue, rty );
-        if ( error )
-        {
-            return;
-        }
+            mlir::Value lhsValue;
 
-        // Given pairs INT8, INT16 (say), pick the largest sized type as the target type for the operation.
-        // This simple promotion scheme promotes INT64 -> FLOAT32 (given such a pair), which is perhaps inappropriate,
-        // but this can be refined later.
-        mlir::Type opType;
-        if ( (int)lty >= (int)rty )
-        {
-            opType = lhsValue.getType();
+            auto lit = ctx->literal();
+
+            theTypes ty;
+            bool error = buildUnaryExpression(
+                lit ? lit->BOOLEANLITERAL() : nullptr, lit ? lit->INTEGERLITERAL() : nullptr,
+                lit ? lit->FLOATLITERAL() : nullptr, lit ? ctx->VARIABLENAME() : nullptr, loc, lhsValue, ty );
+            if ( error )
+            {
+                return;
+            }
+
+            if ( op == "" || op == "+" )
+            {
+                resultValue = lhsValue;
+            }
+            else
+            {
+                auto negOp = builder.create<toy::NegOp>( loc, lhsValue.getType(), lhsValue );
+                resultValue = negOp.getResult();
+            }
         }
         else
         {
-            opType = rhsValue.getType();
-        }
+            auto lhs = ctx->binaryElement()[0];
+            auto rhs = ctx->binaryElement()[1];
+            auto op = ctx->binaryOperator()->getText();
 
-        // Create the binary operator (supports +, -, *, /)
-        mlir::Value resultValue;
-        switch ( op[0] )
-        {
-            case '+':
+            auto llit = lhs->numericLiteral();
+            error = buildUnaryExpression( nullptr, llit ? llit->INTEGERLITERAL() : nullptr,
+                                          llit ? llit->FLOATLITERAL() : nullptr, llit ? lhs->VARIABLENAME() : nullptr,
+                                          loc, lhsValue, lty );
+            if ( error )
             {
-                auto b = builder.create<toy::AddOp>( loc, opType,
-                                                     lhsValue, rhsValue );
-                resultValue = b.getResult();
-                break;
+                return;
             }
-            case '-':
+
+            mlir::Value rhsValue;
+            theTypes rty;
+            auto rlit = rhs->numericLiteral();
+            error = buildUnaryExpression( nullptr, rlit ? rlit->INTEGERLITERAL() : nullptr,
+                                          rlit ? rlit->FLOATLITERAL() : nullptr, rlit ? lhs->VARIABLENAME() : nullptr,
+                                          loc, rhsValue, rty );
+            if ( error )
             {
-                auto b = builder.create<toy::SubOp>( loc, opType,
-                                                     lhsValue, rhsValue );
-                resultValue = b.getResult();
-                break;
+                return;
             }
-            case '*':
+
+            // Given pairs INT8, INT16 (say), pick the largest sized type as the target type for the operation.
+            // This simple promotion scheme promotes INT64 -> FLOAT32 (given such a pair), which is perhaps
+            // inappropriate, but this can be refined later.
+            mlir::Type opType;
+            if ( (int)lty >= (int)rty )
             {
-                auto b = builder.create<toy::MulOp>( loc, opType,
-                                                     lhsValue, rhsValue );
-                resultValue = b.getResult();
-                break;
+                opType = lhsValue.getType();
             }
-            case '/':
+            else
             {
-                auto b = builder.create<toy::DivOp>( loc, opType,
-                                                     lhsValue, rhsValue );
-                resultValue = b.getResult();
-                break;
+                opType = rhsValue.getType();
             }
-            default:
+
+            // Create the binary operator (supports +, -, *, /)
+            switch ( op[0] )
             {
-                llvm::errs()
-                    << std::format( "error: Invalid binary operator {}\n", op );
-                throw semantic_exception();
+                case '+':
+                {
+                    auto b = builder.create<toy::AddOp>( loc, opType, lhsValue, rhsValue );
+                    resultValue = b.getResult();
+                    break;
+                }
+                case '-':
+                {
+                    auto b = builder.create<toy::SubOp>( loc, opType, lhsValue, rhsValue );
+                    resultValue = b.getResult();
+                    break;
+                }
+                case '*':
+                {
+                    auto b = builder.create<toy::MulOp>( loc, opType, lhsValue, rhsValue );
+                    resultValue = b.getResult();
+                    break;
+                }
+                case '/':
+                {
+                    auto b = builder.create<toy::DivOp>( loc, opType, lhsValue, rhsValue );
+                    resultValue = b.getResult();
+                    break;
+                }
+                default:
+                {
+                    llvm::errs() << std::format( "error: Invalid binary operator {}\n", op );
+                    throw semantic_exception();
+                }
             }
         }
 
@@ -605,9 +533,7 @@ namespace toy
         // Store result to memref<f64>
         auto memref = var_storage[currentVarName];
         builder.create<mlir::memref::StoreOp>( loc, resultValue, memref );
-        builder.create<toy::AssignOp>( currentAssignLoc,
-                                       builder.getStringAttr( currentVarName ),
-                                       resultValue );
+        builder.create<toy::AssignOp>( currentAssignLoc, builder.getStringAttr( currentVarName ), resultValue );
         var_states[currentVarName] = variable_state::assigned;
         currentVarName.clear();
     }

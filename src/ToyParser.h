@@ -42,7 +42,7 @@ namespace toy
 
     inline bool isInteger( theTypes ty )
     {
-        return !isBoolean( ty ) && ((int)ty < (int)theTypes::float32);
+        return !isBoolean( ty ) && ( (int)ty < (int)theTypes::float32 );
     }
 
     inline bool isFloat( theTypes ty )
@@ -97,8 +97,7 @@ namespace toy
         mlir::Location currentAssignLoc;
         semantic_errors lastSemError{ semantic_errors::not_an_error };
         std::unordered_map<std::string, variable_state> var_states;
-        std::map<std::string, mlir::Value>
-            var_storage;    // Maps variable names to memref<f64>
+        std::map<std::string, mlir::Value> var_storage;    // Maps variable names to memref<f64>
         bool assignmentTargetValid;
         lastOperator lastOp{ lastOperator::notAnOp };
 
@@ -106,14 +105,10 @@ namespace toy
 
         inline std::string formatLocation( mlir::Location loc );
 
-        inline bool buildUnaryExpression( tNode *booleanNode,
-                                          tNode *integerNode, tNode *floatNode,
-                                          tNode *variableNode,
-                                          mlir::Location loc,
-                                          mlir::Value &value, theTypes &ty );
+        inline bool buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode, tNode *variableNode,
+                                          mlir::Location loc, mlir::Value &value, theTypes &ty );
 
-        inline bool registerDeclaration( mlir::Location loc,
-                                         const std::string &varName );
+        inline bool registerDeclaration( mlir::Location loc, const std::string &varName );
 
        public:
         MLIRListener( const std::string &_filename );
@@ -139,14 +134,9 @@ namespace toy
 
         void enterAssignment( ToyParser::AssignmentContext *ctx ) override;
 
-        void enterExitStatement(
-            ToyParser::ExitStatementContext *ctx ) override;
+        void enterExitStatement( ToyParser::ExitStatementContext *ctx ) override;
 
-        void enterUnaryExpression(
-            ToyParser::UnaryExpressionContext *ctx ) override;
-
-        void enterBinaryExpression(
-            ToyParser::BinaryExpressionContext *ctx ) override;
+        void enterAssignmentExpression( ToyParser::AssignmentExpressionContext *ctx ) override;
     };
 }    // namespace toy
 

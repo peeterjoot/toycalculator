@@ -2,7 +2,8 @@
 
 b main
 #run -g --stdout ../samples/bin.toy --no-emit-object  --debug
-run -g --stdout ../samples/types.toy --no-emit-object  --debug --emit-mlir
+#run -g --stdout ../samples/types.toy --no-emit-object  --debug --emit-mlir
+run bool.toy --stdout --emit-mlir --no-emit-object
 #run -g --stdout ../samples/unary.toy --no-emit-object  --debug --emit-mlir
 #run -g --stdout ../samples/return3.toy  --debug --emit-mlir --no-emit-object
 #run -g --stdout ../samples/returnx.toy  --debug --emit-mlir --no-emit-object
@@ -10,7 +11,7 @@ run -g --stdout ../samples/types.toy --no-emit-object  --debug --emit-mlir
 #run -g --stdout ../samples/unary.toy --no-emit-object  --debug
 
 
-b ToyToLLVMLowering.cpp:455
+#b ToyToLLVMLowering.cpp:455
 #b enterStartRule
 #b enterDeclare
 #b enterPrint

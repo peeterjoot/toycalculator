@@ -49,7 +49,7 @@ floatDeclare
 
 // Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
 exitStatement
-  : EXIT unaryExpression*
+  : EXIT (numericLiteral | VARIABLENAME)?
   ;
 
 // A print statement that outputs a variable (e.g., 'PRINT x;').
@@ -59,29 +59,24 @@ print
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
 assignment
-  : VARIABLENAME EQUALS rhs
+  : VARIABLENAME EQUALS assignmentExpression
   ;
 
 // The right-hand side of an assignment, either a binary or unary expression.
-rhs
-  : binaryExpression
-  | unaryExpression
+assignmentExpression
+  : literal
+  | unaryOperator? VARIABLENAME
+  | binaryElement binaryOperator binaryElement
   ;
 
-// A binary expression with two elements and an operator (e.g., 'x + 42').
-// FIXME: change binaryElement to unaryExpression sometime later.  For now I don't want to deal with 'A - -B'.
-binaryExpression
-  : binaryElement binaryOperator binaryElement
+binaryElement
+  : numericLiteral
+  | unaryOperator? VARIABLENAME
   ;
 
 // A binary operator for addition, subtraction, multiplication, or division.
 binaryOperator
   : MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR
-  ;
-
-// A unary expression: variable with an optional operator, or literal (int, float, or bool)
-unaryExpression
-  : (unaryOperator? VARIABLENAME) | literal
   ;
 
 // An optional unary operator for positive or negative (e.g., '+' or '-').
@@ -95,12 +90,6 @@ numericLiteral
 
 literal
   : INTEGERLITERAL | FLOATLITERAL | BOOLEANLITERAL
-  ;
-
-// An element in a binary expression
-// boolean literals are omitted here.
-binaryElement
-  : numericLiteral | VARIABLENAME
   ;
 
 // Lexer Rules
