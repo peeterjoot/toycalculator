@@ -236,11 +236,32 @@ The assembler printer (with -O 2) reduces all the double operations to constant 
 ## TODO
 
 Basic language constructs to make things more interesting:
-* Have implemented BOOL type, but not assignments to it.
-* int/float Types [WIP]: implemented declare for fixed size integers and floating point types of different sizes (not just double equivialent), but need to push that down to binary/unary op builder and lowering (which is still assumes double for everything.)
-* EXIT: enforce i8 return type in the MLIR layer (i.e.: UNIX semantics.)
+* INT->FLOAT assignments not working properly:
+
+    %5 = "memref.load"(%0) : (memref<i1>) -> i1 loc(#loc7)
+    "memref.store"(%5, %4) : (i1, memref<f64>) -> () loc(#loc7)
+    "toy.assign"(%5) <{name = "f"}> : (i1) -> () loc(#loc8)
+
+Need type conversion -- not sure what this is doing, but don't get the right result (bool.toy: print)
+
+
+// unary.toy
+DCL x;
+x = 3;
+x = +x;
+x = -x;
+PRINT x;
+
+This is also broken by the types support WIP.
+
+(print -0 instead of -3)
+
+* Regression Test cases: verifying by eye currently (testit.sh).  Do something better.
+* EXIT: enforce i8 return type in the MLIR layer (i.e.: actual UNIX shell semantics.) -- currently set to i32 return.
 * Implement IF/WHILE/DO/BREAK/CONTINUE statements.
 * Function calls (to more than the single PRINT runtime function.)
+* More complicated expressions.
+* CAST operators.
 * Allow EXIT at more than the end of program (currently enforced in the grammar.)
 
 Trickier, but fun stuff:
