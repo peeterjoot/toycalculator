@@ -1,0 +1,3 @@
+EXIT 3;
+// comments should be allowed after
+//  explicit exit.

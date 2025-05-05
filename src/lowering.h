@@ -1,3 +1,8 @@
+/**
+ * @file    lowering.h
+ * @author  Peeter Joot <peeterjoot@pm.me>
+ * @brief   Glue code for MLIR lowering to LLVM-IR.
+ */
 #ifndef TOY_TO_LLVM_LOWERING_H
 #define TOY_TO_LLVM_LOWERING_H
 

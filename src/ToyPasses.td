@@ -1,3 +1,8 @@
+//
+// @file    ToyPasses.td
+// @author  Peeter Joot <peeterjoot@pm.me>
+// @brief   Dialect for lowering ToyDialect.td mlir to LLVM-IR.
+//
 include "mlir/Pass/PassBase.td"
 
 def ToyToLLVMLowering : Pass<"toy-to-llvm-lowering", "mlir::ModuleOp"> {

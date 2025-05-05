@@ -7,7 +7,7 @@ It implements a toy calculator language that supports a few primitive linguistic
 * a DECLARE operation,
 * a PRINT operation,
 * single line comments,
-* a RETURN operation,
+* a EXIT operation,
 * an ASSIGNMENT operator (=) with unary (+,-) and binary operators (+,-,*,/).
 
 Integer constants are allowed in the assignment, but compuations are (currently) floating point.
@@ -25,7 +25,155 @@ As an example of the pain of working with AI tools, here's a trivial example: I 
 I'd like to add enough language elements to the project to make it interesting, and now that I have the basic framework, I should be able to
 do that without bothering with AI tools that can be more work to use than just doing it yourself.
 
-Examples:
+## Interesting files
+
+* Toy.g4            -- The Antlr4 grammar for the calculator.
+* src/driver.cpp    -- This is the compiler driver, handles command line options, opens output files, and orchestrates all the lower level actions (parse tree walk + MLIR builder, lowering to LLVM-IR, and assembly printer).
+* src/calculator.td -- This is the MLIR dialect that defines the compiler eye view of all the grammar elements.
+* src/parser.cpp    -- This is the Antlr4 parse tree walker and the MLIR builder.
+* src/lowering.cpp  -- LLVM-IR lowering classes.
+
+## Command line options
+
+* --output-directory
+* --emit-llvm
+* --emit-mlir
+* --debug (built in MLIR option.)
+* -debug-only=toy-driver
+* -debug-only=toy-lowering
+* --debug-mlir
+* -g (show MLIR location info in the dump, and generate DWARF metadata in the lowered LLVM-IR.)
+* -O[0123] -- the usual.
+* --stdout.  MLIR and LLVM-IR output to stdout instead of to files.
+* --no-emit-object.
+
+## TODO
+
+Basic language constructs to make things more interesting:
+
+New type model:
+* print methods for all the various types.
+* tests for all the type conversions.
+* addi.toy: doesn't work as intended (x is float64, not int32)
+
+* unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.
+* Regression Test cases: verifying by eye currently (testit.sh).  Do something better.
+* EXIT: enforce i8 return type in the MLIR layer (i.e.: actual UNIX shell semantics.) -- currently set to i32 return.
+* Implement IF/WHILE/DO/BREAK/CONTINUE statements.
+* Function calls (to more than the single PRINT runtime function.)
+* More complicated expressions.
+* CAST operators.
+* Allow EXIT at more than the end of program (currently enforced in the grammar.)
+
+Trickier, but fun stuff:
+* LLVM IR lowering has lost the !dbg (i.e.: dwarf instrumentation) elements.
+* Implement a JIT so that the "language" has the capability of a static compilation mode, as well as interpretted.
+
+## Building
+
+### anltlr4 setup (ubuntu)
+
+```
+sudo apt-get install libantlr4-runtime-dev
+sudo apt-get install antlr4
+```
+
+This assumes that the antlr4 runtime, after installation, is 4.10 -- if not, change appropriately (update bin/runantlr)
+
+On WSL2/ubuntu, this will result in the installed runtime version not matching the generator.  Workaround:
+
+```
+wget https://www.antlr.org/download/antlr-4.10-complete.jar
+```
+
+### Installation dependencies (Fedora)
+
+```
+sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-devel cmake clang-tools-extra g++ ninja cscope
+```
+
+### Building MLIR
+
+On both ubuntu and fedora, I needed a custom build of llvm/mlir, as I didn't find a package that had the MLIR tablegen files.
+As it turned out, a custom llvm/mlir build was also required to specifically enable rtti, as altlr4 uses dynamic_cast<>.
+The -fno-rtti that is required by default to avoid typeinfo symbol link errors, explicitly breaks the antlr4 header files.
+I'm not actually sure if the llvm-project has a generic lexer/parser, or if those are all language specific.
+Having used antlr4 for previous prototyping, also generating a C++ listener, it made sense to me to use what I knew.
+
+See bin/buildllvm for how I built and deployed the llvm+mlir installation used for this project.
+
+### Building the project.
+
+```
+. ./bin/env
+build.sh
+```
+
+The build script current assumes that I'm the one building it, and is likely not sufficiently general for other people to use, and will surely break as I upgrade the systems I attempt to build it on.
+
+Linux-only is assumed.
+
+Depending on what I currently have booted, this has been on a mix of:
+
+* Fedora 42/X64 (on a dual boot windows-11/Linux laptop)
+* WSL ubuntu 24/X64 (windows side, same laptop.)
+* Ambian (ubuntu), running on an raspberry PI (this is why there is an ARM case in buildllvm and CMakeLists.txt)
+
+## Debugging
+
+### Peeking into LLVM object internals
+
+LLVM uses it's own internal dynamic\_cast<> mechanism, so many types appear opaque.  Example:
+
+```
+(gdb) p loc
+$2 = {impl = {<mlir::Attribute> = {impl = 0x5528d8}, <No data fields>}}
+```
+
+If we happen to know the real underlying type, we can cast the impl part of the object
+
+```
+(gdb) p *(mlir::FileLineColLoc*)loc.impl
+$3 = {<mlir::FileLineColRange> = {<mlir::detail::StorageUserBase<mlir::FileLineColRange, mlir::LocationAttr, mlir::detail::FileLineColRangeAttrStorage, mlir::detail::AttributeUniquer, mlir::AttributeTrait::IsLocation>> = {<mlir::LocationAttr> = {<mlir::Attribute> = {
+          impl = 0x539330}, <No data fields>}, <mlir::AttributeTrait::IsLocation<mlir::FileLineColRange>> = {<mlir::detail::StorageUserTraitBase<mlir::FileLineColRange, mlir::AttributeTrait::IsLocation>> = {<No data fields>}, <No data fields>}, <No data fields>}, <No data fields>}, <No data fields>}
+```
+
+but that may not be any more illuminating.  Old fashioned printf style debugging does work:
+
+```
+             LLVM_DEBUG( llvm::dbgs()
+                         << "Lowering toy.program: " << *op << '\n' << loc << '\n' );
+```
+
+
+## Build timings:
+
+Fedora 42 ; antlr4-4.13.2
+```
+real    0m2.034s
+user    0m2.654s
+sys     0m0.688s
+```
+
+Windows-11 w/ WSL2 ubuntu-24 ; antlr4 4.10 (same machine as above, a dual boot windows/fedora system.)
+```
+real    0m42.288s
+user    1m17.337s
+sys     0m8.481s
+```
+
+Raspberry PI (ubuntu) ; antlr4 4.9.2
+```
+real    0m54.584s
+user    2m9.977s
+sys     0m9.730s
+```
+
+Interesting that the little PI is almost as fast as the WSL2 ubuntu instance.  Not much justification to keep Windows booted as the primary OS.  Wonder how a Linux VM on Windows would fare compared to WSL2?
+
+## OLD Examples:
+
+These are MLIR samples that applied to the pre-symboltable version of the code:
 
 1. samples/empty.toy
 
@@ -221,132 +369,149 @@ The assembler printer (with -O 2) reduces all the double operations to constant 
   40048e:       ret
 ```
 
-## Command line options
+## Experimenting with symbol tables.
 
-* --output-directory
-* --emit-llvm
-* --emit-mlir
-* --debug (mlir default option.)
-* --debug-mlir
-* -g (show MLIR location info in the dump, and generate DWARF metadata in the lowered LLVM-IR.)
-* -O[0123] -- the usual.
-* --stdout.  MLIR and LLVM-IR output to stdout instead of to files.
-* --no-emit-object.
-
-## TODO
-
-Basic language constructs to make things more interesting:
-* Have implemented BOOL type, but not assignments to it.
-* int/float Types [WIP]: implemented declare for fixed size integers and floating point types of different sizes (not just double equivialent), but need to push that down to binary/unary op builder and lowering (which is still assumes double for everything.)
-* Rename RETURN to EXIT, and enforce i8 return type in the MLIR layer (i.e.: UNIX semantics.)
-* Implement IF/WHILE/DO/BREAK/CONTINUE statements.
-* Function calls (to more than the single PRINT runtime function.)
-* Allow RETURN/EXIT at more than the end of program (currently enforced in the grammar.)
-
-Trickier, but fun stuff:
-* LLVM IR lowering has lost the !dbg (i.e.: dwarf instrumentation) elements.
-* Implement a JIT so that the "language" has the capability of a static compilation mode, as well as interpretted.
-
-## Building
-
-### anltlr4 setup (ubuntu)
+It made sense to me to emit MLIR that encoded symbol attributes.  I tried:
 
 ```
-sudo apt-get install libantlr4-runtime-dev
-sudo apt-get install antlr4
+def Toy_ProgramOp : Op<Toy_Dialect, "program"> {
+  let summary = "Program operation";
+  let arguments = (ins);
+  let results = (outs);
+  let regions = (region AnyRegion:$body);
+  let traits = [AutomaticAllocationScope, SymbolTable];
+}
+
+def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
+  let summary = "Declare a variable in the symbol table";
+  let arguments = (ins TypeAttr:$type);
+  let results = (outs);
+  let traits = [Symbol];
+}
+
+def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
+  let summary = "Assign a value to a variable by symbol";
+  let arguments = (ins AnyType:$value, SymbolRefAttr:$name);
+  let results = (outs);
+}
+
+def Toy_LoadOp : Op<Toy_Dialect, "load"> {
+  let summary = "Load a variable’s value by symbol";
+  let arguments = (ins SymbolRefAttr:$name);
+  let results = (outs AnyType:$value);
+}
 ```
 
-This assumes that the antlr4 runtime, after installation, is 4.10 -- if not, change appropriately (update bin/runantlr)
-
-On WSL2/ubuntu, this will result in the installed runtime version not matching the generator.  Workaround:
+This worked out well in the builder, where I could create a new symbol using:
 
 ```
-wget https://www.antlr.org/download/antlr-4.10-complete.jar
+        auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ) );
+        dcl->setAttr( "sym_name", builder.getStringAttr( varName ) );
 ```
 
-### anltlr4 setup (Fedora)
-
+and also reference it
 ```
-sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-devel
-```
-
-Like above, this assumes that the antlr4 runtime is 4.10.
-
-### Building MLIR
-
-On both ubuntu and fedora, I needed a custom build of llvm/mlir, as I didn't find a package that had the MLIR tablegen files.
-As it turned out, a custom llvm/mlir build was also required to specifically enable rtti, as altlr4 uses dynamic_cast<>.
-The -fno-rtti that is required by default to avoid typeinfo symbol link errors, explicitly breaks the antlr4 header files.
-I'm not actually sure if the llvm-project has a generic lexer/parser, or if those are all language specific.
-Having used antlr4 for previous prototyping, also generating a C++ listener, it made sense to me to use what I knew.
-
-See bin/buildllvm for how I built and deployed the llvm+mlir installation used for this project.
-
-### Building the project.
-
-```
-. ./bin/env
-build.sh
+            if ( auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( programOp, varName ) )
+            {
+                if ( auto declareOp = llvm::dyn_cast<toy::DeclareOp>( symbolOp ) )
+                {
+                    mlir::Type varType = declareOp.getTypeAttr().getValue();
+                    auto sref = mlir::SymbolRefAttr::get( builder.getContext(), varName );
+                    value = builder.create<toy::LoadOp>( loc, varType, sref );
+                    ...
 ```
 
-The build script current assumes that I'm the one building it, and is likely not sufficiently general for other people to use, and will surely break as I upgrade the systems I attempt to build it on.
-
-Linux-only is assumed.
-
-Depending on what I currently have booted, this has been on a mix of:
-
-* Fedora 42/X64 (on a dual boot windows-11/Linux laptop)
-* WSL ubuntu 24/X64 (windows side, same laptop.)
-* Ambian (ubuntu), running on an raspberry PI (this is why there is an ARM case in buildllvm and CMakeLists.txt)
-
-## Debugging
-
-### Peeking into LLVM object internals
-
-LLVM uses it's own internal dynamic\_cast<> mechanism, so many types appear opaque.  Example:
+but I couldn't figure out how to get the lowering to work.  Here's an example program:
 
 ```
-(gdb) p loc
-$2 = {impl = {<mlir::Attribute> = {impl = 0x5528d8}, <No data fields>}}
+BOOL i1;
+i1 = TRUE;
+BOOL i2;
+i2 = i1;
 ```
 
-If we happen to know the real underlying type, we can cast the impl part of the object
-
+and the corresponding IR
 ```
-(gdb) p *(mlir::FileLineColLoc*)loc.impl
-$3 = {<mlir::FileLineColRange> = {<mlir::detail::StorageUserBase<mlir::FileLineColRange, mlir::LocationAttr, mlir::detail::FileLineColRangeAttrStorage, mlir::detail::AttributeUniquer, mlir::AttributeTrait::IsLocation>> = {<mlir::LocationAttr> = {<mlir::Attribute> = {
-          impl = 0x539330}, <No data fields>}, <mlir::AttributeTrait::IsLocation<mlir::FileLineColRange>> = {<mlir::detail::StorageUserTraitBase<mlir::FileLineColRange, mlir::AttributeTrait::IsLocation>> = {<No data fields>}, <No data fields>}, <No data fields>}, <No data fields>}, <No data fields>}
-```
-
-but that may not be any more illuminating.  Old fashioned printf style debugging does work:
-
-```
-             LLVM_DEBUG( llvm::dbgs()
-                         << "Lowering toy.program: " << *op << '\n' << loc << '\n' );
-```
-
-
-## Build timings:
-
-Fedora 42 ; antlr4-4.13.2
-```
-real    0m2.034s
-user    0m2.654s
-sys     0m0.688s
+module {
+  "toy.program"() ({
+    "toy.declare"() <{type = i1}> {sym_name = "i1"} : () -> ()
+    %true = arith.constant true
+    "toy.assign"(%true) <{name = @i1}> : (i1) -> ()
+    "toy.declare"() <{type = i1}> {sym_name = "i2"} : () -> ()
+    %0 = "toy.load"() <{name = @i1}> : () -> i1
+    "toy.assign"(%0) <{name = @i2}> : (i1) -> ()
+    toy.exit
+  }) : () -> ()
+}
 ```
 
-Windows-11 w/ WSL2 ubuntu-24 ; antlr4 4.10 (same machine as above, a dual boot windows/fedora system.)
+My ProgramOpLowering kicked in first, which effectively deletes the symbol table.  After that declare lowering gets screwed up, resulting in trace (`--debug`) output like:
+
 ```
-real    0m42.288s
-user    1m17.337s
-sys     0m8.481s
+Trying to match "{anonymous}::DeclareOpLowering"
+Lowering toy.declare: 'toy.declare' op symbol's parent must have the SymbolTable trait
+mlir-asm-printer: 'llvm.func' failed to verify and will be printed in generic form
 ```
 
-Raspberry PI (ubuntu) ; antlr4 4.9.2
+I suspect that I would need to essentially "move" that symbol table to the new parent block for the declare, just like the basic block itself was moved.  This was my last failed attempt at the declare lowering:
+
 ```
-real    0m54.584s
-user    2m9.977s
-sys     0m9.730s
+    class DeclareOpLowering : public OpRewritePattern<toy::DeclareOp>
+    {
+        using OpRewritePattern::OpRewritePattern;
+
+       public:
+        DeclareOpLowering( loweringContext& lState, MLIRContext* context )
+            : OpRewritePattern( context ), lState( lState )
+        {
+        }
+
+        LogicalResult matchAndRewrite( toy::DeclareOp dcl, PatternRewriter& rewriter ) const override
+        {
+            auto loc = dcl.getLoc();
+
+            // example:
+            //
+            // "toy.declare"() <{type = i1}> {sym_name = "i1"} : () -> ()
+            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.declare: " << dcl << '\n' );
+            rewriter.setInsertionPoint( dcl );
+            rewriter.eraseOp( dcl );
+
+            auto nameAttr = mlir::dyn_cast<mlir::StringAttr>( dcl->getAttr( "sym_name" ) );
+            if ( !nameAttr )
+                return rewriter.notifyMatchFailure( dcl, "expected 'sym_name' to be a StringAttr" );
+
+            auto varName = nameAttr.getValue();
+            auto elemType = dcl.getType();
+            int64_t numElements = 1;    // scalar only for now.
+
+            unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
+            unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
+            int64_t totalSizeInBytes = numElements * elemSizeInBytes;
+
+
+            auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
+            if ( !lState.onei64a )
+            {
+                lState.onei64 =
+                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( 1 ) );
+                lState.onei64a = true;
+            }
+            auto newAllocaOp =
+                rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, lState.onei64, totalSizeInBytes );
+
+            lState.symbolToAlloca[nameAttr] = newAllocaOp;
+
+            rewriter.getInsertionBlock()->dump();
+
+            return success();
+        }
+
+       private:
+        loweringContext& lState;
+    };
 ```
 
-Interesting that the little PI is almost as fast as the WSL2 ubuntu instance.  Not much justification to keep Windows booted as the primary OS.  Wonder how a Linux VM on Windows would fare compared to WSL2?
+This has the appearance of working as I see the erase in the trace output, but it seems to get rolled back (as seen in the final dump).  I also tried mutating versions where I deleted the symbol references from the declareop.  I'm sure that's the wrong approach too.
+
+A lot of the exploration related to the attempt to use symbol tables (as well as generalize the supported types) can be found in the branch: types_and_symbol_table.  When I get that all working, assuming I do, I plan to squash those commits and cherry-pick into master.

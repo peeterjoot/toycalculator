@@ -1,3 +1,17 @@
+/**
+ * @file    driver.cpp
+ * @author  Peeter Joot <peeterjoot@pm.me>
+ * @brief   This is the compiler driver for the toy calculator compiler.
+ *
+ * @description
+ *
+ * This file orchestrates all the compiler actions:
+ *
+ * - command line options handling,
+ * - runs the antlr4 parse tree listener (w/ MLIR builder),
+ * - runs the LLVM-IR lowering pass, and
+ * - runs the assembly printer.
+ */
 #include <assert.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/IR/LegacyPassManager.h>
@@ -25,9 +39,9 @@
 #include "ToyDialect.h"
 #include "ToyExceptions.h"
 #include "ToyLexer.h"
-#include "ToyParser.h"
+#include "parser.h"
 #include "ToyPasses.h"
-#include "ToyToLLVMLowering.h"
+#include "lowering.h"
 #include "driver.h"
 
 #define DEBUG_TYPE "toy-driver"
@@ -163,8 +177,7 @@ int main( int argc, char** argv )
         llvm::StringRef stem = llvm::sys::path::stem( filename );
         if ( stem.empty() )
         {
-            throw std::runtime_error( "Invalid filename: empty stem: '" +
-                                      filename + "'" );
+            throw exception_with_context( __FILE__, __LINE__, __func__, "Invalid filename: empty stem: '" + filename + "'" );
         }
         llvm::StringRef dirname = llvm::sys::path::parent_path( filename );
         llvm::SmallString<128> dirWithStem;
@@ -175,8 +188,7 @@ int main( int argc, char** argv )
             std::error_code EC = llvm::sys::fs::create_directories( outDir );
             if ( EC )
             {
-                throw std::runtime_error(
-                    "Failed to create output directory: " + EC.message() );
+                throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to create output directory: " + EC.message() );
             }
             dirWithStem = outDir;
             llvm::sys::path::append( dirWithStem, stem );
@@ -206,8 +218,7 @@ int main( int argc, char** argv )
                                           llvm::sys::fs::OF_Text );
                 if ( EC )
                 {
-                    throw std::runtime_error( "Failed to open file: " +
-                                              EC.message() );
+                    throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to open file: " + EC.message() );
                 }
                 listener.getModule().print( out, flags );
             }
@@ -243,7 +254,7 @@ int main( int argc, char** argv )
 
         if ( llvm::failed( pm.run( module ) ) )
         {
-            throw std::runtime_error( "LLVM lowering failed" );
+            throw exception_with_context( __FILE__, __LINE__, __func__, "LLVM lowering failed" );
         }
 
         // Export to LLVM IR
@@ -252,14 +263,13 @@ int main( int argc, char** argv )
             mlir::translateModuleToLLVMIR( module, llvmContext, filename );
         if ( !llvmModule )
         {
-            throw std::runtime_error( "Failed to translate to LLVM IR" );
+            throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to translate to LLVM IR" );
         }
 
 #if 0
         if (debugInfo) {
-            llvmModule->setIsNewDbgInfoFormat(false);
+            llvmModule->setIsNewDbgInfoFormat( false );
         }
-#endif
 
         LLVM_DEBUG( {
             llvm::dbgs() << "Instruction dump after lowering:\n";
@@ -271,7 +281,7 @@ int main( int argc, char** argv )
                     {
                         for ( llvm::DbgRecord&DR : inst.getDbgRecordRange() )
                         {
-                            DR.dump();
+                            DR.dump(); // curiously, this shows module() and program() still in the dump?
                         }
 
                         inst.dump();
@@ -279,6 +289,7 @@ int main( int argc, char** argv )
                 }
             }
         } );
+#endif
 
         auto emitObject = !noEmitObject;
         if ( emitLLVM || emitObject )
@@ -288,7 +299,7 @@ int main( int argc, char** argv )
                 // Verify the module to ensure debug info is valid
                 if ( llvm::verifyModule( *llvmModule, &llvm::errs() ) )
                 {
-                    throw std::runtime_error( "Invalid LLVM IR module" );
+                    throw exception_with_context( __FILE__, __LINE__, __func__, "Invalid LLVM IR module" );
                 }
 
                 if ( toStdout )
@@ -305,8 +316,7 @@ int main( int argc, char** argv )
                                               llvm::sys::fs::OF_Text );
                     if ( EC )
                     {
-                        throw std::runtime_error( "Failed to open file: " +
-                                                  EC.message() );
+                        throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to open file: " + EC.message() );
                     }
 
                     llvmModule->print( out, nullptr,
@@ -326,8 +336,7 @@ int main( int argc, char** argv )
                     llvm::TargetRegistry::lookupTarget( targetTriple, error );
                 if ( !target )
                 {
-                    throw std::runtime_error( "Failed to find target: " +
-                                              error );
+                    throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to find target: " + error );
                 }
 
                 // Create the target machine
@@ -337,8 +346,7 @@ int main( int argc, char** argv )
                                                  std::nullopt ) );
                 if ( !targetMachine )
                 {
-                    throw std::runtime_error(
-                        "Failed to create target machine" );
+                    throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to create target machine" );
                 }
 
                 // Optimize the module (optional)
@@ -383,8 +391,7 @@ int main( int argc, char** argv )
                                            llvm::sys::fs::OF_None );
                 if ( EC )
                 {
-                    throw std::runtime_error( "Failed to open output file: " +
-                                              EC.message() );
+                    throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to open output file: " + EC.message() );
                 }
 
                 llvmModule->setDataLayout( targetMachine->createDataLayout() );
@@ -393,8 +400,7 @@ int main( int argc, char** argv )
                          codegenPM, dest, nullptr,
                          llvm::CodeGenFileType::ObjectFile ) )
                 {
-                    throw std::runtime_error(
-                        "TargetMachine can't emit an object file" );
+                    throw exception_with_context( __FILE__, __LINE__, __func__, "TargetMachine can't emit an object file" );
                 }
 
                 codegenPM.run( *llvmModule );
@@ -404,11 +410,6 @@ int main( int argc, char** argv )
                     << "Generated object file: " << outputFilename << "\n";
             }
         }
-    }
-    catch ( const semantic_exception& e )
-    {
-        // already printed the message. return something non-zero
-        return (int)return_codes::semantic_error;
     }
     catch ( const std::exception& e )
     {

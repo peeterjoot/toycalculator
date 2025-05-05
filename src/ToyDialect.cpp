@@ -1,3 +1,8 @@
+/**
+ * @file    ToyDialect.cpp
+ * @author  Peeter Joot <peeterjoot@pm.me>
+ * @brief   Includes the source headers generated from ToyDialect.td
+ */
 #include "ToyDialect.h"
 
 #define GET_OP_CLASSES

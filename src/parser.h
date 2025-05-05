@@ -1,5 +1,5 @@
 /**
- * @file    ToyParser.h
+ * @file    parser.h
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   Antlr4 based Listener, implementing MLIR builder for the toy
  * (calculator) compiler.
@@ -24,6 +24,31 @@
 
 namespace toy
 {
+    enum class theTypes : int
+    {
+        boolean,
+        integer8,
+        integer16,
+        integer32,
+        integer64,
+        float32,
+        float64
+    };
+
+    inline bool isBoolean( theTypes ty )
+    {
+        return ty == theTypes::boolean;
+    }
+
+    inline bool isInteger( theTypes ty )
+    {
+        return !isBoolean( ty ) && ( (int)ty < (int)theTypes::float32 );
+    }
+
+    inline bool isFloat( theTypes ty )
+    {
+        return (int)ty >= (int)theTypes::float32;
+    }
 
     enum class semantic_errors : int
     {
@@ -58,6 +83,8 @@ namespace toy
         DialectCtx();
     };
 
+    using tNode = antlr4::tree::TerminalNode;
+
     class MLIRListener : public ToyBaseListener
     {
        private:
@@ -70,8 +97,7 @@ namespace toy
         mlir::Location currentAssignLoc;
         semantic_errors lastSemError{ semantic_errors::not_an_error };
         std::unordered_map<std::string, variable_state> var_states;
-        std::map<std::string, mlir::Value>
-            var_storage;    // Maps variable names to memref<f64>
+        std::map<std::string, mlir::Operation*> var_storage;    // Maps declarations for variable names to DeclareOp's
         bool assignmentTargetValid;
         lastOperator lastOp{ lastOperator::notAnOp };
 
@@ -79,14 +105,10 @@ namespace toy
 
         inline std::string formatLocation( mlir::Location loc );
 
-        inline bool buildUnaryExpression(
-            antlr4::tree::TerminalNode *integerNode,
-            antlr4::tree::TerminalNode *floatNode,
-            antlr4::tree::TerminalNode *variableNode, mlir::Location loc,
-            mlir::Value &value, bool asFloat = true );
+        inline bool buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode, tNode *variableNode,
+                                          mlir::Location loc, mlir::Value &value, theTypes &ty );
 
-        inline bool registerDeclaration( mlir::Location loc,
-                                         const std::string &varName );
+        inline bool registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty );
 
        public:
         MLIRListener( const std::string &_filename );
@@ -112,14 +134,9 @@ namespace toy
 
         void enterAssignment( ToyParser::AssignmentContext *ctx ) override;
 
-        void enterReturnStatement(
-            ToyParser::ReturnStatementContext *ctx ) override;
+        void enterExitStatement( ToyParser::ExitStatementContext *ctx ) override;
 
-        void enterUnaryExpression(
-            ToyParser::UnaryExpressionContext *ctx ) override;
-
-        void enterBinaryExpression(
-            ToyParser::BinaryExpressionContext *ctx ) override;
+        void enterAssignmentExpression( ToyParser::AssignmentExpressionContext *ctx ) override;
     };
 }    // namespace toy
 

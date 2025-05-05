@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.12)
 project(toycalculator)
 
 if(EXISTS "/opt/rh/gcc-toolset-13/root/usr/bin/g++")
@@ -72,7 +72,7 @@ link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
 
 # TableGen for dialect
-set(LLVM_TARGET_DEFINITIONS src/ToyDialect.td)
+set(LLVM_TARGET_DEFINITIONS src/calculator.td)
 
 # Generate dialect declarations
 mlir_tablegen(ToyDialectDecls.h.inc -gen-dialect-decls -dialect toy)
@@ -112,10 +112,10 @@ set_target_properties(toy_runtime PROPERTIES OUTPUT_NAME "toy_runtime")
 
 add_executable(toycalculator
   src/driver.cpp
-  src/ToyParser.cpp
+  src/parser.cpp
   src/ToyDialect.cpp
   src/ToyPasses.cpp
-  src/ToyToLLVMLowering.cpp
+  src/lowering.cpp
   ${ANTLR_OUTPUT_DIR}/ToyBaseListener.cpp
   ${ANTLR_OUTPUT_DIR}/ToyListener.cpp
   ${ANTLR_OUTPUT_DIR}/ToyParser.cpp
