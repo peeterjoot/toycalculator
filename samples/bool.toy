@@ -1,0 +1,6 @@
+BOOL i1;
+i1 = TRUE;
+EXIT i1;
+//FLOAT64 f;
+//f = i1;
+//PRINT f;

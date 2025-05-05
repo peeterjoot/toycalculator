@@ -98,7 +98,7 @@ tail o
 }
 
 if ( $doscope ) {
-   mysystem( "my_cscope --build --searchdir $prefix --verbose" );
+   mysystem( "my_cscope --build --searchdir $prefix --verbose --index inc" );
 }
 
 exit 0;

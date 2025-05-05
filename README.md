@@ -7,7 +7,7 @@ It implements a toy calculator language that supports a few primitive linguistic
 * a DECLARE operation,
 * a PRINT operation,
 * single line comments,
-* a RETURN operation,
+* a EXIT operation,
 * an ASSIGNMENT operator (=) with unary (+,-) and binary operators (+,-,*,/).
 
 Integer constants are allowed in the assignment, but compuations are (currently) floating point.
@@ -238,10 +238,10 @@ The assembler printer (with -O 2) reduces all the double operations to constant 
 Basic language constructs to make things more interesting:
 * Have implemented BOOL type, but not assignments to it.
 * int/float Types [WIP]: implemented declare for fixed size integers and floating point types of different sizes (not just double equivialent), but need to push that down to binary/unary op builder and lowering (which is still assumes double for everything.)
-* Rename RETURN to EXIT, and enforce i8 return type in the MLIR layer (i.e.: UNIX semantics.)
+* EXIT: enforce i8 return type in the MLIR layer (i.e.: UNIX semantics.)
 * Implement IF/WHILE/DO/BREAK/CONTINUE statements.
 * Function calls (to more than the single PRINT runtime function.)
-* Allow RETURN/EXIT at more than the end of program (currently enforced in the grammar.)
+* Allow EXIT at more than the end of program (currently enforced in the grammar.)
 
 Trickier, but fun stuff:
 * LLVM IR lowering has lost the !dbg (i.e.: dwarf instrumentation) elements.

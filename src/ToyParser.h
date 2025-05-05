@@ -58,6 +58,8 @@ namespace toy
         DialectCtx();
     };
 
+    using tNode = antlr4::tree::TerminalNode;
+
     class MLIRListener : public ToyBaseListener
     {
        private:
@@ -80,10 +82,11 @@ namespace toy
         inline std::string formatLocation( mlir::Location loc );
 
         inline bool buildUnaryExpression(
-            antlr4::tree::TerminalNode *integerNode,
-            antlr4::tree::TerminalNode *floatNode,
-            antlr4::tree::TerminalNode *variableNode, mlir::Location loc,
-            mlir::Value &value, bool asFloat = true );
+            tNode *booleanNode,
+            tNode *integerNode,
+            tNode *floatNode,
+            tNode *variableNode, mlir::Location loc,
+            mlir::Value &value, bool asFloat );
 
         inline bool registerDeclaration( mlir::Location loc,
                                          const std::string &varName );
@@ -112,8 +115,8 @@ namespace toy
 
         void enterAssignment( ToyParser::AssignmentContext *ctx ) override;
 
-        void enterReturnStatement(
-            ToyParser::ReturnStatementContext *ctx ) override;
+        void enterExitStatement(
+            ToyParser::ExitStatementContext *ctx ) override;
 
         void enterUnaryExpression(
             ToyParser::UnaryExpressionContext *ctx ) override;

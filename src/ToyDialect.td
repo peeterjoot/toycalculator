@@ -26,9 +26,9 @@ def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
   //let traits = [Pure];
 }
 
-// Return operation
-def Toy_ReturnOp : Op<Toy_Dialect, "return"> {
-  let summary = "Return from a program";
+// Exit operation
+def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
+  let summary = "Exit from a program";
   let arguments = (ins Variadic<AnyType>:$rc);
   let results = (outs);
   let traits = [Terminator];

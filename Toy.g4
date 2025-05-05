@@ -2,10 +2,9 @@ grammar Toy;
 
 // Parser Rules
 // ============
-// Entry point for the grammar, matching zero or more statements followed by optional RETURN, and then EOF.
-// FIXME: this should prohibit comments after RETURN.
+// Entry point for the grammar, matching zero or more statements followed by optional EXIT, and then EOF.
 startRule
-  : (statement|comment)* (returnStatement ENDOFSTATEMENT)? EOF
+  : (statement|comment)* (exitStatement ENDOFSTATEMENT)? comment* EOF
   ;
 
 // A statement can be a declaration, assignment, print, or comment.
@@ -35,9 +34,9 @@ floatDeclare
   : (FLOAT32|FLOAT64) VARIABLENAME
   ;
 
-// Implicit or explicit return from a program (e.g., 'RETURN;', 'RETURN 3;')  Return without value equivalent to 'RETURN 0;'
-returnStatement
-  : RETURN element*
+// Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
+exitStatement
+  : EXIT unaryExpression*
   ;
 
 // A print statement that outputs a variable (e.g., 'PRINT x;').
@@ -57,13 +56,9 @@ rhs
   ;
 
 // A binary expression with two elements and an operator (e.g., 'x + 42').
+// FIXME: change binaryElement to unaryExpression sometime later.  For now I don't want to deal with 'A - -B'.
 binaryExpression
-  : element binaryOperator element
-  ;
-
-// A unary expression with an optional operator and an element (e.g., '-x').
-unaryExpression
-  : unaryOperator element
+  : binaryElement binaryOperator binaryElement
   ;
 
 // A binary operator for addition, subtraction, multiplication, or division.
@@ -71,14 +66,28 @@ binaryOperator
   : (MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR)
   ;
 
-// An optional unary operator for positive or negative (e.g., '+' or '-').
-unaryOperator
-  : (MINUSCHAR | PLUSCHAR)?
+// A unary expression: variable with an optional operator, or literal (int, float, or bool)
+unaryExpression
+  : (unaryOperator? VARIABLENAME) | literal
   ;
 
-// An element in an expression, either an integer literal or a variable name.
-element
-  : (INTEGERLITERAL | VARIABLENAME | FLOATLITERAL | TRUE | FALSE)
+// An optional unary operator for positive or negative (e.g., '+' or '-').
+unaryOperator
+  : (MINUSCHAR | PLUSCHAR)
+  ;
+
+numericLiteral
+  : (INTEGERLITERAL | FLOATLITERAL)
+  ;
+
+literal
+  : (INTEGERLITERAL | FLOATLITERAL | BOOLEANLITERAL)
+  ;
+
+// An element in a binary expression
+// boolean literals are omitted here.
+binaryElement
+  : numericLiteral | VARIABLENAME
   ;
 
 // Lexer Rules
@@ -156,14 +165,18 @@ PRINT
   : 'PRINT'
   ;
 
-// Matches the 'RETURN' keyword for print statements.
-RETURN
-  : 'RETURN'
+// Matches the 'EXIT' keyword for print statements.
+EXIT
+  : 'EXIT'
   ;
 
 // Matches integer literals, optionally signed (e.g., '42', '-123', '+7').
 INTEGERLITERAL
   : (PLUSCHAR | MINUSCHAR)? [0-9]+
+  ;
+
+BOOLEANLITERAL
+  : (TRUE | FALSE)
   ;
 
 // Matches floating point literal.  Examples:

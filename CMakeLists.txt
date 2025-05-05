@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.12)
 project(toycalculator)
 
 if(EXISTS "/opt/rh/gcc-toolset-13/root/usr/bin/g++")

@@ -114,14 +114,14 @@ namespace
     };
 
     // Lower toy.return to nothing (erase).
-    class ReturnOpLowering : public ConversionPattern
+    class ExitOpLowering : public ConversionPattern
     {
        private:
         loweringContext& lState;
 
        public:
-        ReturnOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( toy::ReturnOp::getOperationName(), 1,
+        ExitOpLowering( loweringContext& lState_, MLIRContext* context )
+            : ConversionPattern( toy::ExitOp::getOperationName(), 1,
                                  context ),
               lState{ lState_ }
         {
@@ -131,7 +131,7 @@ namespace
             Operation* op, ArrayRef<Value> operands,
             ConversionPatternRewriter& rewriter ) const override
         {
-            toy::ReturnOp returnOp = cast<toy::ReturnOp>( op );
+            toy::ExitOp returnOp = cast<toy::ExitOp>( op );
             LLVM_DEBUG( llvm::dbgs()
                         << "Lowering toy.return: " << *op << '\n' );
 
@@ -640,7 +640,7 @@ namespace
             patterns.insert<MemRefAllocaOpLowering>( lState, &getContext() );
             patterns.insert<MemRefStoreOpLowering>( lState, &getContext() );
             patterns.insert<MemRefLoadOpLowering>( lState, &getContext() );
-            patterns.insert<ReturnOpLowering>( lState, &getContext() );
+            patterns.insert<ExitOpLowering>( lState, &getContext() );
 
             arith::populateArithToLLVMConversionPatterns( typeConverter,
                                                           patterns );

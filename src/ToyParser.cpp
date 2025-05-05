@@ -47,12 +47,34 @@ namespace toy
 
     // \retval true if error
     inline bool MLIRListener::buildUnaryExpression(
-        antlr4::tree::TerminalNode *integerNode,
-        antlr4::tree::TerminalNode *floatNode,
-        antlr4::tree::TerminalNode *variableNode, mlir::Location loc,
-        mlir::Value &value, bool asFloat )
+        tNode *booleanNode, tNode *integerNode, tNode *floatNode,
+        tNode *variableNode, mlir::Location loc, mlir::Value &value,
+        bool asFloat )
     {
-        if ( integerNode )
+        if ( booleanNode )
+        {
+            int val;
+            auto bv = booleanNode->getText();
+            if ( bv == "TRUE" )
+            {
+                val = 1;
+            }
+            else if ( bv == "FALSE" )
+            {
+                val = 0;
+            }
+            else
+            {
+                llvm::errs() << std::format(
+                    "{}error: Internal error: boolean value neither TRUE nor "
+                    "FALSE.\n",
+                    formatLocation( loc ) );
+                throw semantic_exception();
+            }
+
+            value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 1 );
+        }
+        else if ( integerNode )
         {
             int64_t val = std::stoi( integerNode->getText() );
 
@@ -166,7 +188,7 @@ namespace toy
             auto loc = getLocation( ctx );
             // Empty ValueRange means we are building a toy.return with no
             // operands:
-            builder.create<toy::ReturnOp>( loc, mlir::ValueRange{} );
+            builder.create<toy::ExitOp>( loc, mlir::ValueRange{} );
         }
 
         builder.setInsertionPointToEnd( mod.getBody() );
@@ -330,35 +352,42 @@ namespace toy
         builder.create<toy::PrintOp>( loc, memref );
     }
 
-    void MLIRListener::enterReturnStatement(
-        ToyParser::ReturnStatementContext *ctx )
+    void MLIRListener::enterExitStatement(
+        ToyParser::ExitStatementContext *ctx )
     {
         lastOp = lastOperator::returnOp;
         auto loc = getLocation( ctx );
 
-        auto sz = ctx->element().size();
+        auto sz = ctx->unaryExpression().size();
 
         if ( sz == 0 )
         {
             //  Create toy.return with no operands (empty ValueRange)
-            builder.create<toy::ReturnOp>( loc, mlir::ValueRange{} );
+            builder.create<toy::ExitOp>( loc, mlir::ValueRange{} );
         }
         else
         {
             mlir::Value value;
             assert( sz == 1 );
 
-            auto n = ctx->element()[0];
+            auto n = ctx->unaryExpression()[0];
 
-            bool error =
-                buildUnaryExpression( n->INTEGERLITERAL(), n->FLOATLITERAL(),
-                                      n->VARIABLENAME(), loc, value, false );
+            assert ( !n->unaryOperator()->MINUSCHAR() ); // TODO.
+
+            auto lit = n->literal();
+
+            bool error = buildUnaryExpression(
+                lit ? lit->BOOLEANLITERAL() : nullptr,
+                lit ? lit->INTEGERLITERAL() : nullptr,
+                lit ? lit->FLOATLITERAL() : nullptr,
+                lit ? n->VARIABLENAME() : nullptr,
+                loc, value, false );
             if ( error )
             {
                 return;
             }
 
-            builder.create<toy::ReturnOp>( loc, mlir::ValueRange{ value } );
+            builder.create<toy::ExitOp>( loc, mlir::ValueRange{ value } );
         }
     }
 
@@ -392,14 +421,20 @@ namespace toy
         {
             return;
         }
+
         auto loc = getLocation( ctx );
-        auto lhs = ctx->element();
         auto op = ctx->unaryOperator()->getText();
 
         mlir::Value lhsValue;
-        bool error =
-            buildUnaryExpression( lhs->INTEGERLITERAL(), lhs->FLOATLITERAL(),
-                                  lhs->VARIABLENAME(), loc, lhsValue );
+
+        auto lit = ctx->literal();
+
+        bool error = buildUnaryExpression(
+            lit ? lit->BOOLEANLITERAL() : nullptr,
+            lit ? lit->INTEGERLITERAL() : nullptr,
+            lit ? lit->FLOATLITERAL() : nullptr,
+            lit ? ctx->VARIABLENAME() : nullptr,
+            loc, lhsValue, true );
         if ( error )
         {
             return;
@@ -438,27 +473,35 @@ namespace toy
             return;
         }
         auto loc = getLocation( ctx );
-        auto sz = ctx->element().size();
-        auto lhs = ctx->element()[0];
-        auto rhs = ctx->element()[1];
+        auto sz = ctx->binaryElement().size();
+        auto lhs = ctx->binaryElement()[0];
+        auto rhs = ctx->binaryElement()[1];
         auto op = ctx->binaryOperator()->getText();
         bool error;
 
         assert( sz == 2 );
 
         mlir::Value lhsValue;
-        error =
-            buildUnaryExpression( lhs->INTEGERLITERAL(), lhs->FLOATLITERAL(),
-                                  lhs->VARIABLENAME(), loc, lhsValue );
+        auto llit = lhs->numericLiteral();
+        error = buildUnaryExpression(
+            nullptr,
+            llit ? llit->INTEGERLITERAL() : nullptr,
+            llit ? llit->FLOATLITERAL() : nullptr,
+            llit ? lhs->VARIABLENAME() : nullptr,
+            loc, lhsValue, true );
         if ( error )
         {
             return;
         }
 
         mlir::Value rhsValue;
-        error =
-            buildUnaryExpression( rhs->INTEGERLITERAL(), rhs->FLOATLITERAL(),
-                                  rhs->VARIABLENAME(), loc, rhsValue );
+        auto rlit = rhs->numericLiteral();
+        error = buildUnaryExpression(
+            nullptr,
+            llit ? llit->INTEGERLITERAL() : nullptr,
+            llit ? llit->FLOATLITERAL() : nullptr,
+            llit ? lhs->VARIABLENAME() : nullptr,
+            loc, lhsValue, true );
         if ( error )
         {
             return;
@@ -504,17 +547,16 @@ namespace toy
             }
         }
 
-        if ( !currentVarName.empty() )
-        {
-            // Store result to memref<f64>
-            auto memref = var_storage[currentVarName];
-            builder.create<mlir::memref::StoreOp>( loc, resultValue, memref );
-            builder.create<toy::AssignOp>(
-                currentAssignLoc, builder.getStringAttr( currentVarName ),
-                resultValue );
-            var_states[currentVarName] = variable_state::assigned;
-            currentVarName.clear();
-        }
+        assert( !currentVarName.empty() );
+
+        // Store result to memref<f64>
+        auto memref = var_storage[currentVarName];
+        builder.create<mlir::memref::StoreOp>( loc, resultValue, memref );
+        builder.create<toy::AssignOp>(
+            currentAssignLoc, builder.getStringAttr( currentVarName ),
+            resultValue );
+        var_states[currentVarName] = variable_state::assigned;
+        currentVarName.clear();
     }
 }    // namespace toy
 
