@@ -1,3 +1,17 @@
+/**
+ * @file    driver.cpp
+ * @author  Peeter Joot <peeterjoot@pm.me>
+ * @brief   This is the compiler driver for the toy calculator compiler.
+ *
+ * @description
+ *
+ * This file orchestrates all the compiler actions:
+ *
+ * - command line options handling,
+ * - runs the antlr4 parse tree listener (w/ MLIR builder),
+ * - runs the LLVM-IR lowering pass, and
+ * - runs the assembly printer.
+ */
 #include <assert.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/IR/LegacyPassManager.h>
@@ -257,7 +271,7 @@ int main( int argc, char** argv )
 
 #if 0
         if (debugInfo) {
-            llvmModule->setIsNewDbgInfoFormat(false);
+            llvmModule->setIsNewDbgInfoFormat( false );
         }
 #endif
 

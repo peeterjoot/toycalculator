@@ -1,3 +1,8 @@
+/**
+ * @file    ToyParser.cpp
+ * @author  Peeter Joot <peeterjoot@pm.me>
+ * @brief   altlr4 parse tree listener and MLIR builder.
+ */
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
@@ -48,8 +53,7 @@ namespace toy
     // \retval true if error
     inline bool MLIRListener::buildUnaryExpression(
         tNode *booleanNode, tNode *integerNode, tNode *floatNode,
-        tNode *variableNode, mlir::Location loc, mlir::Value &value,
-        bool asFloat )
+        tNode *variableNode, mlir::Location loc, mlir::Value &value )
     {
         if ( booleanNode )
         {
@@ -77,7 +81,9 @@ namespace toy
         else if ( integerNode )
         {
             int64_t val = std::stoi( integerNode->getText() );
+            value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
 
+#if 0
             if ( asFloat )
             {
                 // Niavely assuming that this integer value can be represented
@@ -87,18 +93,10 @@ namespace toy
                 value = builder.create<mlir::arith::ConstantFloatOp>(
                     loc, apVal, builder.getF64Type() );
             }
-            else
-            {
-                int64_t val = std::stoi( integerNode->getText() );
-
-                value =
-                    builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
-            }
+#endif
         }
         else if ( floatNode )
         {
-            assert( asFloat );
-
             double val = std::stod( floatNode->getText() );
 
             llvm::APFloat apVal( val );
@@ -372,7 +370,7 @@ namespace toy
 
             auto n = ctx->unaryExpression()[0];
 
-            assert ( !n->unaryOperator()->MINUSCHAR() ); // TODO.
+            assert( !n->unaryOperator()->MINUSCHAR() );    // TODO.
 
             auto lit = n->literal();
 
@@ -380,8 +378,7 @@ namespace toy
                 lit ? lit->BOOLEANLITERAL() : nullptr,
                 lit ? lit->INTEGERLITERAL() : nullptr,
                 lit ? lit->FLOATLITERAL() : nullptr,
-                lit ? n->VARIABLENAME() : nullptr,
-                loc, value, false );
+                lit ? n->VARIABLENAME() : nullptr, loc, value, false );
             if ( error )
             {
                 return;
@@ -433,8 +430,7 @@ namespace toy
             lit ? lit->BOOLEANLITERAL() : nullptr,
             lit ? lit->INTEGERLITERAL() : nullptr,
             lit ? lit->FLOATLITERAL() : nullptr,
-            lit ? ctx->VARIABLENAME() : nullptr,
-            loc, lhsValue, true );
+            lit ? ctx->VARIABLENAME() : nullptr, loc, lhsValue, true );
         if ( error )
         {
             return;
@@ -452,17 +448,16 @@ namespace toy
             resultValue = negOp.getResult();
         }
 
-        if ( !currentVarName.empty() )
-        {
-            // Store result to memref<f64>
-            auto memref = var_storage[currentVarName];
-            builder.create<mlir::memref::StoreOp>( loc, resultValue, memref );
-            builder.create<toy::AssignOp>(
-                currentAssignLoc, builder.getStringAttr( currentVarName ),
-                resultValue );
-            var_states[currentVarName] = variable_state::assigned;
-            currentVarName.clear();
-        }
+        assert( !currentVarName.empty() );
+
+        // Store result to memref<f64>
+        auto memref = var_storage[currentVarName];
+        builder.create<mlir::memref::StoreOp>( loc, resultValue, memref );
+        builder.create<toy::AssignOp>( currentAssignLoc,
+                                       builder.getStringAttr( currentVarName ),
+                                       resultValue );
+        var_states[currentVarName] = variable_state::assigned;
+        currentVarName.clear();
     }
 
     void MLIRListener::enterBinaryExpression(
@@ -484,11 +479,9 @@ namespace toy
         mlir::Value lhsValue;
         auto llit = lhs->numericLiteral();
         error = buildUnaryExpression(
-            nullptr,
-            llit ? llit->INTEGERLITERAL() : nullptr,
+            nullptr, llit ? llit->INTEGERLITERAL() : nullptr,
             llit ? llit->FLOATLITERAL() : nullptr,
-            llit ? lhs->VARIABLENAME() : nullptr,
-            loc, lhsValue, true );
+            llit ? lhs->VARIABLENAME() : nullptr, loc, lhsValue, true );
         if ( error )
         {
             return;
@@ -497,11 +490,9 @@ namespace toy
         mlir::Value rhsValue;
         auto rlit = rhs->numericLiteral();
         error = buildUnaryExpression(
-            nullptr,
-            llit ? llit->INTEGERLITERAL() : nullptr,
+            nullptr, llit ? llit->INTEGERLITERAL() : nullptr,
             llit ? llit->FLOATLITERAL() : nullptr,
-            llit ? lhs->VARIABLENAME() : nullptr,
-            loc, lhsValue, true );
+            llit ? lhs->VARIABLENAME() : nullptr, loc, lhsValue, true );
         if ( error )
         {
             return;
@@ -552,9 +543,9 @@ namespace toy
         // Store result to memref<f64>
         auto memref = var_storage[currentVarName];
         builder.create<mlir::memref::StoreOp>( loc, resultValue, memref );
-        builder.create<toy::AssignOp>(
-            currentAssignLoc, builder.getStringAttr( currentVarName ),
-            resultValue );
+        builder.create<toy::AssignOp>( currentAssignLoc,
+                                       builder.getStringAttr( currentVarName ),
+                                       resultValue );
         var_states[currentVarName] = variable_state::assigned;
         currentVarName.clear();
     }

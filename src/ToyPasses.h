@@ -1,3 +1,8 @@
+/**
+ * @file    ToyPasses.h
+ * @author  Peeter Joot <peeterjoot@pm.me>
+ * @brief   Pass for MLIR lowering to LLVM-IR.
+ */
 #ifndef TOY_PASSES_H
 #define TOY_PASSES_H
 

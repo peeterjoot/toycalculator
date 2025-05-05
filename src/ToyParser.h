@@ -81,12 +81,11 @@ namespace toy
 
         inline std::string formatLocation( mlir::Location loc );
 
-        inline bool buildUnaryExpression(
-            tNode *booleanNode,
-            tNode *integerNode,
-            tNode *floatNode,
-            tNode *variableNode, mlir::Location loc,
-            mlir::Value &value, bool asFloat );
+        inline bool buildUnaryExpression( tNode *booleanNode,
+                                          tNode *integerNode, tNode *floatNode,
+                                          tNode *variableNode,
+                                          mlir::Location loc,
+                                          mlir::Value &value );
 
         inline bool registerDeclaration( mlir::Location loc,
                                          const std::string &varName );

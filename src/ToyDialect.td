@@ -1,3 +1,17 @@
+//
+// @file    ToyDialect.md
+// @author  Peeter Joot <peeterjoot@pm.me>
+// @brief   This implements the Toy compiler dialect.
+//
+// @description
+//
+// This dialect implements:
+// - a couple simple numeric operators (unary negation, binary +-*/),
+// - an exit operation,
+// - a declare operation,
+// - an assignment operation, and
+// - a print operation.
+//
 include "mlir/IR/DialectBase.td"
 include "mlir/IR/OpBase.td"
 include "mlir/IR/BuiltinTypes.td"

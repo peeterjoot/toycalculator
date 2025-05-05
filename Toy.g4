@@ -1,3 +1,16 @@
+//
+// @file    Toy.g4
+// @author  Peeter Joot <peeterjoot@pm.me>
+// @brief   This is the antlr4 grammar for the Toy compiler project.
+//
+// @description
+//
+// This grammar implements a toy (calculator) language that has:
+// - a couple simple numeric operators (unary negation, binary +-*/),
+// - an exit operation,
+// - a declare operation, and typed declare operations (INT8, INT16, INT32, INT64, FLOAT32, FLOAT64, BOOL)
+// - an assignment operation, and
+// - a print operation.
 grammar Toy;
 
 // Parser Rules

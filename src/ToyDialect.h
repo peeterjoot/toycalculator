@@ -1,3 +1,8 @@
+/**
+ * @file    ToyDialect.h
+ * @author  Peeter Joot <peeterjoot@pm.me>
+ * @brief   Include the ToyDialect.md generated include files and their MLIR dependencies.
+ */
 #ifndef TOYDIALECT_H
 #define TOYDIALECT_H
 
