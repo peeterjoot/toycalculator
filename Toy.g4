@@ -76,7 +76,7 @@ binaryExpression
 
 // A binary operator for addition, subtraction, multiplication, or division.
 binaryOperator
-  : (MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR)
+  : MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR
   ;
 
 // A unary expression: variable with an optional operator, or literal (int, float, or bool)
@@ -86,15 +86,15 @@ unaryExpression
 
 // An optional unary operator for positive or negative (e.g., '+' or '-').
 unaryOperator
-  : (MINUSCHAR | PLUSCHAR)
+  : MINUSCHAR | PLUSCHAR
   ;
 
 numericLiteral
-  : (INTEGERLITERAL | FLOATLITERAL)
+  : INTEGERLITERAL | FLOATLITERAL
   ;
 
 literal
-  : (INTEGERLITERAL | FLOATLITERAL | BOOLEANLITERAL)
+  : INTEGERLITERAL | FLOATLITERAL | BOOLEANLITERAL
   ;
 
 // An element in a binary expression
@@ -189,7 +189,7 @@ INTEGERLITERAL
   ;
 
 BOOLEANLITERAL
-  : (TRUE | FALSE)
+  : TRUE | FALSE
   ;
 
 // Matches floating point literal.  Examples:

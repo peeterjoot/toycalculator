@@ -53,7 +53,8 @@ namespace toy
     // \retval true if error
     inline bool MLIRListener::buildUnaryExpression(
         tNode *booleanNode, tNode *integerNode, tNode *floatNode,
-        tNode *variableNode, mlir::Location loc, mlir::Value &value )
+        tNode *variableNode, mlir::Location loc, mlir::Value &value,
+        theTypes &ty )
     {
         if ( booleanNode )
         {
@@ -77,11 +78,13 @@ namespace toy
             }
 
             value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 1 );
+            ty = theTypes::boolean;
         }
         else if ( integerNode )
         {
             int64_t val = std::stoi( integerNode->getText() );
             value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
+            ty = theTypes::integer64;
 
 #if 0
             if ( asFloat )
@@ -101,8 +104,12 @@ namespace toy
 
             llvm::APFloat apVal( val );
 
+            // Like the INTEGERLITERAL node above, create the float literal with
+            // the max sized type. Would need a grammar change to have a
+            // specific type (i.e.: size) associated with literals.
             value = builder.create<mlir::arith::ConstantFloatOp>(
                 loc, apVal, builder.getF64Type() );
+            ty = theTypes::float64;
         }
         else if ( variableNode )
         {
@@ -131,6 +138,45 @@ namespace toy
             // Load from memref<f64>
             auto memref = var_storage[varName];
             value = builder.create<mlir::memref::LoadOp>( loc, memref );
+
+            auto mtype = memref.getType();
+            if ( auto intType = mlir::dyn_cast<mlir::IntegerType>(mtype) )
+            {
+                switch ( intType.getWidth() )
+                {
+                    case 1:
+                        ty = theTypes::boolean;
+                        break;
+                    case 8:
+                        ty = theTypes::integer8;
+                        break;
+                    case 16:
+                        ty = theTypes::integer16;
+                        break;
+                    case 32:
+                        ty = theTypes::integer32;
+                        break;
+                    case 64:
+                        ty = theTypes::integer64;
+                        break;
+                    default:
+                        throw internal_exception();
+                }
+            }
+            if ( auto floatType = mlir::dyn_cast<mlir::FloatType>(mtype) )
+            {
+                switch ( floatType.getWidth() )
+                {
+                    case 32:
+                        ty = theTypes::float32;
+                        break;
+                    case 64:
+                        ty = theTypes::float64;
+                        break;
+                    default:
+                        throw internal_exception();
+                }
+            }
         }
         else
         {
@@ -373,12 +419,12 @@ namespace toy
             assert( !n->unaryOperator()->MINUSCHAR() );    // TODO.
 
             auto lit = n->literal();
-
+            theTypes ty;
             bool error = buildUnaryExpression(
                 lit ? lit->BOOLEANLITERAL() : nullptr,
                 lit ? lit->INTEGERLITERAL() : nullptr,
                 lit ? lit->FLOATLITERAL() : nullptr,
-                lit ? n->VARIABLENAME() : nullptr, loc, value, false );
+                lit ? n->VARIABLENAME() : nullptr, loc, value, ty );
             if ( error )
             {
                 return;
@@ -426,11 +472,12 @@ namespace toy
 
         auto lit = ctx->literal();
 
+        theTypes ty;
         bool error = buildUnaryExpression(
             lit ? lit->BOOLEANLITERAL() : nullptr,
             lit ? lit->INTEGERLITERAL() : nullptr,
             lit ? lit->FLOATLITERAL() : nullptr,
-            lit ? ctx->VARIABLENAME() : nullptr, loc, lhsValue, true );
+            lit ? ctx->VARIABLENAME() : nullptr, loc, lhsValue, ty );
         if ( error )
         {
             return;
@@ -443,14 +490,14 @@ namespace toy
         }
         else
         {
-            auto negOp = builder.create<toy::NegOp>( loc, builder.getF64Type(),
-                                                     lhsValue );
+            auto negOp =
+                builder.create<toy::NegOp>( loc, lhsValue.getType(), lhsValue );
             resultValue = negOp.getResult();
         }
 
         assert( !currentVarName.empty() );
 
-        // Store result to memref<f64>
+        // Store result to memref<...>
         auto memref = var_storage[currentVarName];
         builder.create<mlir::memref::StoreOp>( loc, resultValue, memref );
         builder.create<toy::AssignOp>( currentAssignLoc,
@@ -477,25 +524,40 @@ namespace toy
         assert( sz == 2 );
 
         mlir::Value lhsValue;
+        theTypes lty;
         auto llit = lhs->numericLiteral();
         error = buildUnaryExpression(
             nullptr, llit ? llit->INTEGERLITERAL() : nullptr,
             llit ? llit->FLOATLITERAL() : nullptr,
-            llit ? lhs->VARIABLENAME() : nullptr, loc, lhsValue, true );
+            llit ? lhs->VARIABLENAME() : nullptr, loc, lhsValue, lty );
         if ( error )
         {
             return;
         }
 
         mlir::Value rhsValue;
+        theTypes rty;
         auto rlit = rhs->numericLiteral();
         error = buildUnaryExpression(
-            nullptr, llit ? llit->INTEGERLITERAL() : nullptr,
-            llit ? llit->FLOATLITERAL() : nullptr,
-            llit ? lhs->VARIABLENAME() : nullptr, loc, lhsValue, true );
+            nullptr, rlit ? rlit->INTEGERLITERAL() : nullptr,
+            rlit ? rlit->FLOATLITERAL() : nullptr,
+            rlit ? lhs->VARIABLENAME() : nullptr, loc, rhsValue, rty );
         if ( error )
         {
             return;
+        }
+
+        // Given pairs INT8, INT16 (say), pick the largest sized type as the target type for the operation.
+        // This simple promotion scheme promotes INT64 -> FLOAT32 (given such a pair), which is perhaps inappropriate,
+        // but this can be refined later.
+        mlir::Type opType;
+        if ( (int)lty >= (int)rty )
+        {
+            opType = lhsValue.getType();
+        }
+        else
+        {
+            opType = rhsValue.getType();
         }
 
         // Create the binary operator (supports +, -, *, /)
@@ -504,28 +566,28 @@ namespace toy
         {
             case '+':
             {
-                auto b = builder.create<toy::AddOp>( loc, builder.getF64Type(),
+                auto b = builder.create<toy::AddOp>( loc, opType,
                                                      lhsValue, rhsValue );
                 resultValue = b.getResult();
                 break;
             }
             case '-':
             {
-                auto b = builder.create<toy::SubOp>( loc, builder.getF64Type(),
+                auto b = builder.create<toy::SubOp>( loc, opType,
                                                      lhsValue, rhsValue );
                 resultValue = b.getResult();
                 break;
             }
             case '*':
             {
-                auto b = builder.create<toy::MulOp>( loc, builder.getF64Type(),
+                auto b = builder.create<toy::MulOp>( loc, opType,
                                                      lhsValue, rhsValue );
                 resultValue = b.getResult();
                 break;
             }
             case '/':
             {
-                auto b = builder.create<toy::DivOp>( loc, builder.getF64Type(),
+                auto b = builder.create<toy::DivOp>( loc, opType,
                                                      lhsValue, rhsValue );
                 resultValue = b.getResult();
                 break;

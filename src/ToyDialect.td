@@ -62,7 +62,6 @@ def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
 // Print operation
 def Toy_PrintOp : Op<Toy_Dialect, "print"> {
   let summary = "Print a variable";
-  //let arguments = (ins MemRefType:$input);
   let arguments = (ins AnyType:$input);
   let results = (outs);
   // No traits, as printing has side effects
@@ -71,20 +70,15 @@ def Toy_PrintOp : Op<Toy_Dialect, "print"> {
 // Assign operation
 def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
   let summary = "Assign a value";
-  let arguments = (ins StrAttr:$name, F64:$value);
+  let arguments = (ins StrAttr:$name, AnyType:$value);
   let results = (outs);
   //let traits = [Pure];
 }
 
 def Toy_NegOp : Op<Toy_Dialect, "negate"> {
   let summary = "Negation operation (e.g., -x)";
-  let arguments = (ins
-    AnyType:$lhs            // Input operand (f64, i64)
-//    F64:$lhs              // Input operand (f64)
-  );
-  let results = (outs
-    F64:$result           // Output (f64)
-  );
+  let arguments = (ins AnyType:$lhs);
+  let results = (outs AnyType:$result);
   //let traits = [
   //  Pure                      // No side effects
   //];
@@ -93,28 +87,24 @@ def Toy_NegOp : Op<Toy_Dialect, "negate"> {
 // let traits = [Pure, SameOperandsAndResultType];
 def Toy_AddOp : Op<Toy_Dialect, "add"> {
   let summary = "Addition operation (e.g., x + y)";
-  //let arguments = (ins F64:$lhs, F64:$rhs);
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
-  let results = (outs F64:$result);
+  let results = (outs AnyType:$result);
 }
 
 def Toy_SubOp : Op<Toy_Dialect, "sub"> {
   let summary = "Subtraction operation (e.g., x - y)";
-  //let arguments = (ins F64:$lhs, F64:$rhs);
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
-  let results = (outs F64:$result);
+  let results = (outs AnyType:$result);
 }
 
 def Toy_MulOp : Op<Toy_Dialect, "mul"> {
   let summary = "Multiplication operation (e.g., x * y)";
-  //let arguments = (ins F64:$lhs, F64:$rhs);
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
-  let results = (outs F64:$result);
+  let results = (outs AnyType:$result);
 }
 
 def Toy_DivOp : Op<Toy_Dialect, "div"> {
   let summary = "Division operation (e.g., x / y)";
-  //let arguments = (ins F64:$lhs, F64:$rhs);
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
-  let results = (outs F64:$result);
+  let results = (outs AnyType:$result);
 }

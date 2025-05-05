@@ -24,6 +24,31 @@
 
 namespace toy
 {
+    enum class theTypes : int
+    {
+        boolean,
+        integer8,
+        integer16,
+        integer32,
+        integer64,
+        float32,
+        float64
+    };
+
+    inline bool isBoolean( theTypes ty )
+    {
+        return ty == theTypes::boolean;
+    }
+
+    inline bool isInteger( theTypes ty )
+    {
+        return !isBoolean( ty ) && ((int)ty < (int)theTypes::float32);
+    }
+
+    inline bool isFloat( theTypes ty )
+    {
+        return (int)ty >= (int)theTypes::float32;
+    }
 
     enum class semantic_errors : int
     {
@@ -85,7 +110,7 @@ namespace toy
                                           tNode *integerNode, tNode *floatNode,
                                           tNode *variableNode,
                                           mlir::Location loc,
-                                          mlir::Value &value );
+                                          mlir::Value &value, theTypes &ty );
 
         inline bool registerDeclaration( mlir::Location loc,
                                          const std::string &varName );
