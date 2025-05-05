@@ -10,7 +10,9 @@ run bool.toy --stdout --emit-mlir --no-emit-object
 #b driver.cpp:194
 #run -g --stdout ../samples/unary.toy --no-emit-object  --debug
 
-b ToyParser.cpp:167
+#b ToyParser.cpp:167
+
+b ExitOpLowering::matchAndRewrite
 
 #b ToyToLLVMLowering.cpp:455
 #b enterStartRule

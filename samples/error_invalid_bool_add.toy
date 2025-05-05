@@ -2,11 +2,7 @@ BOOL i1;
 i1 = TRUE;
 BOOL i2;
 i2 = FALSE;
+//i1 = TRUE + FALSE;
 BOOL i3;
 i3 = i1 + i2;
-
-FLOAT64 f;
-f = i1;
-PRINT f;
-
-EXIT i1;
+EXIT i3;

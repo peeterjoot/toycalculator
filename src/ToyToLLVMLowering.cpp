@@ -186,9 +186,16 @@ namespace
 
                 auto intType =
                     mlir::cast<mlir::IntegerType>( operand.getType() );
-                if ( intType.getWidth() != 32 )
+                auto width = intType.getWidth();
+                if ( width > 32 )
                 {
                     operand = rewriter.create<mlir::LLVM::TruncOp>(
+                        loc, rewriter.getI32Type(), operand );
+                }
+                else
+                {
+                    // SExtOp for sign extend.
+                    operand = rewriter.create<mlir::LLVM::ZExtOp>(
                         loc, rewriter.getI32Type(), operand );
                 }
 
