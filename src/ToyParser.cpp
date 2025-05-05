@@ -66,11 +66,10 @@ namespace toy
             }
             else
             {
-                llvm::errs() << std::format(
-                    "{}error: Internal error: boolean value neither TRUE nor "
-                    "FALSE.\n",
-                    formatLocation( loc ) );
-                throw semantic_exception();
+                throw exception_with_context( __FILE__, __LINE__, __func__,
+                                              std::format( "{}error: Internal error: boolean value neither TRUE nor "
+                                                           "FALSE.\n",
+                                                           formatLocation( loc ) ) );
             }
 
             value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 1 );
@@ -141,7 +140,8 @@ namespace toy
                         ty = theTypes::integer64;
                         break;
                     default:
-                        throw internal_exception();
+                        throw exception_with_context( __FILE__, __LINE__, __func__,
+                                                      "internal error: unexpected integer width" );
                 }
             }
             if ( auto floatType = mlir::dyn_cast<mlir::FloatType>( mtype ) )
@@ -155,15 +155,17 @@ namespace toy
                         ty = theTypes::float64;
                         break;
                     default:
-                        throw internal_exception();
+                        throw exception_with_context( __FILE__, __LINE__, __func__,
+                                                      "internal error: unexpected float width" );
                 }
             }
         }
         else
         {
-            lastSemError = semantic_errors::unknown_error;
-            llvm::errs() << std::format( "{}error: Invalid operand\n", formatLocation( loc ) );
-            return true;
+            // lastSemError = semantic_errors::unknown_error;
+            // return true;
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          std::format( "{}error: Invalid operand\n", formatLocation( loc ) ) );
         }
 
         return false;
@@ -217,7 +219,7 @@ namespace toy
         {
             // don't care what the error was, since we already logged it to the
             // console.  Just throw, avoiding future LLVM IR lowering:
-            throw semantic_exception();
+            throw exception_with_context( __FILE__, __LINE__, __func__, "semantic exception" );
         }
     }
 
@@ -297,9 +299,8 @@ namespace toy
         }
         else
         {
-            llvm::errs() << "Internal error: Unsupported signed integer "
-                            "declaration size.\n";
-            throw semantic_exception();
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          "Internal error: Unsupported signed integer declaration size.\n" );
         }
 
         builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ) );
@@ -331,9 +332,8 @@ namespace toy
         }
         else
         {
-            llvm::errs() << "Internal error: Unsupported floating point "
-                            "declaration size.\n";
-            throw semantic_exception();
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          "Internal error: Unsupported floating point declaration size.\n" );
         }
         builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ) );
     }
@@ -433,9 +433,9 @@ namespace toy
             auto lit = ctx->literal();
 
             theTypes ty;
-            bool error = buildUnaryExpression(
-                lit ? lit->BOOLEANLITERAL() : nullptr, lit ? lit->INTEGERLITERAL() : nullptr,
-                lit ? lit->FLOATLITERAL() : nullptr, lit ? ctx->VARIABLENAME() : nullptr, loc, lhsValue, ty );
+            bool error =
+                buildUnaryExpression( lit ? lit->BOOLEANLITERAL() : nullptr, lit ? lit->INTEGERLITERAL() : nullptr,
+                                      lit ? lit->FLOATLITERAL() : nullptr, ctx->VARIABLENAME(), loc, lhsValue, ty );
             if ( error )
             {
                 return;
@@ -462,9 +462,9 @@ namespace toy
             auto op = ctx->binaryOperator()->getText();
 
             auto llit = lhs->numericLiteral();
-            error = buildUnaryExpression( nullptr, llit ? llit->INTEGERLITERAL() : nullptr,
-                                          llit ? llit->FLOATLITERAL() : nullptr, llit ? lhs->VARIABLENAME() : nullptr,
-                                          loc, lhsValue, lty );
+            error =
+                buildUnaryExpression( nullptr, llit ? llit->INTEGERLITERAL() : nullptr,
+                                      llit ? llit->FLOATLITERAL() : nullptr, lhs->VARIABLENAME(), loc, lhsValue, lty );
             if ( error )
             {
                 return;
@@ -473,9 +473,9 @@ namespace toy
             mlir::Value rhsValue;
             theTypes rty;
             auto rlit = rhs->numericLiteral();
-            error = buildUnaryExpression( nullptr, rlit ? rlit->INTEGERLITERAL() : nullptr,
-                                          rlit ? rlit->FLOATLITERAL() : nullptr, rlit ? lhs->VARIABLENAME() : nullptr,
-                                          loc, rhsValue, rty );
+            error =
+                buildUnaryExpression( nullptr, rlit ? rlit->INTEGERLITERAL() : nullptr,
+                                      rlit ? rlit->FLOATLITERAL() : nullptr, lhs->VARIABLENAME(), loc, rhsValue, rty );
             if ( error )
             {
                 return;
@@ -523,8 +523,8 @@ namespace toy
                 }
                 default:
                 {
-                    llvm::errs() << std::format( "error: Invalid binary operator {}\n", op );
-                    throw semantic_exception();
+                    throw exception_with_context( __FILE__, __LINE__, __func__,
+                                                  std::format( "error: Invalid binary operator {}\n", op ) );
                 }
             }
         }

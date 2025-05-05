@@ -9,33 +9,25 @@
 #pragma once
 
 #include <exception>
+#include <format>
 
 namespace toy
 {
-    class semantic_exception : public std::exception
+    class exception_with_context : public std::exception
     {
        public:
-        semantic_exception()
+        exception_with_context( const char* file, int line, const char* func, const std::string& imessage )
         {
+            message = std::format( "{}:{}:{}: {}", file, line, func, imessage );
         }
 
-        const char *what()
+        const char* what() const noexcept override
         {
-            return "semantic error";
-        }
-    };
-
-    class internal_exception : public std::exception
-    {
-       public:
-        internal_exception()
-        {
+            return message.c_str();
         }
 
-        const char *what()
-        {
-            return "internal error";
-        }
+       private:
+        std::string message;
     };
 }    // namespace toy
 

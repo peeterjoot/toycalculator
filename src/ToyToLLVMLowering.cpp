@@ -55,8 +55,7 @@ namespace
         auto fileLineLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc );
         if ( !fileLineLoc )
         {
-            throw std::runtime_error(
-                "Internal error: Expected only FileLineColLoc Location info." );
+            throw exception_with_context( __FILE__, __LINE__, __func__, "Internal error: Expected only FileLineColLoc Location info." );
         }
 
         return fileLineLoc;

@@ -1,5 +1,20 @@
 BOOL i1;
 i1 = TRUE;
+BOOL i2;
+i2 = FALSE;
+//i1 = TRUE + FALSE;
+BOOL i3;
+//i3 = i1 + i2;
+
+DCL j1;
+j1 = 1;
+DCL j2;
+j2 = 0;
+DCL j3;
+j3 = j1 + j2;
+
+
+
 EXIT i1;
 //FLOAT64 f;
 //f = i1;
