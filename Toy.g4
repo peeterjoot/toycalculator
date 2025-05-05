@@ -94,6 +94,29 @@ literal
 
 // Lexer Rules
 // ===========
+// Matches integer literals, optionally signed (e.g., '42', '-123', '+7').
+INTEGERLITERAL
+  : (PLUSCHAR | MINUSCHAR)? [0-9]+
+  ;
+
+BOOLEANLITERAL
+  : TRUE | FALSE
+  ;
+
+// Matches floating point literal.  Examples:
+// 42
+// -123
+// +7
+// 42.3334
+// -123.3334
+// +7.3334
+// 42.3334E7
+// -123.3334E0
+// +7.3334E-1
+FLOATLITERAL
+  : (PLUSCHAR | MINUSCHAR)? [0-9]+( DECIMALSEP [0-9]+)? (EXPONENT MINUSCHAR? [0-9]+)?
+  ;
+
 // Matches single-line comments (e.g., '// comment') and skips them.
 COMMENT
   : '//' ~[\r\n]* -> skip
@@ -170,29 +193,6 @@ PRINT
 // Matches the 'EXIT' keyword for print statements.
 EXIT
   : 'EXIT'
-  ;
-
-// Matches integer literals, optionally signed (e.g., '42', '-123', '+7').
-INTEGERLITERAL
-  : (PLUSCHAR | MINUSCHAR)? [0-9]+
-  ;
-
-BOOLEANLITERAL
-  : TRUE | FALSE
-  ;
-
-// Matches floating point literal.  Examples:
-// 42
-// -123
-// +7
-// 42.3334
-// -123.3334
-// +7.3334
-// 42.3334E7
-// -123.3334E0
-// +7.3334E-1
-FLOATLITERAL
-  : (PLUSCHAR | MINUSCHAR)? [0-9]+( DECIMALSEP [0-9]+)? (EXPONENT MINUSCHAR? [0-9]+)?
   ;
 
 // Matches variable names (e.g., 'x', 'foo'), consisting of letters (any case) and numbers, but starting with a letter.

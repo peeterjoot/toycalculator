@@ -420,17 +420,14 @@ namespace toy
             return;
         }
         auto loc = getLocation( ctx );
-        auto sz = ctx->binaryElement().size();
-        assert( sz && ( sz <= 2 ) );
         bool error;
         mlir::Value resultValue;
 
         mlir::Value lhsValue;
         theTypes lty;
-        if ( sz == 1 )
+        auto bsz = ctx->binaryElement().size();
+        if ( bsz == 0 )
         {
-            auto op = ctx->unaryOperator()->getText();
-
             mlir::Value lhsValue;
 
             auto lit = ctx->literal();
@@ -444,18 +441,22 @@ namespace toy
                 return;
             }
 
-            if ( op == "" || op == "+" )
+            resultValue = lhsValue;
+
+            if ( auto unaryOp = ctx->unaryOperator() )
             {
-                resultValue = lhsValue;
-            }
-            else
-            {
-                auto negOp = builder.create<toy::NegOp>( loc, lhsValue.getType(), lhsValue );
-                resultValue = negOp.getResult();
+                auto op = unaryOp->getText();
+                if ( op == "-" )
+                {
+                    auto negOp = builder.create<toy::NegOp>( loc, lhsValue.getType(), lhsValue );
+                    resultValue = negOp.getResult();
+                }
             }
         }
         else
         {
+            assert( bsz == 2 );
+
             auto lhs = ctx->binaryElement()[0];
             auto rhs = ctx->binaryElement()[1];
             auto op = ctx->binaryOperator()->getText();
