@@ -344,7 +344,7 @@ namespace
     };
 
     // Lower toy.binary to LLVM arithmetic.
-    template <class ToyBinaryOpType, class llvmOpType>
+    template <class ToyBinaryOpType, class llvmIOpType, class llvmFOpType>
     class BinaryOpLowering : public ConversionPattern
     {
        private:
@@ -367,32 +367,42 @@ namespace
             LLVM_DEBUG( llvm::dbgs()
                         << "Lowering toy.binary: " << *op << '\n' );
 
-            // Convert operands to f64 if necessary
+            auto resultType = binaryOp.getResult().getType();
+
             Value lhs = operands[0];
+            Value rhs = operands[1];
 #if 0    // dead code now.
+            // Convert operands to f64 if necessary
             if ( lhs.getType().isInteger( 64 ) )
             {
                 lhs = rewriter.create<LLVM::SIToFPOp>( loc, rewriter.getF64Type(), lhs );
             }
 #endif
-            Value rhs = operands[1];
 #if 0    // dead code now.
             if ( rhs.getType().isInteger( 64 ) )
             {
                 rhs = rewriter.create<LLVM::SIToFPOp>( loc, rewriter.getF64Type(), rhs );
             }
 #endif
+            if ( resultType.isIntOrIndex() )
+            {
+                auto result = rewriter.create<llvmIOpType>( loc, lhs, rhs );
+                rewriter.replaceOp( op, result );
+            }
+            else
+            {
+                auto result = rewriter.create<llvmFOpType>( loc, lhs, rhs );
+                rewriter.replaceOp( op, result );
+            }
 
-            auto result = rewriter.create<llvmOpType>( loc, lhs, rhs );
-            rewriter.replaceOp( op, result );
             return success();
         }
     };
 
-    using AddOpLowering = BinaryOpLowering<toy::AddOp, LLVM::FAddOp>;
-    using SubOpLowering = BinaryOpLowering<toy::SubOp, LLVM::FSubOp>;
-    using MulOpLowering = BinaryOpLowering<toy::MulOp, LLVM::FMulOp>;
-    using DivOpLowering = BinaryOpLowering<toy::DivOp, LLVM::FDivOp>;
+    using AddOpLowering = BinaryOpLowering<toy::AddOp, LLVM::AddOp, LLVM::FAddOp>;
+    using SubOpLowering = BinaryOpLowering<toy::SubOp, LLVM::SubOp, LLVM::FSubOp>;
+    using MulOpLowering = BinaryOpLowering<toy::MulOp, LLVM::MulOp, LLVM::FMulOp>;
+    using DivOpLowering = BinaryOpLowering<toy::DivOp, LLVM::SDivOp, LLVM::FDivOp>;
 
     // Lower arith.constant to LLVM constant.
     class ConstantOpLowering : public ConversionPattern
