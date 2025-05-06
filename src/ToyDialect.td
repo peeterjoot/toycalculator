@@ -70,7 +70,7 @@ def Toy_PrintOp : Op<Toy_Dialect, "print"> {
 // Assign operation
 def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
   let summary = "Assign a value";
-  let arguments = (ins StrAttr:$name, AnyType:$value);
+  let arguments = (ins StrAttr:$name, AnyType:$value, AnyMemRef:$memref);
   let results = (outs);
   //let traits = [Pure];
 }

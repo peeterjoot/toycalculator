@@ -112,10 +112,10 @@ set_target_properties(toy_runtime PROPERTIES OUTPUT_NAME "toy_runtime")
 
 add_executable(toycalculator
   src/driver.cpp
-  src/ToyParser.cpp
+  src/parser.cpp
   src/ToyDialect.cpp
   src/ToyPasses.cpp
-  src/ToyToLLVMLowering.cpp
+  src/lowering.cpp
   ${ANTLR_OUTPUT_DIR}/ToyBaseListener.cpp
   ${ANTLR_OUTPUT_DIR}/ToyListener.cpp
   ${ANTLR_OUTPUT_DIR}/ToyParser.cpp

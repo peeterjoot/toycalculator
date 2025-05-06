@@ -8,7 +8,7 @@
 
 #include <mlir/Pass/Pass.h>
 
-#include "ToyToLLVMLowering.h"
+#include "lowering.h"
 #include "driver.h"
 
 namespace mlir

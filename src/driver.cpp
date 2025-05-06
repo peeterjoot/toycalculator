@@ -39,9 +39,9 @@
 #include "ToyDialect.h"
 #include "ToyExceptions.h"
 #include "ToyLexer.h"
-#include "ToyParser.h"
+#include "parser.h"
 #include "ToyPasses.h"
-#include "ToyToLLVMLowering.h"
+#include "lowering.h"
 #include "driver.h"
 
 #define DEBUG_TYPE "toy-driver"

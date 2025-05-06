@@ -226,7 +226,9 @@ The assembler printer (with -O 2) reduces all the double operations to constant 
 * --output-directory
 * --emit-llvm
 * --emit-mlir
-* --debug (mlir default option.)
+* --debug (built in MLIR option.)
+* -debug-only=toy-driver
+* -debug-only=toy-lowering
 * --debug-mlir
 * -g (show MLIR location info in the dump, and generate DWARF metadata in the lowered LLVM-IR.)
 * -O[0123] -- the usual.

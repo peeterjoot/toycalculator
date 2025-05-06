@@ -14,7 +14,7 @@
 #include <format>
 
 #include "ToyExceptions.h"
-#include "ToyParser.h"
+#include "parser.h"
 
 namespace toy
 {
@@ -45,6 +45,53 @@ namespace toy
             return std::format( "{}:{}:{}: ", fileLoc.getFilename().str(), fileLoc.getLine(), fileLoc.getColumn() );
         }
         return "";
+    }
+
+    inline theTypes getCompilerType( mlir::Type mtype )
+    {
+        theTypes ty;
+
+        if ( auto intType = mlir::dyn_cast<mlir::IntegerType>( mtype ) )
+        {
+            switch ( intType.getWidth() )
+            {
+                case 1:
+                    ty = theTypes::boolean;
+                    break;
+                case 8:
+                    ty = theTypes::integer8;
+                    break;
+                case 16:
+                    ty = theTypes::integer16;
+                    break;
+                case 32:
+                    ty = theTypes::integer32;
+                    break;
+                case 64:
+                    ty = theTypes::integer64;
+                    break;
+                default:
+                    throw exception_with_context( __FILE__, __LINE__, __func__,
+                                                  "internal error: unexpected integer width" );
+            }
+        }
+        if ( auto floatType = mlir::dyn_cast<mlir::FloatType>( mtype ) )
+        {
+            switch ( floatType.getWidth() )
+            {
+                case 32:
+                    ty = theTypes::float32;
+                    break;
+                case 64:
+                    ty = theTypes::float64;
+                    break;
+                default:
+                    throw exception_with_context( __FILE__, __LINE__, __func__,
+                                                  "internal error: unexpected float width" );
+            }
+        }
+
+        return ty;
     }
 
     // \retval true if error
@@ -120,45 +167,8 @@ namespace toy
             value = builder.create<mlir::memref::LoadOp>( loc, memref );
 
             auto mtype = memref.getType();
-            if ( auto intType = mlir::dyn_cast<mlir::IntegerType>( mtype ) )
-            {
-                switch ( intType.getWidth() )
-                {
-                    case 1:
-                        ty = theTypes::boolean;
-                        break;
-                    case 8:
-                        ty = theTypes::integer8;
-                        break;
-                    case 16:
-                        ty = theTypes::integer16;
-                        break;
-                    case 32:
-                        ty = theTypes::integer32;
-                        break;
-                    case 64:
-                        ty = theTypes::integer64;
-                        break;
-                    default:
-                        throw exception_with_context( __FILE__, __LINE__, __func__,
-                                                      "internal error: unexpected integer width" );
-                }
-            }
-            if ( auto floatType = mlir::dyn_cast<mlir::FloatType>( mtype ) )
-            {
-                switch ( floatType.getWidth() )
-                {
-                    case 32:
-                        ty = theTypes::float32;
-                        break;
-                    case 64:
-                        ty = theTypes::float64;
-                        break;
-                    default:
-                        throw exception_with_context( __FILE__, __LINE__, __func__,
-                                                      "internal error: unexpected float width" );
-                }
-            }
+
+            ty = getCompilerType( mtype );
         }
         else
         {
@@ -422,6 +432,7 @@ namespace toy
         auto loc = getLocation( ctx );
         bool error;
         mlir::Value resultValue;
+        mlir::Type opType;
 
         mlir::Value lhsValue;
         theTypes lty;
@@ -442,13 +453,14 @@ namespace toy
             }
 
             resultValue = lhsValue;
+            opType = lhsValue.getType();
 
             if ( auto unaryOp = ctx->unaryOperator() )
             {
                 auto op = unaryOp->getText();
                 if ( op == "-" )
                 {
-                    auto negOp = builder.create<toy::NegOp>( loc, lhsValue.getType(), lhsValue );
+                    auto negOp = builder.create<toy::NegOp>( loc, opType, lhsValue );
                     resultValue = negOp.getResult();
                 }
             }
@@ -484,7 +496,6 @@ namespace toy
             // Given pairs INT8, INT16 (say), pick the largest sized type as the target type for the operation.
             // This simple promotion scheme promotes INT64 -> FLOAT32 (given such a pair), which is perhaps
             // inappropriate, but this can be refined later.
-            mlir::Type opType;
             if ( (int)lty >= (int)rty )
             {
                 opType = lhsValue.getType();
@@ -533,8 +544,8 @@ namespace toy
 
         // Store result to memref<f64>
         auto memref = var_storage[currentVarName];
-        builder.create<mlir::memref::StoreOp>( loc, resultValue, memref );
-        builder.create<toy::AssignOp>( currentAssignLoc, builder.getStringAttr( currentVarName ), resultValue );
+        //builder.create<mlir::memref::StoreOp>( loc, resultValue, memref );
+        builder.create<toy::AssignOp>( currentAssignLoc, builder.getStringAttr( currentVarName ), resultValue, memref );
         var_states[currentVarName] = variable_state::assigned;
         currentVarName.clear();
     }

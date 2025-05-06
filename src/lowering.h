@@ -1,5 +1,5 @@
 /**
- * @file    ToyToLLVMLowering.h
+ * @file    lowering.h
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   Glue code for MLIR lowering to LLVM-IR.
  */

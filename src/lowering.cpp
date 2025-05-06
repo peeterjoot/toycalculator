@@ -1,5 +1,5 @@
 /**
- * @file    ToyToLLVMLowering.cpp
+ * @file    lowering.cpp
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   This file implements the LLVM-IR lowering pattern matching operators
  */
@@ -24,7 +24,7 @@
 #include <numeric>
 
 #include "ToyDialect.h"
-#include "ToyToLLVMLowering.h"
+#include "lowering.h"
 
 #define DEBUG_TYPE "toy-lowering"
 
@@ -298,7 +298,6 @@ namespace
     };
 
     using DeclareOpLowering = LowerByDeletion<toy::DeclareOp>;
-    using AssignOpLowering = LowerByDeletion<toy::AssignOp>;
 
     // Lower toy.negate to LLVM arithmetic.
     class NegOpLowering : public ConversionPattern
@@ -329,8 +328,7 @@ namespace
 #if 0    // dead code now.
             if ( operand.getType().isInteger( 64 ) )
             {
-                result = rewriter.create<LLVM::SIToFPOp>(
-                    loc, rewriter.getF64Type(), operand );
+                result = rewriter.create<LLVM::SIToFPOp>( loc, rewriter.getF64Type(), operand );
             }
 #endif
 
@@ -508,15 +506,15 @@ namespace
         }
     };
 
-    // Lower memref.store to llvm.store.
-    class MemRefStoreOpLowering : public ConversionPattern
+    // Lower AssignOp to llvm.store (after type conversions, if required)
+    class AssignOpLowering : public ConversionPattern
     {
        private:
         loweringContext& lState;
 
        public:
-        MemRefStoreOpLowering( loweringContext& lState_, MLIRContext* ctx )
-            : ConversionPattern( memref::StoreOp::getOperationName(), 1, ctx ),
+        AssignOpLowering( loweringContext& lState_, MLIRContext* ctx )
+            : ConversionPattern( toy::AssignOp::getOperationName(), 1, ctx ),
               lState{ lState_ }
         {
         }
@@ -525,30 +523,72 @@ namespace
             Operation* op, ArrayRef<Value> operands,
             ConversionPatternRewriter& rewriter ) const override
         {
-            auto storeOp = cast<memref::StoreOp>( op );
+            auto storeOp = cast<toy::AssignOp>( op );
             auto loc = storeOp.getLoc();
 
             LLVM_DEBUG( llvm::dbgs()
-                        << "Lowering memref.store: " << *op << '\n' );
+                        << "Lowering AssignOp: " << *op << '\n' );
 
-            // Ensure the second operand is a pointer
-            if ( !mlir::isa<LLVM::LLVMPointerType>( operands[1].getType() ) &&
-                 !mlir::isa<MemRefType>( operands[1].getType() ) )
+            // StrAttr:$name, AnyType:$value, AnyMemRef:$memref
+            Value value = operands[0];
+            Value memref = operands[1];
+
+            LLVM_DEBUG( llvm::dbgs() << "value: " << value << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "memref: " << memref << '\n' );
+
+            auto valType = value.getType();
+            auto memType = memref.getType();
+
+            if ( mlir::isa<mlir::Float64Type>( valType ) )
             {
-                LLVM_DEBUG( llvm::dbgs() << "Invalid store pointer type: "
-                                         << operands[1].getType() << '\n' );
-                return failure();
+                if ( mlir::isa<mlir::IntegerType>( memType ) )
+                {
+                    value = rewriter.create<LLVM::FPToSIOp>( loc, memType, value );
+                }
+                else if ( mlir::isa<mlir::Float32Type>( memType ) )
+                {
+                    value = rewriter.create<LLVM::FPTruncOp>( loc, memType, value );
+                }
+            }
+            else if ( mlir::isa<mlir::Float32Type>( valType ) )
+            {
+                if ( mlir::isa<mlir::IntegerType>( memType ) )
+                {
+                    value = rewriter.create<LLVM::FPToSIOp>( loc, memType, value );
+                }
+                else if ( mlir::isa<mlir::Float64Type>( memType ) )
+                {
+                    value = rewriter.create<LLVM::FPExtOp>( loc, memType, value );
+                }
+            }
+            else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
+            {
+                if ( mlir::isa<mlir::Float64Type>( memType ) )
+                {
+                    value = rewriter.create<LLVM::SIToFPOp>( loc, memType, value );
+                }
+                else if ( mlir::isa<mlir::Float32Type>( memType ) )
+                {
+                    value = rewriter.create<LLVM::SIToFPOp>( loc, memType, value );
+                }
+                else
+                {
+                    auto miType = mlir::cast<mlir::IntegerType>( memType );
+
+                    auto vwidth = viType.getWidth();
+                    auto mwidth = miType.getWidth();
+                    if ( vwidth > mwidth )
+                    {
+                        value = rewriter.create<mlir::LLVM::TruncOp>( loc, memType, value );
+                    }
+                    else if ( vwidth < mwidth )
+                    {
+                        value = rewriter.create<mlir::LLVM::ZExtOp>( loc, memType, value );
+                    }
+                }
             }
 
-            Value ptr = operands[1];
-            if ( mlir::isa<MemRefType>( ptr.getType() ) )
-            {
-                // If still a memref, assume it will be lowered to a pointer
-                ptr = rewriter.create<memref::LoadOp>( loc, ptr, ValueRange{} )
-                          .getResult();
-            }
-
-            rewriter.create<LLVM::StoreOp>( loc, operands[0], ptr );
+            rewriter.create<LLVM::StoreOp>( loc, value, memref );
             rewriter.eraseOp( op );
             return success();
         }
@@ -654,12 +694,11 @@ namespace
             patterns.insert<MulOpLowering>( lState, &getContext() );
             patterns.insert<DivOpLowering>( lState, &getContext() );
             patterns.insert<DeclareOpLowering>( &getContext() );
-            patterns.insert<AssignOpLowering>( &getContext() );
             patterns.insert<NegOpLowering>( lState, &getContext() );
             patterns.insert<PrintOpLowering>( lState, &getContext() );
             patterns.insert<ConstantOpLowering>( lState, &getContext() );
             patterns.insert<MemRefAllocaOpLowering>( lState, &getContext() );
-            patterns.insert<MemRefStoreOpLowering>( lState, &getContext() );
+            patterns.insert<AssignOpLowering>( lState, &getContext() );
             patterns.insert<MemRefLoadOpLowering>( lState, &getContext() );
             patterns.insert<ExitOpLowering>( lState, &getContext() );
 

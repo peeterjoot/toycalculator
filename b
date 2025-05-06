@@ -3,7 +3,7 @@
 b main
 #run -g --stdout ../samples/bin.toy --no-emit-object  --debug
 #run -g --stdout ../samples/types.toy --no-emit-object  --debug --emit-mlir
-run bool.toy --stdout --emit-mlir --no-emit-object
+run ../samples/bool.toy --stdout --emit-mlir --no-emit-object --debug
 #run -g --stdout ../samples/unary.toy --no-emit-object  --debug --emit-mlir
 #run -g --stdout ../samples/return3.toy  --debug --emit-mlir --no-emit-object
 #run -g --stdout ../samples/returnx.toy  --debug --emit-mlir --no-emit-object
@@ -12,7 +12,9 @@ run bool.toy --stdout --emit-mlir --no-emit-object
 
 #b ToyParser.cpp:167
 
-b ExitOpLowering::matchAndRewrite
+#b buildUnaryExpression
+b AssignOpLowering::matchAndRewrite
+#b ExitOpLowering::matchAndRewrite
 
 #b ToyToLLVMLowering.cpp:455
 #b enterStartRule

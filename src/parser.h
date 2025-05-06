@@ -1,5 +1,5 @@
 /**
- * @file    ToyParser.h
+ * @file    parser.h
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   Antlr4 based Listener, implementing MLIR builder for the toy
  * (calculator) compiler.
