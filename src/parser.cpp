@@ -142,6 +142,7 @@ namespace toy
         }
         else if ( variableNode )
         {
+#if 0
             auto varName = variableNode->getText();
 
             auto varState = var_states[varName];
@@ -169,6 +170,7 @@ namespace toy
             auto mtype = memref.getType();
 
             ty = getCompilerType( mtype );
+#endif
         }
         else
         {
@@ -238,18 +240,15 @@ namespace toy
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
+
         bool error = registerDeclaration( loc, varName );
         if ( error )
         {
             return;
         }
 
-        var_states[varName] = variable_state::declared;
-        // Allocate memref<f64> for the variable
-        auto memrefType = mlir::MemRefType::get( {}, builder.getF64Type() );
-        auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
-        var_storage[varName] = allocaOp.getResult();
-        builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ) );
+        auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), builder.getF64Type() );
+        var_storage[varName] = dcl;
     }
 
     void MLIRListener::enterBoolDeclare( ToyParser::BoolDeclareContext *ctx )
@@ -263,16 +262,13 @@ namespace toy
             return;
         }
 
-        // Allocate memref<i1> for the variable
-        auto memrefType = mlir::MemRefType::get( {}, builder.getI1Type() );
-        auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
-        var_storage[varName] = allocaOp.getResult();
-
-        builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ) );
+        auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), builder.getI1Type() );
+        var_storage[varName] = dcl;
     }
 
     void MLIRListener::enterIntDeclare( ToyParser::IntDeclareContext *ctx )
     {
+#if 0 // TODO
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
@@ -314,10 +310,12 @@ namespace toy
         }
 
         builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ) );
+#endif
     }
 
     void MLIRListener::enterFloatDeclare( ToyParser::FloatDeclareContext *ctx )
     {
+#if 0 // TODO
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
@@ -346,10 +344,12 @@ namespace toy
                                           "Internal error: Unsupported floating point declaration size.\n" );
         }
         builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ) );
+#endif
     }
 
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
     {
+#if 0
         lastOp = lastOperator::printOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
@@ -371,6 +371,7 @@ namespace toy
 
         auto memref = var_storage[varName];
         builder.create<toy::PrintOp>( loc, memref );
+#endif
     }
 
     void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )
@@ -433,6 +434,7 @@ namespace toy
         bool error;
         mlir::Value resultValue;
         mlir::Type opType;
+#if 0
 
         mlir::Value lhsValue;
         theTypes lty;
@@ -548,6 +550,7 @@ namespace toy
         builder.create<toy::AssignOp>( currentAssignLoc, builder.getStringAttr( currentVarName ), resultValue, memref );
         var_states[currentVarName] = variable_state::assigned;
         currentVarName.clear();
+#endif
     }
 }    // namespace toy
 

@@ -97,7 +97,7 @@ namespace toy
         mlir::Location currentAssignLoc;
         semantic_errors lastSemError{ semantic_errors::not_an_error };
         std::unordered_map<std::string, variable_state> var_states;
-        std::map<std::string, mlir::Value> var_storage;    // Maps variable names to memref<f64>
+        std::map<std::string, mlir::Operation*> var_storage;    // Maps declarations for variable names to DeclareOp's
         bool assignmentTargetValid;
         lastOperator lastOp{ lastOperator::notAnOp };
 

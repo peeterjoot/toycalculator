@@ -479,33 +479,34 @@ namespace
             // AnyType:$value, AnyMemRef:$memref
             Value value = operands[0];
             Value memref = operands[1];
+            auto valType = value.getType();
+            auto mType = memref.getType();
 
             LLVM_DEBUG( llvm::dbgs() << "value: " << value << '\n' );
             LLVM_DEBUG( llvm::dbgs() << "memref: " << memref << '\n' );
 
-            auto valType = value.getType();
-            Type memType;
+            auto memRefType = mlir::cast<MemRefType>( mType );
+            auto elemType = memRefType.getElementType();
 
-            if ( auto memrefType = mlir::dyn_cast<mlir::MemRefType>( memref ) )
-            {
-                memType = memrefType.getElementType();
-            }
-            else if ( mlir::isa<mlir::LLVM::LLVMPointerType>( memref ) )
-            {
-                // Infer element type from llvm.alloca or context
-                StringAttr nameAttr = storeOp.getName();
-                std::string varName = nameAttr.getValue().str();
+            LLVM_DEBUG( llvm::dbgs() << "memRefType: " << memRefType << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
 
-                memType = lState.getVariableType( varName );
-                if ( !memType )
+#if 0
+                if ( mlir::isa<mlir::MemRefType>( mType ) )
                 {
-                    return rewriter.notifyMatchFailure( op, "Could not infer memref element type for !llvm.ptr" );
+
+                    if ( !mlir::isa<mlir::Float64Type>( memrefType.getElementType() ) )
+                    {
+                        storeOp->emitError( "Expected memref<f64> for return operand" );
+                        return failure();
+                    }
+
+                    operand = rewriter.create<mlir::LLVM::LoadOp>( loc, rewriter.getF64Type(), operand );
                 }
-            }
-            else
-            {
-                return rewriter.notifyMatchFailure( op, "Unsupported memref type" );
-            }
+#endif
+
+
+#if 0
 
             if ( mlir::isa<mlir::Float64Type>( valType ) )
             {
@@ -559,6 +560,9 @@ namespace
             rewriter.create<LLVM::StoreOp>( loc, value, memref );
             rewriter.eraseOp( op );
             return success();
+#else
+            return failure();
+#endif
         }
     };
 
@@ -619,7 +623,9 @@ namespace
             ConversionTarget target( getContext() );
             target.addLegalDialect<LLVM::LLVMDialect>();
             target.addIllegalDialect<toy::ToyDialect>();
-            target.addIllegalOp<memref::AllocaOp, memref::StoreOp, memref::LoadOp, arith::ConstantOp>();
+            target.addIllegalOp<memref::AllocaOp, memref::LoadOp, arith::ConstantOp>();
+            //target.addIllegalOp<arith::ConstantOp>();
+            target.addLegalOp<memref::AllocaOp, memref::LoadOp>();
             target.addLegalOp<mlir::ModuleOp>();
 
             // Create DICompileUnit
@@ -651,9 +657,9 @@ namespace
             patterns.insert<NegOpLowering>( lState, &getContext() );
             patterns.insert<PrintOpLowering>( lState, &getContext() );
             patterns.insert<ConstantOpLowering>( lState, &getContext() );
-            patterns.insert<MemRefAllocaOpLowering>( lState, &getContext() );
             patterns.insert<AssignOpLowering>( lState, &getContext() );
-            patterns.insert<MemRefLoadOpLowering>( lState, &getContext() );
+            //patterns.insert<MemRefAllocaOpLowering>( lState, &getContext() );
+            //patterns.insert<MemRefLoadOpLowering>( lState, &getContext() );
             patterns.insert<ExitOpLowering>( lState, &getContext() );
 
             arith::populateArithToLLVMConversionPatterns( typeConverter, patterns );

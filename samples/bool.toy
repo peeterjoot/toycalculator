@@ -1,11 +1,10 @@
 BOOL i1;
-i1 = TRUE;
-BOOL i2;
-i2 = FALSE;
-
-FLOAT64 f;
-f = i1; // not working as desired.
-PRINT f;
-
-//EXIT i1;
-EXIT i2;
+//i1 = TRUE;
+////BOOL i2;
+////i2 = FALSE;
+//FLOAT64 f;
+//f = i1;
+//PRINT f;
+//
+////EXIT i1;
+////EXIT i2;

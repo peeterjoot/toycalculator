@@ -1,1 +1,2 @@
-../build/toycalculator $*
+#../build/toycalculator $*
+../build/toycalculator ../samples/bool.toy --stdout --emit-mlir --no-emit-object --debug $* 2>&1

@@ -13,6 +13,7 @@
 #include <mlir/Bytecode/BytecodeOpInterface.h>
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/Support/TypeID.h>
+#include <mlir/IR/SymbolTable.h>
 
 // Include generated dialect declarations (includes getDialectNamespace)
 #include "ToyDialectDecls.h.inc"

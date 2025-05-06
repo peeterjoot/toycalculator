@@ -72,7 +72,7 @@ link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
 
 # TableGen for dialect
-set(LLVM_TARGET_DEFINITIONS src/ToyDialect.td)
+set(LLVM_TARGET_DEFINITIONS src/calculator.td)
 
 # Generate dialect declarations
 mlir_tablegen(ToyDialectDecls.h.inc -gen-dialect-decls -dialect toy)

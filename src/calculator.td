@@ -15,32 +15,28 @@
 include "mlir/IR/DialectBase.td"
 include "mlir/IR/OpBase.td"
 include "mlir/IR/BuiltinTypes.td"
+include "mlir/IR/SymbolInterfaces.td"
 
-// Define the Toy dialect
 def Toy_Dialect : Dialect {
   let name = "toy";
-  let summary = "Toy dialect for a simple calculator";
+  let summary = "A compiler MLIR dialect for a simple calculator with variables";
   let cppNamespace = "toy";
 }
 
-// Program operation
 def Toy_ProgramOp : Op<Toy_Dialect, "program"> {
   let summary = "Program operation";
   let arguments = (ins);
   let results = (outs);
   let regions = (region AnyRegion:$body);
-  let traits = [AutomaticAllocationScope];
+  let traits = [AutomaticAllocationScope, SymbolTable];
 }
 
-// Declare operation
 def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
-  let summary = "Declare a variable";
-  let arguments = (ins StrAttr:$name);
+  let summary = "Declare a variable in the symbol table";
+  let arguments = (ins SymbolNameAttr:$name, TypeAttr:$type);
   let results = (outs);
-  //let traits = [Pure];
 }
 
-// Exit operation
 def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
   let summary = "Exit from a program";
   let arguments = (ins Variadic<AnyType>:$rc);
@@ -59,7 +55,6 @@ def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
   }];
 }
 
-// Print operation
 def Toy_PrintOp : Op<Toy_Dialect, "print"> {
   let summary = "Print a variable";
   let arguments = (ins AnyType:$input);
@@ -67,12 +62,10 @@ def Toy_PrintOp : Op<Toy_Dialect, "print"> {
   // No traits, as printing has side effects
 }
 
-// Assign operation
 def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
-  let summary = "Assign a value";
-  let arguments = (ins StrAttr:$name, AnyType:$value, AnyMemRef:$memref);
+  let summary = "Assign a value to a variable by symbol";
+  let arguments = (ins AnyType:$value, SymbolRefAttr:$name);
   let results = (outs);
-  //let traits = [Pure];
 }
 
 def Toy_NegOp : Op<Toy_Dialect, "negate"> {
