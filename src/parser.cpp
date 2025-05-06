@@ -542,7 +542,7 @@ namespace toy
 
         assert( !currentVarName.empty() );
 
-        // Store result to memref<f64>
+        // Store result to memref<...>
         auto memref = var_storage[currentVarName];
         //builder.create<mlir::memref::StoreOp>( loc, resultValue, memref );
         builder.create<toy::AssignOp>( currentAssignLoc, builder.getStringAttr( currentVarName ), resultValue, memref );
