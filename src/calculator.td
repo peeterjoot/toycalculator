@@ -1,5 +1,5 @@
 //
-// @file    ToyDialect.md
+// @file    calculator.md
 // @author  Peeter Joot <peeterjoot@pm.me>
 // @brief   This implements the Toy compiler dialect.
 //
@@ -37,6 +37,18 @@ def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
   let results = (outs);
 }
 
+def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
+  let summary = "Assign a value to a variable by symbol";
+  let arguments = (ins AnyType:$value, SymbolRefAttr:$name);
+  let results = (outs);
+}
+
+def Toy_LoadOp : Op<Toy_Dialect, "load"> {
+  let summary = "Load a variable’s value by symbol";
+  let arguments = (ins SymbolRefAttr:$name);
+  let results = (outs AnyType:$value);
+}
+
 def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
   let summary = "Exit from a program";
   let arguments = (ins Variadic<AnyType>:$rc);
@@ -60,12 +72,6 @@ def Toy_PrintOp : Op<Toy_Dialect, "print"> {
   let arguments = (ins AnyType:$input);
   let results = (outs);
   // No traits, as printing has side effects
-}
-
-def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
-  let summary = "Assign a value to a variable by symbol";
-  let arguments = (ins AnyType:$value, SymbolRefAttr:$name);
-  let results = (outs);
 }
 
 def Toy_NegOp : Op<Toy_Dialect, "negate"> {

@@ -1,8 +1,9 @@
 /**
- * @file    ToyParser.cpp
+ * @file    parser.cpp
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   altlr4 parse tree listener and MLIR builder.
  */
+#include <llvm/Support/Debug.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
@@ -15,6 +16,8 @@
 
 #include "ToyExceptions.h"
 #include "parser.h"
+
+#define DEBUG_TYPE "toy-parser"
 
 namespace toy
 {
@@ -142,7 +145,6 @@ namespace toy
         }
         else if ( variableNode )
         {
-#if 0
             auto varName = variableNode->getText();
 
             auto varState = var_states[varName];
@@ -163,14 +165,14 @@ namespace toy
                 return true;
             }
 
-            // Load from memref<f64>
-            auto memref = var_storage[varName];
-            value = builder.create<mlir::memref::LoadOp>( loc, memref );
+            auto dcl = var_storage[varName];
+            auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
+            mlir::Type varType = declareOp.getTypeAttr().getValue();
+            auto sref = mlir::SymbolRefAttr::get( builder.getContext(), varName );
 
-            auto mtype = memref.getType();
+            value = builder.create<toy::LoadOp>( loc, varType, sref );
 
-            ty = getCompilerType( mtype );
-#endif
+            ty = getCompilerType( varType );
         }
         else
         {
@@ -184,7 +186,7 @@ namespace toy
     }
 
     // \retval true if error
-    inline bool MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName )
+    inline bool MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty )
     {
         auto varState = var_states[varName];
         if ( varState != variable_state::undeclared )
@@ -195,6 +197,22 @@ namespace toy
         }
 
         var_states[varName] = variable_state::declared;
+
+        auto symbolName = "@" + varName;
+        auto dcl =
+            builder.create<toy::DeclareOp>( loc, builder.getStringAttr( symbolName ), mlir::TypeAttr::get( ty ) );
+        var_storage[varName] = dcl;
+
+        LLVM_DEBUG( llvm::dbgs() << "DeclareOp: " << *dcl << "\n" );
+
+        auto *programOp = builder.getInsertionBlock()->getParentOp();
+        if ( mlir::SymbolTable::lookupSymbolIn( programOp, symbolName ) )
+        {
+            throw exception_with_context( __FILE__, __LINE__, __func__, "Duplicate symbol: " + varName );
+        }
+        mlir::SymbolTable symbolTable( programOp );
+        symbolTable.insert( dcl );
+
         return false;
     }
 
@@ -241,14 +259,7 @@ namespace toy
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
 
-        bool error = registerDeclaration( loc, varName );
-        if ( error )
-        {
-            return;
-        }
-
-        auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), builder.getF64Type() );
-        var_storage[varName] = dcl;
+        registerDeclaration( loc, varName, builder.getF64Type() );
     }
 
     void MLIRListener::enterBoolDeclare( ToyParser::BoolDeclareContext *ctx )
@@ -256,19 +267,12 @@ namespace toy
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
-        bool error = registerDeclaration( loc, varName );
-        if ( error )
-        {
-            return;
-        }
-
-        auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), builder.getI1Type() );
-        var_storage[varName] = dcl;
+        registerDeclaration( loc, varName, builder.getI1Type() );
     }
 
     void MLIRListener::enterIntDeclare( ToyParser::IntDeclareContext *ctx )
     {
-#if 0 // TODO
+#if 0    // TODO
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
@@ -315,7 +319,7 @@ namespace toy
 
     void MLIRListener::enterFloatDeclare( ToyParser::FloatDeclareContext *ctx )
     {
-#if 0 // TODO
+#if 0    // TODO
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
@@ -434,7 +438,6 @@ namespace toy
         bool error;
         mlir::Value resultValue;
         mlir::Type opType;
-#if 0
 
         mlir::Value lhsValue;
         theTypes lty;
@@ -544,13 +547,12 @@ namespace toy
 
         assert( !currentVarName.empty() );
 
-        // Store result to memref<...>
-        auto memref = var_storage[currentVarName];
-        //builder.create<mlir::memref::StoreOp>( loc, resultValue, memref );
-        builder.create<toy::AssignOp>( currentAssignLoc, builder.getStringAttr( currentVarName ), resultValue, memref );
+        // auto dcl = var_storage[currentVarName];
+        auto sref = mlir::SymbolRefAttr::get( builder.getContext(), currentVarName );
+        builder.create<toy::AssignOp>( loc, resultValue, sref );
+
         var_states[currentVarName] = variable_state::assigned;
         currentVarName.clear();
-#endif
     }
 }    // namespace toy
 

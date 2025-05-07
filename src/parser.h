@@ -108,7 +108,7 @@ namespace toy
         inline bool buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode, tNode *variableNode,
                                           mlir::Location loc, mlir::Value &value, theTypes &ty );
 
-        inline bool registerDeclaration( mlir::Location loc, const std::string &varName );
+        inline bool registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty );
 
        public:
         MLIRListener( const std::string &_filename );
