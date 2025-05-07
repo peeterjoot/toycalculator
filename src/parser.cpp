@@ -210,8 +210,8 @@ namespace toy
         {
             throw exception_with_context( __FILE__, __LINE__, __func__, "Duplicate symbol: " + varName );
         }
-        mlir::SymbolTable symbolTable( programOp );
-        symbolTable.insert( dcl );
+        //mlir::SymbolTable symbolTable( programOp );
+        //symbolTable.insert( dcl );
 
         return false;
     }
