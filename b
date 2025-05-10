@@ -13,19 +13,22 @@ run ../samples/bool.toy --stdout --emit-mlir --no-emit-object --debug
 #b ToyParser.cpp:167
 
 #b buildUnaryExpression
-#b AssignOpLowering::matchAndRewrite
+b DeclareOpLowering::matchAndRewrite
+b ProgramOpLowering::matchAndRewrite
+#b lowering.cpp:301
+b AssignOpLowering::matchAndRewrite
 #b ExitOpLowering::matchAndRewrite
 
 #b ToyToLLVMLowering.cpp:455
 #b enterStartRule
-b enterDeclare
-b enterBoolDeclare
-b enterIntDeclare
-b enterFloatDeclare
+#b enterDeclare
+#b enterBoolDeclare
+#b enterIntDeclare
+#b enterFloatDeclare
 #b enterPrint
 #b enterAssignment
-b enterAssignmentExpression
-b MLIRListener::registerDeclaration
+#b enterAssignmentExpression
+#b MLIRListener::registerDeclaration
 #b enterUnaryexpression
 #b enterBinaryexpression
 #b enterReturn

@@ -32,10 +32,8 @@ using namespace mlir;
 
 namespace
 {
-    // This structure was to pass state from runOnOperation to the lowering
-    // class, now unused.
     //
-    // I added this initially because my LLVM IR dump is not showing the normal
+    // This structure was added initially because my LLVM IR dump was not showing the normal
     // DI info that gets translated to DWARF.
     //
     // I suspect that this is because there's a new way of doing this, described
@@ -44,8 +42,14 @@ namespace
     //
     // This new way is hidden by default.  Why I don't get DWARF in the end is
     // probably a different issue?
+    //
+    // ... but now that I have something that I can pass around between my lowering operator matching classes, it's
+    // useful for other stuff:
     struct loweringContext
     {
+        // std::map<std::string, Value> symbolToAlloca;
+        DenseMap<StringAttr, mlir::LLVM::AllocaOp> symbolToAlloca;
+        mlir::LLVM::LLVMFuncOp mainFunc;
     };
 
 #if 0
@@ -82,12 +86,8 @@ namespace
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.program: " << *op << '\n' << loc << '\n' );
 
-            // Lookup the LLVM function for "main", created in runOnOperation
-            auto module = op->getParentOfType<ModuleOp>();
-            auto funcOp = module.lookupSymbol<LLVM::LLVMFuncOp>( "main" );
-
             // Create an entry block in the function
-            Block* entryBlock = funcOp.addEntryBlock( rewriter );
+            Block* entryBlock = lState.mainFunc.addEntryBlock( rewriter );
             rewriter.setInsertionPointToStart( entryBlock );
 
             // Inline the toy.program's region into the function's entry block
@@ -268,7 +268,56 @@ namespace
         }
     };
 
-    using DeclareOpLowering = LowerByDeletion<toy::DeclareOp>;
+    // using DeclareOpLowering = LowerByDeletion<toy::DeclareOp>;
+    class DeclareOpLowering : public ConversionPattern
+    {
+       private:
+        loweringContext& lState;
+
+       public:
+        DeclareOpLowering( loweringContext& lState_, MLIRContext* context )
+            : ConversionPattern( toy::DeclareOp::getOperationName(), 1, context ), lState{ lState_ }
+        {
+        }
+
+        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
+                                       ConversionPatternRewriter& rewriter ) const override
+        {
+            auto dcl = cast<toy::DeclareOp>( op );
+            auto loc = dcl.getLoc();
+
+            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.declare: " << *op << '\n' );
+
+            auto nameAttr = mlir::dyn_cast<mlir::StringAttr>( dcl->getAttr( "sym_name" ) );
+            if ( !nameAttr )
+                return rewriter.notifyMatchFailure( op, "expected 'sym_name' to be a StringAttr" );
+
+            auto varName = nameAttr.getValue();
+
+            // rewriter.modifyOpInPlace( op, [&]() { op->removeAttr( "sym_name" ); } );
+
+            // "toy.declare"() <{type = i1}> {sym_name = "i1"} : () -> ()
+            auto elemType = dcl.getType();
+            int64_t numElements = 1;    // scalar only for now.
+
+            // LLVM_DEBUG( llvm::dbgs() << "Lowering toy.declare: symbol: " << varName.str() << '\n' );
+
+            unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
+            unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
+            int64_t totalSizeInBytes = numElements * elemSizeInBytes;
+
+            auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
+            auto one = rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( 1 ) );
+            auto newAllocaOp = rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, one, totalSizeInBytes );
+
+            lState.symbolToAlloca[nameAttr] = newAllocaOp;
+            rewriter.eraseOp( op );
+
+            rewriter.getInsertionBlock()->dump();
+
+            return success();
+        }
+    };
 
     // Lower toy.negate to LLVM arithmetic.
     class NegOpLowering : public ConversionPattern
@@ -620,13 +669,12 @@ namespace
             LLVMTypeConverter typeConverter( &getContext() );
 
             // Conversion target: only LLVM dialect is legal
-            ConversionTarget target( getContext() );
-            target.addLegalDialect<LLVM::LLVMDialect>();
-            target.addIllegalDialect<toy::ToyDialect>();
-            target.addIllegalOp<memref::AllocaOp, memref::LoadOp, arith::ConstantOp>();
-            //target.addIllegalOp<arith::ConstantOp>();
-            target.addLegalOp<memref::AllocaOp, memref::LoadOp>();
-            target.addLegalOp<mlir::ModuleOp>();
+            ConversionTarget target1( getContext() );
+            target1.addLegalDialect<LLVM::LLVMDialect>();
+            target1.addIllegalOp<arith::ConstantOp>();
+            target1.addIllegalOp<toy::DeclareOp, toy::AssignOp, toy::PrintOp, toy::AddOp, toy::SubOp, toy::MulOp,
+                                 toy::DivOp, toy::NegOp, toy::ExitOp>();
+            target1.addLegalOp<mlir::ModuleOp>();
 
             // Create DICompileUnit
             OpBuilder builder( module.getRegion() );
@@ -643,28 +691,43 @@ namespace
 
             // Create main function
             auto mainFuncType = LLVM::LLVMFunctionType::get( builder.getI32Type(), {}, false );
-            builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "main", mainFuncType, LLVM::Linkage::External );
+            lState.mainFunc =
+                builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "main", mainFuncType, LLVM::Linkage::External );
 
             // Patterns for toy dialect and standard ops
-            RewritePatternSet patterns( &getContext() );
+            RewritePatternSet patterns1( &getContext() );
 
-            patterns.insert<ProgramOpLowering>( lState, &getContext() );
-            patterns.insert<AddOpLowering>( lState, &getContext() );
-            patterns.insert<SubOpLowering>( lState, &getContext() );
-            patterns.insert<MulOpLowering>( lState, &getContext() );
-            patterns.insert<DivOpLowering>( lState, &getContext() );
-            patterns.insert<DeclareOpLowering>( &getContext() );
-            patterns.insert<NegOpLowering>( lState, &getContext() );
-            patterns.insert<PrintOpLowering>( lState, &getContext() );
-            patterns.insert<ConstantOpLowering>( lState, &getContext() );
-            patterns.insert<AssignOpLowering>( lState, &getContext() );
-            //patterns.insert<MemRefAllocaOpLowering>( lState, &getContext() );
-            //patterns.insert<MemRefLoadOpLowering>( lState, &getContext() );
-            patterns.insert<ExitOpLowering>( lState, &getContext() );
+            // The operator ordering here doesn't matter, as there's a graph walk to find all the operator nodes,
+            // and the order is based on that walk:
+            patterns1.insert<DeclareOpLowering>( lState, &getContext() );
+            patterns1.insert<AddOpLowering>( lState, &getContext() );
+            patterns1.insert<SubOpLowering>( lState, &getContext() );
+            patterns1.insert<MulOpLowering>( lState, &getContext() );
+            patterns1.insert<DivOpLowering>( lState, &getContext() );
+            patterns1.insert<NegOpLowering>( lState, &getContext() );
+            patterns1.insert<PrintOpLowering>( lState, &getContext() );
+            patterns1.insert<ConstantOpLowering>( lState, &getContext() );
+            patterns1.insert<AssignOpLowering>( lState, &getContext() );
+            patterns1.insert<ExitOpLowering>( lState, &getContext() );
 
-            arith::populateArithToLLVMConversionPatterns( typeConverter, patterns );
+            arith::populateArithToLLVMConversionPatterns( typeConverter, patterns1 );
 
-            if ( failed( applyFullConversion( module, target, std::move( patterns ) ) ) )
+            if ( failed( applyPartialConversion( module, target1, std::move( patterns1 ) ) ) )
+            {
+                LLVM_DEBUG( llvm::dbgs() << "Conversion failed\n" );
+                signalPassFailure();
+                return;
+            }
+
+            RewritePatternSet patterns2( &getContext() );
+            patterns2.insert<ProgramOpLowering>( lState, &getContext() );
+
+            ConversionTarget target2( getContext() );
+            target2.addLegalDialect<LLVM::LLVMDialect>();
+            target2.addLegalOp<mlir::ModuleOp>();
+            target2.addIllegalDialect<toy::ToyDialect>();
+
+            if ( failed( applyFullConversion( module, target2, std::move( patterns2 ) ) ) )
             {
                 LLVM_DEBUG( llvm::dbgs() << "Conversion failed\n" );
                 signalPassFailure();

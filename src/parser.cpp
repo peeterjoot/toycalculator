@@ -218,7 +218,7 @@ namespace toy
         auto *programOp = builder.getInsertionBlock()->getParentOp();
         if ( mlir::SymbolTable::lookupSymbolIn( programOp, varName ) )
         {
-            LLVM_DEBUG( llvm::dbgs() << std::format( "DeclareOp: found symbol: {}", varName ) );
+            LLVM_DEBUG( llvm::dbgs() << std::format( "DeclareOp: found symbol: {}\n", varName ) );
         }
 
         return false;
