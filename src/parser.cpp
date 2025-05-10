@@ -7,6 +7,7 @@
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
+#include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/Location.h>
 #include <mlir/IR/OpImplementation.h>
 #include <mlir/IR/Operation.h>
@@ -165,14 +166,24 @@ namespace toy
                 return true;
             }
 
+#if 0 // var_storage is effectively dead code now that the symbol table lookup is working.  To be verified (haven't tested LoadOp codepath yet.)
             auto dcl = var_storage[varName];
             auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
-            mlir::Type varType = declareOp.getTypeAttr().getValue();
-            auto sref = mlir::SymbolRefAttr::get( builder.getContext(), varName );
+#endif
 
-            value = builder.create<toy::LoadOp>( loc, varType, sref );
+            if ( auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( programOp, varName ) )
+            {
+                if ( auto declareOp = llvm::dyn_cast<toy::DeclareOp>( symbolOp ) )
+                {
+                    mlir::Type varType = declareOp.getTypeAttr().getValue();
+                    auto sref = mlir::SymbolRefAttr::get( builder.getContext(), varName );
+                    value = builder.create<toy::LoadOp>( loc, varType, sref );
 
-            ty = getCompilerType( varType );
+                    ty = getCompilerType( varType );
+                }
+            }
+
+            return false;
         }
         else
         {
@@ -198,20 +209,17 @@ namespace toy
 
         var_states[varName] = variable_state::declared;
 
-        auto symbolName = "@" + varName;
-        auto dcl =
-            builder.create<toy::DeclareOp>( loc, builder.getStringAttr( symbolName ), mlir::TypeAttr::get( ty ) );
+        auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ) );
+        dcl->setAttr( "sym_name", builder.getStringAttr( varName ) );
         var_storage[varName] = dcl;
 
         LLVM_DEBUG( llvm::dbgs() << "DeclareOp: " << *dcl << "\n" );
 
         auto *programOp = builder.getInsertionBlock()->getParentOp();
-        if ( mlir::SymbolTable::lookupSymbolIn( programOp, symbolName ) )
+        if ( mlir::SymbolTable::lookupSymbolIn( programOp, varName ) )
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__, "Duplicate symbol: " + varName );
+            LLVM_DEBUG( llvm::dbgs() << std::format( "DeclareOp: found symbol: {}", varName ) );
         }
-        //mlir::SymbolTable symbolTable( programOp );
-        //symbolTable.insert( dcl );
 
         return false;
     }

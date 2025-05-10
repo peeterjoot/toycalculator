@@ -33,8 +33,9 @@ def Toy_ProgramOp : Op<Toy_Dialect, "program"> {
 
 def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
   let summary = "Declare a variable in the symbol table";
-  let arguments = (ins SymbolNameAttr:$name, TypeAttr:$type);
+  let arguments = (ins TypeAttr:$type);
   let results = (outs);
+  let traits = [Symbol];
 }
 
 def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
