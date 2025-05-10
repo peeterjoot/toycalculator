@@ -28,26 +28,41 @@ def Toy_ProgramOp : Op<Toy_Dialect, "program"> {
   let arguments = (ins);
   let results = (outs);
   let regions = (region AnyRegion:$body);
-  let traits = [AutomaticAllocationScope, SymbolTable];
+  let traits = [AutomaticAllocationScope];
+
+  // Only print the region, omit types since they are always unit.
+  let assemblyFormat = "$body attr-dict";
 }
 
 def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
-  let summary = "Declare a variable in the symbol table";
-  let arguments = (ins TypeAttr:$type);
+  let summary = "Declare a variable, specifying it's name and type.";
+  let arguments = (ins StrAttr:$name, TypeAttr:$type);
   let results = (outs);
-  let traits = [Symbol];
+
+  // Default assemblyFormat gives:
+  //   "toy.declare"() {name = "x", type = i32} : () -> ()
+  // whereas with this, I'll get a more compact representation like:
+  //   toy.declare "x" : i32
+  //
+  let assemblyFormat = "$name `:` $type attr-dict";
 }
 
 def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
-  let summary = "Assign a value to a variable by symbol";
-  let arguments = (ins AnyType:$value, SymbolRefAttr:$name);
+  let summary = "Assign a value to a variable associated with a declaration";
+  let arguments = (ins StrAttr:$name, AnyType:$value);
   let results = (outs);
+
+  // toy.assign "x", %0 : i32
+  let assemblyFormat = "$name `,` $value `:` type($value) attr-dict";
 }
 
 def Toy_LoadOp : Op<Toy_Dialect, "load"> {
-  let summary = "Load a variable’s value by symbol";
-  let arguments = (ins SymbolRefAttr:$name);
+  let summary = "Load a variable’s value by symbol name, returning a value of the given type.";
+  let arguments = (ins StrAttr:$name);
   let results = (outs AnyType:$value);
+
+  // Example: %x = toy.load "i1" : i1
+  let assemblyFormat = "$name `:` type($value) attr-dict";
 }
 
 def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
@@ -56,7 +71,7 @@ def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
   let results = (outs);
   let traits = [Terminator];
 
-  // Letting $rc be optional to match the grammar (may not add builder support for values yet.)
+  // $rc is optional, and defaults to 0.
   let assemblyFormat = "($rc^ `:` type($rc))? attr-dict";
 
   let extraClassDeclaration = [{
@@ -67,6 +82,8 @@ def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
       }
   }];
 }
+
+// It's probably desirable to use assemblyFormat for the rest of these too, but I'll do that later.
 
 def Toy_PrintOp : Op<Toy_Dialect, "print"> {
   let summary = "Print a variable";

@@ -166,22 +166,14 @@ namespace toy
                 return true;
             }
 
-#if 0 // var_storage is effectively dead code now that the symbol table lookup is working.  To be verified (haven't tested LoadOp codepath yet.)
             auto dcl = var_storage[varName];
             auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
-#endif
 
-            if ( auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( programOp, varName ) )
-            {
-                if ( auto declareOp = llvm::dyn_cast<toy::DeclareOp>( symbolOp ) )
-                {
-                    mlir::Type varType = declareOp.getTypeAttr().getValue();
-                    auto sref = mlir::SymbolRefAttr::get( builder.getContext(), varName );
-                    value = builder.create<toy::LoadOp>( loc, varType, sref );
+            mlir::Type varType = declareOp.getTypeAttr().getValue();
+            //value = builder.create<toy::LoadOp>( loc, varType, builder.getStringAttr( varName ), mlir::TypeAttr::get( varType ) );
+            value = builder.create<toy::LoadOp>( loc, varType, builder.getStringAttr( varName ) );
 
-                    ty = getCompilerType( varType );
-                }
-            }
+            ty = getCompilerType( varType );
 
             return false;
         }
@@ -209,17 +201,8 @@ namespace toy
 
         var_states[varName] = variable_state::declared;
 
-        auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ) );
-        dcl->setAttr( "sym_name", builder.getStringAttr( varName ) );
+        auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), mlir::TypeAttr::get( ty ) );
         var_storage[varName] = dcl;
-
-        LLVM_DEBUG( llvm::dbgs() << "DeclareOp: " << *dcl << "\n" );
-
-        auto *programOp = builder.getInsertionBlock()->getParentOp();
-        if ( mlir::SymbolTable::lookupSymbolIn( programOp, varName ) )
-        {
-            LLVM_DEBUG( llvm::dbgs() << std::format( "DeclareOp: found symbol: {}\n", varName ) );
-        }
 
         return false;
     }
@@ -556,8 +539,7 @@ namespace toy
         assert( !currentVarName.empty() );
 
         // auto dcl = var_storage[currentVarName];
-        auto sref = mlir::SymbolRefAttr::get( builder.getContext(), currentVarName );
-        builder.create<toy::AssignOp>( loc, resultValue, sref );
+        builder.create<toy::AssignOp>( loc, builder.getStringAttr( currentVarName ), resultValue );
 
         var_states[currentVarName] = variable_state::assigned;
         currentVarName.clear();
