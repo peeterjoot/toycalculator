@@ -50,6 +50,8 @@ namespace
         // std::map<std::string, Value> symbolToAlloca;
         DenseMap<StringAttr, mlir::LLVM::AllocaOp> symbolToAlloca;
         mlir::LLVM::LLVMFuncOp mainFunc;
+        mlir::LLVM::ConstantOp onei64;
+        bool onei64a{};
     };
 
 #if 0
@@ -268,56 +270,62 @@ namespace
         }
     };
 
-    // using DeclareOpLowering = LowerByDeletion<toy::DeclareOp>;
-    class DeclareOpLowering : public ConversionPattern
+
+    class DeclareOpLowering : public OpRewritePattern<toy::DeclareOp>
     {
-       private:
-        loweringContext& lState;
+        using OpRewritePattern::OpRewritePattern;
 
        public:
-        DeclareOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( toy::DeclareOp::getOperationName(), 1, context ), lState{ lState_ }
+        DeclareOpLowering( loweringContext& lState, MLIRContext* context )
+            : OpRewritePattern( context ), lState( lState )
         {
         }
 
-        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
-                                       ConversionPatternRewriter& rewriter ) const override
+        LogicalResult matchAndRewrite( toy::DeclareOp dcl, PatternRewriter& rewriter ) const override
         {
-            auto dcl = cast<toy::DeclareOp>( op );
             auto loc = dcl.getLoc();
 
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.declare: " << *op << '\n' );
+            // example:
+            //
+            // "toy.declare"() <{type = i1}> {sym_name = "i1"} : () -> ()
+            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.declare: " << dcl << '\n' );
+            rewriter.setInsertionPoint( dcl );
+            rewriter.eraseOp( dcl );
 
             auto nameAttr = mlir::dyn_cast<mlir::StringAttr>( dcl->getAttr( "sym_name" ) );
             if ( !nameAttr )
-                return rewriter.notifyMatchFailure( op, "expected 'sym_name' to be a StringAttr" );
+                return rewriter.notifyMatchFailure( dcl, "expected 'sym_name' to be a StringAttr" );
 
             auto varName = nameAttr.getValue();
-
-            // rewriter.modifyOpInPlace( op, [&]() { op->removeAttr( "sym_name" ); } );
-
-            // "toy.declare"() <{type = i1}> {sym_name = "i1"} : () -> ()
             auto elemType = dcl.getType();
             int64_t numElements = 1;    // scalar only for now.
-
-            // LLVM_DEBUG( llvm::dbgs() << "Lowering toy.declare: symbol: " << varName.str() << '\n' );
 
             unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
             unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
             int64_t totalSizeInBytes = numElements * elemSizeInBytes;
 
+
             auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
-            auto one = rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( 1 ) );
-            auto newAllocaOp = rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, one, totalSizeInBytes );
+            if ( !lState.onei64a )
+            {
+                lState.onei64 =
+                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( 1 ) );
+                lState.onei64a = true;
+            }
+            auto newAllocaOp =
+                rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, lState.onei64, totalSizeInBytes );
 
             lState.symbolToAlloca[nameAttr] = newAllocaOp;
-            rewriter.eraseOp( op );
 
             rewriter.getInsertionBlock()->dump();
 
             return success();
         }
+
+       private:
+        loweringContext& lState;
     };
+
 
     // Lower toy.negate to LLVM arithmetic.
     class NegOpLowering : public ConversionPattern
@@ -665,17 +673,6 @@ namespace
                 module->dump();
             } );
 
-            // Initialize the type converter
-            LLVMTypeConverter typeConverter( &getContext() );
-
-            // Conversion target: only LLVM dialect is legal
-            ConversionTarget target1( getContext() );
-            target1.addLegalDialect<LLVM::LLVMDialect>();
-            target1.addIllegalOp<arith::ConstantOp>();
-            target1.addIllegalOp<toy::DeclareOp, toy::AssignOp, toy::PrintOp, toy::AddOp, toy::SubOp, toy::MulOp,
-                                 toy::DivOp, toy::NegOp, toy::ExitOp>();
-            target1.addLegalOp<mlir::ModuleOp>();
-
             // Create DICompileUnit
             OpBuilder builder( module.getRegion() );
             loweringContext lState;
@@ -693,6 +690,32 @@ namespace
             auto mainFuncType = LLVM::LLVMFunctionType::get( builder.getI32Type(), {}, false );
             lState.mainFunc =
                 builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "main", mainFuncType, LLVM::Linkage::External );
+
+            // Initialize the type converter
+            LLVMTypeConverter typeConverter( &getContext() );
+
+            // Conversion target: only LLVM dialect is legal
+            ConversionTarget target1( getContext() );
+            target1.addLegalDialect<LLVM::LLVMDialect>();
+            target1.addIllegalOp<arith::ConstantOp>();
+            target1.addIllegalOp<toy::DeclareOp, toy::AssignOp, toy::PrintOp, toy::AddOp, toy::SubOp, toy::MulOp,
+                                 toy::DivOp, toy::NegOp, toy::ExitOp>();
+            target1.addLegalOp<mlir::ModuleOp>();
+#if 0
+            target1.addDynamicallyLegalOp<toy::ProgramOp>(
+                []( Operation* op )
+                {
+                    llvm::errs() << "Checking dynamic legality for: " << *op << "\n";
+                    // Consider the ProgramOp legal if it contains no remaining DeclareOps (or other illegal ops).
+                    return llvm::none_of( op->getRegions(),
+                                          []( Region& region )
+                                          {
+                                              return llvm::any_of( region.getOps(), []( Operation& innerOp )
+                                                                   { return isa<toy::DeclareOp>( innerOp ); } );
+                                          } );
+                } );
+            target1.markOpRecursivelyLegal<toy::ProgramOp>();
+#endif
 
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns1( &getContext() );
