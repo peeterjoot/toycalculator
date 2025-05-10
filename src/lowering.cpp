@@ -107,6 +107,7 @@ namespace
 
             // Erase the original program op
             rewriter.eraseOp( op );
+            //LLVM_DEBUG(llvm::dbgs() << "IR after erasing toy.program:\n" << *op->getParentOp() << "\n");
 
             // Recursively convert the inlined operations (e.g., toy.return)
             return success();
@@ -310,8 +311,10 @@ namespace
 
             lState.symbolToAlloca[varName] = newAllocaOp;
 
-            // Erase the print op
+            // Erase the declare op
             rewriter.eraseOp( op );
+            //LLVM_DEBUG(llvm::dbgs() << "IR after erasing toy.declare:\n" << *op->getParentOp() << "\n");
+
             return success();
         }
     };

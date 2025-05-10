@@ -282,7 +282,7 @@ int main( int argc, char** argv )
                     {
                         for ( llvm::DbgRecord&DR : inst.getDbgRecordRange() )
                         {
-                            DR.dump();
+                            //DR.dump(); // curiously, this shows module() and program() still in the dump?
                         }
 
                         inst.dump();
