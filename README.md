@@ -383,3 +383,148 @@ The assembler printer (with -O 2) reduces all the double operations to constant 
   40048d:       pop    %rcx
   40048e:       ret
 ```
+
+## Experimenting with symbol tables.
+
+It made sense to me to emit MLIR that encoded symbol attributes.  I tried:
+
+```
+def Toy_ProgramOp : Op<Toy_Dialect, "program"> {
+  let summary = "Program operation";
+  let arguments = (ins);
+  let results = (outs);
+  let regions = (region AnyRegion:$body);
+  let traits = [AutomaticAllocationScope, SymbolTable];
+}
+
+def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
+  let summary = "Declare a variable in the symbol table";
+  let arguments = (ins TypeAttr:$type);
+  let results = (outs);
+  let traits = [Symbol];
+}
+
+def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
+  let summary = "Assign a value to a variable by symbol";
+  let arguments = (ins AnyType:$value, SymbolRefAttr:$name);
+  let results = (outs);
+}
+
+def Toy_LoadOp : Op<Toy_Dialect, "load"> {
+  let summary = "Load a variable’s value by symbol";
+  let arguments = (ins SymbolRefAttr:$name);
+  let results = (outs AnyType:$value);
+}
+```
+
+This worked out well in the builder, where I could create a new symbol using:
+
+```
+        auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ) );
+        dcl->setAttr( "sym_name", builder.getStringAttr( varName ) );
+```
+
+and also reference it
+```
+            if ( auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( programOp, varName ) )
+            {
+                if ( auto declareOp = llvm::dyn_cast<toy::DeclareOp>( symbolOp ) )
+                {
+                    mlir::Type varType = declareOp.getTypeAttr().getValue();
+                    auto sref = mlir::SymbolRefAttr::get( builder.getContext(), varName );
+                    value = builder.create<toy::LoadOp>( loc, varType, sref );
+                    ...
+```
+
+but I couldn't figure out how to get the lowering to work.  Here's an example program:
+
+```
+BOOL i1;
+i1 = TRUE;
+BOOL i2;
+i2 = i1;
+```
+
+and the corresponding IR
+```
+module {
+  "toy.program"() ({
+    "toy.declare"() <{type = i1}> {sym_name = "i1"} : () -> ()
+    %true = arith.constant true
+    "toy.assign"(%true) <{name = @i1}> : (i1) -> ()
+    "toy.declare"() <{type = i1}> {sym_name = "i2"} : () -> ()
+    %0 = "toy.load"() <{name = @i1}> : () -> i1
+    "toy.assign"(%0) <{name = @i2}> : (i1) -> ()
+    toy.exit
+  }) : () -> ()
+}
+```
+
+My ProgramOpLowering kicked in first, which effectively deletes the symbol table.  After that declare lowering gets screwed up, resulting in trace (`--debug`) output like:
+
+```
+Trying to match "{anonymous}::DeclareOpLowering"
+Lowering toy.declare: 'toy.declare' op symbol's parent must have the SymbolTable trait
+mlir-asm-printer: 'llvm.func' failed to verify and will be printed in generic form
+```
+
+I suspect that I would need to essentially "move" that symbol table to the new parent block for the declare, just like the basic block itself was moved.  This was my last failed attempt at the declare lowering:
+
+```
+    class DeclareOpLowering : public OpRewritePattern<toy::DeclareOp>
+    {
+        using OpRewritePattern::OpRewritePattern;
+
+       public:
+        DeclareOpLowering( loweringContext& lState, MLIRContext* context )
+            : OpRewritePattern( context ), lState( lState )
+        {
+        }
+
+        LogicalResult matchAndRewrite( toy::DeclareOp dcl, PatternRewriter& rewriter ) const override
+        {
+            auto loc = dcl.getLoc();
+
+            // example:
+            //
+            // "toy.declare"() <{type = i1}> {sym_name = "i1"} : () -> ()
+            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.declare: " << dcl << '\n' );
+            rewriter.setInsertionPoint( dcl );
+            rewriter.eraseOp( dcl );
+
+            auto nameAttr = mlir::dyn_cast<mlir::StringAttr>( dcl->getAttr( "sym_name" ) );
+            if ( !nameAttr )
+                return rewriter.notifyMatchFailure( dcl, "expected 'sym_name' to be a StringAttr" );
+
+            auto varName = nameAttr.getValue();
+            auto elemType = dcl.getType();
+            int64_t numElements = 1;    // scalar only for now.
+
+            unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
+            unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
+            int64_t totalSizeInBytes = numElements * elemSizeInBytes;
+
+
+            auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
+            if ( !lState.onei64a )
+            {
+                lState.onei64 =
+                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( 1 ) );
+                lState.onei64a = true;
+            }
+            auto newAllocaOp =
+                rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, lState.onei64, totalSizeInBytes );
+
+            lState.symbolToAlloca[nameAttr] = newAllocaOp;
+
+            rewriter.getInsertionBlock()->dump();
+
+            return success();
+        }
+
+       private:
+        loweringContext& lState;
+    };
+```
+
+This has the appearance of working as I see the erase in the trace output, but it seems to get rolled back (as seen in the final dump).  I also tried mutating versions where I deleted the symbol references from the declareop.  I'm sure that's the wrong approach too.
