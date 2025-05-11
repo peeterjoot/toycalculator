@@ -251,21 +251,23 @@ namespace toy
             auto name = assignOp.getName();
             auto value = assignOp.getValue();
             auto valType = value.getType();
+            auto allocaOp = lState.symbolToAlloca[name];
 
-            // name: i1
+            // name: i1v
             // value: %true = arith.constant true
             // valType: i1
             LLVM_DEBUG( llvm::dbgs() << "name: " << name << '\n' );
             LLVM_DEBUG( llvm::dbgs() << "value: " << value << '\n' );
             LLVM_DEBUG( llvm::dbgs() << "valType: " << valType << '\n' );
+            //allocaOp.dump(); // %1 = llvm.alloca %0 x i1 {alignment = 1 : i64} : (i64) -> !llvm.ptr
 
-#if 0
-            auto memRefType = mlir::cast<MemRefType>( mType );
-            auto elemType = memRefType.getElementType();
+            auto memRefType = allocaOp.getType();
+            //auto elemType = memRefType.getElementType();
 
             LLVM_DEBUG( llvm::dbgs() << "memRefType: " << memRefType << '\n' );
-            LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
+            //LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
 
+#if 0
                 if ( mlir::isa<mlir::MemRefType>( mType ) )
                 {
 

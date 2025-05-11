@@ -1,5 +1,5 @@
-BOOL i1;
-i1 = TRUE;
+BOOL i1v;
+i1v = TRUE;
 //BOOL i2;
 //i2 = i1;
 //i2 = FALSE;
