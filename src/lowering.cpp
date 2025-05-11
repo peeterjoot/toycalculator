@@ -80,7 +80,7 @@ namespace toy
             if ( !c_zero_F64 )
             {
                 zero_F64 =
-                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getF64Type(), rewriter.getF64IntegerAttr( 1 ) );
+                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getF64Type(), rewriter.getF64FloatAttr( 1 ) );
                 c_zero_F64 = true;
             }
 
@@ -193,10 +193,28 @@ namespace toy
 
             auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
             auto one = lState.getI64one( loc, rewriter );
-            auto dataLayout = module.getDataLayout();
-            int64_t alignment = dataLayout.getTypePreferredAlignment( elemType );
+#if 0
+            auto module = op->getParentOfType<ModuleOp>();
+            if ( !module )
+            {
+                return rewriter.notifyMatchFailure( declareOp, "declare op must be inside a module" );
+            }
+
+            mlir::DataLayout dataLayout( module );
+            unsigned alignment = dataLayout.getTypePreferredAlignment( elemType );
+#endif
+
+//AllocaOp build variations.  None of these match what I'm using?
+//MemRefType memrefType, IntegerAttr alignment = IntegerAttr());
+//MemRefType memrefType, ValueRange dynamicSizes, IntegerAttr alignment = IntegerAttr());
+//MemRefType memrefType, ValueRange dynamicSizes, ValueRange symbolOperands, IntegerAttr alignment = {});
+//::mlir::Type memref, ::mlir::ValueRange dynamicSizes, ::mlir::ValueRange symbolOperands, /*optional*/::mlir::IntegerAttr alignment);
+//::mlir::TypeRange resultTypes, ::mlir::ValueRange dynamicSizes, ::mlir::ValueRange symbolOperands, /*optional*/::mlir::IntegerAttr alignment);
+//::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
+
             auto newAllocaOp =
-                rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, one, totalSizeInBytes, alignment );
+                rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, one, totalSizeInBytes );
+           // , rewriter.getI64IntegerAttr( alignment ) );
 
             lState.symbolToAlloca[varName] = newAllocaOp;
 
