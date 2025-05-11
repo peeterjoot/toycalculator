@@ -323,11 +323,47 @@ namespace toy
             }
             else
             {
-                assert( 0 );
-//                value = rewriter.create<mlir::LLVM::LoadOp>( loc, elemType,  );
+                llvm_unreachable( "AssignOp lowering: expect only fixed size floating or integer types." );
             }
 
             rewriter.create<LLVM::StoreOp>( loc, value, allocaOp );
+            rewriter.eraseOp( op );
+            return success();
+        }
+    };
+
+    class LoadOpLowering : public ConversionPattern
+    {
+       private:
+        loweringContext& lState;
+
+       public:
+        LoadOpLowering( loweringContext& lState_, MLIRContext* context )
+            : ConversionPattern( toy::LoadOp::getOperationName(), 1, context ), lState{ lState_ }
+        {
+        }
+
+        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
+                                       ConversionPatternRewriter& rewriter ) const override
+        {
+            auto loadOp = cast<toy::LoadOp>( op );
+            auto loc = loadOp.getLoc();
+
+            // %0 = toy.load "i1v" : i1
+            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.load: " << *op << '\n' );
+
+            auto name = loadOp.getName();
+            auto allocaOp = lState.symbolToAlloca[name];
+
+            // name: i1v
+            LLVM_DEBUG( llvm::dbgs() << "name: " << name << '\n' );
+
+            Type elemType = allocaOp.getElemType();
+            LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
+
+            rewriter.create<LLVM::LoadOp>( loc, elemType, allocaOp );
+
+            // Erase the load op
             rewriter.eraseOp( op );
             return success();
         }
@@ -421,6 +457,7 @@ namespace toy
         }
     };
 
+#if 0 // Now unused.
     template <class toyOpType>
     class LowerByDeletion : public ConversionPattern
     {
@@ -437,6 +474,7 @@ namespace toy
             return success();
         }
     };
+#endif
 
     // Lower toy.print to a call to __toy_print.
     class PrintOpLowering : public ConversionPattern
@@ -686,6 +724,7 @@ namespace toy
             // The operator ordering here doesn't matter, as there's a graph walk to find all the operator nodes,
             // and the order is based on that walk (i.e.: ProgramOpLowering happens first.)
             patterns1.insert<DeclareOpLowering>( lState, &getContext() );
+            patterns1.insert<LoadOpLowering>( lState, &getContext() );
             patterns1.insert<AddOpLowering>( lState, &getContext() );
             patterns1.insert<SubOpLowering>( lState, &getContext() );
             patterns1.insert<MulOpLowering>( lState, &getContext() );
