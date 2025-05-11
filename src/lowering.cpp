@@ -45,16 +45,56 @@ namespace toy
     //
     // ... but now that I have something that I can pass around between my lowering operator matching classes, it's
     // useful for other stuff:
-    struct loweringContext
+    class loweringContext
     {
+       public:
         DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> symbolToAlloca;
         mlir::LLVM::LLVMFuncOp mainFunc;
-        mlir::LLVM::ConstantOp one_i64;
-        mlir::LLVM::ConstantOp zero_f64;
-        mlir::LLVM::ConstantOp zero_i32;
-        bool c_one_i64{};
-        bool c_zero_f64{};
-        bool c_zero_i32{};
+
+        mlir::LLVM::ConstantOp getI64one( mlir::Location loc, ConversionPatternRewriter& rewriter )
+        {
+            if ( !c_one_I64 )
+            {
+                one_I64 =
+                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( 1 ) );
+                c_one_I64 = true;
+            }
+
+            return one_I64;
+        }
+
+        mlir::LLVM::ConstantOp getI32zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
+        {
+            if ( !c_zero_I32 )
+            {
+                zero_I32 =
+                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr( 1 ) );
+                c_zero_I32 = true;
+            }
+
+            return zero_I32;
+        }
+
+        mlir::LLVM::ConstantOp getF64zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
+        {
+            if ( !c_zero_F64 )
+            {
+                zero_F64 =
+                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getF64Type(), rewriter.getF64IntegerAttr( 1 ) );
+                c_zero_F64 = true;
+            }
+
+            return zero_F64;
+        }
+
+       private:
+        // caching these may not be a good idea, as they are created with a single loc value.
+        mlir::LLVM::ConstantOp one_I64;
+        mlir::LLVM::ConstantOp zero_F64;
+        mlir::LLVM::ConstantOp zero_I32;
+        bool c_one_I64{};
+        bool c_zero_F64{};
+        bool c_zero_I32{};
     };
 
 #if 0
@@ -111,10 +151,170 @@ namespace toy
 
             // Erase the original program op
             rewriter.eraseOp( op );
-            //LLVM_DEBUG(llvm::dbgs() << "IR after erasing toy.program:\n" << *op->getParentOp() << "\n");
+            // LLVM_DEBUG(llvm::dbgs() << "IR after erasing toy.program:\n" << *op->getParentOp() << "\n");
 
             // Recursively convert the inlined operations (e.g., toy.return)
             return success();
+        }
+    };
+
+    class DeclareOpLowering : public ConversionPattern
+    {
+       private:
+        loweringContext& lState;
+
+       public:
+        DeclareOpLowering( loweringContext& lState_, MLIRContext* context )
+            : ConversionPattern( toy::DeclareOp::getOperationName(), 1, context ), lState{ lState_ }
+        {
+        }
+
+        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
+                                       ConversionPatternRewriter& rewriter ) const override
+        {
+            auto declareOp = cast<toy::DeclareOp>( op );
+            auto loc = declareOp.getLoc();
+
+            //   toy.declare "x" : i32
+            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.declare: " << declareOp << '\n' );
+
+            auto varName = declareOp.getName();
+            auto elemType = declareOp.getType();
+            int64_t numElements = 1;    // scalar only for now.
+
+            if ( !elemType.isIntOrFloat() )
+            {
+                return rewriter.notifyMatchFailure( declareOp, "declare type must be integer or float" );
+            }
+
+            unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
+            unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
+            int64_t totalSizeInBytes = numElements * elemSizeInBytes;
+
+            auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
+            auto one = lState.getI64one( loc, rewriter );
+            auto dataLayout = module.getDataLayout();
+            int64_t alignment = dataLayout.getTypePreferredAlignment( elemType );
+            auto newAllocaOp =
+                rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, one, totalSizeInBytes, alignment );
+
+            lState.symbolToAlloca[varName] = newAllocaOp;
+
+            // Erase the declare op
+            rewriter.eraseOp( op );
+            // LLVM_DEBUG(llvm::dbgs() << "IR after erasing toy.declare:\n" << *op->getParentOp() << "\n");
+
+            return success();
+        }
+    };
+
+    // Lower AssignOp to llvm.store (after type conversions, if required)
+    class AssignOpLowering : public ConversionPattern
+    {
+       private:
+        loweringContext& lState;
+
+       public:
+        AssignOpLowering( loweringContext& lState_, MLIRContext* ctx )
+            : ConversionPattern( toy::AssignOp::getOperationName(), 1, ctx ), lState{ lState_ }
+        {
+        }
+
+        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
+                                       ConversionPatternRewriter& rewriter ) const override
+        {
+            auto assignOp = cast<toy::AssignOp>( op );
+            auto loc = assignOp.getLoc();
+
+            // (ins StrAttr:$name, AnyType:$value);
+            // toy.assign "x", %0 : i32
+            LLVM_DEBUG( llvm::dbgs() << "Lowering AssignOp: " << *op << '\n' );
+
+            auto name = assignOp.getName();
+            auto value = assignOp.getValue();
+            auto valType = value.getType();
+
+            // name: i1
+            // value: %true = arith.constant true
+            // valType: i1
+            LLVM_DEBUG( llvm::dbgs() << "name: " << name << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "value: " << value << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "valType: " << valType << '\n' );
+
+#if 0
+            auto memRefType = mlir::cast<MemRefType>( mType );
+            auto elemType = memRefType.getElementType();
+
+            LLVM_DEBUG( llvm::dbgs() << "memRefType: " << memRefType << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
+
+                if ( mlir::isa<mlir::MemRefType>( mType ) )
+                {
+
+                    if ( !mlir::isa<mlir::Float64Type>( memrefType.getElementType() ) )
+                    {
+                        assignOp->emitError( "Expected memref<f64> for return operand" );
+                        return failure();
+                    }
+
+                    operand = rewriter.create<mlir::LLVM::LoadOp>( loc, rewriter.getF64Type(), operand );
+                }
+
+            if ( mlir::isa<mlir::Float64Type>( valType ) )
+            {
+                if ( mlir::isa<mlir::IntegerType>( memType ) )
+                {
+                    value = rewriter.create<LLVM::FPToSIOp>( loc, memType, value );
+                }
+                else if ( mlir::isa<mlir::Float32Type>( memType ) )
+                {
+                    value = rewriter.create<LLVM::FPTruncOp>( loc, memType, value );
+                }
+            }
+            else if ( mlir::isa<mlir::Float32Type>( valType ) )
+            {
+                if ( mlir::isa<mlir::IntegerType>( memType ) )
+                {
+                    value = rewriter.create<LLVM::FPToSIOp>( loc, memType, value );
+                }
+                else if ( mlir::isa<mlir::Float64Type>( memType ) )
+                {
+                    value = rewriter.create<LLVM::FPExtOp>( loc, memType, value );
+                }
+            }
+            else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
+            {
+                if ( mlir::isa<mlir::Float64Type>( memType ) )
+                {
+                    value = rewriter.create<LLVM::SIToFPOp>( loc, memType, value );
+                }
+                else if ( mlir::isa<mlir::Float32Type>( memType ) )
+                {
+                    value = rewriter.create<LLVM::SIToFPOp>( loc, memType, value );
+                }
+                else
+                {
+                    auto miType = mlir::cast<mlir::IntegerType>( memType );
+
+                    auto vwidth = viType.getWidth();
+                    auto mwidth = miType.getWidth();
+                    if ( vwidth > mwidth )
+                    {
+                        value = rewriter.create<mlir::LLVM::TruncOp>( loc, memType, value );
+                    }
+                    else if ( vwidth < mwidth )
+                    {
+                        value = rewriter.create<mlir::LLVM::ZExtOp>( loc, memType, value );
+                    }
+                }
+            }
+
+            rewriter.create<LLVM::StoreOp>( loc, value, memref );
+            rewriter.eraseOp( op );
+            return success();
+#else
+            return failure();
+#endif
         }
     };
 
@@ -142,14 +342,8 @@ namespace toy
             if ( op->getNumOperands() == 0 )
             {
                 // RETURN; or default -> return 0
-                if ( !lState.c_zero_i32 )
-                {
-                    lState.zero_i32 =
-                        rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr( 0 ) );
-                    lState.c_zero_i32 = true;
-                }
-
-                rewriter.create<LLVM::ReturnOp>( loc, lState.zero_i32 );
+                auto zero = lState.getI32zero( loc, rewriter );
+                rewriter.create<LLVM::ReturnOp>( loc, zero );
             }
 #if 0
             else if ( op->getNumOperands() == 1 )
@@ -281,55 +475,6 @@ namespace toy
         }
     };
 
-
-    class DeclareOpLowering : public ConversionPattern
-    {
-       private:
-        loweringContext& lState;
-
-       public:
-        DeclareOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( toy::DeclareOp::getOperationName(), 1, context ), lState{ lState_ }
-        {
-        }
-
-        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
-                                       ConversionPatternRewriter& rewriter ) const override
-        {
-            auto declareOp = cast<toy::DeclareOp>( op );
-            auto loc = declareOp.getLoc();
-
-            //   toy.declare "x" : i32
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.declare: " << declareOp << '\n' );
-
-            auto varName = declareOp.getName();
-            auto elemType = declareOp.getType();
-            int64_t numElements = 1;    // scalar only for now.
-
-            unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
-            unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
-            int64_t totalSizeInBytes = numElements * elemSizeInBytes;
-
-            auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
-            if ( !lState.c_one_i64 )
-            {
-                lState.one_i64 =
-                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( 1 ) );
-                lState.c_one_i64 = true;
-            }
-            auto newAllocaOp =
-                rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, lState.one_i64, totalSizeInBytes );
-
-            lState.symbolToAlloca[varName] = newAllocaOp;
-
-            // Erase the declare op
-            rewriter.eraseOp( op );
-            //LLVM_DEBUG(llvm::dbgs() << "IR after erasing toy.declare:\n" << *op->getParentOp() << "\n");
-
-            return success();
-        }
-    };
-
     // Lower toy.negate to LLVM arithmetic.
     class NegOpLowering : public ConversionPattern
     {
@@ -360,13 +505,8 @@ namespace toy
             }
 #endif
 
-            if ( !lState.c_zero_f64 )
-            {
-                lState.zero_f64 =
-                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getF64Type(), rewriter.getF64FloatAttr( 0.0 ) );
-                lState.c_zero_f64 = true;
-            }
-            result = rewriter.create<LLVM::FSubOp>( loc, lState.zero_f64, result );
+            auto zero = lState.getF64zero( loc, rewriter );
+            result = rewriter.create<LLVM::FSubOp>( loc, zero, result );
 
             rewriter.replaceOp( op, result );
             return success();
@@ -471,116 +611,6 @@ namespace toy
         }
     };
 
-    // Lower AssignOp to llvm.store (after type conversions, if required)
-    class AssignOpLowering : public ConversionPattern
-    {
-       private:
-        loweringContext& lState;
-
-       public:
-        AssignOpLowering( loweringContext& lState_, MLIRContext* ctx )
-            : ConversionPattern( toy::AssignOp::getOperationName(), 1, ctx ), lState{ lState_ }
-        {
-        }
-
-        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
-                                       ConversionPatternRewriter& rewriter ) const override
-        {
-            auto storeOp = cast<toy::AssignOp>( op );
-            auto loc = storeOp.getLoc();
-
-            LLVM_DEBUG( llvm::dbgs() << "Lowering AssignOp: " << *op << '\n' );
-
-            // AnyType:$value, AnyMemRef:$memref
-            Value value = operands[0];
-            Value memref = operands[1];
-            auto valType = value.getType();
-            auto mType = memref.getType();
-
-            LLVM_DEBUG( llvm::dbgs() << "value: " << value << '\n' );
-            LLVM_DEBUG( llvm::dbgs() << "memref: " << memref << '\n' );
-
-            auto memRefType = mlir::cast<MemRefType>( mType );
-            auto elemType = memRefType.getElementType();
-
-            LLVM_DEBUG( llvm::dbgs() << "memRefType: " << memRefType << '\n' );
-            LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
-
-#if 0
-                if ( mlir::isa<mlir::MemRefType>( mType ) )
-                {
-
-                    if ( !mlir::isa<mlir::Float64Type>( memrefType.getElementType() ) )
-                    {
-                        storeOp->emitError( "Expected memref<f64> for return operand" );
-                        return failure();
-                    }
-
-                    operand = rewriter.create<mlir::LLVM::LoadOp>( loc, rewriter.getF64Type(), operand );
-                }
-#endif
-
-
-#if 0
-
-            if ( mlir::isa<mlir::Float64Type>( valType ) )
-            {
-                if ( mlir::isa<mlir::IntegerType>( memType ) )
-                {
-                    value = rewriter.create<LLVM::FPToSIOp>( loc, memType, value );
-                }
-                else if ( mlir::isa<mlir::Float32Type>( memType ) )
-                {
-                    value = rewriter.create<LLVM::FPTruncOp>( loc, memType, value );
-                }
-            }
-            else if ( mlir::isa<mlir::Float32Type>( valType ) )
-            {
-                if ( mlir::isa<mlir::IntegerType>( memType ) )
-                {
-                    value = rewriter.create<LLVM::FPToSIOp>( loc, memType, value );
-                }
-                else if ( mlir::isa<mlir::Float64Type>( memType ) )
-                {
-                    value = rewriter.create<LLVM::FPExtOp>( loc, memType, value );
-                }
-            }
-            else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
-            {
-                if ( mlir::isa<mlir::Float64Type>( memType ) )
-                {
-                    value = rewriter.create<LLVM::SIToFPOp>( loc, memType, value );
-                }
-                else if ( mlir::isa<mlir::Float32Type>( memType ) )
-                {
-                    value = rewriter.create<LLVM::SIToFPOp>( loc, memType, value );
-                }
-                else
-                {
-                    auto miType = mlir::cast<mlir::IntegerType>( memType );
-
-                    auto vwidth = viType.getWidth();
-                    auto mwidth = miType.getWidth();
-                    if ( vwidth > mwidth )
-                    {
-                        value = rewriter.create<mlir::LLVM::TruncOp>( loc, memType, value );
-                    }
-                    else if ( vwidth < mwidth )
-                    {
-                        value = rewriter.create<mlir::LLVM::ZExtOp>( loc, memType, value );
-                    }
-                }
-            }
-
-            rewriter.create<LLVM::StoreOp>( loc, value, memref );
-            rewriter.eraseOp( op );
-            return success();
-#else
-            return failure();
-#endif
-        }
-    };
-
     class ToyToLLVMLoweringPass : public PassWrapper<ToyToLLVMLoweringPass, OperationPass<ModuleOp>>
     {
        public:
@@ -672,7 +702,7 @@ namespace toy
        private:
         toy::driverState* pDriverState;
     };
-} // namespace toy
+}    // namespace toy
 
 namespace mlir
 {
