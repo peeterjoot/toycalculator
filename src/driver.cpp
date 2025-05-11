@@ -270,7 +270,6 @@ int main( int argc, char** argv )
         if (debugInfo) {
             llvmModule->setIsNewDbgInfoFormat( false );
         }
-#endif
 
         LLVM_DEBUG( {
             llvm::dbgs() << "Instruction dump after lowering:\n";
@@ -282,7 +281,7 @@ int main( int argc, char** argv )
                     {
                         for ( llvm::DbgRecord&DR : inst.getDbgRecordRange() )
                         {
-                            //DR.dump(); // curiously, this shows module() and program() still in the dump?
+                            DR.dump(); // curiously, this shows module() and program() still in the dump?
                         }
 
                         inst.dump();
@@ -290,6 +289,7 @@ int main( int argc, char** argv )
                 }
             }
         } );
+#endif
 
         auto emitObject = !noEmitObject;
         if ( emitLLVM || emitObject )

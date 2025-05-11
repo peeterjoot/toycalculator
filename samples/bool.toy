@@ -1,11 +1,11 @@
 BOOL i1v;
 i1v = TRUE;
-//BOOL i2;
-//i2 = i1;
-//i2 = FALSE;
+BOOL i2v;
+i2v = i1v;
+//i2v = FALSE;
 //FLOAT64 f;
-//f = i1;
+//f = i1v;
 //PRINT f;
 //
-////EXIT i1;
-////EXIT i2;
+////EXIT i1v;
+////EXIT i2v;

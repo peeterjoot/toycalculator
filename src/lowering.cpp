@@ -68,7 +68,7 @@ namespace toy
             if ( !c_zero_I32 )
             {
                 zero_I32 =
-                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr( 1 ) );
+                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr( 0 ) );
                 c_zero_I32 = true;
             }
 
@@ -201,9 +201,9 @@ namespace toy
 
             mlir::DataLayout dataLayout( module );
             unsigned alignment = dataLayout.getTypePreferredAlignment( elemType );
+            assert( alignment == totalSizeInBytes ); // only simple fixed size types are currently supported (no arrays, or structures.)
 
-            auto newAllocaOp =
-                rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, one, alignment );
+            auto newAllocaOp = rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, one, alignment );
 
             lState.symbolToAlloca[varName] = newAllocaOp;
 
@@ -248,82 +248,88 @@ namespace toy
             LLVM_DEBUG( llvm::dbgs() << "name: " << name << '\n' );
             LLVM_DEBUG( llvm::dbgs() << "value: " << value << '\n' );
             LLVM_DEBUG( llvm::dbgs() << "valType: " << valType << '\n' );
-            //allocaOp.dump(); // %1 = llvm.alloca %0 x i1 {alignment = 1 : i64} : (i64) -> !llvm.ptr
+            // allocaOp.dump(); // %1 = llvm.alloca %0 x i1 {alignment = 1 : i64} : (i64) -> !llvm.ptr
 
-            auto memRefType = allocaOp.getType();
-            //auto elemType = memRefType.getElementType();
+            //auto memType = allocaOp.getType(); // llvm.ptr
 
-            LLVM_DEBUG( llvm::dbgs() << "memRefType: " << memRefType << '\n' );
-            //LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
-
-#if 0
-                if ( mlir::isa<mlir::MemRefType>( mType ) )
+            // extract parameters from the allocaOp so we know what to do here:
+            Type elemType = allocaOp.getElemType();
+            // Value alignment = allocaOp.getAlignment();
+            if ( auto constOp = allocaOp.getArraySize().getDefiningOp<LLVM::ConstantOp>() )
+            {
+                if ( auto intAttr = mlir::dyn_cast<IntegerAttr>( constOp.getValue() ) )
                 {
+                    int64_t numElems = intAttr.getInt();
 
-                    if ( !mlir::isa<mlir::Float64Type>( memrefType.getElementType() ) )
-                    {
-                        assignOp->emitError( "Expected memref<f64> for return operand" );
-                        return failure();
-                    }
-
-                    operand = rewriter.create<mlir::LLVM::LoadOp>( loc, rewriter.getF64Type(), operand );
+                    assert( numElems == 1 );
                 }
+                else
+                {
+                    assert( 0 ); // shouldn't happen.
+                }
+            }
+
+            //LLVM_DEBUG( llvm::dbgs() << "memType: " << memType << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
+            // LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
 
             if ( mlir::isa<mlir::Float64Type>( valType ) )
             {
-                if ( mlir::isa<mlir::IntegerType>( memType ) )
+                if ( mlir::isa<mlir::IntegerType>( elemType ) )
                 {
-                    value = rewriter.create<LLVM::FPToSIOp>( loc, memType, value );
+                    value = rewriter.create<LLVM::FPToSIOp>( loc, elemType, value );
                 }
-                else if ( mlir::isa<mlir::Float32Type>( memType ) )
+                else if ( mlir::isa<mlir::Float32Type>( elemType ) )
                 {
-                    value = rewriter.create<LLVM::FPTruncOp>( loc, memType, value );
+                    value = rewriter.create<LLVM::FPTruncOp>( loc, elemType, value );
                 }
             }
             else if ( mlir::isa<mlir::Float32Type>( valType ) )
             {
-                if ( mlir::isa<mlir::IntegerType>( memType ) )
+                if ( mlir::isa<mlir::IntegerType>( elemType ) )
                 {
-                    value = rewriter.create<LLVM::FPToSIOp>( loc, memType, value );
+                    value = rewriter.create<LLVM::FPToSIOp>( loc, elemType, value );
                 }
-                else if ( mlir::isa<mlir::Float64Type>( memType ) )
+                else if ( mlir::isa<mlir::Float64Type>( elemType ) )
                 {
-                    value = rewriter.create<LLVM::FPExtOp>( loc, memType, value );
+                    value = rewriter.create<LLVM::FPExtOp>( loc, elemType, value );
                 }
             }
             else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
             {
-                if ( mlir::isa<mlir::Float64Type>( memType ) )
+                if ( mlir::isa<mlir::Float64Type>( elemType ) )
                 {
-                    value = rewriter.create<LLVM::SIToFPOp>( loc, memType, value );
+                    value = rewriter.create<LLVM::SIToFPOp>( loc, elemType, value );
                 }
-                else if ( mlir::isa<mlir::Float32Type>( memType ) )
+                else if ( mlir::isa<mlir::Float32Type>( elemType ) )
                 {
-                    value = rewriter.create<LLVM::SIToFPOp>( loc, memType, value );
+                    value = rewriter.create<LLVM::SIToFPOp>( loc, elemType, value );
                 }
                 else
                 {
-                    auto miType = mlir::cast<mlir::IntegerType>( memType );
+                    auto miType = mlir::cast<mlir::IntegerType>( elemType );
 
                     auto vwidth = viType.getWidth();
                     auto mwidth = miType.getWidth();
                     if ( vwidth > mwidth )
                     {
-                        value = rewriter.create<mlir::LLVM::TruncOp>( loc, memType, value );
+                        value = rewriter.create<mlir::LLVM::TruncOp>( loc, elemType, value );
                     }
                     else if ( vwidth < mwidth )
                     {
-                        value = rewriter.create<mlir::LLVM::ZExtOp>( loc, memType, value );
+                        value = rewriter.create<mlir::LLVM::ZExtOp>( loc, elemType, value );
                     }
                 }
             }
+            else
+            {
+                assert( 0 );
+//                value = rewriter.create<mlir::LLVM::LoadOp>( loc, elemType,  );
+            }
 
-            rewriter.create<LLVM::StoreOp>( loc, value, memref );
+            rewriter.create<LLVM::StoreOp>( loc, value, allocaOp );
             rewriter.eraseOp( op );
             return success();
-#else
-            return failure();
-#endif
         }
     };
 
@@ -342,7 +348,6 @@ namespace toy
         LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
                                        ConversionPatternRewriter& rewriter ) const override
         {
-            toy::ExitOp returnOp = cast<toy::ExitOp>( op );
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.return: " << *op << '\n' );
 
             mlir::Location loc = op->getLoc();
@@ -357,6 +362,8 @@ namespace toy
 #if 0
             else if ( op->getNumOperands() == 1 )
             {
+                toy::ExitOp returnOp = cast<toy::ExitOp>( op );
+
                 // RETURN 3; or RETURN x;
                 auto operand = returnOp.getRc()[0];
 
