@@ -193,7 +193,6 @@ namespace toy
 
             auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
             auto one = lState.getI64one( loc, rewriter );
-#if 0
             auto module = op->getParentOfType<ModuleOp>();
             if ( !module )
             {
@@ -202,19 +201,9 @@ namespace toy
 
             mlir::DataLayout dataLayout( module );
             unsigned alignment = dataLayout.getTypePreferredAlignment( elemType );
-#endif
-
-//AllocaOp build variations.  None of these match what I'm using?
-//MemRefType memrefType, IntegerAttr alignment = IntegerAttr());
-//MemRefType memrefType, ValueRange dynamicSizes, IntegerAttr alignment = IntegerAttr());
-//MemRefType memrefType, ValueRange dynamicSizes, ValueRange symbolOperands, IntegerAttr alignment = {});
-//::mlir::Type memref, ::mlir::ValueRange dynamicSizes, ::mlir::ValueRange symbolOperands, /*optional*/::mlir::IntegerAttr alignment);
-//::mlir::TypeRange resultTypes, ::mlir::ValueRange dynamicSizes, ::mlir::ValueRange symbolOperands, /*optional*/::mlir::IntegerAttr alignment);
-//::mlir::TypeRange resultTypes, ::mlir::ValueRange operands, ::llvm::ArrayRef<::mlir::NamedAttribute> attributes = {});
 
             auto newAllocaOp =
-                rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, one, totalSizeInBytes );
-           // , rewriter.getI64IntegerAttr( alignment ) );
+                rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, one, alignment );
 
             lState.symbolToAlloca[varName] = newAllocaOp;
 
