@@ -30,7 +30,7 @@
 
 using namespace mlir;
 
-namespace
+namespace toy
 {
     //
     // This structure was added initially because my LLVM IR dump was not showing the normal
@@ -49,8 +49,12 @@ namespace
     {
         DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> symbolToAlloca;
         mlir::LLVM::LLVMFuncOp mainFunc;
-        mlir::LLVM::ConstantOp onei64;
-        bool onei64a{};
+        mlir::LLVM::ConstantOp one_i64;
+        mlir::LLVM::ConstantOp zero_f64;
+        mlir::LLVM::ConstantOp zero_i32;
+        bool c_one_i64{};
+        bool c_zero_f64{};
+        bool c_zero_i32{};
     };
 
 #if 0
@@ -134,14 +138,20 @@ namespace
 
             mlir::Location loc = op->getLoc();
 
+            assert( op->getNumOperands() == 0 );
             if ( op->getNumOperands() == 0 )
             {
                 // RETURN; or default -> return 0
-                mlir::Value zero =
-                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr( 0 ) );
+                if ( !lState.c_zero_i32 )
+                {
+                    lState.zero_i32 =
+                        rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr( 0 ) );
+                    lState.c_zero_i32 = true;
+                }
 
-                rewriter.create<LLVM::ReturnOp>( loc, zero );
+                rewriter.create<LLVM::ReturnOp>( loc, lState.zero_i32 );
             }
+#if 0
             else if ( op->getNumOperands() == 1 )
             {
                 // RETURN 3; or RETURN x;
@@ -194,6 +204,7 @@ namespace
             {
                 llvm_unreachable( "toy.return expects 0 or 1 operands" );
             }
+#endif
 
             rewriter.eraseOp( op );
             return success();
@@ -300,14 +311,14 @@ namespace
             int64_t totalSizeInBytes = numElements * elemSizeInBytes;
 
             auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
-            if ( !lState.onei64a )
+            if ( !lState.c_one_i64 )
             {
-                lState.onei64 =
+                lState.one_i64 =
                     rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( 1 ) );
-                lState.onei64a = true;
+                lState.c_one_i64 = true;
             }
             auto newAllocaOp =
-                rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, lState.onei64, totalSizeInBytes );
+                rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, lState.one_i64, totalSizeInBytes );
 
             lState.symbolToAlloca[varName] = newAllocaOp;
 
@@ -349,9 +360,13 @@ namespace
             }
 #endif
 
-            auto zero =
-                rewriter.create<LLVM::ConstantOp>( loc, rewriter.getF64Type(), rewriter.getF64FloatAttr( 0.0 ) );
-            result = rewriter.create<LLVM::FSubOp>( loc, zero, result );
+            if ( !lState.c_zero_f64 )
+            {
+                lState.zero_f64 =
+                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getF64Type(), rewriter.getF64FloatAttr( 0.0 ) );
+                lState.c_zero_f64 = true;
+            }
+            result = rewriter.create<LLVM::FSubOp>( loc, lState.zero_f64, result );
 
             rewriter.replaceOp( op, result );
             return success();
@@ -453,55 +468,6 @@ namespace
             }
 
             return failure();
-        }
-    };
-
-    // Lower memref.alloca to llvm.alloca.
-    class MemRefAllocaOpLowering : public ConversionPattern
-    {
-       private:
-        loweringContext& lState;
-
-       public:
-        MemRefAllocaOpLowering( loweringContext& lState_, MLIRContext* ctx )
-            : ConversionPattern( memref::AllocaOp::getOperationName(), 1, ctx ), lState{ lState_ }
-        {
-        }
-
-        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
-                                       ConversionPatternRewriter& rewriter ) const override
-        {
-            auto allocaOp = cast<memref::AllocaOp>( op );
-            auto loc = allocaOp.getLoc();
-
-            LLVM_DEBUG( llvm::dbgs() << "Lowering memref.alloca: " << *op << '\n' );
-
-            // Allocate memory for the memref type (f64)
-            auto memRefType = mlir::cast<MemRefType>( allocaOp.getType() );
-            auto elemType = memRefType.getElementType();
-            auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
-            auto one = rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( 1 ) );
-
-            auto shape = memRefType.getShape();
-            int64_t numElements = 1;    // Default for scalar MemRef
-            if ( !shape.empty() )
-            {
-                llvm_unreachable( "Currently only expect scalar types." );
-
-                numElements = std::accumulate( shape.begin(), shape.end(), int64_t{ 1 }, std::multiplies<int64_t>() );
-            }
-
-            unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();    // Example: For i16, this
-                                                                           // is 16 bits
-            unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
-
-            // Compute total size in bytes
-            int64_t totalSizeInBytes = numElements * elemSizeInBytes;
-
-            auto newAllocaOp = rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, one, totalSizeInBytes );
-
-            rewriter.replaceOp( op, newAllocaOp.getResult() );
-            return success();
         }
     };
 
@@ -615,33 +581,6 @@ namespace
         }
     };
 
-    // Lower memref.load to llvm.load.
-    class MemRefLoadOpLowering : public ConversionPattern
-    {
-       private:
-        loweringContext& lState;
-
-       public:
-        MemRefLoadOpLowering( loweringContext& lState_, MLIRContext* ctx )
-            : ConversionPattern( memref::LoadOp::getOperationName(), 1, ctx ), lState{ lState_ }
-        {
-        }
-
-        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
-                                       ConversionPatternRewriter& rewriter ) const override
-        {
-            auto loadOp = cast<memref::LoadOp>( op );
-            auto loc = loadOp.getLoc();
-            auto memRefType = mlir::cast<MemRefType>( loadOp.getMemRef().getType() );
-
-            LLVM_DEBUG( llvm::dbgs() << "Lowering memref.load: " << *op << '\n' );
-
-            auto newLoadOp = rewriter.create<LLVM::LoadOp>( loc, memRefType.getElementType(), operands[0] );
-            rewriter.replaceOp( op, newLoadOp.getResult() );
-            return success();
-        }
-    };
-
     class ToyToLLVMLoweringPass : public PassWrapper<ToyToLLVMLoweringPass, OperationPass<ModuleOp>>
     {
        public:
@@ -653,7 +592,7 @@ namespace
 
         void getDependentDialects( DialectRegistry& registry ) const override
         {
-            registry.insert<LLVM::LLVMDialect, arith::ArithDialect, memref::MemRefDialect>();
+            registry.insert<LLVM::LLVMDialect, arith::ArithDialect>();
         }
 
         void runOnOperation() override
@@ -733,8 +672,7 @@ namespace
        private:
         toy::driverState* pDriverState;
     };
-}    // namespace
-
+} // namespace toy
 
 namespace mlir
 {
@@ -747,7 +685,7 @@ namespace mlir
     // Parameterized version
     std::unique_ptr<Pass> createToyToLLVMLoweringPass( toy::driverState* pst )
     {
-        return std::make_unique<ToyToLLVMLoweringPass>( pst );
+        return std::make_unique<toy::ToyToLLVMLoweringPass>( pst );
     }
 
     // Custom registration with bool parameter
