@@ -99,13 +99,11 @@ On WSL2/ubuntu, this will result in the installed runtime version not matching t
 wget https://www.antlr.org/download/antlr-4.10-complete.jar
 ```
 
-### anltlr4 setup (Fedora)
+### Installation dependencies (Fedora)
 
 ```
-sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-devel
+sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-devel cmake clang-tools-extra g++ ninja cscope
 ```
-
-Like above, this assumes that the antlr4 runtime is 4.10.
 
 ### Building MLIR
 
