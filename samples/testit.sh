@@ -37,7 +37,7 @@ for i in \
     ./out/${stem}
 
     echo "RC = " $?
-    exit
+    #exit
 done
 
 # ../build/toycalculator empty.toy -g --stdout --no-emit-object --emit-mlir --emit-llvm --debug

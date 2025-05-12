@@ -50,25 +50,12 @@ do that without bothering with AI tools that can be more work to use than just d
 ## TODO
 
 Basic language constructs to make things more interesting:
-* INT->FLOAT assignments not working properly:
 
-    %5 = "memref.load"(%0) : (memref<i1>) -> i1 loc(#loc7)
-    "memref.store"(%5, %4) : (i1, memref<f64>) -> () loc(#loc7)
-    "toy.assign"(%5) <{name = "f"}> : (i1) -> () loc(#loc8)
-
-Need type conversion -- not sure what this is doing, but don't get the right result (bool.toy: print)
-
-
-// unary.toy
-DCL x;
-x = 3;
-x = +x;
-x = -x;
-PRINT x;
-
-This is also broken by the types support WIP.
-
-(print -0 instead of -3)
+New type model:
+* Reimplement exit (exit*.toy), bool.toy (commented out.)  Need a CAST operator?
+* unary.toy: now prints -2 instead of -3.
+* test.toy: doesn't compile anymore.
+* print methods for all the various types.
 
 * Regression Test cases: verifying by eye currently (testit.sh).  Do something better.
 * EXIT: enforce i8 return type in the MLIR layer (i.e.: actual UNIX shell semantics.) -- currently set to i32 return.
