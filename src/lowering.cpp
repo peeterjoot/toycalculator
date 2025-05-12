@@ -50,6 +50,7 @@ namespace toy
        public:
         DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> symbolToAlloca;
         mlir::LLVM::LLVMFuncOp mainFunc;
+        mlir::LLVM::LLVMFuncOp printFunc;
 
         mlir::LLVM::ConstantOp getI64one( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
@@ -298,19 +299,23 @@ namespace toy
             }
             else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
             {
-                if ( mlir::isa<mlir::Float64Type>( elemType ) )
+                auto vwidth = viType.getWidth();
+
+                if ( mlir::isa<mlir::Float64Type>( elemType ) || mlir::isa<mlir::Float32Type>( elemType ) )
                 {
-                    value = rewriter.create<LLVM::SIToFPOp>( loc, elemType, value );
-                }
-                else if ( mlir::isa<mlir::Float32Type>( elemType ) )
-                {
-                    value = rewriter.create<LLVM::SIToFPOp>( loc, elemType, value );
+                    if ( vwidth == 1 )
+                    {
+                        value = rewriter.create<LLVM::UIToFPOp>( loc, elemType, value );
+                    }
+                    else
+                    {
+                        value = rewriter.create<LLVM::SIToFPOp>( loc, elemType, value );
+                    }
                 }
                 else
                 {
                     auto miType = mlir::cast<mlir::IntegerType>( elemType );
 
-                    auto vwidth = viType.getWidth();
                     auto mwidth = miType.getWidth();
                     if ( vwidth > mwidth )
                     {
@@ -494,35 +499,12 @@ namespace toy
         {
             auto printOp = cast<toy::PrintOp>( op );
             auto loc = printOp.getLoc();
-            auto memref = operands[0];
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.print: " << *op << '\n' );
 
-            // Handle both memref<f64> and !llvm.ptr
-            Type memrefType = memref.getType();
-            if ( !mlir::isa<MemRefType>( memrefType ) && !mlir::isa<LLVM::LLVMPointerType>( memrefType ) )
-            {
-                LLVM_DEBUG( llvm::dbgs() << "Invalid memref type: " << memrefType << '\n' );
-                return failure();
-            }
+            auto input = printOp.getInput();
 
-            // Load the value
-            Value loadValue;
-            if ( mlir::isa<LLVM::LLVMPointerType>( memrefType ) )
-            {
-                loadValue = rewriter.create<LLVM::LoadOp>( loc, rewriter.getF64Type(), memref );
-            }
-            else
-            {
-                loadValue = rewriter.create<memref::LoadOp>( loc, memref, ValueRange{} );
-            }
-
-            // Ensure print function exists
-            auto module = op->getParentOfType<ModuleOp>();
-            auto printFunc = module.lookupSymbol<LLVM::LLVMFuncOp>( "__toy_print" );
-
-            // Call the print function
-            rewriter.create<LLVM::CallOp>( loc, printFunc, ValueRange{ loadValue } );
+            rewriter.create<LLVM::CallOp>( loc, lState.printFunc, ValueRange{ input } );
 
             // Erase the print op
             rewriter.eraseOp( op );
@@ -551,14 +533,7 @@ namespace toy
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.negate: " << *op << '\n' );
 
-            // Convert i64 to f64 if necessary
             Value result = operand;
-#if 0    // dead code now.
-            if ( operand.getType().isInteger( 64 ) )
-            {
-                result = rewriter.create<LLVM::SIToFPOp>( loc, rewriter.getF64Type(), operand );
-            }
-#endif
 
             auto zero = lState.getF64zero( loc, rewriter );
             result = rewriter.create<LLVM::FSubOp>( loc, zero, result );
@@ -593,19 +568,6 @@ namespace toy
 
             Value lhs = operands[0];
             Value rhs = operands[1];
-#if 0    // dead code now.
-         // Convert operands to f64 if necessary
-            if ( lhs.getType().isInteger( 64 ) )
-            {
-                lhs = rewriter.create<LLVM::SIToFPOp>( loc, rewriter.getF64Type(), lhs );
-            }
-#endif
-#if 0    // dead code now.
-            if ( rhs.getType().isInteger( 64 ) )
-            {
-                rhs = rewriter.create<LLVM::SIToFPOp>( loc, rewriter.getF64Type(), rhs );
-            }
-#endif
             if ( resultType.isIntOrIndex() )
             {
                 auto result = rewriter.create<llvmIOpType>( loc, lhs, rhs );
@@ -700,7 +662,7 @@ namespace toy
             builder.setInsertionPointToStart( module.getBody() );
             auto printFuncType =
                 LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { builder.getF64Type() }, false );
-            builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print", printFuncType, LLVM::Linkage::External );
+            lState.printFunc = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print", printFuncType, LLVM::Linkage::External );
 
             // Create main function
             auto mainFuncType = LLVM::LLVMFunctionType::get( builder.getI32Type(), {}, false );

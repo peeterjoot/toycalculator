@@ -13,12 +13,12 @@ run ../samples/bool.toy --stdout --emit-mlir --no-emit-object --debug
 #b ToyParser.cpp:167
 
 #b buildUnaryExpression
-b toy::DeclareOpLowering::matchAndRewrite
-b toy::ProgramOpLowering::matchAndRewrite
-#b lowering.cpp:301
-b toy::AssignOpLowering::matchAndRewrite
-b toy::LoadOpLowering::matchAndRewrite
-b toy::ProgramOpLowering::matchAndRewrite
+#b toy::DeclareOpLowering::matchAndRewrite
+#b toy::ProgramOpLowering::matchAndRewrite
+#b toy::AssignOpLowering::matchAndRewrite
+#b toy::LoadOpLowering::matchAndRewrite
+#b toy::ProgramOpLowering::matchAndRewrite
+b toy::PrintOpLowering::matchAndRewrite
 #b toy::ExitOpLowering::matchAndRewrite
 
 #b ToyToLLVMLowering.cpp:455

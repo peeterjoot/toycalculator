@@ -87,9 +87,11 @@ def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
 
 def Toy_PrintOp : Op<Toy_Dialect, "print"> {
   let summary = "Print a variable";
-  let arguments = (ins AnyType:$input);
+  let arguments = (ins F64:$input);
   let results = (outs);
   // No traits, as printing has side effects
+
+  let assemblyFormat = "$input `:` type($input) attr-dict";
 }
 
 def Toy_NegOp : Op<Toy_Dialect, "negate"> {

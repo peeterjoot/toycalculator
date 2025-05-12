@@ -4,7 +4,7 @@ BOOL i2v;
 i2v = i1v;
 FLOAT64 f;
 f = i1v;
-//PRINT f;
-//
+PRINT f;
+
 ////EXIT i1v;
 ////EXIT i2v;

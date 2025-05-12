@@ -314,7 +314,6 @@ namespace toy
 
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
     {
-#if 0
         lastOp = lastOperator::printOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
@@ -334,9 +333,13 @@ namespace toy
             return;
         }
 
-        auto memref = var_storage[varName];
-        builder.create<toy::PrintOp>( loc, memref );
-#endif
+        auto dcl = var_storage[varName];
+        auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
+
+        mlir::Type varType = declareOp.getTypeAttr().getValue();
+        auto value = builder.create<toy::LoadOp>( loc, varType, builder.getStringAttr( varName ) );
+
+        builder.create<toy::PrintOp>( loc, value );
     }
 
     void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )
