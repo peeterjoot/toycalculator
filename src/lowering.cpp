@@ -201,7 +201,8 @@ namespace toy
 
             mlir::DataLayout dataLayout( module );
             unsigned alignment = dataLayout.getTypePreferredAlignment( elemType );
-            assert( alignment == totalSizeInBytes ); // only simple fixed size types are currently supported (no arrays, or structures.)
+            assert( alignment == totalSizeInBytes );    // only simple fixed size types are currently supported (no
+                                                        // arrays, or structures.)
 
             auto newAllocaOp = rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, one, alignment );
 
@@ -250,7 +251,7 @@ namespace toy
             LLVM_DEBUG( llvm::dbgs() << "valType: " << valType << '\n' );
             // allocaOp.dump(); // %1 = llvm.alloca %0 x i1 {alignment = 1 : i64} : (i64) -> !llvm.ptr
 
-            //auto memType = allocaOp.getType(); // llvm.ptr
+            // auto memType = allocaOp.getType(); // llvm.ptr
 
             // extract parameters from the allocaOp so we know what to do here:
             Type elemType = allocaOp.getElemType();
@@ -265,11 +266,11 @@ namespace toy
                 }
                 else
                 {
-                    assert( 0 ); // shouldn't happen.
+                    assert( 0 );    // shouldn't happen.
                 }
             }
 
-            //LLVM_DEBUG( llvm::dbgs() << "memType: " << memType << '\n' );
+            // LLVM_DEBUG( llvm::dbgs() << "memType: " << memType << '\n' );
             LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
             // LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
 
@@ -361,10 +362,10 @@ namespace toy
             Type elemType = allocaOp.getElemType();
             LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
 
-            rewriter.create<LLVM::LoadOp>( loc, elemType, allocaOp );
+            auto load = rewriter.create<LLVM::LoadOp>( loc, elemType, allocaOp );
+            LLVM_DEBUG( llvm::dbgs() << "new load op: " << load << '\n' );
 
-            // Erase the load op
-            rewriter.eraseOp( op );
+            rewriter.replaceOp( op, load.getResult() );
             return success();
         }
     };
@@ -457,7 +458,7 @@ namespace toy
         }
     };
 
-#if 0 // Now unused.
+#if 0    // Now unused.
     template <class toyOpType>
     class LowerByDeletion : public ConversionPattern
     {

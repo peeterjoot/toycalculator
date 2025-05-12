@@ -13,11 +13,13 @@ run ../samples/bool.toy --stdout --emit-mlir --no-emit-object --debug
 #b ToyParser.cpp:167
 
 #b buildUnaryExpression
-b DeclareOpLowering::matchAndRewrite
-b ProgramOpLowering::matchAndRewrite
+b toy::DeclareOpLowering::matchAndRewrite
+b toy::ProgramOpLowering::matchAndRewrite
 #b lowering.cpp:301
-b AssignOpLowering::matchAndRewrite
-#b ExitOpLowering::matchAndRewrite
+b toy::AssignOpLowering::matchAndRewrite
+b toy::LoadOpLowering::matchAndRewrite
+b toy::ProgramOpLowering::matchAndRewrite
+#b toy::ExitOpLowering::matchAndRewrite
 
 #b ToyToLLVMLowering.cpp:455
 #b enterStartRule
@@ -33,7 +35,6 @@ b AssignOpLowering::matchAndRewrite
 #b enterBinaryexpression
 #b enterReturn
 #b enterReturnstatement
-#b ReturnOpLowering::matchAndRewrite
 #b exitReturnstatement
 b __assert_perror_fail
 #b _ZN3toy12MLIRListener20enterReturnstatementEPN9ToyParser22ReturnstatementContextE

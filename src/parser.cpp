@@ -170,7 +170,6 @@ namespace toy
             auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
 
             mlir::Type varType = declareOp.getTypeAttr().getValue();
-            //value = builder.create<toy::LoadOp>( loc, varType, builder.getStringAttr( varName ), mlir::TypeAttr::get( varType ) );
             value = builder.create<toy::LoadOp>( loc, varType, builder.getStringAttr( varName ) );
 
             ty = getCompilerType( varType );
@@ -263,83 +262,54 @@ namespace toy
 
     void MLIRListener::enterIntDeclare( ToyParser::IntDeclareContext *ctx )
     {
-#if 0    // TODO
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
-        bool error = registerDeclaration( loc, varName );
-        if ( error )
-        {
-            return;
-        }
 
         // Allocate memref<...> for the variable
         if ( ctx->INT8() )
         {
-            auto memrefType = mlir::MemRefType::get( {}, builder.getI8Type() );
-            auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
-            var_storage[varName] = allocaOp.getResult();
+            registerDeclaration( loc, varName, builder.getI8Type() );
         }
         else if ( ctx->INT16() )
         {
-            auto memrefType = mlir::MemRefType::get( {}, builder.getI16Type() );
-            auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
-            var_storage[varName] = allocaOp.getResult();
+            registerDeclaration( loc, varName, builder.getI16Type() );
         }
         else if ( ctx->INT32() )
         {
-            auto memrefType = mlir::MemRefType::get( {}, builder.getI32Type() );
-            auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
-            var_storage[varName] = allocaOp.getResult();
+            registerDeclaration( loc, varName, builder.getI32Type() );
         }
         else if ( ctx->INT64() )
         {
-            auto memrefType = mlir::MemRefType::get( {}, builder.getI64Type() );
-            auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
-            var_storage[varName] = allocaOp.getResult();
+            registerDeclaration( loc, varName, builder.getI64Type() );
         }
         else
         {
             throw exception_with_context( __FILE__, __LINE__, __func__,
                                           "Internal error: Unsupported signed integer declaration size.\n" );
         }
-
-        builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ) );
-#endif
     }
 
     void MLIRListener::enterFloatDeclare( ToyParser::FloatDeclareContext *ctx )
     {
-#if 0    // TODO
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME()->getText();
-        bool error = registerDeclaration( loc, varName );
-        if ( error )
-        {
-            return;
-        }
 
         // Allocate memref<...> for the variable
         if ( ctx->FLOAT32() )
         {
-            auto memrefType = mlir::MemRefType::get( {}, builder.getF32Type() );
-            auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
-            var_storage[varName] = allocaOp.getResult();
+            registerDeclaration( loc, varName, builder.getF32Type() );
         }
         else if ( ctx->FLOAT64() )
         {
-            auto memrefType = mlir::MemRefType::get( {}, builder.getF64Type() );
-            auto allocaOp = builder.create<mlir::memref::AllocaOp>( loc, memrefType );
-            var_storage[varName] = allocaOp.getResult();
+            registerDeclaration( loc, varName, builder.getF64Type() );
         }
         else
         {
             throw exception_with_context( __FILE__, __LINE__, __func__,
                                           "Internal error: Unsupported floating point declaration size.\n" );
         }
-        builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ) );
-#endif
     }
 
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
