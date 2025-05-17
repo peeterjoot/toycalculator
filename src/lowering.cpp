@@ -81,7 +81,7 @@ namespace toy
             if ( !c_zero_F64 )
             {
                 zero_F64 =
-                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getF64Type(), rewriter.getF64FloatAttr( 1 ) );
+                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getF64Type(), rewriter.getF64FloatAttr( 0 ) );
                 c_zero_F64 = true;
             }
 
@@ -252,11 +252,8 @@ namespace toy
             LLVM_DEBUG( llvm::dbgs() << "valType: " << valType << '\n' );
             // allocaOp.dump(); // %1 = llvm.alloca %0 x i1 {alignment = 1 : i64} : (i64) -> !llvm.ptr
 
-            // auto memType = allocaOp.getType(); // llvm.ptr
-
             // extract parameters from the allocaOp so we know what to do here:
             Type elemType = allocaOp.getElemType();
-            // Value alignment = allocaOp.getAlignment();
             if ( auto constOp = allocaOp.getArraySize().getDefiningOp<LLVM::ConstantOp>() )
             {
                 if ( auto intAttr = mlir::dyn_cast<IntegerAttr>( constOp.getValue() ) )
@@ -394,14 +391,12 @@ namespace toy
 
             mlir::Location loc = op->getLoc();
 
-            assert( op->getNumOperands() == 0 );
             if ( op->getNumOperands() == 0 )
             {
                 // RETURN; or default -> return 0
                 auto zero = lState.getI32zero( loc, rewriter );
                 rewriter.create<LLVM::ReturnOp>( loc, zero );
             }
-#if 0
             else if ( op->getNumOperands() == 1 )
             {
                 toy::ExitOp returnOp = cast<toy::ExitOp>( op );
@@ -414,21 +409,7 @@ namespace toy
                     operand.dump();
                 } );
 
-                // Handle memref<f64> if needed (e.g., load the value)
-                if ( mlir::isa<mlir::MemRefType>( operand.getType() ) )
-                {
-                    auto memrefType = mlir::cast<mlir::MemRefType>( operand.getType() );
-
-                    if ( !mlir::isa<mlir::Float64Type>( memrefType.getElementType() ) )
-                    {
-                        returnOp->emitError( "Expected memref<f64> for return operand" );
-                        return failure();
-                    }
-
-                    operand = rewriter.create<mlir::LLVM::LoadOp>( loc, rewriter.getF64Type(), operand );
-                }
-
-                if ( mlir::isa<mlir::Float64Type>( operand.getType() ) )
+                if ( mlir::isa<mlir::Float32Type>( operand.getType() ) || mlir::isa<mlir::Float64Type>( operand.getType() ) )
                 {
                     operand = rewriter.create<LLVM::FPToSIOp>( loc, rewriter.getI32Type(), operand );
                 }
@@ -439,7 +420,7 @@ namespace toy
                 {
                     operand = rewriter.create<mlir::LLVM::TruncOp>( loc, rewriter.getI32Type(), operand );
                 }
-                else
+                else if ( width != 32 )
                 {
                     // SExtOp for sign extend.
                     operand = rewriter.create<mlir::LLVM::ZExtOp>( loc, rewriter.getI32Type(), operand );
@@ -456,7 +437,6 @@ namespace toy
             {
                 llvm_unreachable( "toy.return expects 0 or 1 operands" );
             }
-#endif
 
             rewriter.eraseOp( op );
             return success();

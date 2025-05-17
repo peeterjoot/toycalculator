@@ -1,5 +1,7 @@
 DCL x;
 x = 3;
+PRINT x;
 x = +x;
+PRINT x;
 x = -x;
 PRINT x;

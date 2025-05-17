@@ -5,6 +5,4 @@ i2v = i1v;
 FLOAT64 f;
 f = i1v;
 PRINT f;
-
-////EXIT i1v;
-////EXIT i2v;
+EXIT i1v;

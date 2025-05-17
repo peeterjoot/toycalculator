@@ -52,11 +52,11 @@ do that without bothering with AI tools that can be more work to use than just d
 Basic language constructs to make things more interesting:
 
 New type model:
-* Reimplement exit (exit*.toy), bool.toy (commented out.)  Need a CAST operator?
-* unary.toy: now prints -2 instead of -3.
 * test.toy: doesn't compile anymore.
 * print methods for all the various types.
+* tests for all the type conversions.
 
+* unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.
 * Regression Test cases: verifying by eye currently (testit.sh).  Do something better.
 * EXIT: enforce i8 return type in the MLIR layer (i.e.: actual UNIX shell semantics.) -- currently set to i32 return.
 * Implement IF/WHILE/DO/BREAK/CONTINUE statements.
