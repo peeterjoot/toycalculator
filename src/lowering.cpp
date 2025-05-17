@@ -708,7 +708,7 @@ namespace toy
             builder.setInsertionPointToStart( module.getBody() );
             auto printFuncType =
                 LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { builder.getF64Type() }, false );
-            lState.printFunc = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print", printFuncType,
+            lState.printFunc = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_f64", printFuncType,
                                                                  LLVM::Linkage::External );
 
             // Create main function
