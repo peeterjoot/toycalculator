@@ -52,9 +52,9 @@ do that without bothering with AI tools that can be more work to use than just d
 Basic language constructs to make things more interesting:
 
 New type model:
-* test.toy: doesn't compile anymore.
 * print methods for all the various types.
 * tests for all the type conversions.
+* addi.toy: doesn't work as intended (x is float64, not int32)
 
 * unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.
 * Regression Test cases: verifying by eye currently (testit.sh).  Do something better.

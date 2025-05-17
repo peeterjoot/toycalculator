@@ -19,7 +19,8 @@ run ../samples/test.toy --stdout --emit-mlir --no-emit-object --debug
 #b toy::LoadOpLowering::matchAndRewrite
 #b toy::ProgramOpLowering::matchAndRewrite
 #b toy::PrintOpLowering::matchAndRewrite
-b lowering.cpp:398
+#b lowering.cpp:398
+b lowering.cpp:576
 #b toy::ExitOpLowering::matchAndRewrite
 
 #b ToyToLLVMLowering.cpp:455

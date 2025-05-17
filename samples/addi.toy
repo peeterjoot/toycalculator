@@ -1,0 +1,5 @@
+INT32 x;
+x = 5 + 3.14E0;
+FLOAT64 f;
+f = x;
+PRINT f;

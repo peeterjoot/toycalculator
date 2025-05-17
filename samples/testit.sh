@@ -6,6 +6,7 @@ rm -rf out
 
 #test.toy # need binaryop lowering first.
 for i in \
+    addi.toy \
     test.toy \
     unary.toy \
     bool.toy \

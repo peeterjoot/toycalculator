@@ -409,7 +409,8 @@ namespace toy
                     operand.dump();
                 } );
 
-                if ( mlir::isa<mlir::Float32Type>( operand.getType() ) || mlir::isa<mlir::Float64Type>( operand.getType() ) )
+                if ( mlir::isa<mlir::Float32Type>( operand.getType() ) ||
+                     mlir::isa<mlir::Float64Type>( operand.getType() ) )
                 {
                     operand = rewriter.create<LLVM::FPToSIOp>( loc, rewriter.getI32Type(), operand );
                 }
@@ -550,11 +551,42 @@ namespace toy
             Value rhs = operands[1];
             if ( resultType.isIntOrIndex() )
             {
+                // Anything else: TODO:
+                assert( lhs.getType().cast<IntegerType>() );
+                assert( rhs.getType().cast<IntegerType>() );
+
                 auto result = rewriter.create<llvmIOpType>( loc, lhs, rhs );
                 rewriter.replaceOp( op, result );
             }
             else
             {
+                // Floating-point addition: ensure both operands are f64.
+                if ( auto lhsi = lhs.getType().dyn_cast<IntegerType>() )
+                {
+                    auto width = lhsi.getWidth();
+
+                    if ( width == 1 )
+                    {
+                        lhs = rewriter.create<LLVM::UIToFPOp>( loc, resultType, lhs );
+                    }
+                    else
+                    {
+                        lhs = rewriter.create<LLVM::SIToFPOp>( loc, resultType, lhs );
+                    }
+                }
+                if ( auto rhsi = rhs.getType().dyn_cast<IntegerType>() )
+                {
+                    auto width = rhsi.getWidth();
+
+                    if ( width == 1 )
+                    {
+                        rhs = rewriter.create<LLVM::UIToFPOp>( loc, resultType, rhs );
+                    }
+                    else
+                    {
+                        rhs = rewriter.create<LLVM::SIToFPOp>( loc, resultType, rhs );
+                    }
+                }
                 auto result = rewriter.create<llvmFOpType>( loc, lhs, rhs );
                 rewriter.replaceOp( op, result );
             }
@@ -642,7 +674,8 @@ namespace toy
             builder.setInsertionPointToStart( module.getBody() );
             auto printFuncType =
                 LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { builder.getF64Type() }, false );
-            lState.printFunc = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print", printFuncType, LLVM::Linkage::External );
+            lState.printFunc = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print", printFuncType,
+                                                                 LLVM::Linkage::External );
 
             // Create main function
             auto mainFuncType = LLVM::LLVMFunctionType::get( builder.getI32Type(), {}, false );
