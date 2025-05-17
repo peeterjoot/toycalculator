@@ -1,45 +1,143 @@
-#! /usr/bin/bash
+#!/usr/bin/perl
 
-flags='-O 2'
+#-----------------------------------------------------------------------------
+# POD Format Documentation.  Read "perldoc perlpod" for an example.
+# When done, check syntax with "podchecker".
 
-rm -rf out
+=head1 NAME
 
-#test.toy # need binaryop lowering first.
-for i in \
-    addi.toy \
-    types.toy \
-    test.toy \
-    unary.toy \
-    bool.toy \
-    exit3.toy \
-    exitx.toy \
-    empty.toy \
-    simplest.toy \
-    dcl.toy \
-    foo.toy \
-    bin.toy \
-; do
+testit.sh - <one-line-description>
 
-    stem=${i%.*}
-    echo "##########################################################################"
-    echo "// $i"
-    cat $i
-    echo "##########################################################################"
-    echo "../build/toycalculator --output-directory out -g $i $flags --emit-llvm --emit-mlir"
-    ../build/toycalculator --output-directory out -g $i $flags --emit-llvm --emit-mlir
+=head1 SYNOPSIS
 
-    echo objdump -dr out/${stem}.o
-    objdump -dr out/${stem}.o
+testit.sh [--help] [<options>]
 
-    echo clang -g -o out/${stem} out/${stem}.o -L ../build -l toy_runtime -Wl,-rpath,`pwd`/../build
-    clang -g -o out/${stem} out/${stem}.o -L ../build -l toy_runtime -Wl,-rpath,`pwd`/../build
+=head1 DESCRIPTION
 
-    echo ./out/${stem}
-    ./out/${stem}
 
-    echo "RC = " $?
-done
+Options:
 
-# ../build/toycalculator empty.toy -g --stdout --no-emit-object --emit-mlir --emit-llvm --debug
+=over 4
+
+=item --foo=bar
+
+Blah.
+
+=back
+
+=head1 SUPPORTED PLATFORMS
+
+ Unix (Linux verified)
+
+=head1 SUPPORT
+
+ Send email to peeterjoot@pm.me
+
+=head1 AUTHORS
+
+ Peeter Joot
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+use strict ;
+use warnings ;
+use Getopt::Long ;
+use Pod::Usage ;
+
+# Suppress sourcing of users' .bashrc files in invoked shells
+delete $ENV{'ENV'} ;
+delete $ENV{'BASH_ENV'} ;
+
+# Set STDOUT and STDERR to unbuffered
+select STDERR ; $| = 1 ;
+select STDOUT ; $| = 1 ;
+
+my $myName = '' ;
+
+($myName = $0) =~ s@.*[/\\]@@ ;
+
+#Getopt::Long::Configure( 'pass_through' ) ;
+GetOptions (
+   'help'               => sub { pod2usage(-verbose => 2) ; },
+) or pod2usage(-verbose => 0) ;
+
+# Validate/handle options, and everything else...
+
+my $flags = '-O 2';
+
+system( qq(rm -rf out) );
+
+my @tests = (qw(
+addi
+types
+test
+unary
+bool
+exit3
+exitx
+empty
+simplest
+dcl
+foo
+bin
+));
+
+my %expectedRC = (
+   'addi' => 0,
+   'types' => 0,
+   'test' => 0,
+   'unary' => 0,
+   'bool' => 1,
+   'exit3' => 3,
+   'exitx' => 3,
+   'empty' => 0,
+   'simplest' => 0,
+   'dcl' => 0,
+   'foo' => 0,
+   'bin' => 0,
+);
+
+my $pwd = `pwd` ; chomp $pwd;
+foreach my $stem (@tests)
+{
+    print "##########################################################################\n";
+    print "// $stem.toy\n";
+    system( qq(cat $stem.toy) );
+
+    print "##########################################################################\n";
+    print "../build/toycalculator --output-directory out -g $stem.toy $flags --emit-llvm --emit-mlir\n";
+    system( qq(../build/toycalculator --output-directory out -g $stem.toy $flags --emit-llvm --emit-mlir) );
+
+    print "objdump -dr out/${stem}.o\n";
+    system( qq(objdump -dr out/${stem}.o) );
+
+    print "clang -g -o out/${stem} out/${stem}.o -L ../build -l toy_runtime -Wl,-rpath,${pwd}/../build\n";
+    system( qq(clang -g -o out/${stem} out/${stem}.o -L ../build -l toy_runtime -Wl,-rpath,${pwd}/../build) );
+
+    print "./out/${stem}\n";
+    system( qq(./out/${stem} > out/${stem}.out) );
+    my $rc = $? >> 8;
+    system( qq(cat out/${stem}.out) );
+
+    print "${stem}: RC = $rc\n\n\n\n\n";
+
+    if ( defined $expectedRC{$stem} )
+    {
+        die "$stem: $rc != $expectedRC{$stem}" if ( $rc ne $expectedRC{$stem} );
+    }
+
+    if ( -e "expected/$stem.out" )
+    {
+        system( qq(cmp -s expected/${stem}.out out/${stem}.out) );
+        my $crc = $? >> 8;
+        die "cmp -s expected/${stem}.out out/${stem}.out: $crc\n" if ( $crc );
+    }
+    else
+    {
+        warn "COMPARE FILE NOT FOUND: expected/$stem.out\n";
+    }
+}
 
 # vim: et ts=4 sw=4

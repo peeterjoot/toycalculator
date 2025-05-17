@@ -56,7 +56,6 @@ New type model:
 * tests for all the type conversions.
 * addi.toy: doesn't work as intended (x is float64, not int32)
 
-* Regression test cases: verifying by eye currently (testit.sh).  Do something better (save the expected results, and compare to those.)
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 * unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.
 * EXIT: enforce i8 return type in the MLIR layer (i.e.: actual UNIX shell semantics.) -- currently set to i32 return.
