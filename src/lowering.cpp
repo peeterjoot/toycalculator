@@ -551,9 +551,43 @@ namespace toy
             Value rhs = operands[1];
             if ( resultType.isIntOrIndex() )
             {
-                // Anything else: TODO:
-                assert( lhs.getType().cast<IntegerType>() );
-                assert( rhs.getType().cast<IntegerType>() );
+                auto rwidth = resultType.getIntOrFloatBitWidth();
+
+                if ( auto lhsi = lhs.getType().dyn_cast<IntegerType>() )
+                {
+                    auto width = lhsi.getWidth();
+
+                    if ( rwidth > width )
+                    {
+                        lhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, resultType, lhs );
+                    }
+                    else if ( rwidth < width )
+                    {
+                        lhs = rewriter.create<mlir::LLVM::TruncOp>( loc, resultType, lhs );
+                    }
+                }
+                else if ( lhs.getType().isF32() || lhs.getType().isF64() )
+                {
+                    lhs = rewriter.create<LLVM::FPToSIOp>( loc, resultType, lhs );
+                }
+
+                if ( auto rhsi = rhs.getType().dyn_cast<IntegerType>() )
+                {
+                    auto width = rhsi.getWidth();
+
+                    if ( rwidth > width )
+                    {
+                        rhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, resultType, rhs );
+                    }
+                    else if ( rwidth < width )
+                    {
+                        rhs = rewriter.create<mlir::LLVM::TruncOp>( loc, resultType, rhs );
+                    }
+                }
+                else if ( rhs.getType().isF32() || rhs.getType().isF64() )
+                {
+                    rhs = rewriter.create<LLVM::FPToSIOp>( loc, resultType, rhs );
+                }
 
                 auto result = rewriter.create<llvmIOpType>( loc, lhs, rhs );
                 rewriter.replaceOp( op, result );

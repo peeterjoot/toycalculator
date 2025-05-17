@@ -401,7 +401,11 @@ namespace toy
         auto loc = getLocation( ctx );
         bool error;
         mlir::Value resultValue;
-        mlir::Type opType;
+
+        auto dcl = var_storage[ currentVarName ];
+        auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
+        mlir::TypeAttr typeAttr = declareOp.getTypeAttr();
+        mlir::Type opType = typeAttr.getValue();
 
         mlir::Value lhsValue;
         theTypes lty;
@@ -422,8 +426,6 @@ namespace toy
             }
 
             resultValue = lhsValue;
-            opType = lhsValue.getType();
-
             if ( auto unaryOp = ctx->unaryOperator() )
             {
                 auto op = unaryOp->getText();
@@ -460,18 +462,6 @@ namespace toy
             if ( error )
             {
                 return;
-            }
-
-            // Given pairs INT8, INT16 (say), pick the largest sized type as the target type for the operation.
-            // This simple promotion scheme promotes INT64 -> FLOAT32 (given such a pair), which is perhaps
-            // inappropriate, but this can be refined later.
-            if ( (int)lty >= (int)rty )
-            {
-                opType = lhsValue.getType();
-            }
-            else
-            {
-                opType = rhsValue.getType();
             }
 
             // Create the binary operator (supports +, -, *, /)

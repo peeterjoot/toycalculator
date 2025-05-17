@@ -7,12 +7,12 @@ rm -rf out
 #test.toy # need binaryop lowering first.
 for i in \
     addi.toy \
+    types.toy \
     test.toy \
     unary.toy \
     bool.toy \
     exit3.toy \
     exitx.toy \
-    types.toy \
     empty.toy \
     simplest.toy \
     dcl.toy \
@@ -38,7 +38,6 @@ for i in \
     ./out/${stem}
 
     echo "RC = " $?
-    exit
 done
 
 # ../build/toycalculator empty.toy -g --stdout --no-emit-object --emit-mlir --emit-llvm --debug

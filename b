@@ -3,7 +3,7 @@
 b main
 #run -g --stdout ../samples/bin.toy --no-emit-object  --debug
 #run -g --stdout ../samples/types.toy --no-emit-object  --debug --emit-mlir
-run ../samples/test.toy --stdout --emit-mlir --no-emit-object --debug
+run ../samples/addi.toy --stdout --emit-mlir --no-emit-object --debug
 #run -g --stdout ../samples/unary.toy --no-emit-object  --debug --emit-mlir
 #run -g --stdout ../samples/return3.toy  --debug --emit-mlir --no-emit-object
 #run -g --stdout ../samples/returnx.toy  --debug --emit-mlir --no-emit-object
@@ -20,8 +20,9 @@ run ../samples/test.toy --stdout --emit-mlir --no-emit-object --debug
 #b toy::ProgramOpLowering::matchAndRewrite
 #b toy::PrintOpLowering::matchAndRewrite
 #b lowering.cpp:398
-b lowering.cpp:576
+#b lowering.cpp:576
 #b toy::ExitOpLowering::matchAndRewrite
+b MLIRListener::enterAssignmentExpression
 
 #b ToyToLLVMLowering.cpp:455
 #b enterStartRule
