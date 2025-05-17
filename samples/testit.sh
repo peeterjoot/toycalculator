@@ -10,18 +10,17 @@ testit.sh - <one-line-description>
 
 =head1 SYNOPSIS
 
-testit.sh [--help] [<options>]
+testit.sh [--help] --no-fatal
 
 =head1 DESCRIPTION
-
 
 Options:
 
 =over 4
 
-=item --foo=bar
+=item --no-fatal
 
-Blah.
+Warn, insted of die, on error.
 
 =back
 
@@ -57,10 +56,12 @@ select STDOUT ; $| = 1 ;
 my $myName = '' ;
 
 ($myName = $0) =~ s@.*[/\\]@@ ;
+my $fatal = 1;
 
 #Getopt::Long::Configure( 'pass_through' ) ;
 GetOptions (
    'help'               => sub { pod2usage(-verbose => 2) ; },
+   'fatal!'             => \$fatal,
 ) or pod2usage(-verbose => 0) ;
 
 # Validate/handle options, and everything else...
@@ -90,6 +91,8 @@ my %expectedRC = (
    'exit3' => 3,
    'exitx' => 3,
 );
+
+my @warnings = ();
 
 my $pwd = `pwd` ; chomp $pwd;
 foreach my $stem (@tests)
@@ -121,17 +124,43 @@ foreach my $stem (@tests)
         $erc = 0;
     }
 
-    die "$stem: $rc != $erc" if ( $rc ne $erc );
+    complain( "stem: $rc != $erc" ) if ( $rc ne $erc );
 
     if ( -e "expected/$stem.out" )
     {
         system( qq(cmp -s expected/${stem}.out out/${stem}.out) );
         my $crc = $? >> 8;
-        die "cmp -s expected/${stem}.out out/${stem}.out: $crc\n" if ( $crc );
+        complain( "cmp -s expected/${stem}.out out/${stem}.out: $crc\n") if ( $crc );
     }
     else
     {
         warn "COMPARE FILE NOT FOUND: expected/$stem.out\n";
+    }
+}
+
+if ( scalar( @warnings ) )
+{
+    print "ERRORS:\n\n";
+}
+
+foreach ( @warnings )
+{
+    warn $_;
+}
+
+exit 0;
+
+sub complain
+{
+    my ($message) = @_;
+
+    if ( $fatal )
+    {
+        die $message;
+    }
+    else
+    {
+        push( @warnings, $message );
     }
 }
 

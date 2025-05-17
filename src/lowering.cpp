@@ -50,7 +50,8 @@ namespace toy
        public:
         DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> symbolToAlloca;
         mlir::LLVM::LLVMFuncOp mainFunc;
-        mlir::LLVM::LLVMFuncOp printFunc;
+        mlir::LLVM::LLVMFuncOp printFuncF64;
+        mlir::LLVM::LLVMFuncOp printFuncI64;
 
         mlir::LLVM::ConstantOp getI64one( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
@@ -484,11 +485,38 @@ namespace toy
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.print: " << *op << '\n' );
 
             auto input = printOp.getInput();
+            auto inputType = input.getType();
+            mlir::LLVM::CallOp result;
 
-            rewriter.create<LLVM::CallOp>( loc, lState.printFunc, ValueRange{ input } );
+            if ( auto inputi = mlir::dyn_cast<IntegerType>( inputType ) )
+            {
+                auto width = inputi.getWidth();
 
-            // Erase the print op
-            rewriter.eraseOp( op );
+                if ( width == 1 )
+                {
+                    input = rewriter.create<mlir::LLVM::ZExtOp>( loc, rewriter.getI64Type(), input );
+                }
+                else if ( width < 64 )
+                {
+                    input = rewriter.create<mlir::LLVM::SExtOp>( loc, rewriter.getI64Type(), input );
+                }
+
+                result = rewriter.create<LLVM::CallOp>( loc, lState.printFuncI64, ValueRange{ input } );
+            }
+            else
+            {
+                if ( inputType.isF32() )
+                {
+                    input = rewriter.create<LLVM::FPExtOp>( loc, rewriter.getF64Type(), input );
+                }
+                else
+                {
+                    assert( inputType.isF64() );
+                }
+                result = rewriter.create<LLVM::CallOp>( loc, lState.printFuncF64, ValueRange{ input } );
+            }
+
+            rewriter.replaceOp( op, result );
             return success();
         }
     };
@@ -514,7 +542,7 @@ namespace toy
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.negate: " << *op << '\n' );
 
-            Value result = operand;
+            mlir::Value result = operand;
 
             auto zero = lState.getF64zero( loc, rewriter );
             result = rewriter.create<LLVM::FSubOp>( loc, zero, result );
@@ -706,9 +734,13 @@ namespace toy
 
             // Add __toy_print declaration
             builder.setInsertionPointToStart( module.getBody() );
-            auto printFuncType =
+            auto printFuncF64Type =
                 LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { builder.getF64Type() }, false );
-            lState.printFunc = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_f64", printFuncType,
+            auto printFuncI64Type =
+                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { builder.getI64Type() }, false );
+            lState.printFuncF64 = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_f64", printFuncF64Type,
+                                                                 LLVM::Linkage::External );
+            lState.printFuncI64 = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_i64", printFuncI64Type,
                                                                  LLVM::Linkage::External );
 
             // Create main function

@@ -14,14 +14,16 @@ extern "C"
         printf( "%f\n", value );
     }
 
-    void __toy_print_f32( float value )
-    {
-        printf( "%f\n", value );
-    }
 
     void __toy_print_i64( int64_t value )
     {
         printf( "%" PRId64 "\n", value );
+    }
+
+#if 0
+    void __toy_print_f32( float value )
+    {
+        printf( "%f\n", value );
     }
 
     void __toy_print_i32( int32_t value )
@@ -38,4 +40,5 @@ extern "C"
     {
         printf( "%d\n", (int)value );
     }
+#endif
 }

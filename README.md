@@ -51,22 +51,19 @@ do that without bothering with AI tools that can be more work to use than just d
 
 Basic language constructs to make things more interesting:
 
-New type model:
-* print methods for all the various types.
 * tests for all the type conversions.
-* addi.toy: doesn't work as intended (x is float64, not int32)
-
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 * unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.
 * EXIT: enforce i8 return type in the MLIR layer (i.e.: actual UNIX shell semantics.) -- currently set to i32 return.
+* Boolean operators.
 * Implement IF/WHILE/DO/BREAK/CONTINUE statements.
-* Function calls (to more than the single PRINT runtime function.)
 * More complicated expressions.
 * CAST operators.
 * Allow EXIT at more than the end of program (currently enforced in the grammar.)
+* Don't have any traits defined for my MLIR operations (initially caused compile errors, and I just commented-out or omitted after that.)
 
 Trickier, but fun stuff:
-* LLVM IR lowering has lost the !dbg (i.e.: dwarf instrumentation) elements.
+* LLVM IR lowering doesn't produce DWARF instrumentation matching the location info?
 * Implement a JIT so that the "language" has the capability of a static compilation mode, as well as interpretted.
 
 ## Building

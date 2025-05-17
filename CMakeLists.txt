@@ -109,6 +109,7 @@ add_public_tablegen_target(ToyPassesIncGen
 # Add runtime library as a shared object
 add_library(toy_runtime SHARED runtime/Toy_runtime.cpp)
 set_target_properties(toy_runtime PROPERTIES OUTPUT_NAME "toy_runtime")
+target_link_options(toy_runtime PRIVATE -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/runtime/version_script.map)
 
 add_executable(toycalculator
   src/driver.cpp

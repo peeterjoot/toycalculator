@@ -1,0 +1,6 @@
+TOY_V1.0.0 {
+     global:
+__toy_print_f64;
+__toy_print_i64;
+     local: *;
+   };
