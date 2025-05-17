@@ -171,7 +171,7 @@ sys     0m9.730s
 
 Interesting that the little PI is almost as fast as the WSL2 ubuntu instance.  Not much justification to keep Windows booted as the primary OS.  Wonder how a Linux VM on Windows would fare compared to WSL2?
 
-## OLD Examples:
+## OLD Examples (<= tag: V0):
 
 These are MLIR samples that applied to the pre-symboltable version of the code:
 
@@ -514,4 +514,4 @@ I suspect that I would need to essentially "move" that symbol table to the new p
 
 This has the appearance of working as I see the erase in the trace output, but it seems to get rolled back (as seen in the final dump).  I also tried mutating versions where I deleted the symbol references from the declareop.  I'm sure that's the wrong approach too.
 
-A lot of the exploration related to the attempt to use symbol tables (as well as generalize the supported types) can be found in the branch: types_and_symbol_table.  When I get that all working, assuming I do, I plan to squash those commits and cherry-pick into master.
+The initial exploration related to the attempt to use symbol tables (as well as generalize the supported types) can be found in the branch: `types_and_symbol_table`.  When merged to master (tag: V1), I squashed all those commits, obliterating the symbol table experimentation.

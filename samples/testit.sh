@@ -70,6 +70,7 @@ my $flags = '-O 2';
 system( qq(rm -rf out) );
 
 my @tests = (qw(
+converti
 addi
 types
 test
@@ -85,18 +86,9 @@ bin
 ));
 
 my %expectedRC = (
-   'addi' => 0,
-   'types' => 0,
-   'test' => 0,
-   'unary' => 0,
    'bool' => 1,
    'exit3' => 3,
    'exitx' => 3,
-   'empty' => 0,
-   'simplest' => 0,
-   'dcl' => 0,
-   'foo' => 0,
-   'bin' => 0,
 );
 
 my $pwd = `pwd` ; chomp $pwd;
@@ -123,10 +115,13 @@ foreach my $stem (@tests)
 
     print "${stem}: RC = $rc\n\n\n\n\n";
 
-    if ( defined $expectedRC{$stem} )
+    my $erc = $expectedRC{$stem};
+    if ( !defined $erc )
     {
-        die "$stem: $rc != $expectedRC{$stem}" if ( $rc ne $expectedRC{$stem} );
+        $erc = 0;
     }
+
+    die "$stem: $rc != $erc" if ( $rc ne $erc );
 
     if ( -e "expected/$stem.out" )
     {
