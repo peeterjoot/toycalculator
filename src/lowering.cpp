@@ -553,7 +553,7 @@ namespace toy
             {
                 auto rwidth = resultType.getIntOrFloatBitWidth();
 
-                if ( auto lhsi = lhs.getType().dyn_cast<IntegerType>() )
+                if ( auto lhsi = mlir::dyn_cast<IntegerType>( lhs.getType() ) )
                 {
                     auto width = lhsi.getWidth();
 
@@ -571,7 +571,7 @@ namespace toy
                     lhs = rewriter.create<LLVM::FPToSIOp>( loc, resultType, lhs );
                 }
 
-                if ( auto rhsi = rhs.getType().dyn_cast<IntegerType>() )
+                if ( auto rhsi = mlir::dyn_cast<IntegerType>( rhs.getType() ) )
                 {
                     auto width = rhsi.getWidth();
 
@@ -595,7 +595,7 @@ namespace toy
             else
             {
                 // Floating-point addition: ensure both operands are f64.
-                if ( auto lhsi = lhs.getType().dyn_cast<IntegerType>() )
+                if ( auto lhsi = mlir::dyn_cast<IntegerType>( lhs.getType() ) )
                 {
                     auto width = lhsi.getWidth();
 
@@ -608,7 +608,7 @@ namespace toy
                         lhs = rewriter.create<LLVM::SIToFPOp>( loc, resultType, lhs );
                     }
                 }
-                if ( auto rhsi = rhs.getType().dyn_cast<IntegerType>() )
+                if ( auto rhsi = mlir::dyn_cast<IntegerType>( rhs.getType() ) )
                 {
                     auto width = rhsi.getWidth();
 
