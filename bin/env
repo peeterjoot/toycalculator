@@ -1,1 +1,1 @@
-export PATH=~/toycalculator/bin:$PATH
+export PATH=~/toycalculator/bin:/usr/local/llvm-20.1.3/bin:$PATH

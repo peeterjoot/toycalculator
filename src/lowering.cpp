@@ -33,18 +33,11 @@ using namespace mlir;
 namespace toy
 {
     //
-    // This structure was added initially because my LLVM IR dump was not showing the normal
-    // DI info that gets translated to DWARF.
-    //
-    // I suspect that this is because there's a new way of doing this, described
-    // in:
+    // Perhaps relavant for the DR emission: 
     //    https://llvm.org/docs/RemoveDIsDebugInfo.html
     //
-    // This new way is hidden by default.  Why I don't get DWARF in the end is
-    // probably a different issue?
+    // (This new way is hidden by default?) -- DI emission may not be automatic.
     //
-    // ... but now that I have something that I can pass around between my lowering operator matching classes, it's
-    // useful for other stuff:
     class loweringContext
     {
        public:
@@ -52,6 +45,9 @@ namespace toy
         mlir::LLVM::LLVMFuncOp mainFunc;
         mlir::LLVM::LLVMFuncOp printFuncF64;
         mlir::LLVM::LLVMFuncOp printFuncI64;
+        OpBuilder builder;
+
+        loweringContext( ModuleOp & module ) : builder( module.getRegion() ) {}
 
         mlir::LLVM::ConstantOp getI64one( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
@@ -726,27 +722,26 @@ namespace toy
             } );
 
             // Create DICompileUnit
-            OpBuilder builder( module.getRegion() );
-            loweringContext lState;
+            loweringContext lState( module );
 
             // Set debug metadata
-            auto ctx = builder.getContext();
+            auto ctx = lState.builder.getContext();
 
             // Add __toy_print declaration
-            builder.setInsertionPointToStart( module.getBody() );
+            lState.builder.setInsertionPointToStart( module.getBody() );
             auto printFuncF64Type =
-                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { builder.getF64Type() }, false );
+                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { lState.builder.getF64Type() }, false );
             auto printFuncI64Type =
-                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { builder.getI64Type() }, false );
-            lState.printFuncF64 = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_f64", printFuncF64Type,
+                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { lState.builder.getI64Type() }, false );
+            lState.printFuncF64 = lState.builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_f64", printFuncF64Type,
                                                                  LLVM::Linkage::External );
-            lState.printFuncI64 = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_i64", printFuncI64Type,
+            lState.printFuncI64 = lState.builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_i64", printFuncI64Type,
                                                                  LLVM::Linkage::External );
 
             // Create main function
-            auto mainFuncType = LLVM::LLVMFunctionType::get( builder.getI32Type(), {}, false );
+            auto mainFuncType = LLVM::LLVMFunctionType::get( lState.builder.getI32Type(), {}, false );
             lState.mainFunc =
-                builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "main", mainFuncType, LLVM::Linkage::External );
+                lState.builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "main", mainFuncType, LLVM::Linkage::External );
 
             // Initialize the type converter
             LLVMTypeConverter typeConverter( &getContext() );

@@ -210,8 +210,8 @@ namespace toy
         : filename( _filename ),
           dialect(),
           builder( &dialect.context ),
-          mod( mlir::ModuleOp::create( getLocation( nullptr ) ) ),
-          currentAssignLoc( getLocation( nullptr ) )
+          currentAssignLoc( getLocation( nullptr ) ),
+          mod( mlir::ModuleOp::create( currentAssignLoc ) )
     {
         builder.setInsertionPointToStart( mod.getBody() );
     }

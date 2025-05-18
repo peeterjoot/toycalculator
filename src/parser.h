@@ -91,10 +91,10 @@ namespace toy
         std::string filename;
         DialectCtx dialect;
         mlir::OpBuilder builder;
+        mlir::Location currentAssignLoc;
         mlir::ModuleOp mod;
         toy::ProgramOp programOp;
         std::string currentVarName;
-        mlir::Location currentAssignLoc;
         semantic_errors lastSemError{ semantic_errors::not_an_error };
         std::unordered_map<std::string, variable_state> var_states;
         std::map<std::string, mlir::Operation*> var_storage;    // Maps declarations for variable names to DeclareOp's

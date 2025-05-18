@@ -13,20 +13,20 @@
  * - runs the assembly printer.
  */
 #include <assert.h>
-#include <llvm/Support/Debug.h>
+#include <llvm/IR/DebugProgramInstruction.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/CommandLine.h>
+#include <llvm/Support/Debug.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/InitLLVM.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/TargetParser/Host.h>
-#include <llvm/IR/DebugProgramInstruction.h>
 #include <mlir/Conversion/Passes.h>
 #include <mlir/Pass/PassManager.h>
 #include <mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h>
@@ -39,10 +39,10 @@
 #include "ToyDialect.h"
 #include "ToyExceptions.h"
 #include "ToyLexer.h"
-#include "parser.h"
 #include "ToyPasses.h"
-#include "lowering.h"
 #include "driver.h"
+#include "lowering.h"
+#include "parser.h"
 
 #define DEBUG_TYPE "toy-driver"
 
@@ -50,50 +50,37 @@
 static llvm::cl::OptionCategory ToyCategory( "Toy Calculator Options" );
 
 // Command-line option for input file
-static llvm::cl::opt<std::string> inputFilename(
-    llvm::cl::Positional, llvm::cl::desc( "<input file>" ),
-    llvm::cl::init( "-" ), llvm::cl::value_desc( "filename" ),
-    llvm::cl::cat( ToyCategory ), llvm::cl::NotHidden );
+static llvm::cl::opt<std::string> inputFilename( llvm::cl::Positional, llvm::cl::desc( "<input file>" ),
+                                                 llvm::cl::init( "-" ), llvm::cl::value_desc( "filename" ),
+                                                 llvm::cl::cat( ToyCategory ), llvm::cl::NotHidden );
 
-static llvm::cl::opt<bool> debugInfo(
-    "g",
-    llvm::cl::desc( "Enable location output in MLIR, and dwarf metadata "
-                    "creation in the lowered LLVM IR)" ),
-    llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
+static llvm::cl::opt<bool> debugInfo( "g",
+                                      llvm::cl::desc( "Enable location output in MLIR, and dwarf metadata "
+                                                      "creation in the lowered LLVM IR)" ),
+                                      llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
 
 static llvm::cl::opt<std::string> outDir(
-    "output-directory",
-    llvm::cl::desc(
-        "Output directory for generated files (e.g., .mlir, .ll, .o)" ),
-    llvm::cl::value_desc( "directory" ), llvm::cl::init( "" ),
-    llvm::cl::cat( ToyCategory ) );
+    "output-directory", llvm::cl::desc( "Output directory for generated files (e.g., .mlir, .ll, .o)" ),
+    llvm::cl::value_desc( "directory" ), llvm::cl::init( "" ), llvm::cl::cat( ToyCategory ) );
 
-static llvm::cl::opt<bool> toStdout(
-    "stdout", llvm::cl::desc( "LLVM and MLIR on stdout instead of to a file" ),
-    llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
+static llvm::cl::opt<bool> toStdout( "stdout", llvm::cl::desc( "LLVM and MLIR on stdout instead of to a file" ),
+                                     llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
 
 // Add command-line option for MLIR emission
-static llvm::cl::opt<bool> emitMLIR( "emit-mlir",
-                                     llvm::cl::desc( "Emit MLIR IR" ),
-                                     llvm::cl::init( false ),
+static llvm::cl::opt<bool> emitMLIR( "emit-mlir", llvm::cl::desc( "Emit MLIR IR" ), llvm::cl::init( false ),
                                      llvm::cl::cat( ToyCategory ) );
 
 // Add command-line option for LLVM IR emission
-static llvm::cl::opt<bool> emitLLVM( "emit-llvm",
-                                     llvm::cl::desc( "Emit LLVM IR" ),
-                                     llvm::cl::init( false ),
+static llvm::cl::opt<bool> emitLLVM( "emit-llvm", llvm::cl::desc( "Emit LLVM IR" ), llvm::cl::init( false ),
                                      llvm::cl::cat( ToyCategory ) );
 
 // Add command-line option for object file emission
-static llvm::cl::opt<bool> noEmitObject(
-    "no-emit-object", llvm::cl::desc( "Skip emit object file (.o)" ),
-    llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
+static llvm::cl::opt<bool> noEmitObject( "no-emit-object", llvm::cl::desc( "Skip emit object file (.o)" ),
+                                         llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
 
 // Noisy debugging output
-static llvm::cl::opt<bool> llvmDEBUG(
-    "debug-llvm",
-    llvm::cl::desc( "Include MLIR dump, and turn off multithreading" ),
-    llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
+static llvm::cl::opt<bool> llvmDEBUG( "debug-llvm", llvm::cl::desc( "Include MLIR dump, and turn off multithreading" ),
+                                      llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
 
 enum class OptLevel : int
 {
@@ -103,14 +90,12 @@ enum class OptLevel : int
     O3
 };
 
-static llvm::cl::opt<OptLevel> optLevel(
-    "O", llvm::cl::desc( "Optimization level" ),
-    llvm::cl::values( clEnumValN( OptLevel::O0, "0", "No optimization" ),
-                      clEnumValN( OptLevel::O1, "1", "Light optimization" ),
-                      clEnumValN( OptLevel::O2, "2", "Moderate optimization" ),
-                      clEnumValN( OptLevel::O3, "3",
-                                  "Aggressive optimization" ) ),
-    llvm::cl::init( OptLevel::O0 ), llvm::cl::cat( ToyCategory ) );
+static llvm::cl::opt<OptLevel> optLevel( "O", llvm::cl::desc( "Optimization level" ),
+                                         llvm::cl::values( clEnumValN( OptLevel::O0, "0", "No optimization" ),
+                                                           clEnumValN( OptLevel::O1, "1", "Light optimization" ),
+                                                           clEnumValN( OptLevel::O2, "2", "Moderate optimization" ),
+                                                           clEnumValN( OptLevel::O3, "3", "Aggressive optimization" ) ),
+                                         llvm::cl::init( OptLevel::O0 ), llvm::cl::cat( ToyCategory ) );
 
 enum class return_codes : int
 {
@@ -144,8 +129,7 @@ int main( int argc, char** argv )
         inputStream.open( filename );
         if ( !inputStream.is_open() )
         {
-            llvm::errs() << std::format( "Error: Cannot open file {}\n",
-                                         filename );
+            llvm::errs() << std::format( "Error: Cannot open file {}\n", filename );
             return (int)return_codes::cannot_open_file;
         }
     }
@@ -177,7 +161,8 @@ int main( int argc, char** argv )
         llvm::StringRef stem = llvm::sys::path::stem( filename );
         if ( stem.empty() )
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__, "Invalid filename: empty stem: '" + filename + "'" );
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          "Invalid filename: empty stem: '" + filename + "'" );
         }
         llvm::StringRef dirname = llvm::sys::path::parent_path( filename );
         llvm::SmallString<128> dirWithStem;
@@ -188,7 +173,8 @@ int main( int argc, char** argv )
             std::error_code EC = llvm::sys::fs::create_directories( outDir );
             if ( EC )
             {
-                throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to create output directory: " + EC.message() );
+                throw exception_with_context( __FILE__, __LINE__, __func__,
+                                              "Failed to create output directory: " + EC.message() );
             }
             dirWithStem = outDir;
             llvm::sys::path::append( dirWithStem, stem );
@@ -214,11 +200,11 @@ int main( int argc, char** argv )
                 llvm::SmallString<128> path = dirWithStem;
                 path += ".mlir";
                 std::error_code EC;
-                llvm::raw_fd_ostream out( path.str(), EC,
-                                          llvm::sys::fs::OF_Text );
+                llvm::raw_fd_ostream out( path.str(), EC, llvm::sys::fs::OF_Text );
                 if ( EC )
                 {
-                    throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to open file: " + EC.message() );
+                    throw exception_with_context( __FILE__, __LINE__, __func__,
+                                                  "Failed to open file: " + EC.message() );
                 }
                 listener.getModule().print( out, flags );
             }
@@ -259,8 +245,10 @@ int main( int argc, char** argv )
 
         // Export to LLVM IR
         llvm::LLVMContext llvmContext;
+
         std::unique_ptr<llvm::Module> llvmModule =
             mlir::translateModuleToLLVMIR( module, llvmContext, filename );
+
         if ( !llvmModule )
         {
             throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to translate to LLVM IR" );
@@ -304,23 +292,21 @@ int main( int argc, char** argv )
 
                 if ( toStdout )
                 {
-                    llvmModule->print( llvm::outs(), nullptr,
-                                       debugInfo /* print debug info */ );
+                    llvmModule->print( llvm::outs(), nullptr, debugInfo /* print debug info */ );
                 }
                 else
                 {
                     llvm::SmallString<128> path = dirWithStem;
                     path += ".ll";
                     std::error_code EC;
-                    llvm::raw_fd_ostream out( path.str(), EC,
-                                              llvm::sys::fs::OF_Text );
+                    llvm::raw_fd_ostream out( path.str(), EC, llvm::sys::fs::OF_Text );
                     if ( EC )
                     {
-                        throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to open file: " + EC.message() );
+                        throw exception_with_context( __FILE__, __LINE__, __func__,
+                                                      "Failed to open file: " + EC.message() );
                     }
 
-                    llvmModule->print( out, nullptr,
-                                       debugInfo /* print debug info */ );
+                    llvmModule->print( out, nullptr, debugInfo /* print debug info */ );
                 }
             }
 
@@ -332,8 +318,7 @@ int main( int argc, char** argv )
 
                 // Lookup the target
                 std::string error;
-                const llvm::Target* target =
-                    llvm::TargetRegistry::lookupTarget( targetTriple, error );
+                const llvm::Target* target = llvm::TargetRegistry::lookupTarget( targetTriple, error );
                 if ( !target )
                 {
                     throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to find target: " + error );
@@ -341,9 +326,7 @@ int main( int argc, char** argv )
 
                 // Create the target machine
                 std::unique_ptr<llvm::TargetMachine> targetMachine(
-                    target->createTargetMachine( targetTriple, "generic", "",
-                                                 llvm::TargetOptions(),
-                                                 std::nullopt ) );
+                    target->createTargetMachine( targetTriple, "generic", "", llvm::TargetOptions(), std::nullopt ) );
                 if ( !targetMachine )
                 {
                     throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to create target machine" );
@@ -378,8 +361,7 @@ int main( int argc, char** argv )
                         opt = llvm::OptimizationLevel::O3;
                         break;
                 }
-                llvm::ModulePassManager MPM =
-                    passBuilder.buildPerModuleDefaultPipeline( opt );
+                llvm::ModulePassManager MPM = passBuilder.buildPerModuleDefaultPipeline( opt );
 
                 MPM.run( *llvmModule, MAM );
 
@@ -387,27 +369,25 @@ int main( int argc, char** argv )
                 llvm::SmallString<128> outputFilename( dirWithStem );
                 outputFilename += ".o";
                 std::error_code EC;
-                llvm::raw_fd_ostream dest( outputFilename.str(), EC,
-                                           llvm::sys::fs::OF_None );
+                llvm::raw_fd_ostream dest( outputFilename.str(), EC, llvm::sys::fs::OF_None );
                 if ( EC )
                 {
-                    throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to open output file: " + EC.message() );
+                    throw exception_with_context( __FILE__, __LINE__, __func__,
+                                                  "Failed to open output file: " + EC.message() );
                 }
 
                 llvmModule->setDataLayout( targetMachine->createDataLayout() );
                 llvm::legacy::PassManager codegenPM;
-                if ( targetMachine->addPassesToEmitFile(
-                         codegenPM, dest, nullptr,
-                         llvm::CodeGenFileType::ObjectFile ) )
+                if ( targetMachine->addPassesToEmitFile( codegenPM, dest, nullptr, llvm::CodeGenFileType::ObjectFile ) )
                 {
-                    throw exception_with_context( __FILE__, __LINE__, __func__, "TargetMachine can't emit an object file" );
+                    throw exception_with_context( __FILE__, __LINE__, __func__,
+                                                  "TargetMachine can't emit an object file" );
                 }
 
                 codegenPM.run( *llvmModule );
                 dest.close();
 
-                llvm::outs()
-                    << "Generated object file: " << outputFilename << "\n";
+                llvm::outs() << "Generated object file: " << outputFilename << "\n";
             }
         }
     }
