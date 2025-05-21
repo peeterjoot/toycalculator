@@ -76,6 +76,10 @@ if ( defined $j )
    $flags .= " -j $j";
 }
 
+my $top = `git rev-parse --show-toplevel` ; chomp $top;
+
+chdir "$top/build" or die;
+
 # Validate/handle options, and everything else...
 system( qq(ninja $flags 2>&1 | tee o | grep error: | tee e) );
 
