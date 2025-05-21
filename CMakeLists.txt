@@ -123,6 +123,10 @@ add_executable(toycalculator
   ${ANTLR_OUTPUT_DIR}/ToyLexer.cpp
 )
 
+add_executable(mlirtest
+  prototypes/mlirtest.cpp
+)
+
 #------------------------------------------------------------------------------
 # compile options (and target dependencies)
 
@@ -130,7 +134,7 @@ add_executable(toycalculator
 target_include_directories(toycalculator PRIVATE ${ANTLR_OUTPUT_DIR})
 
 # Ensure the ANTLR and TableGen generation runs before building the project
-add_dependencies(toycalculator toy_runtime GenerateANTLR ToyDialectIncGen ToyPassesIncGen)
+add_dependencies(toycalculator mlirtest toy_runtime GenerateANTLR ToyDialectIncGen ToyPassesIncGen)
 
 set(COMMON_COMPILE_OPTIONS
   -fdiagnostics-show-option
@@ -164,6 +168,22 @@ endif()
 # Optional: Print the results
 message(STATUS "Architecture is aarch64: ${IS_AARCH64}")
 message(STATUS "LLVM Architecture specific libraries: ${LLVM_ARCH_LIBS}")
+
+target_link_libraries(mlirtest
+  PRIVATE
+  LLVMSupport
+  LLVMPasses
+  LLVM${LLVM_TARGET_ARCH}AsmParser
+  LLVM${LLVM_TARGET_ARCH}CodeGen
+  LLVM${LLVM_TARGET_ARCH}Desc
+  LLVM${LLVM_TARGET_ARCH}Info
+  MLIRFuncToLLVM
+  MLIRLLVMToLLVMIRTranslation
+  MLIRBuiltinToLLVMIRTranslation
+  MLIRTransforms
+  MLIRPass
+  MLIRMemRefToLLVM
+)
 
 target_link_libraries(toycalculator
   PRIVATE

@@ -1,0 +1,12 @@
+set -x
+
+#llc -filetype=obj output.ll -o output.o
+#llvm-dwarfdump --all output.o
+#readelf --debug-dump=info output.o
+#
+#clang -g -o output output.o -Wl,-rpath,`pwd` -L . -l test_runtime
+
+rm -f output.ll
+../build/mlirtest #--debug-info
+clang -g -o output output.ll -Wl,-rpath,`pwd`/../build -L`pwd`/../build -l toy_runtime -Wno-override-module
+#objdump --dwarf output

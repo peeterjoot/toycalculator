@@ -1,0 +1,8 @@
+// fake program.
+   x = 6;
+   PRINT x;
+   y = 7;
+   PRINT y;
+   z = 42;
+   PRINT z;
+   RETURN;
