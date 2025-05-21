@@ -38,6 +38,12 @@
 #include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
 #include <mlir/Target/LLVMIR/Export.h>
 
+#include <mlir/Dialect/DLTI/DLTI.h>
+#include <llvm/ADT/TypeSwitch.h>
+#include <mlir/Dialect/LLVMIR/Transforms/LegalizeForExport.h>
+#include <mlir/Dialect/LLVMIR/Transforms/DIExpressionLegalization.h>
+#include <mlir/Target/LLVMIR/ModuleTranslation.h>
+
 #define FAKE_PROGRAM_SOURCE_NAME "mlirtest.proto"
 
 class myDIBuilder
@@ -101,6 +107,280 @@ void buildAssignmentAndPrint( mlir::OpBuilder &builder, mlir::MLIRContext *conte
 
     mlir::Value val = builder.create<mlir::LLVM::LoadOp>( printLoc, int64Type, ptr );
     builder.create<mlir::func::CallOp>( printLoc, "__toy_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val } );
+}
+
+// fork of mlir::translateModuleToLLVMIR
+
+namespace hack
+{
+  using namespace mlir;
+  using namespace mlir::LLVM;
+
+static FailureOr<llvm::DataLayout>
+translateDataLayout(DataLayoutSpecInterface attribute,
+                    const DataLayout &dataLayout,
+                    std::optional<Location> loc = std::nullopt) {
+  if (!loc)
+    loc = UnknownLoc::get(attribute.getContext());
+
+  // Translate the endianness attribute.
+  std::string llvmDataLayout;
+  llvm::raw_string_ostream layoutStream(llvmDataLayout);
+  for (DataLayoutEntryInterface entry : attribute.getEntries()) {
+    auto key = llvm::dyn_cast_if_present<StringAttr>(entry.getKey());
+    if (!key)
+      continue;
+    if (key.getValue() == DLTIDialect::kDataLayoutEndiannessKey) {
+      auto value = cast<StringAttr>(entry.getValue());
+      bool isLittleEndian =
+          value.getValue() == DLTIDialect::kDataLayoutEndiannessLittle;
+      layoutStream << "-" << (isLittleEndian ? "e" : "E");
+      continue;
+    }
+    if (key.getValue() == DLTIDialect::kDataLayoutProgramMemorySpaceKey) {
+      auto value = cast<IntegerAttr>(entry.getValue());
+      uint64_t space = value.getValue().getZExtValue();
+      // Skip the default address space.
+      if (space == 0)
+        continue;
+      layoutStream << "-P" << space;
+      continue;
+    }
+    if (key.getValue() == DLTIDialect::kDataLayoutGlobalMemorySpaceKey) {
+      auto value = cast<IntegerAttr>(entry.getValue());
+      uint64_t space = value.getValue().getZExtValue();
+      // Skip the default address space.
+      if (space == 0)
+        continue;
+      layoutStream << "-G" << space;
+      continue;
+    }
+    if (key.getValue() == DLTIDialect::kDataLayoutAllocaMemorySpaceKey) {
+      auto value = cast<IntegerAttr>(entry.getValue());
+      uint64_t space = value.getValue().getZExtValue();
+      // Skip the default address space.
+      if (space == 0)
+        continue;
+      layoutStream << "-A" << space;
+      continue;
+    }
+    if (key.getValue() == DLTIDialect::kDataLayoutStackAlignmentKey) {
+      auto value = cast<IntegerAttr>(entry.getValue());
+      uint64_t alignment = value.getValue().getZExtValue();
+      // Skip the default stack alignment.
+      if (alignment == 0)
+        continue;
+      layoutStream << "-S" << alignment;
+      continue;
+    }
+    emitError(*loc) << "unsupported data layout key " << key;
+    return failure();
+  }
+
+  // Go through the list of entries to check which types are explicitly
+  // specified in entries. Where possible, data layout queries are used instead
+  // of directly inspecting the entries.
+  for (DataLayoutEntryInterface entry : attribute.getEntries()) {
+    auto type = llvm::dyn_cast_if_present<Type>(entry.getKey());
+    if (!type)
+      continue;
+    // Data layout for the index type is irrelevant at this point.
+    if (isa<IndexType>(type))
+      continue;
+    layoutStream << "-";
+    LogicalResult result =
+        llvm::TypeSwitch<Type, LogicalResult>(type)
+            .Case<IntegerType, Float16Type, Float32Type, Float64Type,
+                  Float80Type, Float128Type>([&](Type type) -> LogicalResult {
+              if (auto intType = dyn_cast<IntegerType>(type)) {
+                if (intType.getSignedness() != IntegerType::Signless)
+                  return emitError(*loc)
+                         << "unsupported data layout for non-signless integer "
+                         << intType;
+                layoutStream << "i";
+              } else {
+                layoutStream << "f";
+              }
+              uint64_t size = dataLayout.getTypeSizeInBits(type);
+              uint64_t abi = dataLayout.getTypeABIAlignment(type) * 8u;
+              uint64_t preferred =
+                  dataLayout.getTypePreferredAlignment(type) * 8u;
+              layoutStream << size << ":" << abi;
+              if (abi != preferred)
+                layoutStream << ":" << preferred;
+              return success();
+            })
+            .Case([&](LLVMPointerType type) {
+              layoutStream << "p" << type.getAddressSpace() << ":";
+              uint64_t size = dataLayout.getTypeSizeInBits(type);
+              uint64_t abi = dataLayout.getTypeABIAlignment(type) * 8u;
+              uint64_t preferred =
+                  dataLayout.getTypePreferredAlignment(type) * 8u;
+              uint64_t index = *dataLayout.getTypeIndexBitwidth(type);
+              layoutStream << size << ":" << abi << ":" << preferred << ":"
+                           << index;
+              return success();
+            })
+            .Default([loc](Type type) {
+              return emitError(*loc)
+                     << "unsupported type in data layout: " << type;
+            });
+    if (failed(result))
+      return failure();
+  }
+  StringRef layoutSpec(llvmDataLayout);
+  if (layoutSpec.starts_with("-"))
+    layoutSpec = layoutSpec.drop_front();
+
+  return llvm::DataLayout(layoutSpec);
+}
+static std::unique_ptr<llvm::Module>
+prepareLLVMModule(mlir::Operation *m, llvm::LLVMContext &llvmContext,
+                  llvm::StringRef name) {
+
+  m->getContext()->getOrLoadDialect<LLVM::LLVMDialect>();
+
+  auto llvmModule = std::make_unique<llvm::Module>(name, llvmContext);
+  // ModuleTranslation can currently only construct modules in the old debug
+  // info format, so set the flag accordingly.
+  llvmModule->setNewDbgInfoFormatFlag(false);
+  if (auto dataLayoutAttr =
+          m->getDiscardableAttr(LLVM::LLVMDialect::getDataLayoutAttrName())) {
+    llvmModule->setDataLayout(cast<StringAttr>(dataLayoutAttr).getValue());
+  } else {
+    FailureOr<llvm::DataLayout> llvmDataLayout(llvm::DataLayout(""));
+    if (auto iface = dyn_cast<DataLayoutOpInterface>(m)) {
+      if (DataLayoutSpecInterface spec = iface.getDataLayoutSpec()) {
+        llvmDataLayout =
+            translateDataLayout(spec, DataLayout(iface), m->getLoc());
+      }
+    } else if (auto mod = dyn_cast<ModuleOp>(m)) {
+      if (DataLayoutSpecInterface spec = mod.getDataLayoutSpec()) {
+        llvmDataLayout =
+            translateDataLayout(spec, DataLayout(mod), m->getLoc());
+      }
+    }
+    if (failed(llvmDataLayout))
+      return nullptr;
+    llvmModule->setDataLayout(*llvmDataLayout);
+  }
+  if (auto targetTripleAttr =
+          m->getDiscardableAttr(LLVM::LLVMDialect::getTargetTripleAttrName()))
+    llvmModule->setTargetTriple(cast<StringAttr>(targetTripleAttr).getValue());
+
+  return llvmModule;
+}
+
+std::unique_ptr<llvm::Module> translateModuleToLLVMIRWithDebug(
+    mlir::Operation *module, llvm::LLVMContext &llvmContext,
+    llvm::StringRef name = {}, bool disableVerification = false) {
+
+  using namespace mlir;
+  using namespace mlir::LLVM;
+
+  if (!satisfiesLLVMModule(module)) {
+    module->emitOpError("cannot be translated to an LLVMIR module");
+    return nullptr;
+  }
+
+  std::unique_ptr<llvm::Module> llvmModule =
+      prepareLLVMModule(module, llvmContext, name);
+  if (!llvmModule)
+    return nullptr;
+
+  LLVM::ensureDistinctSuccessors(module);
+  LLVM::legalizeDIExpressionsRecursively(module);
+
+  // Setup for debug info: create DIBuilder and attach compile unit.
+  llvm::DIBuilder diBuilder(*llvmModule);
+
+  llvm::DIFile *diFile = nullptr;
+  llvm::DICompileUnit *compileUnit = nullptr;
+
+  // Try to grab FileLineColLoc from the module or fallback.
+  if (auto loc = module->getLoc().dyn_cast<FileLineColLoc>()) {
+    auto filename = loc.getFilename().str();
+    auto directory = ".";
+
+    diFile = diBuilder.createFile(filename, directory);
+    compileUnit = diBuilder.createCompileUnit(
+        llvm::dwarf::DW_LANG_C,
+        diFile,
+        "MLIR-to-LLVM debug info example",
+        /*isOptimized=*/false,
+        "",
+        0,
+        llvm::DICompileUnit::DebugEmissionKind::FullDebug);
+  }
+
+  ModuleTranslation translator(module, std::move(llvmModule));
+  llvm::IRBuilder<> llvmBuilder(llvmContext);
+
+  if (failed(translator.convertOperation(*module, llvmBuilder)))
+    return nullptr;
+  if (failed(translator.convertComdats()))
+    return nullptr;
+  if (failed(translator.convertFunctionSignatures()))
+    return nullptr;
+  if (failed(translator.convertGlobals()))
+    return nullptr;
+  if (failed(translator.createTBAAMetadata()))
+    return nullptr;
+  if (failed(translator.createIdentMetadata()))
+    return nullptr;
+  if (failed(translator.createCommandlineMetadata()))
+    return nullptr;
+
+  // Inject DISubprogram for each LLVM function from MLIR with location.
+  for (Operation &op : getModuleBody(module).getOperations()) {
+    if (auto funcOp = dyn_cast<LLVM::LLVMFuncOp>(op)) {
+      llvm::Function *llvmFunc =
+          translator.lookupFunction(funcOp.getName());
+      if (!llvmFunc || !funcOp.getLoc().isa<FileLineColLoc>())
+        continue;
+
+      FileLineColLoc loc = funcOp.getLoc().cast<FileLineColLoc>();
+      std::string name = funcOp.getSymName().str();
+      llvm::DISubprogram *subprogram = diBuilder.createFunction(
+          diFile,
+          name,
+          name,
+          diFile,
+          loc.getLine(),
+          diBuilder.createSubroutineType(
+              diBuilder.getOrCreateTypeArray({})),
+          loc.getLine(),
+          llvm::DINode::DIFlags::FlagPrototyped,
+          llvm::DISubprogram::SPFlagDefinition);
+
+      llvmFunc->setSubprogram(subprogram);
+    }
+  }
+
+  for (Operation &o : getModuleBody(module).getOperations()) {
+    if (!isa<LLVM::LLVMFuncOp, LLVM::GlobalOp, LLVM::GlobalCtorsOp,
+             LLVM::GlobalDtorsOp, LLVM::ComdatOp>(&o) &&
+        !o.hasTrait<OpTrait::IsTerminator>() &&
+        failed(translator.convertOperation(o, llvmBuilder))) {
+      return nullptr;
+    }
+  }
+
+  if (failed(translator.convertFunctions()))
+    return nullptr;
+
+  // Finalize debug info
+  if (compileUnit)
+    diBuilder.finalize();
+
+  translator.llvmModule->setIsNewDbgInfoFormat(UseNewDbgInfoFormat);
+
+  if (!disableVerification &&
+      llvm::verifyModule(*translator.llvmModule, &llvm::errs()))
+    return nullptr;
+
+  return std::move(translator.llvmModule);
+}
 }
 
 int main( int argc, char **argv )
@@ -193,6 +473,7 @@ int main( int argc, char **argv )
     auto mainFunc = llvmModule->getFunction( "main" );
     mainFunc->setSubprogram( dbi.subprogram );
 
+#if 0
     // Add debug locations to instructions
     int assignIndex = 0;
     int printIndex = 0;
@@ -266,6 +547,7 @@ int main( int argc, char **argv )
             }
         }
     }
+#endif
 
     // Finalize debug info
     dbi.diBuilder.finalize();
