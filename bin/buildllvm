@@ -68,13 +68,21 @@ GetOptions (
 
 my $HOME = $ENV{'HOME'};
 
+mychdir( "$HOME/llvm-project" );
+
+# commit 7b09d7b446383b71b63d429b21ee45ba389c5134 (HEAD, tag: llvmorg-20.1.5)
+my $version = `git log -n 1 --decorate | head -1` ; chomp $version;
+print "# COMMIT: $version\n";
+$version =~ s/.*tag: llvmorg-// or die;
+$version =~ s/\).*//;
+
 my $builddir = "$HOME/build-llvm";
 mysystem( "(rm -rf $builddir && mkdir $builddir)" );
 mychdir( $builddir );
 
 if ( !(-d "$HOME/llvm-project") )
 {
-    mysystem( "(cd && git clone https://github.com/llvm/llvm-project.git && git checkout llvmorg-20.1.3)" );
+    mysystem( "(cd && git clone https://github.com/llvm/llvm-project.git && git checkout llvmorg-20.1.5)" );
 }
 
 my $arch = `uname -m` ; chomp $arch;
@@ -87,8 +95,7 @@ if ( $arch eq 'aarch64' )
 # By default need to compile code that uses llvm/mlir with -fno-rtti, or else we get link errors.
 # However, antlr4 uses dynamic-cast, so we have to enable rtti if using that.
 
-my $instdir = '/usr/local/llvm-20.1.3';
-#$instdir = '/usr/local/llvm-21.x.y';
+my $instdir = "/usr/local/llvm-$version";
 my $buildtype = 'Debug';
 #$buildtype = 'Release';
 
@@ -105,9 +112,9 @@ my @cmds = ( qq(cmake ) .
              qq(-DLLVM_TARGETS_TO_BUILD="${targets}" ) .
              qq(-DCMAKE_INSTALL_PREFIX=${instdir} ) .
              qq(-DLLVM_ENABLE_RTTI=ON ) .
-             qq(-DLLVM_ENABLE_PROJECTS='mlir' ),
+             qq(-DLLVM_ENABLE_PROJECTS='clang;flang;mlir' ),
 
-             qq(ninja),
+             qq(ninja -j6),
 
              qq(sudo rm -rf ${instdir}),
 
