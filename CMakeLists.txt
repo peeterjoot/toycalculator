@@ -127,6 +127,10 @@ add_executable(mlirtest
   prototypes/mlirtest.cpp
 )
 
+add_executable(simplest
+  prototypes/simplest.cpp
+)
+
 #------------------------------------------------------------------------------
 # compile options (and target dependencies)
 
@@ -134,7 +138,7 @@ add_executable(mlirtest
 target_include_directories(toycalculator PRIVATE ${ANTLR_OUTPUT_DIR})
 
 # Ensure the ANTLR and TableGen generation runs before building the project
-add_dependencies(toycalculator mlirtest toy_runtime GenerateANTLR ToyDialectIncGen ToyPassesIncGen)
+add_dependencies(toycalculator simplest mlirtest toy_runtime GenerateANTLR ToyDialectIncGen ToyPassesIncGen)
 
 set(COMMON_COMPILE_OPTIONS
   -fdiagnostics-show-option
@@ -173,6 +177,23 @@ target_link_libraries(mlirtest
   PRIVATE
   LLVMSupport
   LLVMPasses
+  LLVM${LLVM_TARGET_ARCH}AsmParser
+  LLVM${LLVM_TARGET_ARCH}CodeGen
+  LLVM${LLVM_TARGET_ARCH}Desc
+  LLVM${LLVM_TARGET_ARCH}Info
+  MLIRFuncToLLVM
+  MLIRLLVMToLLVMIRTranslation
+  MLIRBuiltinToLLVMIRTranslation
+  MLIRTransforms
+  MLIRPass
+  MLIRMemRefToLLVM
+)
+
+target_link_libraries(simplest
+  PRIVATE
+  LLVMSupport
+  LLVMPasses
+  LLVMMC
   LLVM${LLVM_TARGET_ARCH}AsmParser
   LLVM${LLVM_TARGET_ARCH}CodeGen
   LLVM${LLVM_TARGET_ARCH}Desc

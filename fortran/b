@@ -1,0 +1,12 @@
+set follow-fork-mode child
+set detach-on-fork off
+set breakpoint pending on
+break AddDebugInfoPass::runOnOperation
+#/tmp/libFIRTransforms.so.nm:0000000000133154 t (anonymous namespace)::AddDebugInfoPass::runOnOperation()
+#break AddDebugInfoPass::getOrCreateModuleAttr
+#break AddDebugInfoPass::getOrCreateCommonBlockAttr
+#break AddDebugInfoPass::handleGlobalOp
+#break AddDebugInfoPass::handleFuncOp
+#break AddDebugInfoPass::createCommonBlockGlobal
+#break AddDebugInfoPass::getModuleAttrFromGlobalOp
+run
