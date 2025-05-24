@@ -10,7 +10,7 @@ testit.sh - <one-line-description>
 
 =head1 SYNOPSIS
 
-testit.sh [--help] --no-fatal
+testit.sh [--help] --no-fatal [--just tcname]
 
 =head1 DESCRIPTION
 
@@ -21,6 +21,10 @@ Options:
 =item --no-fatal
 
 Warn, insted of die, on error.
+
+=item --just testname
+
+Run only testname.  This is the test file stem ('test' for 'test.toy' for example.)
 
 =back
 
@@ -57,11 +61,13 @@ my $myName = '' ;
 
 ($myName = $0) =~ s@.*[/\\]@@ ;
 my $fatal = 1;
+my $just;
 
 #Getopt::Long::Configure( 'pass_through' ) ;
 GetOptions (
    'help'               => sub { pod2usage(-verbose => 2) ; },
    'fatal!'             => \$fatal,
+   'just=s'             => \$just,
 ) or pod2usage(-verbose => 0) ;
 
 # Validate/handle options, and everything else...
@@ -97,6 +103,8 @@ my @warnings = ();
 my $pwd = `pwd` ; chomp $pwd;
 foreach my $stem (@tests)
 {
+    next if ( defined $just and $just ne $stem );
+
     print "##########################################################################\n";
     print "// $stem.toy\n";
     system( qq(cat $stem.toy) );
