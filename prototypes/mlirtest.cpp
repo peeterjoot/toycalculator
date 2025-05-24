@@ -14,7 +14,6 @@
  */
 
 #include <assert.h>
-#include <llvm/BinaryFormat/Dwarf.h>
 #include <llvm/IR/DIBuilder.h>
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/IRBuilder.h>
@@ -41,11 +40,9 @@
 
 #define FAKE_PROGRAM_SOURCE_NAME "mlirtest.proto"
 
-// #define WITH_DI_BUILDER
 class myDIBuilder
 {
    public:
-#ifdef WITH_DI_BUILDER
     llvm::DIBuilder diBuilder;
 
     // The memory for all these pointers is tied to the DIBuilder builder above, and gets freed at the finalize call
@@ -59,10 +56,8 @@ class myDIBuilder
 
     llvm::BasicBlock &entryBlock;
     llvm::IRBuilder<> llvmBuilder;
-#endif
 
     myDIBuilder( std::unique_ptr<llvm::Module> &llvmModule )
-#ifdef WITH_DI_BUILDER
         : diBuilder{ *llvmModule },
           file{ diBuilder.createFile( FAKE_PROGRAM_SOURCE_NAME, "" ) },
           cu{ diBuilder.createCompileUnit( llvm::dwarf::DW_LANG_C, file, "MLIR Compiler", false, "", 0 ) },
@@ -73,13 +68,11 @@ class myDIBuilder
           llvmFunc{ llvmModule->getFunction( "main" ) },
           entryBlock{ llvmFunc->getEntryBlock() },
           llvmBuilder{ &entryBlock }
-#endif
     {
     }
 
     void instrumentVariable( const char *varname, unsigned line, unsigned column, llvm::Value *allocaPtr )
     {
-#ifdef WITH_DI_BUILDER
         auto *var =
             diBuilder.createAutoVariable( subprogram, varname, file, line, diTypeI64, true /* force emission */ );
 
@@ -88,14 +81,6 @@ class myDIBuilder
         llvmBuilder.SetInsertPoint( &entryBlock, entryBlock.begin() );
 
         diBuilder.insertDeclare( allocaPtr, var, diBuilder.createExpression(), dbgLoc, llvmBuilder.GetInsertBlock() );
-#endif
-    }
-
-    void finalize()
-    {
-#ifdef WITH_DI_BUILDER
-        diBuilder.finalize();
-#endif
     }
 };
 
@@ -114,8 +99,8 @@ void buildAssignmentAndPrint( mlir::OpBuilder &builder, mlir::MLIRContext *conte
     mlir::Value ptr = builder.create<mlir::LLVM::AllocaOp>( varLoc, pointerType, int64Type, i64One, 4 );
     builder.create<mlir::LLVM::StoreOp>( varLoc, constantValue, ptr );
 
-    //mlir::Value val = builder.create<mlir::LLVM::LoadOp>( printLoc, int64Type, ptr );
-    //builder.create<mlir::func::CallOp>( printLoc, "__toy_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val } );
+    mlir::Value val = builder.create<mlir::LLVM::LoadOp>( printLoc, int64Type, ptr );
+    builder.create<mlir::func::CallOp>( printLoc, "__toy_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val } );
 }
 
 int main( int argc, char **argv )
@@ -139,55 +124,16 @@ int main( int argc, char **argv )
     auto loc = mlir::FileLineColLoc::get( builder.getStringAttr( FAKE_PROGRAM_SOURCE_NAME ), 1, 1 );
     auto module = mlir::ModuleOp::create( loc );
 
-#if 0
     auto printType = builder.getFunctionType( builder.getI64Type(), {} );
     mlir::func::FuncOp print = builder.create<mlir::func::FuncOp>( loc, "__toy_print_i64", printType,
                                                                    llvm::ArrayRef<mlir::NamedAttribute>{} );    //
     print.setPrivate();    // External linkage
     module.push_back( print );
-#endif
 
     auto funcType = builder.getFunctionType( {}, builder.getI32Type() );
     auto func = builder.create<mlir::func::FuncOp>( loc, "main", funcType );
     auto &block = *func.addEntryBlock();
     builder.setInsertionPointToStart( &block );
-
-    // Create DIFileAttr
-    auto fileAttr = mlir::LLVM::DIFileAttr::get( builder.getContext(), FAKE_PROGRAM_SOURCE_NAME, "." );
-
-    // Create a unique DistinctAttr for the compile unit
-    auto distinctAttr = mlir::DistinctAttr::create( builder.getUnitAttr() );
-
-    // Create DICompileUnitAttr
-    auto compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
-        builder.getContext(), distinctAttr, llvm::dwarf::DW_LANG_C, fileAttr, builder.getStringAttr( "toycompiler" ),
-        false, mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
-
-    // Create DIBasicTypeAttr for the function return type (i32)
-    auto ta = mlir::LLVM::DIBasicTypeAttr::get(
-        builder.getContext(),
-        (unsigned)llvm::dwarf::DW_TAG_base_type,    // Use DW_TAG_base_type instead of DW_TAG_formal_parameter
-        builder.getStringAttr( "int" ), 32,
-        (unsigned)llvm::dwarf::DW_ATE_signed    // Encoding for signed integer
-    );
-
-    // Create ArrayRef<DITypeAttr> for return type and parameters (no parameters)
-    llvm::SmallVector<mlir::LLVM::DITypeAttr, 1> typeArray;
-    typeArray.push_back( ta );    // Return type (i32)
-    auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get( builder.getContext(),
-                                                                 0,    // Default calling convention (C)
-                                                                 typeArray );
-
-    // Create a unique DistinctAttr for the subprogram
-    auto subprogramDistinctAttr = mlir::DistinctAttr::create( builder.getUnitAttr() );
-
-    // Create DISubprogramAttr
-    auto subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
-        builder.getContext(), subprogramDistinctAttr, compileUnitAttr, fileAttr, builder.getStringAttr( "main" ),
-        builder.getStringAttr( "main" ), fileAttr, 1, 1, mlir::LLVM::DISubprogramFlags::Definition, subprogramType,
-        llvm::ArrayRef<mlir::LLVM::DINodeAttr>{}, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
-
-    func->setAttr( "llvm.debug.subprogram", subprogramAttr );
 
     // 2:   x = 6;
     // 3:   PRINT x;
@@ -226,12 +172,11 @@ int main( int argc, char **argv )
         return 1;
     }
 
-    llvm::outs() << "Dump module after passes:\n";
+    // Dump module after passes
     module.print( llvm::outs(), flags );
 
     // Translate to LLVM IR
     llvm::LLVMContext llvmContext;
-    llvmContext.setDiagnosticsHotnessThreshold(0); // Optional: Enable diagnostics
     auto llvmModule = mlir::translateModuleToLLVMIR( module, llvmContext, "example" );
     if ( !llvmModule )
     {
@@ -239,7 +184,6 @@ int main( int argc, char **argv )
         return 1;
     }
 
-#ifdef WITH_DI_BUILDER
     // Add DWARF debug info flags
     // llvmModule->addModuleFlag( llvm::Module::Warning, "Debug Info Version", llvm::DEBUG_METADATA_VERSION );
     llvmModule->addModuleFlag( llvm::Module::Warning, "Dwarf Version", 5 );    // Match Clang's DWARF 5
@@ -323,19 +267,17 @@ int main( int argc, char **argv )
         }
     }
 
-    dbi.finalize();
-#endif
+    // Finalize debug info
+    dbi.diBuilder.finalize();
 
     // Print LLVM IR
     llvmModule->print( llvm::outs(), nullptr, true );
 
-#if 0
     // Save LLVM IR to file
     std::error_code EC;
     llvm::raw_fd_ostream os( "output.ll", EC );
     llvmModule->print( os, nullptr );
     os.close();
-#endif
 
     return 0;
 }
