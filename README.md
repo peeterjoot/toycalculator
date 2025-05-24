@@ -4,17 +4,23 @@ This project uses an antlr4 grammar, an MLIR builder, and MLIR lowering to LLVM 
 
 It implements a toy calculator language that supports a few primitive linguistic elements:
 
-* a DECLARE operation,
+* a DECLARE operation (implicit double type)
+* Fixed size integer declaration operations (INT8, INT16, INT32, INT64)
+* Floating point declaration operations (FLOAT32, FLOAT64)
+* Boolean declaration operation (BOOL)
 * a PRINT operation,
 * single line comments,
 * a EXIT operation,
+* boolean, integer and floating point constants.
 * an ASSIGNMENT operator (=) with unary (+,-) and binary operators (+,-,*,/).
 
-Integer constants are allowed in the assignment, but compuations are (currently) floating point.
+Computations occur in assignment operations, and any types are first promoted to the type of the variable.
+This means that 'x = 1.99 + 2.99' has the value 3, if x is an integer variable.
 
 The goal was to understand the MLIR ecosystem.
 I'd seen MLIR in action in prototype projects at work, but didn't get to play with it first hand.
-Overall, it just makes sense to use a structured mechanism to generate an AST equivalent, with built in semantic checking as desired, instead of handcoding the parser to AST stage of the compiler.
+Overall, it just makes sense to use a structured mechanism to generate an AST equivalent, instead of handcoding the parser to AST stage of the compiler.
+This can include built in semantic checking (not part of this toy compiler yet), and avoid the evil of premature lowering (as described by the MLIR white paper.)
 
 AI tools (Grok and ChatGPT) were used to generate some of the initial framework for this project.
 As of the time of this writing (Apr 2025), considerable effort is required to keep both Grok and ChatGPT from halucinating MLIR or LLVM APIs that don't exist,
@@ -32,6 +38,7 @@ do that without bothering with AI tools that can be more work to use than just d
 * src/calculator.td -- This is the MLIR dialect that defines the compiler eye view of all the grammar elements.
 * src/parser.cpp    -- This is the Antlr4 parse tree walker and the MLIR builder.
 * src/lowering.cpp  -- LLVM-IR lowering classes.
+* prototypes/simplest.cpp  -- A MWE w/ working DWARF instrumentation.  Just emits LLVM-IR and has no assembly printing pass like the toy compiler.
 
 ## Command line options
 
@@ -42,7 +49,7 @@ do that without bothering with AI tools that can be more work to use than just d
 * -debug-only=toy-driver
 * -debug-only=toy-lowering
 * --debug-mlir
-* -g (show MLIR location info in the dump, and generate DWARF metadata in the lowered LLVM-IR.)
+* -g (show MLIR location info in the dump, and (eventually) generate DWARF metadata in the lowered LLVM-IR.)
 * -O[0123] -- the usual.
 * --stdout.  MLIR and LLVM-IR output to stdout instead of to files.
 * --no-emit-object.
@@ -51,6 +58,7 @@ do that without bothering with AI tools that can be more work to use than just d
 
 Basic language constructs to make things more interesting:
 
+* LLVM IR lowering doesn't produce DWARF instrumentation matching the location info.  WIP (`prototypes/simplest.cpp`, `fortran/*`)
 * tests for all the type conversions.
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 * unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.
@@ -62,9 +70,8 @@ Basic language constructs to make things more interesting:
 * Allow EXIT at more than the end of program (currently enforced in the grammar.)
 * Don't have any traits defined for my MLIR operations (initially caused compile errors, and I just commented-out or omitted after that.)
 
-Trickier, but fun stuff:
-* LLVM IR lowering doesn't produce DWARF instrumentation matching the location info?
-* Implement a JIT so that the "language" has the capability of a static compilation mode, as well as interpretted.
+Trickier, but would be fun:
+* Implement a JIT so that the "language" has an interpretor mode, as well as static compilation.
 
 ## Building
 
@@ -92,12 +99,12 @@ sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-
 ### Building MLIR
 
 On both ubuntu and fedora, I needed a custom build of llvm/mlir, as I didn't find a package that had the MLIR tablegen files.
-As it turned out, a custom llvm/mlir build was also required to specifically enable rtti, as altlr4 uses dynamic_cast<>.
+As it turned out, a custom llvm/mlir build was also required to specifically enable rtti, as altlr4 uses `dynamic_cast<>`.
 The -fno-rtti that is required by default to avoid typeinfo symbol link errors, explicitly breaks the antlr4 header files.
 I'm not actually sure if the llvm-project has a generic lexer/parser, or if those are all language specific.
 Having used antlr4 for previous prototyping, also generating a C++ listener, it made sense to me to use what I knew.
 
-See bin/buildllvm for how I built and deployed the llvm+mlir installation used for this project.
+See `bin/buildllvm` for how I built and deployed the llvm+mlir installation used for this project.
 
 ### Building the project.
 

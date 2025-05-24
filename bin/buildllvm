@@ -10,7 +10,7 @@ buildllvm - build llvm/mlir with RTTI
 
 =head1 SYNOPSIS
 
-buildllvm [--help] [--dryrun]
+buildllvm [--help] [--dryrun] [--extra]
 
 =head1 DESCRIPTION
 
@@ -21,6 +21,10 @@ Options:
 =item --dryrun
 
 Don't actually run the commands, just show them.
+
+=item --extra
+
+Include flang+clang in the build.
 
 =back
 
@@ -55,6 +59,7 @@ select STDOUT ; $| = 1 ;
 
 my $myName = '' ;
 my $dryrun = 0;
+my $extra = 0;
 
 ($myName = $0) =~ s@.*[/\\]@@ ;
 
@@ -62,6 +67,7 @@ my $dryrun = 0;
 GetOptions (
    'help'               => sub { pod2usage(-verbose => 2) ; },
    'dryrun!'            => \$dryrun,
+   'extra!'             => \$extra,
 ) or pod2usage(-verbose => 0) ;
 
 # Validate/handle options, and everything else...
@@ -92,12 +98,24 @@ if ( $arch eq 'aarch64' )
     $targets = 'ARM';
 }
 
+my @projects = (qw(mlir));
+if ( $extra )
+{
+    push( @projects, (qw(clang flang)) );
+}
+my $projects = join( ';', @projects );
+
 # By default need to compile code that uses llvm/mlir with -fno-rtti, or else we get link errors.
 # However, antlr4 uses dynamic-cast, so we have to enable rtti if using that.
 
 my $instdir = "/usr/local/llvm-$version";
 my $buildtype = 'Debug';
 #$buildtype = 'Release';
+
+my $parallel = '';
+
+# try to avoid the Linux OOM killer when building clang:
+$parallel = '-j3' if ( $extra );
 
 my @cmds = ( qq(cmake ) .
              qq(-G ) .
@@ -112,9 +130,9 @@ my @cmds = ( qq(cmake ) .
              qq(-DLLVM_TARGETS_TO_BUILD="${targets}" ) .
              qq(-DCMAKE_INSTALL_PREFIX=${instdir} ) .
              qq(-DLLVM_ENABLE_RTTI=ON ) .
-             qq(-DLLVM_ENABLE_PROJECTS='clang;flang;mlir' ),
+             qq(-DLLVM_ENABLE_PROJECTS='${projects}' ),
 
-             qq(ninja -j6),
+             qq(ninja ${parallel}),
 
              qq(sudo rm -rf ${instdir}),
 
