@@ -1,0 +1,6 @@
+
+# build an executable corresponding to the fake source file: prototypes/test.c 
+
+set -x
+../build/simplest  > output.ll
+clang -g -o output output.ll -Wno-override-module
