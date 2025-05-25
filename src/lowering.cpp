@@ -44,18 +44,19 @@ using namespace mlir;
 
 namespace toy
 {
-    //
-    //
     class loweringContext
     {
        public:
+        ModuleOp& module;
+        const toy::driverState& driverState;
+        OpBuilder builder;
         DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> symbolToAlloca;
         mlir::LLVM::LLVMFuncOp mainFunc;
         mlir::LLVM::LLVMFuncOp printFuncF64;
         mlir::LLVM::LLVMFuncOp printFuncI64;
-        OpBuilder builder;
 
-        loweringContext( ModuleOp& module ) : builder( module.getRegion() )
+        loweringContext( ModuleOp& module_, const toy::driverState& driverState_ )
+            : module{ module_ }, driverState{ driverState_ }, builder{ module.getRegion() }
         {
         }
 
@@ -93,6 +94,71 @@ namespace toy
             }
 
             return zero_F64;
+        }
+
+        // Set data_layout,ident,target_triple:
+        void setModuleAttrs()
+        {
+            std::string targetTriple = llvm::sys::getDefaultTargetTriple();
+            llvm::Triple triple( targetTriple );
+            assert( triple.isArch64Bit() && triple.isOSLinux() );
+
+            std::string error;
+            const llvm::Target* target = llvm::TargetRegistry::lookupTarget( targetTriple, error );
+            assert( target );
+            llvm::TargetOptions options;
+            auto targetMachine = std::unique_ptr<llvm::TargetMachine>( target->createTargetMachine(
+                targetTriple, "generic", "", options, std::optional<llvm::Reloc::Model>( llvm::Reloc::PIC_ ) ) );
+            assert( targetMachine );
+            std::string dataLayoutStr = targetMachine->createDataLayout().getStringRepresentation();
+
+            module->setAttr( "llvm.ident", builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
+            module->setAttr( "llvm.data_layout", builder.getStringAttr( dataLayoutStr ) );
+            module->setAttr( "llvm.target_triple", builder.getStringAttr( targetTriple ) );
+        }
+
+        void createToyPrintProto()
+        {
+            auto ctx = builder.getContext();
+            builder.setInsertionPointToStart( module.getBody() );
+            auto printFuncF64Type =
+                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { builder.getF64Type() }, false );
+            auto printFuncI64Type =
+                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { builder.getI64Type() }, false );
+            printFuncF64 = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_f64", printFuncF64Type,
+                                                             LLVM::Linkage::External );
+            printFuncI64 = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_i64", printFuncI64Type,
+                                                             LLVM::Linkage::External );
+        }
+
+        void createMain()
+        {
+            auto ctx = builder.getContext();
+            auto mainFuncType = LLVM::LLVMFunctionType::get( builder.getI32Type(), {}, false );
+            mainFunc = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), ENTRY_SYMBOL_NAME, mainFuncType,
+                                                         LLVM::Linkage::External );
+
+            // Construct module level DI state:
+            auto fileAttr = mlir::LLVM::DIFileAttr::get( ctx, driverState.filename, "." );
+            auto distinctAttr = mlir::DistinctAttr::create( builder.getUnitAttr() );
+            auto compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
+                ctx, distinctAttr, llvm::dwarf::DW_LANG_C, fileAttr, builder.getStringAttr( COMPILER_NAME ), false,
+                mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
+            auto ta = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                        builder.getStringAttr( "int" ), 32,
+                                                        (unsigned)llvm::dwarf::DW_ATE_signed );
+            llvm::SmallVector<mlir::LLVM::DITypeAttr, 1> typeArray;
+            typeArray.push_back( ta );
+            auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get( ctx, 0, typeArray );
+            auto subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
+                ctx, mlir::DistinctAttr::create( builder.getUnitAttr() ), compileUnitAttr, fileAttr,
+                builder.getStringAttr( ENTRY_SYMBOL_NAME ), builder.getStringAttr( ENTRY_SYMBOL_NAME ), fileAttr, 1, 1,
+                mlir::LLVM::DISubprogramFlags::Definition, subprogramType, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{},
+                llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
+            mainFunc->setAttr( "llvm.debug.subprogram", subprogramAttr );
+
+            // This is the key to ensure that translateModuleToLLVMIR does not strip the location info (instead converts loc's into !dbg's)
+            mainFunc->setLoc( builder.getFusedLoc( { module.getLoc() }, subprogramAttr ) );
         }
 
        private:
@@ -732,63 +798,13 @@ namespace toy
                 module->dump();
             } );
 
-            loweringContext lState( module );
+            loweringContext lState( module, *pDriverState );
 
-            // Set data_layout,ident,target_triple:
-            std::string targetTriple = llvm::sys::getDefaultTargetTriple();
-            llvm::Triple triple( targetTriple );
-            assert( triple.isArch64Bit() && triple.isOSLinux() );
-
-            std::string error;
-            const llvm::Target* target = llvm::TargetRegistry::lookupTarget( targetTriple, error );
-            assert( target );
-            llvm::TargetOptions options;
-            auto targetMachine = std::unique_ptr<llvm::TargetMachine>( target->createTargetMachine(
-                targetTriple, "generic", "", options, std::optional<llvm::Reloc::Model>( llvm::Reloc::PIC_ ) ) );
-            assert( targetMachine );
-            std::string dataLayoutStr = targetMachine->createDataLayout().getStringRepresentation();
-
-            module->setAttr( "llvm.ident", lState.builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
-            module->setAttr( "llvm.data_layout", lState.builder.getStringAttr( dataLayoutStr ) );
-            module->setAttr( "llvm.target_triple", lState.builder.getStringAttr( targetTriple ) );
+            lState.setModuleAttrs();
 
             auto ctx = lState.builder.getContext();
-
-            // Add __toy_print declaration
-            lState.builder.setInsertionPointToStart( module.getBody() );
-            auto printFuncF64Type =
-                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { lState.builder.getF64Type() }, false );
-            auto printFuncI64Type =
-                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { lState.builder.getI64Type() }, false );
-            lState.printFuncF64 = lState.builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_f64",
-                                                                           printFuncF64Type, LLVM::Linkage::External );
-            lState.printFuncI64 = lState.builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_i64",
-                                                                           printFuncI64Type, LLVM::Linkage::External );
-
-            // Create main function
-            auto mainFuncType = LLVM::LLVMFunctionType::get( lState.builder.getI32Type(), {}, false );
-            lState.mainFunc = lState.builder.create<LLVM::LLVMFuncOp>( module.getLoc(), ENTRY_SYMBOL_NAME, mainFuncType,
-                                                                       LLVM::Linkage::External );
-
-            // Construct module level DI state:
-            auto fileAttr = mlir::LLVM::DIFileAttr::get( ctx, pDriverState->filename, "." );
-            auto distinctAttr = mlir::DistinctAttr::create( lState.builder.getUnitAttr() );
-            auto compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
-                ctx, distinctAttr, llvm::dwarf::DW_LANG_C, fileAttr, lState.builder.getStringAttr( COMPILER_NAME ),
-                false, mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
-            auto ta = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
-                                                        lState.builder.getStringAttr( "int" ), 32,
-                                                        (unsigned)llvm::dwarf::DW_ATE_signed );
-            llvm::SmallVector<mlir::LLVM::DITypeAttr, 1> typeArray;
-            typeArray.push_back( ta );
-            auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get( ctx, 0, typeArray );
-            auto subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
-                ctx, mlir::DistinctAttr::create( lState.builder.getUnitAttr() ), compileUnitAttr, fileAttr,
-                lState.builder.getStringAttr( ENTRY_SYMBOL_NAME ), lState.builder.getStringAttr( ENTRY_SYMBOL_NAME ),
-                fileAttr, 1, 1, mlir::LLVM::DISubprogramFlags::Definition, subprogramType,
-                llvm::ArrayRef<mlir::LLVM::DINodeAttr>{}, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
-            lState.mainFunc->setAttr( "llvm.debug.subprogram", subprogramAttr );
-            lState.mainFunc->setLoc( lState.builder.getFusedLoc( { module.getLoc() }, subprogramAttr ) );
+            lState.createToyPrintProto();
+            lState.createMain();
 
             // Initialize the type converter
             LLVMTypeConverter typeConverter( ctx );

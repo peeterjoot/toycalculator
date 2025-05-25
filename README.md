@@ -59,6 +59,9 @@ do that without bothering with AI tools that can be more work to use than just d
 Basic language constructs to make things more interesting:
 
 * DWARF instrumentation for types.  See for example: (`prototypes/simplest.cpp`, `fortran/*`)
+* Implement -c and -o options in driver (-c is the current behaviour, -o to call clang to link.)
+* Tag: V2 when the two above done, and record it in Changelog.
+
 * tests for all the type conversions.
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 * unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.
