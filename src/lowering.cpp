@@ -44,6 +44,15 @@ using namespace mlir;
 
 namespace toy
 {
+    mlir::FileLineColLoc getLocation( mlir::Location loc )
+    {
+        // Cast Location to FileLineColLoc
+        auto fileLineLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc );
+        assert( fileLineLoc );
+
+        return fileLineLoc;
+    }
+
     class loweringContext
     {
        public:
@@ -139,7 +148,7 @@ namespace toy
                                                          LLVM::Linkage::External );
 
             // Construct module level DI state:
-            auto fileAttr = mlir::LLVM::DIFileAttr::get( ctx, driverState.filename, "." );
+            fileAttr = mlir::LLVM::DIFileAttr::get( ctx, driverState.filename, "." );
             auto distinctAttr = mlir::DistinctAttr::create( builder.getUnitAttr() );
             auto compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
                 ctx, distinctAttr, llvm::dwarf::DW_LANG_C, fileAttr, builder.getStringAttr( COMPILER_NAME ), false,
@@ -150,15 +159,106 @@ namespace toy
             llvm::SmallVector<mlir::LLVM::DITypeAttr, 1> typeArray;
             typeArray.push_back( ta );
             auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get( ctx, 0, typeArray );
-            auto subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
+            subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
                 ctx, mlir::DistinctAttr::create( builder.getUnitAttr() ), compileUnitAttr, fileAttr,
                 builder.getStringAttr( ENTRY_SYMBOL_NAME ), builder.getStringAttr( ENTRY_SYMBOL_NAME ), fileAttr, 1, 1,
                 mlir::LLVM::DISubprogramFlags::Definition, subprogramType, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{},
                 llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
             mainFunc->setAttr( "llvm.debug.subprogram", subprogramAttr );
 
-            // This is the key to ensure that translateModuleToLLVMIR does not strip the location info (instead converts loc's into !dbg's)
+            // This is the key to ensure that translateModuleToLLVMIR does not strip the location info (instead converts
+            // loc's into !dbg's)
             mainFunc->setLoc( builder.getFusedLoc( { module.getLoc() }, subprogramAttr ) );
+        }
+
+        void constructVariableDI( llvm::StringRef varName, mlir::Type& elemType, mlir::FileLineColLoc loc,
+                                  unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp )
+        {
+            auto ctx = builder.getContext();
+            allocaOp->setAttr( "bindc_name", builder.getStringAttr( varName ) );
+
+            mlir::LLVM::DILocalVariableAttr diVar;
+
+            if ( elemType.isa<mlir::IntegerType>() )
+            {
+                const char* typeName{};
+
+                switch ( elemSizeInBits )
+                {
+                    case 1:
+                    {
+                        typeName = "bool";
+                        break;
+                    }
+                    case 8:
+                    {
+                        typeName = "int8_t";
+                        break;
+                    }
+                    case 16:
+                    {
+                        typeName = "int16_t";
+                        break;
+                    }
+                    case 32:
+                    {
+                        typeName = "int32_t";
+                        break;
+                    }
+                    case 64:
+                    {
+                        typeName = "int64_t";
+                        break;
+                    }
+                    default:
+                    {
+                        llvm_unreachable("Unsupported float type size");
+                    }
+                }
+
+                auto diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                                                                builder.getStringAttr( typeName ), elemSizeInBits,
+                                                                llvm::dwarf::DW_ATE_signed );
+
+                diVar = mlir::LLVM::DILocalVariableAttr::get( ctx, subprogramAttr, builder.getStringAttr( varName ),
+                                                              fileAttr, loc.getLine(), 0, elemSizeInBits, diType,
+                                                              mlir::LLVM::DIFlags::Zero );
+            }
+            else
+            {
+                const char* typeName{};
+
+                switch ( elemSizeInBits )
+                {
+                    case 32:
+                    {
+                        typeName = "float";
+                        break;
+                    }
+                    case 64:
+                    {
+                        typeName = "double";
+                        break;
+                    }
+                    default:
+                    {
+                        llvm_unreachable("Unsupported float type size");
+                    }
+                }
+
+                auto diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                                                                builder.getStringAttr( typeName ), elemSizeInBits,
+                                                                llvm::dwarf::DW_ATE_float );
+
+                diVar = mlir::LLVM::DILocalVariableAttr::get( ctx, subprogramAttr, builder.getStringAttr( varName ),
+                                                              fileAttr, loc.getLine(), 0, elemSizeInBits, diType,
+                                                              mlir::LLVM::DIFlags::Zero );
+            }
+
+            builder.setInsertionPointAfter( allocaOp );
+            builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
+
+            symbolToAlloca[varName] = allocaOp;
         }
 
        private:
@@ -169,21 +269,9 @@ namespace toy
         bool c_one_I64{};
         bool c_zero_F64{};
         bool c_zero_I32{};
+        mlir::LLVM::DIFileAttr fileAttr;
+        mlir::LLVM::DISubprogramAttr subprogramAttr;
     };
-
-#if 0
-    mlir::FileLineColLoc getLocation( mlir::Location loc )
-    {
-        // Cast Location to FileLineColLoc
-        auto fileLineLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc );
-        if ( !fileLineLoc )
-        {
-            throw exception_with_context( __FILE__, __LINE__, __func__, "Internal error: Expected only FileLineColLoc Location info." );
-        }
-
-        return fileLineLoc;
-    }
-#endif
 
     // Lower toy.program to an LLVM function.
     class ProgramOpLowering : public ConversionPattern
@@ -278,13 +366,17 @@ namespace toy
             assert( alignment == totalSizeInBytes );    // only simple fixed size types are currently supported (no
                                                         // arrays, or structures.)
 
-            auto newAllocaOp = rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, one, alignment );
+            rewriter.setInsertionPoint( op );
+            auto allocaOp = rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, one, alignment );
 
-            lState.symbolToAlloca[varName] = newAllocaOp;
+            lState.constructVariableDI( varName, elemType, getLocation( loc ), elemSizeInBits, allocaOp );
 
+
+            auto parentOp = op->getParentOp();
             // Erase the declare op
             rewriter.eraseOp( op );
-            // LLVM_DEBUG(llvm::dbgs() << "IR after erasing toy.declare:\n" << *op->getParentOp() << "\n");
+
+            LLVM_DEBUG( llvm::dbgs() << "IR after lowering toy.declare:\n" << parentOp << '\n' );
 
             return success();
         }

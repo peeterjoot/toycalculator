@@ -12,7 +12,8 @@ It implements a toy calculator language that supports a few primitive linguistic
 * single line comments,
 * a EXIT operation,
 * boolean, integer and floating point constants.
-* an ASSIGNMENT operator (=) with unary (+,-) and binary operators (+,-,*,/).
+* an ASSIGNMENT operator `(=)` with unary `(+,-)` and binary operators `(+,-,*,/)`.
+* DWARF instrumentation support, sufficient to for line stepping, breakpoints, continue, and variable inspection (and probably modification: untested.)
 
 Computations occur in assignment operations, and any types are first promoted to the type of the variable.
 This means that 'x = 1.99 + 2.99' has the value 3, if x is an integer variable.
@@ -58,10 +59,7 @@ do that without bothering with AI tools that can be more work to use than just d
 
 Basic language constructs to make things more interesting:
 
-* DWARF instrumentation for types.  See for example: (`prototypes/simplest.cpp`, `fortran/*`)
 * Implement -c and -o options in driver (-c is the current behaviour, -o to call clang to link.)
-* Tag: V2 when the two above done, and record it in Changelog.
-
 * tests for all the type conversions.
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 * unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.
