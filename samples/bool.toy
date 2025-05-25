@@ -1,6 +1,8 @@
 BOOL i1v;
 i1v = TRUE;
 BOOL i2v;
+i2v = FALSE;
+PRINT i2v;
 i2v = i1v;
 FLOAT64 f;
 f = i1v;

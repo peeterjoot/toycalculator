@@ -182,12 +182,16 @@ namespace toy
             if ( elemType.isa<mlir::IntegerType>() )
             {
                 const char* typeName{};
+                unsigned dwType = llvm::dwarf::DW_ATE_signed;
+                unsigned sz = elemSizeInBits;
 
                 switch ( elemSizeInBits )
                 {
                     case 1:
                     {
                         typeName = "bool";
+                        dwType = llvm::dwarf::DW_ATE_boolean;
+                        sz = 8;
                         break;
                     }
                     case 8:
@@ -217,11 +221,11 @@ namespace toy
                 }
 
                 auto diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
-                                                                builder.getStringAttr( typeName ), elemSizeInBits,
-                                                                llvm::dwarf::DW_ATE_signed );
+                                                                builder.getStringAttr( typeName ), sz,
+                                                                dwType );
 
                 diVar = mlir::LLVM::DILocalVariableAttr::get( ctx, subprogramAttr, builder.getStringAttr( varName ),
-                                                              fileAttr, loc.getLine(), 0, elemSizeInBits, diType,
+                                                              fileAttr, loc.getLine(), 0, sz, diType,
                                                               mlir::LLVM::DIFlags::Zero );
             }
             else

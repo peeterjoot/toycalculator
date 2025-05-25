@@ -1,7 +1,27 @@
 BOOL i1;
+i1 = TRUE;
+PRINT i1;
+
 INT8 i8;
+i8 = 1;
+PRINT i8;
+
 INT16 i16;
+i16 = 1;
+PRINT i16;
+
 INT32 i32;
+i32 = 1;
+PRINT i32;
+
 INT64 i64;
+i64 = 1;
+PRINT i64;
+
 FLOAT32 f32;
+f32 = 1;
+PRINT f32;
+
 FLOAT64 f64;
+f64 = 1;
+PRINT f64;

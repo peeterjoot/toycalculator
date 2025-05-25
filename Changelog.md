@@ -1,3 +1,10 @@
+## tag: V2
+
+This release:
+
+* Adds DWARF debug instrumentation.  Yay!
+* Builds a link step into the compiler driver.  To avoid that, compile with -c.
+
 ## tag: V1
 
 * Declare variables with BOOL, INT8, INT16, INT32, INT64, FLOAT32, FLOAT64 types:
