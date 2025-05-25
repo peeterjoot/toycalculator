@@ -3,7 +3,7 @@
 b main
 #run -g --stdout ../samples/bin.toy --no-emit-object  --debug
 #run -g --stdout ../samples/types.toy --no-emit-object  --debug --emit-mlir
-run ../samples/test.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+run ../samples/types.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 #run -g --stdout ../samples/unary.toy --no-emit-object  --debug --emit-mlir
 #run -g --stdout ../samples/return3.toy  --debug --emit-mlir --no-emit-object
 #run -g --stdout ../samples/returnx.toy  --debug --emit-mlir --no-emit-object
@@ -14,6 +14,8 @@ b __assert_perror_fail
 #b createDICompileUnitAttr
 #b createDISubprogram
 b ToyToLLVMLoweringPass::runOnOperation
+#b std::stoi
+b parser.cpp:131
 #b translateModuleToLLVMIR
 #b DebugTranslation::DebugTranslation
 #b getDbgRecordRange

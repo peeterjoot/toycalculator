@@ -128,7 +128,7 @@ namespace toy
         }
         else if ( integerNode )
         {
-            int64_t val = std::stoi( integerNode->getText() );
+            int64_t val = std::stoll( integerNode->getText() );
             value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
             ty = theTypes::integer64;
         }

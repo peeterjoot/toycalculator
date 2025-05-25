@@ -146,11 +146,11 @@ foreach my $stem (@tests)
     {
         system( qq(cmp -s expected/${stem}.out out/${stem}.out) );
         my $crc = $? >> 8;
-        complain( "cmp -s expected/${stem}.out out/${stem}.out: $crc\n") if ( $crc );
+        complain( "ERROR: cmp -s expected/${stem}.out out/${stem}.out: $crc\n") if ( $crc );
     }
     else
     {
-        warn "COMPARE FILE NOT FOUND: expected/$stem.out\n";
+        warn "ERROR: COMPARE FILE NOT FOUND: expected/$stem.out\n";
     }
 }
 
