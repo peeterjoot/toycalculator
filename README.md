@@ -50,16 +50,16 @@ do that without bothering with AI tools that can be more work to use than just d
 * -debug-only=toy-driver
 * -debug-only=toy-lowering
 * --debug-mlir
-* -g (show MLIR location info in the dump, and (eventually) generate DWARF metadata in the lowered LLVM-IR.)
+* -g (show MLIR location info in the dump, and lowered LLVM-IR.)  May not be propagating this properly now.
 * -O[0123] -- the usual.
 * --stdout.  MLIR and LLVM-IR output to stdout instead of to files.
-* --no-emit-object.
+* --no-emit-object
+* -c (compile only, and don't link.)
 
 ## TODO
 
 Basic language constructs to make things more interesting:
 
-* Implement -c and -o options in driver (-c is the current behaviour, -o to call clang to link.)
 * tests for all the type conversions.
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 * unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.

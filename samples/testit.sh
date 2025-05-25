@@ -127,9 +127,6 @@ foreach my $stem (@tests)
     print "objdump -dr out/${stem}.o\n";
     system( qq(objdump -dr out/${stem}.o) );
 
-    print "clang -g -o out/${stem} out/${stem}.o -L ../build -l toy_runtime -Wl,-rpath,${pwd}/../build\n";
-    system( qq(clang -g -o out/${stem} out/${stem}.o -L ../build -l toy_runtime -Wl,-rpath,${pwd}/../build) );
-
     print "./out/${stem}\n";
     system( qq(./out/${stem} > out/${stem}.out) );
     my $rc = $? >> 8;

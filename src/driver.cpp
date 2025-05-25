@@ -13,6 +13,8 @@
  * - runs the assembly printer.
  */
 #include <assert.h>
+#include <llvm/ADT/ArrayRef.h>
+#include <llvm/ADT/StringRef.h>
 #include <llvm/IR/DebugProgramInstruction.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/PassManager.h>
@@ -24,6 +26,7 @@
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/InitLLVM.h>
 #include <llvm/Support/Path.h>
+#include <llvm/Support/Process.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/TargetParser/Host.h>
@@ -57,6 +60,10 @@ static llvm::cl::opt<std::string> inputFilename( llvm::cl::Positional, llvm::cl:
 static llvm::cl::opt<bool> debugInfo( "g",
                                       llvm::cl::desc( "Enable location output in MLIR, and dwarf metadata "
                                                       "creation in the lowered LLVM IR)" ),
+                                      llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
+
+static llvm::cl::opt<bool> compileOnly( "c",
+                                      llvm::cl::desc( "Compile only and don't link." ),
                                       llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
 
 static llvm::cl::opt<std::string> outDir(
@@ -104,6 +111,9 @@ enum class return_codes : int
     semantic_error,
     unknown_error
 };
+
+static
+void invokeLinker( const char* argv0, llvm::SmallString<128> & exePath, llvm::SmallString<128> & objectPath );
 
 using namespace toy;
 
@@ -253,38 +263,12 @@ int main( int argc, char** argv )
         // Export to LLVM IR
         llvm::LLVMContext llvmContext;
 
-        std::unique_ptr<llvm::Module> llvmModule =
-            mlir::translateModuleToLLVMIR( module, llvmContext, filename );
+        std::unique_ptr<llvm::Module> llvmModule = mlir::translateModuleToLLVMIR( module, llvmContext, filename );
 
         if ( !llvmModule )
         {
             throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to translate to LLVM IR" );
         }
-
-#if 0
-        if (debugInfo) {
-            llvmModule->setIsNewDbgInfoFormat( false );
-        }
-
-        LLVM_DEBUG( {
-            llvm::dbgs() << "Instruction dump after lowering:\n";
-            for ( llvm::Function& func : *llvmModule )
-            {
-                for ( llvm::BasicBlock& bb : func )
-                {
-                    for ( llvm::Instruction& inst : bb )
-                    {
-                        for ( llvm::DbgRecord&DR : inst.getDbgRecordRange() )
-                        {
-                            DR.dump(); // curiously, this shows module() and program() still in the dump?
-                        }
-
-                        inst.dump();
-                    }
-                }
-            }
-        } );
-#endif
 
         auto emitObject = !noEmitObject;
         if ( emitLLVM || emitObject )
@@ -394,7 +378,12 @@ int main( int argc, char** argv )
                 codegenPM.run( *llvmModule );
                 dest.close();
 
-                llvm::outs() << "Generated object file: " << outputFilename << "\n";
+                LLVM_DEBUG( { llvm::outs() << "Generated object file: " << outputFilename << '\n'; } );
+
+                if ( compileOnly == false )
+                {
+                    invokeLinker( argv[0], dirWithStem, outputFilename );
+                }
             }
         }
     }
@@ -405,6 +394,53 @@ int main( int argc, char** argv )
     }
 
     return (int)return_codes::success;
+}
+
+void invokeLinker( const char* argv0, llvm::SmallString<128> & exePath, llvm::SmallString<128> & objectPath )
+{
+    // Get the driver path
+    std::string driver = llvm::sys::fs::getMainExecutable( argv0, (void*)&main );
+    llvm::StringRef driverPath = llvm::sys::path::parent_path( driver );
+    LLVM_DEBUG( { llvm::outs() << "Compiler driver path: " << driverPath << '\n'; } );
+
+    // Find the linker (gcc)
+    auto linker = "gcc";
+    auto linkerPath = llvm::sys::findProgramByName( linker );
+    if ( !linkerPath )
+    {
+        std::error_code ec = linkerPath.getError();
+
+        throw exception_with_context( __FILE__, __LINE__, __func__,
+                            std::format( "Error finding path for linker '{}': {}\n", linker, ec.message() ) );
+    }
+    LLVM_DEBUG( { llvm::outs() << "Linker path: " << linkerPath.get() << '\n'; } );
+
+    // Construct the -Wl,-rpath argument
+    llvm::SmallString<128> rpathOption;
+    rpathOption.assign( "-Wl,-rpath," );
+    rpathOption.append( driverPath );
+
+    // Create argv for ExecuteAndWait
+    llvm::SmallVector<llvm::StringRef, 16> argv;
+    argv.push_back( linkerPath.get() );
+    argv.push_back( "-g" );
+    argv.push_back( "-o" );
+    argv.push_back( exePath );
+    argv.push_back( objectPath );
+    argv.push_back( "-L" );
+    argv.push_back( driverPath );
+    argv.push_back( "-l" );
+    argv.push_back( "toy_runtime" );
+    argv.push_back( rpathOption );
+
+    // Execute the linker
+    std::string errMsg;
+    int result = llvm::sys::ExecuteAndWait( linkerPath.get(), argv, std::nullopt, {}, 0, 0, &errMsg );
+    if ( result != 0 )
+    {
+        throw exception_with_context( __FILE__, __LINE__, __func__,
+                            std::format( "Linker failed with exit code: {}, rc = {}\n", errMsg, result ) );
+    }
 }
 
 // vim: et ts=4 sw=4
