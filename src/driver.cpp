@@ -243,6 +243,12 @@ int main( int argc, char** argv )
             throw exception_with_context( __FILE__, __LINE__, __func__, "LLVM lowering failed" );
         }
 
+        if ( toStdout )
+        {
+            llvm::outs() << "Before module lowering:\n";
+            module.print( llvm::outs(), flags );
+        }
+
         // Export to LLVM IR
         llvm::LLVMContext llvmContext;
 

@@ -1,2 +1,2 @@
 set -x
-gdb --args /usr/local/llvm-20.1.5/bin/flang-new -g -S -emit-llvm test.f90 -o test.ll
+gdb -q -x b --args /usr/local/llvm-20.1.5/bin/flang-new -g -S -emit-llvm test.f90 -o test.ll

@@ -3,7 +3,7 @@
 b main
 #run -g --stdout ../samples/bin.toy --no-emit-object  --debug
 #run -g --stdout ../samples/types.toy --no-emit-object  --debug --emit-mlir
-run ../samples/addi.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+run ../samples/test.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 #run -g --stdout ../samples/unary.toy --no-emit-object  --debug --emit-mlir
 #run -g --stdout ../samples/return3.toy  --debug --emit-mlir --no-emit-object
 #run -g --stdout ../samples/returnx.toy  --debug --emit-mlir --no-emit-object
@@ -11,11 +11,11 @@ run ../samples/addi.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-
 
 b __assert_perror_fail
 
-b createDICompileUnitAttr
-b createDISubprogram
-#b ToyToLLVMLoweringPass::runOnOperation
+#b createDICompileUnitAttr
+#b createDISubprogram
+b ToyToLLVMLoweringPass::runOnOperation
 b translateModuleToLLVMIR
-b DebugTranslation::DebugTranslation
+#b DebugTranslation::DebugTranslation
 #b getDbgRecordRange
 
 #b buildUnaryExpression
