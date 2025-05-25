@@ -231,6 +231,7 @@ int main( int argc, char** argv )
 
         driverState st;
         st.isOptimized = optLevel != OptLevel::O0 ? true : false;
+        st.filename = filename;
 
         pm.addPass( mlir::createToyToLLVMLoweringPass( &st ) );
         pm.addPass( mlir::createConvertSCFToCFPass() );

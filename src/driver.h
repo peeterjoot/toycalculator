@@ -6,6 +6,8 @@
 #if !defined __PJ_driver_h_is_included
 #define __PJ_driver_h_is_included
 
+#include <string>
+
 #pragma once
 
 namespace toy
@@ -13,7 +15,10 @@ namespace toy
     struct driverState
     {
         bool isOptimized;
+        std::string filename;
     };
 }
 
 #endif
+
+// vim: et ts=4 sw=4

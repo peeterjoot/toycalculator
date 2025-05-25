@@ -1,3 +1,32 @@
+/**
+ * @file    prototypes/simplest.cpp
+ * @author  Peeter Joot <peeterjoot@pm.me>
+ * @brief   This is a standalone MLIR -> LLVM-IR generation program, with working DWARF instrumentation.
+ *
+ * @section Description
+ *
+ * Unlike mlirtest.cpp, this emits DI information in the MLIR builder.  It's a MWE that illustrates a
+ * compiler workflow:
+ * - MLIR builder
+ * - Lowering (no special lowering classes required.)
+ * - LLVM module replacement for top level.
+ *
+ * Use this to build an LLVM-IR equivalent program to test.c with:
+ *
+    ../build/simplest  > output.ll
+    clang -g -o output output.ll -Wno-override-module
+    gdb -q ./output
+
+    and then some basic debugging operations, including:
+
+    (gdb) b test.c:2
+    (gdb) b main
+    (gdb) run
+    (gdb) n
+    (gdb) p x
+ *
+ */
+
 #include <assert.h>
 #include <llvm/BinaryFormat/Dwarf.h>
 #include <llvm/IR/DIBuilder.h>
@@ -43,7 +72,6 @@ int main( int argc, char **argv )
     llvm::InitializeAllAsmParsers();
     llvm::InitializeAllAsmPrinters();
 
-    // Get target triple
     std::string targetTriple = llvm::sys::getDefaultTargetTriple();
     llvm::Triple triple( targetTriple );
     assert( triple.isArch64Bit() && triple.isOSLinux() );
@@ -105,6 +133,7 @@ int main( int argc, char **argv )
         llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
     func->setAttr( "llvm.debug.subprogram", subprogramAttr );
     func->setLoc( builder.getFusedLoc( { loc }, subprogramAttr ) );
+
     module.push_back( func );
 
     // Variable DI

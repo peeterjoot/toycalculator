@@ -5,8 +5,14 @@
  */
 #include <llvm/ADT/StringRef.h>
 #include <llvm/BinaryFormat/Dwarf.h>    // For DW_LANG_C, DW_ATE_*
+#include <llvm/IR/DebugInfoMetadata.h>
+#include <llvm/IR/Module.h>
+#include <llvm/MC/TargetRegistry.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/ErrorHandling.h>
+#include <llvm/Target/TargetMachine.h>
+#include <llvm/Target/TargetOptions.h>
+#include <llvm/TargetParser/Host.h>
 #include <mlir/Conversion/ArithToLLVM/ArithToLLVM.h>
 #include <mlir/Conversion/LLVMCommon/Pattern.h>
 #include <mlir/Conversion/LLVMCommon/TypeConverter.h>
@@ -17,7 +23,9 @@
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
 #include <mlir/IR/Block.h>
+#include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/Location.h>    // For FileLineColLoc
+#include <mlir/IR/OperationSupport.h>
 #include <mlir/Pass/Pass.h>
 #include <mlir/Transforms/DialectConversion.h>
 
@@ -28,15 +36,15 @@
 
 #define DEBUG_TYPE "toy-lowering"
 
+#define ENTRY_SYMBOL_NAME "main"
+#define COMPILER_NAME "toycalculator"
+#define COMPILER_VERSION " V2"
+
 using namespace mlir;
 
 namespace toy
 {
     //
-    // Perhaps relavant for the DR emission: 
-    //    https://llvm.org/docs/RemoveDIsDebugInfo.html
-    //
-    // (This new way is hidden by default?) -- DI emission may not be automatic.
     //
     class loweringContext
     {
@@ -47,7 +55,9 @@ namespace toy
         mlir::LLVM::LLVMFuncOp printFuncI64;
         OpBuilder builder;
 
-        loweringContext( ModuleOp & module ) : builder( module.getRegion() ) {}
+        loweringContext( ModuleOp& module ) : builder( module.getRegion() )
+        {
+        }
 
         mlir::LLVM::ConstantOp getI64one( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
@@ -714,17 +724,34 @@ namespace toy
 
         void runOnOperation() override
         {
-            ModuleOp module = getOperation();
+            ModuleOp module = getOperation();    // really an operation wrapped ModuleOp, not the same as, say,
+                                                 // mlir::ModuleOp::create( loc );
 
             LLVM_DEBUG( {
                 llvm::dbgs() << "Starting ToyToLLVMLoweringPass on:\n";
                 module->dump();
             } );
 
-            // Create DICompileUnit
             loweringContext lState( module );
 
-            // Set debug metadata
+            // Set data_layout,ident,target_triple:
+            std::string targetTriple = llvm::sys::getDefaultTargetTriple();
+            llvm::Triple triple( targetTriple );
+            assert( triple.isArch64Bit() && triple.isOSLinux() );
+
+            std::string error;
+            const llvm::Target* target = llvm::TargetRegistry::lookupTarget( targetTriple, error );
+            assert( target );
+            llvm::TargetOptions options;
+            auto targetMachine = std::unique_ptr<llvm::TargetMachine>( target->createTargetMachine(
+                targetTriple, "generic", "", options, std::optional<llvm::Reloc::Model>( llvm::Reloc::PIC_ ) ) );
+            assert( targetMachine );
+            std::string dataLayoutStr = targetMachine->createDataLayout().getStringRepresentation();
+
+            module->setAttr( "llvm.ident", lState.builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
+            module->setAttr( "llvm.data_layout", lState.builder.getStringAttr( dataLayoutStr ) );
+            module->setAttr( "llvm.target_triple", lState.builder.getStringAttr( targetTriple ) );
+
             auto ctx = lState.builder.getContext();
 
             // Add __toy_print declaration
@@ -733,18 +760,38 @@ namespace toy
                 LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { lState.builder.getF64Type() }, false );
             auto printFuncI64Type =
                 LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { lState.builder.getI64Type() }, false );
-            lState.printFuncF64 = lState.builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_f64", printFuncF64Type,
-                                                                 LLVM::Linkage::External );
-            lState.printFuncI64 = lState.builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_i64", printFuncI64Type,
-                                                                 LLVM::Linkage::External );
+            lState.printFuncF64 = lState.builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_f64",
+                                                                           printFuncF64Type, LLVM::Linkage::External );
+            lState.printFuncI64 = lState.builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_i64",
+                                                                           printFuncI64Type, LLVM::Linkage::External );
 
             // Create main function
             auto mainFuncType = LLVM::LLVMFunctionType::get( lState.builder.getI32Type(), {}, false );
-            lState.mainFunc =
-                lState.builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "main", mainFuncType, LLVM::Linkage::External );
+            lState.mainFunc = lState.builder.create<LLVM::LLVMFuncOp>( module.getLoc(), ENTRY_SYMBOL_NAME, mainFuncType,
+                                                                       LLVM::Linkage::External );
+
+            // Construct module level DI state:
+            auto fileAttr = mlir::LLVM::DIFileAttr::get( ctx, pDriverState->filename, "." );
+            auto distinctAttr = mlir::DistinctAttr::create( lState.builder.getUnitAttr() );
+            auto compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
+                ctx, distinctAttr, llvm::dwarf::DW_LANG_C, fileAttr, lState.builder.getStringAttr( COMPILER_NAME ),
+                false, mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
+            auto ta = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                        lState.builder.getStringAttr( "int" ), 32,
+                                                        (unsigned)llvm::dwarf::DW_ATE_signed );
+            llvm::SmallVector<mlir::LLVM::DITypeAttr, 1> typeArray;
+            typeArray.push_back( ta );
+            auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get( ctx, 0, typeArray );
+            auto subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
+                ctx, mlir::DistinctAttr::create( lState.builder.getUnitAttr() ), compileUnitAttr, fileAttr,
+                lState.builder.getStringAttr( ENTRY_SYMBOL_NAME ), lState.builder.getStringAttr( ENTRY_SYMBOL_NAME ),
+                fileAttr, 1, 1, mlir::LLVM::DISubprogramFlags::Definition, subprogramType,
+                llvm::ArrayRef<mlir::LLVM::DINodeAttr>{}, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
+            lState.mainFunc->setAttr( "llvm.debug.subprogram", subprogramAttr );
+            lState.mainFunc->setLoc( lState.builder.getFusedLoc( { module.getLoc() }, subprogramAttr ) );
 
             // Initialize the type converter
-            LLVMTypeConverter typeConverter( &getContext() );
+            LLVMTypeConverter typeConverter( ctx );
 
             // Conversion target: only LLVM dialect is legal
             ConversionTarget target1( getContext() );
@@ -756,22 +803,22 @@ namespace toy
             target1.addIllegalDialect<toy::ToyDialect>();
 
             // Patterns for toy dialect and standard ops
-            RewritePatternSet patterns1( &getContext() );
+            RewritePatternSet patterns1( ctx );
 
-            // The operator ordering here doesn't matter, as there's a graph walk to find all the operator nodes,
-            // and the order is based on that walk (i.e.: ProgramOpLowering happens first.)
-            patterns1.insert<DeclareOpLowering>( lState, &getContext() );
-            patterns1.insert<LoadOpLowering>( lState, &getContext() );
-            patterns1.insert<AddOpLowering>( lState, &getContext() );
-            patterns1.insert<SubOpLowering>( lState, &getContext() );
-            patterns1.insert<MulOpLowering>( lState, &getContext() );
-            patterns1.insert<DivOpLowering>( lState, &getContext() );
-            patterns1.insert<NegOpLowering>( lState, &getContext() );
-            patterns1.insert<PrintOpLowering>( lState, &getContext() );
-            patterns1.insert<ConstantOpLowering>( lState, &getContext() );
-            patterns1.insert<AssignOpLowering>( lState, &getContext() );
-            patterns1.insert<ExitOpLowering>( lState, &getContext() );
-            patterns1.insert<ProgramOpLowering>( lState, &getContext() );
+            // The operator ordering here doesn't matter, as there appears to be a graph walk to find all the operator
+            // nodes, and the order is based on that walk (i.e.: ProgramOpLowering happens first.)
+            patterns1.insert<DeclareOpLowering>( lState, ctx );
+            patterns1.insert<LoadOpLowering>( lState, ctx );
+            patterns1.insert<AddOpLowering>( lState, ctx );
+            patterns1.insert<SubOpLowering>( lState, ctx );
+            patterns1.insert<MulOpLowering>( lState, ctx );
+            patterns1.insert<DivOpLowering>( lState, ctx );
+            patterns1.insert<NegOpLowering>( lState, ctx );
+            patterns1.insert<PrintOpLowering>( lState, ctx );
+            patterns1.insert<ConstantOpLowering>( lState, ctx );
+            patterns1.insert<AssignOpLowering>( lState, ctx );
+            patterns1.insert<ExitOpLowering>( lState, ctx );
+            patterns1.insert<ProgramOpLowering>( lState, ctx );
 
             arith::populateArithToLLVMConversionPatterns( typeConverter, patterns1 );
 

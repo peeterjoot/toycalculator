@@ -14,7 +14,7 @@ b __assert_perror_fail
 #b createDICompileUnitAttr
 #b createDISubprogram
 b ToyToLLVMLoweringPass::runOnOperation
-b translateModuleToLLVMIR
+#b translateModuleToLLVMIR
 #b DebugTranslation::DebugTranslation
 #b getDbgRecordRange
 

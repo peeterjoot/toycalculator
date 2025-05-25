@@ -10,7 +10,7 @@ testit.sh - <one-line-description>
 
 =head1 SYNOPSIS
 
-testit.sh [--help] --no-fatal [--just tcname]
+testit.sh [--help] --no-fatal [--just tcname] [--optimize]
 
 =head1 DESCRIPTION
 
@@ -24,7 +24,7 @@ Warn, insted of die, on error.
 
 =item --just testname
 
-Run only testname.  This is the test file stem ('test' for 'test.toy' for example.)
+Run only testname.  Given full source test.toy, say, this is the test file stem test.
 
 =back
 
@@ -62,17 +62,28 @@ my $myName = '' ;
 ($myName = $0) =~ s@.*[/\\]@@ ;
 my $fatal = 1;
 my $just;
+my $optimize = 0;
 
 #Getopt::Long::Configure( 'pass_through' ) ;
 GetOptions (
    'help'               => sub { pod2usage(-verbose => 2) ; },
    'fatal!'             => \$fatal,
    'just=s'             => \$just,
+   'optimize!'          => \$optimize,
 ) or pod2usage(-verbose => 0) ;
 
 # Validate/handle options, and everything else...
 
-my $flags = '-O 2';
+my $flags;
+
+if ( $optimize )
+{
+    $flags = '-O 2';
+}
+else
+{
+    $flags = '-g';
+}
 
 system( qq(rm -rf out) );
 

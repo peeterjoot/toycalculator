@@ -58,7 +58,7 @@ do that without bothering with AI tools that can be more work to use than just d
 
 Basic language constructs to make things more interesting:
 
-* LLVM IR lowering doesn't produce DWARF instrumentation matching the location info.  WIP (`prototypes/simplest.cpp`, `fortran/*`)
+* DWARF instrumentation for types.  See for example: (`prototypes/simplest.cpp`, `fortran/*`)
 * tests for all the type conversions.
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 * unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.
