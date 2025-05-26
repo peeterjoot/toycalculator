@@ -213,49 +213,16 @@ target_link_libraries(toycalculator
   LLVM${LLVM_TARGET_ARCH}CodeGen
   LLVM${LLVM_TARGET_ARCH}Desc
   LLVM${LLVM_TARGET_ARCH}Info
-  MLIRAnalysis
   MLIRArithDialect
   MLIRArithToLLVM
   MLIRAsmParser
-  MLIRBytecodeReader
-  MLIRCallInterfaces
-  MLIRControlFlowDialect
-  MLIRControlFlowInterfaces
-  MLIRControlFlowToLLVM
-  MLIRDataLayoutInterfaces
-  MLIRDestinationStyleOpInterface
-  MLIRFuncDialect
-  MLIRFunctionInterfaces
-  MLIRFuncToLLVM
-  MLIRInferIntRangeInterface
-  MLIRInferTypeOpInterface
-  MLIRIR
-  MLIRLLVMDialect
-  MLIRLoopLikeInterface
-  MLIRMemorySlotInterfaces
-  MLIRMemRefDialect
-  MLIRMemRefToLLVM
-  MLIRParser
-  MLIRPass
-  MLIRPDLDialect
-  MLIRPDLInterpDialect
-  MLIRPDLToPDLInterp
-  MLIRPresburger
-  MLIRRewrite
-  MLIRRewritePDL
-  MLIRRuntimeVerifiableOpInterface
-  MLIRSCFDialect
-  MLIRSCFToControlFlow
-  MLIRSideEffectInterfaces
-  MLIRSubsetOpInterface
-  MLIRSupport
-  MLIRTransforms
-  MLIRTransformUtils
-  MLIRUBDialect
-  MLIRValueBoundsOpInterface
-  MLIRViewLikeInterface
   MLIRTargetLLVMIRExport    # mlir::translateModuleToLLVMIR
+  MLIRDataLayoutInterfaces
   MLIRBuiltinToLLVMIRTranslation
+  MLIRControlFlowToLLVM
+  MLIRFuncToLLVM
   MLIRLLVMToLLVMIRTranslation
+  MLIRMemRefToLLVM
+  MLIRSCFToControlFlow
 )
 

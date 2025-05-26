@@ -108,7 +108,8 @@ namespace toy
         // Set data_layout,ident,target_triple:
         void setModuleAttrs()
         {
-#if 0 // Oops: don't really need these.  Already doing this in driver.cpp for the assembly printer (at the LLVM level after all lowering and translation)
+#if 0    // Oops: don't really need these.  Already doing this in driver.cpp for the assembly printer (at the LLVM level
+         // after all lowering and translation)
             std::string targetTriple = llvm::sys::getDefaultTargetTriple();
             llvm::Triple triple( targetTriple );
             assert( triple.isArch64Bit() && triple.isOSLinux() );
@@ -181,7 +182,7 @@ namespace toy
 
             mlir::LLVM::DILocalVariableAttr diVar;
 
-            if ( elemType.isa<mlir::IntegerType>() )
+            if ( mlir::isa<mlir::IntegerType>( elemType ) )
             {
                 const char* typeName{};
                 unsigned dwType = llvm::dwarf::DW_ATE_signed;
@@ -218,13 +219,12 @@ namespace toy
                     }
                     default:
                     {
-                        llvm_unreachable("Unsupported float type size");
+                        llvm_unreachable( "Unsupported float type size" );
                     }
                 }
 
                 auto diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
-                                                                builder.getStringAttr( typeName ), sz,
-                                                                dwType );
+                                                                builder.getStringAttr( typeName ), sz, dwType );
 
                 diVar = mlir::LLVM::DILocalVariableAttr::get( ctx, subprogramAttr, builder.getStringAttr( varName ),
                                                               fileAttr, loc.getLine(), 0, sz, diType,
@@ -248,7 +248,7 @@ namespace toy
                     }
                     default:
                     {
-                        llvm_unreachable("Unsupported float type size");
+                        llvm_unreachable( "Unsupported float type size" );
                     }
                 }
 
