@@ -1,26 +1,19 @@
-# gdb ./toycalculator ; source ../b
+# This is a gdb script.  Use it like so from samples/
+#
+# gdb -q ../build/toycalculator ; source ../b
+#
+# (bin/debugit does this)
 
 b main
-#run -g --stdout ../samples/bin.toy --no-emit-object  --debug
-#run -g --stdout ../samples/types.toy --no-emit-object  --debug --emit-mlir
+# pick which sample program to use for the compiler debugging.
 run ../samples/types.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
-#run -g --stdout ../samples/unary.toy --no-emit-object  --debug --emit-mlir
-#run -g --stdout ../samples/return3.toy  --debug --emit-mlir --no-emit-object
-#run -g --stdout ../samples/returnx.toy  --debug --emit-mlir --no-emit-object
-#run -g --stdout ../samples/unary.toy --no-emit-object  --debug
 
 b __assert_perror_fail
 
+#b buildUnaryExpression
 #b createDICompileUnitAttr
 #b createDISubprogram
-b ToyToLLVMLoweringPass::runOnOperation
-#b std::stoi
-b parser.cpp:131
-#b translateModuleToLLVMIR
 #b DebugTranslation::DebugTranslation
-#b getDbgRecordRange
-
-#b buildUnaryExpression
 #b enterAssignment
 #b enterAssignmentExpression
 #b enterBinaryexpression
@@ -34,10 +27,13 @@ b parser.cpp:131
 #b enterStartRule
 #b enterUnaryexpression
 #b exitReturnstatement
+#b getDbgRecordRange
 #b MLIRListener::enterAssignmentExpression
 #b MLIRListener::registerDeclaration
+#b parser.cpp:131
 #b ProgramOpLowering::matchAndRewrite
 #b ReturnOpLowering::matchAndRewrite
+#b std::stoi
 #b toy::AssignOpLowering::matchAndRewrite
 #b toy::DeclareOpLowering::matchAndRewrite
 #b toy::ExitOpLowering::matchAndRewrite
@@ -45,3 +41,5 @@ b parser.cpp:131
 #b toy::MLIRListener::enterAssignment
 #b toy::PrintOpLowering::matchAndRewrite
 #b toy::ProgramOpLowering::matchAndRewrite
+#b ToyToLLVMLoweringPass::runOnOperation
+#b translateModuleToLLVMIR
