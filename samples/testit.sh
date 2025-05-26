@@ -111,26 +111,31 @@ my %expectedRC = (
 
 my @warnings = ();
 
+sub verbose_system
+{
+    my ($cmd) = @_;
+
+    print "# $cmd\n";
+    system( $cmd );
+
+    return $? >> 8;
+}
+
 my $pwd = `pwd` ; chomp $pwd;
 foreach my $stem (@tests)
 {
     next if ( defined $just and $just ne $stem );
 
     print "##########################################################################\n";
-    print "// $stem.toy\n";
-    system( qq(cat $stem.toy) );
+    verbose_system( qq(cat $stem.toy) );
 
     print "##########################################################################\n";
-    print "../build/toycalculator --output-directory out -g $stem.toy $flags --emit-llvm --emit-mlir\n";
-    system( qq(../build/toycalculator --output-directory out -g $stem.toy $flags --emit-llvm --emit-mlir) );
+    verbose_system( qq(../build/toycalculator --output-directory out -g $stem.toy $flags --emit-llvm --emit-mlir) );
 
-    print "objdump -dr out/${stem}.o\n";
-    system( qq(objdump -dr out/${stem}.o) );
+    verbose_system( qq(objdump -dr --no-show-raw-insn out/${stem}.o) );
 
-    print "./out/${stem}\n";
-    system( qq(./out/${stem} > out/${stem}.out) );
-    my $rc = $? >> 8;
-    system( qq(cat out/${stem}.out) );
+    my $rc = verbose_system( qq(./out/${stem} > out/${stem}.out) );
+    verbose_system( qq(cat out/${stem}.out) );
 
     print "${stem}: RC = $rc\n\n\n\n\n";
 
@@ -144,8 +149,7 @@ foreach my $stem (@tests)
 
     if ( -e "expected/$stem.out" )
     {
-        system( qq(cmp -s expected/${stem}.out out/${stem}.out) );
-        my $crc = $? >> 8;
+        my $crc = verbose_system( qq(cmp -s expected/${stem}.out out/${stem}.out) );
         complain( "ERROR: cmp -s expected/${stem}.out out/${stem}.out: $crc\n") if ( $crc );
     }
     else
