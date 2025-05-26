@@ -35,11 +35,13 @@ do that without bothering with AI tools that can be more work to use than just d
 ## Interesting files
 
 * Toy.g4            -- The Antlr4 grammar for the calculator.
-* src/driver.cpp    -- This is the compiler driver, handles command line options, opens output files, and orchestrates all the lower level actions (parse tree walk + MLIR builder, lowering to LLVM-IR, and assembly printer).
+* src/driver.cpp    -- This is the compiler driver, handles command line options, opens output files, and orchestrates all the lower level actions (parse tree walk + MLIR builder, lowering to LLVM-IR, assembly printer, and calls the linker.)
 * src/calculator.td -- This is the MLIR dialect that defines the compiler eye view of all the grammar elements.
 * src/parser.cpp    -- This is the Antlr4 parse tree walker and the MLIR builder.
 * src/lowering.cpp  -- LLVM-IR lowering classes.
 * prototypes/simplest.cpp  -- A MWE w/ working DWARF instrumentation.  Just emits LLVM-IR and has no assembly printing pass like the toy compiler.
+* `samples/*.toy` and `samples/testit.sh` -- sample programs and a rudimentary regression test suite based on them.
+* bin/build, bin/rebuild -- build scripts (first runs cmake and ninja and sets compiler override if required), second just ninja with some teeing and grepping.
 
 ## Command line options
 
@@ -61,14 +63,15 @@ do that without bothering with AI tools that can be more work to use than just d
 Basic language constructs to make things more interesting:
 
 * tests for all the type conversions.
+* not handling optimize/no-optimize properly.
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 * unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.
 * EXIT: enforce i8 return type in the MLIR layer (i.e.: actual UNIX shell semantics.) -- currently set to i32 return.
 * Boolean operators.
 * Implement IF/WHILE/DO/BREAK/CONTINUE statements.
 * More complicated expressions.
-* CAST operators.
-* Allow EXIT at more than the end of program (currently enforced in the grammar.)
+* CAST operators, NOT operator.
+* Allow EXIT at more than the end of program (that restriction is currently enforced in the grammar.)
 * Don't have any traits defined for my MLIR operations (initially caused compile errors, and I just commented-out or omitted after that.)
 
 Trickier, but would be fun:
@@ -102,7 +105,10 @@ sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-
 On both ubuntu and fedora, I needed a custom build of llvm/mlir, as I didn't find a package that had the MLIR tablegen files.
 As it turned out, a custom llvm/mlir build was also required to specifically enable rtti, as altlr4 uses `dynamic_cast<>`.
 The -fno-rtti that is required by default to avoid typeinfo symbol link errors, explicitly breaks the antlr4 header files.
-I'm not actually sure if the llvm-project has a generic lexer/parser, or if those are all language specific.
+That could be avoided if I separated out the antlr4 listener class from the MLIR builder, but the MLIR builder effectively
+provides an AST, which I don't need to build myself if I do the builder directly from the listener.
+
+Question: Does the llvm-project has a generic lexer/parser, or does clang/flang/anything-else roll their own?
 Having used antlr4 for previous prototyping, also generating a C++ listener, it made sense to me to use what I knew.
 
 See `bin/buildllvm` for how I built and deployed the llvm+mlir installation used for this project.
@@ -111,17 +117,17 @@ See `bin/buildllvm` for how I built and deployed the llvm+mlir installation used
 
 ```
 . ./bin/env
-build.sh
+build
 ```
 
 The build script current assumes that I'm the one building it, and is likely not sufficiently general for other people to use, and will surely break as I upgrade the systems I attempt to build it on.
 
 Linux-only is assumed.
 
-Depending on what I currently have booted, this has been on a mix of:
+Depending on what I currently have booted, this project has been built on only a few configurations:
 
 * Fedora 42/X64 (on a dual boot windows-11/Linux laptop)
-* WSL ubuntu 24/X64 (windows side, same laptop.)
+* WSL ubuntu 24/X64 (same laptop.)
 * Ambian (ubuntu), running on an raspberry PI (this is why there is an ARM case in buildllvm and CMakeLists.txt)
 
 ## Debugging

@@ -76,7 +76,7 @@ binaryElement
 
 // A binary operator for addition, subtraction, multiplication, or division.
 binaryOperator
-  : MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR
+  : MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR | LESSTHAN | GREATERTHAN | LESSEQUAL | GREATEREQUAL | EQUAL | BOOLEANOR | BOOLEANAND | BOOLEANXOR
   ;
 
 // An optional unary operator for positive or negative (e.g., '+' or '-').
@@ -160,6 +160,38 @@ DIVCHAR
 // Matches the plus sign for addition or positive (e.g., '+').
 PLUSCHAR
   : '+'
+  ;
+
+LESSTHAN
+  : '<'
+  ;
+
+GREATERTHAN
+  : '>'
+  ;
+
+LESSEQUAL
+  : '<='
+  ;
+
+GREATEREQUAL
+  : '>='
+  ;
+
+EQUAL
+  : '=='
+  ;
+
+BOOLEANOR
+  : 'OR'
+  ;
+
+BOOLEANAND
+  : 'AND'
+  ;
+
+BOOLEANXOR
+  : 'XOR'
   ;
 
 // Matches the 'DCL' keyword for declarations.
