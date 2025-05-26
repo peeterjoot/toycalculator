@@ -260,9 +260,10 @@ int main( int argc, char** argv )
             module.print( llvm::outs(), flags );
         }
 
-        // Export to LLVM IR
+        // The module should now contain mostly LLVM-IR instructions, with the exception of the top level module,
+        // and the MLIR style loc() references.  Those last two MLIR artifacts will be convered to LLVM-IR
+        // now, also producing !DILocation's for all the loc()s.
         llvm::LLVMContext llvmContext;
-
         std::unique_ptr<llvm::Module> llvmModule = mlir::translateModuleToLLVMIR( module, llvmContext, filename );
 
         if ( !llvmModule )

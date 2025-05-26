@@ -108,6 +108,7 @@ namespace toy
         // Set data_layout,ident,target_triple:
         void setModuleAttrs()
         {
+#if 0 // Oops: don't really need these.  Already doing this in driver.cpp for the assembly printer (at the LLVM level after all lowering and translation)
             std::string targetTriple = llvm::sys::getDefaultTargetTriple();
             llvm::Triple triple( targetTriple );
             assert( triple.isArch64Bit() && triple.isOSLinux() );
@@ -121,9 +122,10 @@ namespace toy
             assert( targetMachine );
             std::string dataLayoutStr = targetMachine->createDataLayout().getStringRepresentation();
 
-            module->setAttr( "llvm.ident", builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
             module->setAttr( "llvm.data_layout", builder.getStringAttr( dataLayoutStr ) );
             module->setAttr( "llvm.target_triple", builder.getStringAttr( targetTriple ) );
+#endif
+            module->setAttr( "llvm.ident", builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
         }
 
         void createToyPrintProto()
