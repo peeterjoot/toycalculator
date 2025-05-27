@@ -126,3 +126,39 @@ def Toy_DivOp : Op<Toy_Dialect, "div"> {
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
   let results = (outs AnyType:$result);
 }
+
+def Toy_LessOp : Op<Toy_Dialect, "less"> {
+  let summary = "Less than operation (e.g., x < y)";
+  let arguments = (ins AnyType:$lhs, AnyType:$rhs);
+  let results = (outs I1:$result);
+}
+
+def Toy_LessEqualOp : Op<Toy_Dialect, "less_eq"> {
+  let summary = "Less than or equal operation (e.g., x <= y)";
+  let arguments = (ins AnyType:$lhs, AnyType:$rhs);
+  let results = (outs I1:$result);
+}
+
+def Toy_EqualOp : Op<Toy_Dialect, "eq"> {
+  let summary = "Less than or equal operation (e.g., x == y)";
+  let arguments = (ins AnyType:$lhs, AnyType:$rhs);
+  let results = (outs I1:$result);
+}
+
+def Toy_OrOp : Op<Toy_Dialect, "or"> {
+  let summary = "Bitwise or boolean OR operation (e.g., x OR y)";
+  let arguments = (ins AnyType:$lhs, AnyType:$rhs);
+  let results = (outs I1:$result);
+}
+
+def Toy_AndOp : Op<Toy_Dialect, "and"> {
+  let summary = "Bitwise or boolean AND operation (e.g., x AND y)";
+  let arguments = (ins AnyType:$lhs, AnyType:$rhs);
+  let results = (outs I1:$result);
+}
+
+def Toy_XorOp : Op<Toy_Dialect, "xor"> {
+  let summary = "Bitwise or boolean XOR operation (e.g., x XOR y)";
+  let arguments = (ins AnyType:$lhs, AnyType:$rhs);
+  let results = (outs I1:$result);
+}
