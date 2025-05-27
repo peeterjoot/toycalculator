@@ -129,7 +129,7 @@ EQUALS
 
 // Matches the equality operator (e.g., 'EQ').
 EQUALITYOP
-  : 'EQ
+  : 'EQ'
   ;
 
 // Matches the semicolon that terminates statements (e.g., ';').
