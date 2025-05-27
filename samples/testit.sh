@@ -88,6 +88,7 @@ else
 system( qq(rm -rf out) );
 
 my @tests = (qw(
+boolop
 converti
 addi
 types
