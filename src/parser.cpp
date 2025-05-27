@@ -402,7 +402,7 @@ namespace toy
         bool error;
         mlir::Value resultValue;
 
-        auto dcl = var_storage[ currentVarName ];
+        auto dcl = var_storage[currentVarName];
         auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
         mlir::TypeAttr typeAttr = declareOp.getTypeAttr();
         mlir::Type opType = typeAttr.getValue();
@@ -428,11 +428,16 @@ namespace toy
             resultValue = lhsValue;
             if ( auto unaryOp = ctx->unaryOperator() )
             {
-                auto op = unaryOp->getText();
-                if ( op == "-" )
+                auto opText = unaryOp->getText();
+                if ( opText == "-" )
                 {
-                    auto negOp = builder.create<toy::NegOp>( loc, opType, lhsValue );
-                    resultValue = negOp.getResult();
+                    auto op = builder.create<toy::NegOp>( loc, opType, lhsValue );
+                    resultValue = op.getResult();
+                }
+                else if ( opText == "NOT" )
+                {
+                    auto op = builder.create<toy::NotOp>( loc, opType, lhsValue );
+                    resultValue = op.getResult();
                 }
             }
         }
@@ -442,7 +447,7 @@ namespace toy
 
             auto lhs = ctx->binaryElement()[0];
             auto rhs = ctx->binaryElement()[1];
-            auto op = ctx->binaryOperator()->getText();
+            auto opText = ctx->binaryOperator()->getText();
 
             auto llit = lhs->numericLiteral();
             error =
@@ -465,37 +470,65 @@ namespace toy
             }
 
             // Create the binary operator (supports +, -, *, /)
-            switch ( op[0] )
+            if ( opText == "+" )
             {
-                case '+':
-                {
-                    auto b = builder.create<toy::AddOp>( loc, opType, lhsValue, rhsValue );
-                    resultValue = b.getResult();
-                    break;
-                }
-                case '-':
-                {
-                    auto b = builder.create<toy::SubOp>( loc, opType, lhsValue, rhsValue );
-                    resultValue = b.getResult();
-                    break;
-                }
-                case '*':
-                {
-                    auto b = builder.create<toy::MulOp>( loc, opType, lhsValue, rhsValue );
-                    resultValue = b.getResult();
-                    break;
-                }
-                case '/':
-                {
-                    auto b = builder.create<toy::DivOp>( loc, opType, lhsValue, rhsValue );
-                    resultValue = b.getResult();
-                    break;
-                }
-                default:
-                {
-                    throw exception_with_context( __FILE__, __LINE__, __func__,
-                                                  std::format( "error: Invalid binary operator {}\n", op ) );
-                }
+                auto b = builder.create<toy::AddOp>( loc, opType, lhsValue, rhsValue );
+                resultValue = b.getResult();
+            }
+            else if ( opText == "-" )
+            {
+                auto b = builder.create<toy::SubOp>( loc, opType, lhsValue, rhsValue );
+                resultValue = b.getResult();
+            }
+            else if ( opText == "*" )
+            {
+                auto b = builder.create<toy::MulOp>( loc, opType, lhsValue, rhsValue );
+                resultValue = b.getResult();
+            }
+            else if ( opText == "/" )
+            {
+                auto b = builder.create<toy::DivOp>( loc, opType, lhsValue, rhsValue );
+                resultValue = b.getResult();
+            }
+            else if ( opText == "<" )
+            {
+                auto b = builder.create<toy::LessOp>( loc, opType, lhsValue, rhsValue );
+                resultValue = b.getResult();
+            }
+            else if ( opText == ">" )
+            {
+                auto b = builder.create<toy::LessOp>( loc, opType, rhsValue, lhsValue );
+                resultValue = b.getResult();
+            }
+            else if ( opText == "<=" )
+            {
+                auto b = builder.create<toy::LessEqualOp>( loc, opType, lhsValue, rhsValue );
+                resultValue = b.getResult();
+            }
+            else if ( opText == ">=" )
+            {
+                auto b = builder.create<toy::LessEqualOp>( loc, opType, rhsValue, lhsValue );
+                resultValue = b.getResult();
+            }
+            else if ( opText == "AND" )
+            {
+                auto b = builder.create<toy::AndOp>( loc, opType, lhsValue, rhsValue );
+                resultValue = b.getResult();
+            }
+            else if ( opText == "OR" )
+            {
+                auto b = builder.create<toy::OrOp>( loc, opType, lhsValue, rhsValue );
+                resultValue = b.getResult();
+            }
+            else if ( opText == "XOR" )
+            {
+                auto b = builder.create<toy::XorOp>( loc, opType, lhsValue, rhsValue );
+                resultValue = b.getResult();
+            }
+            else
+            {
+                throw exception_with_context( __FILE__, __LINE__, __func__,
+                                              std::format( "error: Invalid binary operator {}\n", opText ) );
             }
         }
 
