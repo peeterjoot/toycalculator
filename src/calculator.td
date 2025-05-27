@@ -162,3 +162,9 @@ def Toy_XorOp : Op<Toy_Dialect, "xor"> {
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
   let results = (outs I1:$result);
 }
+
+def Toy_NotOp : Op<Toy_Dialect, "not"> {
+  let summary = "Logical NOT operation (e.g., NOT x)";
+  let arguments = (ins I1:$lhs);
+  let results = (outs I1:$result);
+}
