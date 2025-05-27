@@ -140,7 +140,7 @@ def Toy_LessEqualOp : Op<Toy_Dialect, "less_eq"> {
 }
 
 def Toy_EqualOp : Op<Toy_Dialect, "eq"> {
-  let summary = "Less than or equal operation (e.g., x == y)";
+  let summary = "Less than or equal operation (e.g., x EQ y)";
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
   let results = (outs I1:$result);
 }

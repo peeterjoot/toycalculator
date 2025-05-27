@@ -510,6 +510,11 @@ namespace toy
                 auto b = builder.create<toy::LessEqualOp>( loc, opType, rhsValue, lhsValue );
                 resultValue = b.getResult();
             }
+            else if ( opText == "EQ" )
+            {
+                auto b = builder.create<toy::EqOp>( loc, opType, lhsValue, rhsValue );
+                resultValue = b.getResult();
+            }
             else if ( opText == "AND" )
             {
                 auto b = builder.create<toy::AndOp>( loc, opType, lhsValue, rhsValue );

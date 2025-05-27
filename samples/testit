@@ -6,11 +6,11 @@
 
 =head1 NAME
 
-testit.sh - <one-line-description>
+testit - A little test driver.
 
 =head1 SYNOPSIS
 
-testit.sh [--help] --no-fatal [--just tcname] [--optimize]
+testit [--help] --no-fatal [--just tcname] [--optimize]
 
 =head1 DESCRIPTION
 
