@@ -512,7 +512,7 @@ namespace toy
             }
             else if ( opText == "EQ" )
             {
-                auto b = builder.create<toy::EqOp>( loc, opType, lhsValue, rhsValue );
+                auto b = builder.create<toy::EqualOp>( loc, opType, lhsValue, rhsValue );
                 resultValue = b.getResult();
             }
             else if ( opText == "AND" )
