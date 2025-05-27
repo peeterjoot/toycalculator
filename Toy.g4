@@ -81,7 +81,7 @@ binaryOperator
 
 // An optional unary operator for positive or negative (e.g., '+' or '-').
 unaryOperator
-  : MINUSCHAR | PLUSCHAR
+  : MINUSCHAR | PLUSCHAR | NOT
   ;
 
 numericLiteral
@@ -182,16 +182,24 @@ EQUAL
   : '=='
   ;
 
+// Matches the 'OR' keyword for boolean or bitwise OR
 BOOLEANOR
   : 'OR'
   ;
 
+// Matches the 'AND' keyword for boolean or bitwise AND
 BOOLEANAND
   : 'AND'
   ;
 
+// Matches the 'XOR' keyword for boolean or bitwise XOR
 BOOLEANXOR
   : 'XOR'
+  ;
+
+// Matches the 'NOT' keyword for BOOL inversion
+NOT
+  : 'NOT'
   ;
 
 // Matches the 'DCL' keyword for declarations.
