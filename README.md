@@ -40,7 +40,7 @@ do that without bothering with AI tools that can be more work to use than just d
 * src/parser.cpp    -- This is the Antlr4 parse tree walker and the MLIR builder.
 * src/lowering.cpp  -- LLVM-IR lowering classes.
 * prototypes/simplest.cpp  -- A MWE w/ working DWARF instrumentation.  Just emits LLVM-IR and has no assembly printing pass like the toy compiler.
-* `samples/*.toy` and `samples/testit.sh` -- sample programs and a rudimentary regression test suite based on them.
+* `samples/*.toy` and `samples/testit` -- sample programs and a rudimentary regression test suite based on them.
 * bin/build, bin/rebuild -- build scripts (first runs cmake and ninja and sets compiler override if required), second just ninja with some teeing and grepping.
 
 ## Command line options

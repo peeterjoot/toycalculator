@@ -76,7 +76,7 @@ binaryElement
 
 // A binary operator for addition, subtraction, multiplication, or division.
 binaryOperator
-  : MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR | LESSTHAN | GREATERTHAN | LESSEQUAL | GREATEREQUAL | EQUAL | BOOLEANOR | BOOLEANAND | BOOLEANXOR
+  : MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR | LESSTHAN | GREATERTHAN | LESSEQUAL | GREATEREQUAL | EQUALITYOP | BOOLEANOR | BOOLEANAND | BOOLEANXOR
   ;
 
 // An optional unary operator for positive or negative (e.g., '+' or '-').
@@ -125,6 +125,11 @@ COMMENT
 // Matches the equals sign for assignments (e.g., '=').
 EQUALS
   : '='
+  ;
+
+// Matches the equality operator (e.g., 'EQ').
+EQUALITYOP
+  : 'EQ
   ;
 
 // Matches the semicolon that terminates statements (e.g., ';').
