@@ -1,0 +1,21 @@
+BOOL b;
+BOOL i1;
+FLOAT32 g32;
+i1 = TRUE;
+g32 = 1;
+PRINT i1;
+PRINT g32;
+b = i1 < g32;
+PRINT b;
+b = i1 > g32;
+PRINT b;
+b = g32 < i1;
+PRINT b;
+b = g32 > i1;
+PRINT b;
+
+FLOAT32 f32;
+f32 = i1;
+PRINT f32;
+b = f32 < g32;
+PRINT b;
