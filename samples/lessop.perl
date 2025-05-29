@@ -23,6 +23,7 @@ open my $toy, ">lessop.toy" or die;
 open my $etoy, ">expected/lessop.out" or die;
 
 print $toy qq(//THIS IS A GENERATED TEST CASE (./lessop.perl).  DO NOT EDIT\n
+INT32 i;
 BOOL b;\n);
 
 my @symbols = sort keys %v1;
@@ -49,8 +50,9 @@ foreach my $v ( sort keys %v2 )
     print $toy "$v = $v2{$v};\n";
 }
 
-foreach my $v1 ( (qw(i1)) )
-#foreach my $v1 ( sort keys %v1 )
+my $i = 12340000;
+#foreach my $v1 ( (qw(i1)) )
+foreach my $v1 ( sort keys %v1 )
 {
     #foreach my $v2( (qw(j16)) )
     foreach my $v2( sort keys %v2 )
@@ -81,14 +83,15 @@ foreach my $v1 ( (qw(i1)) )
             $f = 0;
         }
 
-        #print "//b = $v1 < $v2;\n";
-        print $etoy "$e\n";
-        print $toy "b = $v1 < $v2;\nPRINT b;\n";
+        my $m = sprintf( "i = %d;\nPRINT i;\n", $i );
+        print $etoy "$i\n$e\n";
+        print $toy "${m}b = $v1 < $v2;\nPRINT b;\n";
+        $i++;
 
-        #print "//b = $v2 < $v1;\n";
-        print $etoy "$f\n";
-        print $toy "b = $v2 < $v1;\nPRINT b;\n";
-
+        $m = sprintf( "i = %d;\nPRINT i;\n", $i );
+        print $etoy "$i\n$f\n";
+        print $toy "${m}b = $v2 < $v1;\nPRINT b;\n";
+        $i++;
     }
 }
 
