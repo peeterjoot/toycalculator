@@ -52,14 +52,7 @@ foreach my $v1 ( sort keys %v1 )
     {
         print "b = $v1 < $v2;\nPRINT b;\n";
         print "b = $v2 < $v1;\nPRINT b;\n";
-    }
-}
 
-foreach my $v1 ( sort keys %v1 )
-{
-    foreach my $v2( sort keys %v2 )
-    {
-        print "b = $v1 < $v2;\nPRINT b;\n";
         my $e, $f;
         my $a = $v1{$v1};
         my $b = $v2{$v2};
@@ -79,9 +72,9 @@ foreach my $v1 ( sort keys %v1 )
             $f = 1;
         }
 
-        print "b = $v2 < $v1;\nPRINT b;\n";
-
+        print "//b = $v1 < $v2;\n";
         print "//$e\n";
+        print "//b = $v2 < $v1;\n";
         print "//$f\n";
     }
 }

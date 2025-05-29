@@ -591,11 +591,11 @@ namespace toy
                 // convert integer type to float
                 if ( lhsi && rhsf )
                 {
-                    rhs = rewriter.create<mlir::arith::SIToFPOp>( loc, rhsf, lhs );
+                    lhs = rewriter.create<mlir::arith::SIToFPOp>( loc, rhsf, lhs );
                 }
                 else if ( rhsi && lhsf )
                 {
-                    lhs = rewriter.create<mlir::arith::SIToFPOp>( loc, lhsf, rhs );
+                    rhs = rewriter.create<mlir::arith::SIToFPOp>( loc, lhsf, rhs );
                 }
                 else
                 {

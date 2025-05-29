@@ -106,6 +106,7 @@ dcl
 foo
 bin
 simpleless
+lessbug
 ));
 
 if ( defined $just )

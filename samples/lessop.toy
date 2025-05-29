@@ -33,489 +33,391 @@ b = f32 < g32;
 PRINT b;
 b = g32 < f32;
 PRINT b;
-b = f32 < g64;
-PRINT b;
-b = g64 < f32;
-PRINT b;
-b = f32 < j1;
-PRINT b;
-b = j1 < f32;
-PRINT b;
-b = f32 < j16;
-PRINT b;
-b = j16 < f32;
-PRINT b;
-b = f32 < j32;
-PRINT b;
-b = j32 < f32;
-PRINT b;
-b = f32 < j64;
-PRINT b;
-b = j64 < f32;
-PRINT b;
-b = f32 < j8;
-PRINT b;
-b = j8 < f32;
-PRINT b;
-b = f64 < g32;
-PRINT b;
-b = g32 < f64;
-PRINT b;
-b = f64 < g64;
-PRINT b;
-b = g64 < f64;
-PRINT b;
-b = f64 < j1;
-PRINT b;
-b = j1 < f64;
-PRINT b;
-b = f64 < j16;
-PRINT b;
-b = j16 < f64;
-PRINT b;
-b = f64 < j32;
-PRINT b;
-b = j32 < f64;
-PRINT b;
-b = f64 < j64;
-PRINT b;
-b = j64 < f64;
-PRINT b;
-b = f64 < j8;
-PRINT b;
-b = j8 < f64;
-PRINT b;
-b = i1 < g32;
-PRINT b;
-b = g32 < i1;
-PRINT b;
-b = i1 < g64;
-PRINT b;
-b = g64 < i1;
-PRINT b;
-b = i1 < j1;
-PRINT b;
-b = j1 < i1;
-PRINT b;
-b = i1 < j16;
-PRINT b;
-b = j16 < i1;
-PRINT b;
-b = i1 < j32;
-PRINT b;
-b = j32 < i1;
-PRINT b;
-b = i1 < j64;
-PRINT b;
-b = j64 < i1;
-PRINT b;
-b = i1 < j8;
-PRINT b;
-b = j8 < i1;
-PRINT b;
-b = i16 < g32;
-PRINT b;
-b = g32 < i16;
-PRINT b;
-b = i16 < g64;
-PRINT b;
-b = g64 < i16;
-PRINT b;
-b = i16 < j1;
-PRINT b;
-b = j1 < i16;
-PRINT b;
-b = i16 < j16;
-PRINT b;
-b = j16 < i16;
-PRINT b;
-b = i16 < j32;
-PRINT b;
-b = j32 < i16;
-PRINT b;
-b = i16 < j64;
-PRINT b;
-b = j64 < i16;
-PRINT b;
-b = i16 < j8;
-PRINT b;
-b = j8 < i16;
-PRINT b;
-b = i32 < g32;
-PRINT b;
-b = g32 < i32;
-PRINT b;
-b = i32 < g64;
-PRINT b;
-b = g64 < i32;
-PRINT b;
-b = i32 < j1;
-PRINT b;
-b = j1 < i32;
-PRINT b;
-b = i32 < j16;
-PRINT b;
-b = j16 < i32;
-PRINT b;
-b = i32 < j32;
-PRINT b;
-b = j32 < i32;
-PRINT b;
-b = i32 < j64;
-PRINT b;
-b = j64 < i32;
-PRINT b;
-b = i32 < j8;
-PRINT b;
-b = j8 < i32;
-PRINT b;
-b = i64 < g32;
-PRINT b;
-b = g32 < i64;
-PRINT b;
-b = i64 < g64;
-PRINT b;
-b = g64 < i64;
-PRINT b;
-b = i64 < j1;
-PRINT b;
-b = j1 < i64;
-PRINT b;
-b = i64 < j16;
-PRINT b;
-b = j16 < i64;
-PRINT b;
-b = i64 < j32;
-PRINT b;
-b = j32 < i64;
-PRINT b;
-b = i64 < j64;
-PRINT b;
-b = j64 < i64;
-PRINT b;
-b = i64 < j8;
-PRINT b;
-b = j8 < i64;
-PRINT b;
-b = i8 < g32;
-PRINT b;
-b = g32 < i8;
-PRINT b;
-b = i8 < g64;
-PRINT b;
-b = g64 < i8;
-PRINT b;
-b = i8 < j1;
-PRINT b;
-b = j1 < i8;
-PRINT b;
-b = i8 < j16;
-PRINT b;
-b = j16 < i8;
-PRINT b;
-b = i8 < j32;
-PRINT b;
-b = j32 < i8;
-PRINT b;
-b = i8 < j64;
-PRINT b;
-b = j64 < i8;
-PRINT b;
-b = i8 < j8;
-PRINT b;
-b = j8 < i8;
-PRINT b;
-b = f32 < g32;
-PRINT b;
-b = g32 < f32;
-PRINT b;
+//b = f32 < g32;
 //0
+//b = g32 < f32;
 //1
 b = f32 < g64;
 PRINT b;
 b = g64 < f32;
 PRINT b;
+//b = f32 < g64;
 //0
+//b = g64 < f32;
 //1
 b = f32 < j1;
 PRINT b;
 b = j1 < f32;
 PRINT b;
+//b = f32 < j1;
 //0
+//b = j1 < f32;
 //1
 b = f32 < j16;
 PRINT b;
 b = j16 < f32;
 PRINT b;
+//b = f32 < j16;
 //1
+//b = j16 < f32;
 //0
 b = f32 < j32;
 PRINT b;
 b = j32 < f32;
 PRINT b;
+//b = f32 < j32;
 //1
+//b = j32 < f32;
 //0
 b = f32 < j64;
 PRINT b;
 b = j64 < f32;
 PRINT b;
+//b = f32 < j64;
 //1
+//b = j64 < f32;
 //0
 b = f32 < j8;
 PRINT b;
 b = j8 < f32;
 PRINT b;
+//b = f32 < j8;
 //0
+//b = j8 < f32;
 //1
 b = f64 < g32;
 PRINT b;
 b = g32 < f64;
 PRINT b;
+//b = f64 < g32;
 //1
+//b = g32 < f64;
 //0
 b = f64 < g64;
 PRINT b;
 b = g64 < f64;
 PRINT b;
+//b = f64 < g64;
 //0
+//b = g64 < f64;
 //1
 b = f64 < j1;
 PRINT b;
 b = j1 < f64;
 PRINT b;
+//b = f64 < j1;
 //0
+//b = j1 < f64;
 //1
 b = f64 < j16;
 PRINT b;
 b = j16 < f64;
 PRINT b;
+//b = f64 < j16;
 //1
+//b = j16 < f64;
 //0
 b = f64 < j32;
 PRINT b;
 b = j32 < f64;
 PRINT b;
+//b = f64 < j32;
 //1
+//b = j32 < f64;
 //0
 b = f64 < j64;
 PRINT b;
 b = j64 < f64;
 PRINT b;
+//b = f64 < j64;
 //1
+//b = j64 < f64;
 //0
 b = f64 < j8;
 PRINT b;
 b = j8 < f64;
 PRINT b;
+//b = f64 < j8;
 //1
+//b = j8 < f64;
 //0
 b = i1 < g32;
 PRINT b;
 b = g32 < i1;
 PRINT b;
+//b = i1 < g32;
 //0
+//b = g32 < i1;
 //1
 b = i1 < g64;
 PRINT b;
 b = g64 < i1;
 PRINT b;
+//b = i1 < g64;
 //0
+//b = g64 < i1;
 //1
 b = i1 < j1;
 PRINT b;
 b = j1 < i1;
 PRINT b;
+//b = i1 < j1;
 //0
+//b = j1 < i1;
 //1
 b = i1 < j16;
 PRINT b;
 b = j16 < i1;
 PRINT b;
+//b = i1 < j16;
 //1
+//b = j16 < i1;
 //0
 b = i1 < j32;
 PRINT b;
 b = j32 < i1;
 PRINT b;
+//b = i1 < j32;
 //1
+//b = j32 < i1;
 //0
 b = i1 < j64;
 PRINT b;
 b = j64 < i1;
 PRINT b;
+//b = i1 < j64;
 //1
+//b = j64 < i1;
 //0
 b = i1 < j8;
 PRINT b;
 b = j8 < i1;
 PRINT b;
+//b = i1 < j8;
 //0
+//b = j8 < i1;
 //1
 b = i16 < g32;
 PRINT b;
 b = g32 < i16;
 PRINT b;
+//b = i16 < g32;
 //0
+//b = g32 < i16;
 //1
 b = i16 < g64;
 PRINT b;
 b = g64 < i16;
 PRINT b;
+//b = i16 < g64;
 //0
+//b = g64 < i16;
 //1
 b = i16 < j1;
 PRINT b;
 b = j1 < i16;
 PRINT b;
+//b = i16 < j1;
 //0
+//b = j1 < i16;
 //1
 b = i16 < j16;
 PRINT b;
 b = j16 < i16;
 PRINT b;
+//b = i16 < j16;
 //0
+//b = j16 < i16;
 //1
 b = i16 < j32;
 PRINT b;
 b = j32 < i16;
 PRINT b;
+//b = i16 < j32;
 //1
+//b = j32 < i16;
 //0
 b = i16 < j64;
 PRINT b;
 b = j64 < i16;
 PRINT b;
+//b = i16 < j64;
 //1
+//b = j64 < i16;
 //0
 b = i16 < j8;
 PRINT b;
 b = j8 < i16;
 PRINT b;
+//b = i16 < j8;
 //0
+//b = j8 < i16;
 //1
 b = i32 < g32;
 PRINT b;
 b = g32 < i32;
 PRINT b;
+//b = i32 < g32;
 //0
+//b = g32 < i32;
 //1
 b = i32 < g64;
 PRINT b;
 b = g64 < i32;
 PRINT b;
+//b = i32 < g64;
 //0
+//b = g64 < i32;
 //1
 b = i32 < j1;
 PRINT b;
 b = j1 < i32;
 PRINT b;
+//b = i32 < j1;
 //0
+//b = j1 < i32;
 //1
 b = i32 < j16;
 PRINT b;
 b = j16 < i32;
 PRINT b;
+//b = i32 < j16;
 //0
+//b = j16 < i32;
 //1
 b = i32 < j32;
 PRINT b;
 b = j32 < i32;
 PRINT b;
+//b = i32 < j32;
 //0
+//b = j32 < i32;
 //1
 b = i32 < j64;
 PRINT b;
 b = j64 < i32;
 PRINT b;
+//b = i32 < j64;
 //1
+//b = j64 < i32;
 //0
 b = i32 < j8;
 PRINT b;
 b = j8 < i32;
 PRINT b;
+//b = i32 < j8;
 //0
+//b = j8 < i32;
 //1
 b = i64 < g32;
 PRINT b;
 b = g32 < i64;
 PRINT b;
+//b = i64 < g32;
 //0
+//b = g32 < i64;
 //1
 b = i64 < g64;
 PRINT b;
 b = g64 < i64;
 PRINT b;
+//b = i64 < g64;
 //0
+//b = g64 < i64;
 //1
 b = i64 < j1;
 PRINT b;
 b = j1 < i64;
 PRINT b;
+//b = i64 < j1;
 //0
+//b = j1 < i64;
 //1
 b = i64 < j16;
 PRINT b;
 b = j16 < i64;
 PRINT b;
+//b = i64 < j16;
 //0
+//b = j16 < i64;
 //1
 b = i64 < j32;
 PRINT b;
 b = j32 < i64;
 PRINT b;
+//b = i64 < j32;
 //0
+//b = j32 < i64;
 //1
 b = i64 < j64;
 PRINT b;
 b = j64 < i64;
 PRINT b;
+//b = i64 < j64;
 //0
+//b = j64 < i64;
 //1
 b = i64 < j8;
 PRINT b;
 b = j8 < i64;
 PRINT b;
+//b = i64 < j8;
 //0
+//b = j8 < i64;
 //1
 b = i8 < g32;
 PRINT b;
 b = g32 < i8;
 PRINT b;
+//b = i8 < g32;
 //0
+//b = g32 < i8;
 //1
 b = i8 < g64;
 PRINT b;
 b = g64 < i8;
 PRINT b;
+//b = i8 < g64;
 //0
+//b = g64 < i8;
 //1
 b = i8 < j1;
 PRINT b;
 b = j1 < i8;
 PRINT b;
+//b = i8 < j1;
 //0
+//b = j1 < i8;
 //1
 b = i8 < j16;
 PRINT b;
 b = j16 < i8;
 PRINT b;
+//b = i8 < j16;
 //1
+//b = j16 < i8;
 //0
 b = i8 < j32;
 PRINT b;
 b = j32 < i8;
 PRINT b;
+//b = i8 < j32;
 //1
+//b = j32 < i8;
 //0
 b = i8 < j64;
 PRINT b;
 b = j64 < i8;
 PRINT b;
+//b = i8 < j64;
 //1
+//b = j64 < i8;
 //0
 b = i8 < j8;
 PRINT b;
 b = j8 < i8;
 PRINT b;
+//b = i8 < j8;
 //0
+//b = j8 < i8;
 //1
