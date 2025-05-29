@@ -166,8 +166,8 @@ foreach my $stem (sort keys %tests)
 
     if ( -e "expected/$stem.out" )
     {
-        my $crc = verbose_system( qq(cmp -s expected/${stem}.out out/${stem}.out) );
-        complain( "ERROR: cmp -s expected/${stem}.out out/${stem}.out: $crc\n") if ( $crc );
+        my $crc = verbose_system( qq(diff -wup expected/${stem}.out out/${stem}.out) );
+        complain( "ERROR: diff -wup expected/${stem}.out out/${stem}.out: $crc\n") if ( $crc );
     }
     else
     {
