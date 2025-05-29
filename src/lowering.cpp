@@ -509,7 +509,9 @@ namespace toy
     };
 
     // Lower LessOp, ... (after type conversions, if required)
-    template <class ToyOp, class IOpType, class FOpType, mlir::LLVM::ICmpPredicate ICmpPred,
+    template <class ToyOp, class IOpType, class FOpType,
+              mlir::LLVM::ICmpPredicate ICmpPredS,
+              mlir::LLVM::ICmpPredicate ICmpPredU,
               mlir::LLVM::FCmpPredicate FCmpPred>
     class ComparisonOpLowering : public ConversionPattern
     {
@@ -542,6 +544,7 @@ namespace toy
             {
                 auto lwidth = lhsi.getWidth();
                 auto rwidth = rhsi.getWidth();
+                auto pred = ICmpPredS;
 
                 if ( rwidth > lwidth )
                 {
@@ -565,8 +568,12 @@ namespace toy
                         rhs = rewriter.create<mlir::LLVM::SExtOp>( loc, lhsi, rhs );
                     }
                 }
+                else if ( (rwidth == lwidth) && (rwidth == 1) )
+                {
+                    pred = ICmpPredU;
+                }
 
-                auto cmp = rewriter.create<IOpType>( loc, ICmpPred, lhs, rhs );
+                auto cmp = rewriter.create<IOpType>( loc, ICmpPredU, lhs, rhs );
                 rewriter.replaceOp( op, cmp.getResult() );
             }
             else if ( lhsf && rhsf )
@@ -625,7 +632,7 @@ namespace toy
     };
 
     using LessOpLowering = ComparisonOpLowering<toy::LessOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp,
-                                                LLVM::ICmpPredicate::slt, mlir::LLVM::FCmpPredicate::olt>;
+                                                LLVM::ICmpPredicate::slt, LLVM::ICmpPredicate::ult, mlir::LLVM::FCmpPredicate::olt>;
 
     class LoadOpLowering : public ConversionPattern
     {
