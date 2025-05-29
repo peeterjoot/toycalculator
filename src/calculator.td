@@ -35,7 +35,7 @@ def Toy_ProgramOp : Op<Toy_Dialect, "program"> {
 }
 
 def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
-  let summary = "Declare a variable, specifying it's name and type.";
+  let summary = "Declare a variable, specifying its name and type.";
   let arguments = (ins StrAttr:$name, TypeAttr:$type);
   let results = (outs);
 
@@ -48,9 +48,9 @@ def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
 }
 
 // Define a type constraint for AnyInteger or AnyFloat
-def IntegerOrFloatType : TypeConstraint<"IntegerOrFloatType", [{
+def IntegerOrFloatType : TypeConstraint<"IntegerOrFloatType", CPred<[{
   return type.isa<IntegerType>() || type.isa<FloatType>();
-}]>;
+}]>>;
 
 def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
   let summary = "Assign a value to a variable associated with a declaration";
@@ -92,112 +92,96 @@ def Toy_PrintOp : Op<Toy_Dialect, "print"> {
   let summary = "Print a variable";
   let arguments = (ins IntegerOrFloatType:$input);
   let results = (outs);
-  // No traits, as printing has side effects
-
   let assemblyFormat = "$input `:` type($input) attr-dict";
 }
 
-// It's probably desirable to use assemblyFormat for the rest of these too, but I'll do that later.
 def Toy_NegOp : Op<Toy_Dialect, "negate"> {
   let summary = "Negation operation (e.g., -x)";
   let arguments = (ins IntegerOrFloatType:$lhs);
   let results = (outs IntegerOrFloatType:$result);
-  //let traits = [
-  //  Pure                      // No side effects
-  //];
+  let assemblyFormat = "`-` $lhs `:` type($lhs) attr-dict";
 }
 
-// let traits = [Pure, SameOperandsAndResultType];
 def Toy_AddOp : Op<Toy_Dialect, "add"> {
   let summary = "Addition operation (e.g., x + y)";
   let arguments = (ins IntegerOrFloatType:$lhs, IntegerOrFloatType:$rhs);
   let results = (outs IntegerOrFloatType:$result);
-
-  let assemblyFormat = "$predicate `+` $lhs `,` $rhs attr-dict `:` type($lhs)";
+  let assemblyFormat = "$lhs `+` $rhs `:` type($lhs) attr-dict";
 }
 
 def Toy_SubOp : Op<Toy_Dialect, "sub"> {
   let summary = "Subtraction operation (e.g., x - y)";
   let arguments = (ins IntegerOrFloatType:$lhs, IntegerOrFloatType:$rhs);
   let results = (outs IntegerOrFloatType:$result);
-
-  let assemblyFormat = "$predicate `-` $lhs `,` $rhs attr-dict `:` type($lhs)";
+  let assemblyFormat = "$lhs `-` $rhs `:` type($lhs) attr-dict";
 }
 
 def Toy_MulOp : Op<Toy_Dialect, "mul"> {
   let summary = "Multiplication operation (e.g., x * y)";
   let arguments = (ins IntegerOrFloatType:$lhs, IntegerOrFloatType:$rhs);
   let results = (outs IntegerOrFloatType:$result);
-
-  let assemblyFormat = "$predicate `*` $lhs `,` $rhs attr-dict `:` type($lhs)";
+  let assemblyFormat = "$lhs `*` $rhs `:` type($lhs) attr-dict";
 }
 
 def Toy_DivOp : Op<Toy_Dialect, "div"> {
   let summary = "Division operation (e.g., x / y)";
   let arguments = (ins IntegerOrFloatType:$lhs, IntegerOrFloatType:$rhs);
   let results = (outs IntegerOrFloatType:$result);
-
-  let assemblyFormat = "$predicate `/` $lhs `,` $rhs attr-dict `:` type($lhs)";
+  let assemblyFormat = "$lhs `/` $rhs `:` type($lhs) attr-dict";
 }
 
 def Toy_LessOp : Op<Toy_Dialect, "less"> {
   let summary = "Less than operation (e.g., x < y)";
   let arguments = (ins IntegerOrFloatType:$lhs, IntegerOrFloatType:$rhs);
   let results = (outs I1:$result);
-
-  let assemblyFormat = "$predicate `<` $lhs `,` $rhs attr-dict `:` type($lhs)";
+  let assemblyFormat = "$lhs `<` $rhs `:` type($lhs) attr-dict";
 }
 
 def Toy_LessEqualOp : Op<Toy_Dialect, "less_eq"> {
   let summary = "Less than or equal operation (e.g., x <= y)";
   let arguments = (ins IntegerOrFloatType:$lhs, IntegerOrFloatType:$rhs);
   let results = (outs I1:$result);
-
-  let assemblyFormat = "$predicate `<=` $lhs `,` $rhs attr-dict `:` type($lhs)";
+  let assemblyFormat = "$lhs `<=` $rhs `:` type($lhs) attr-dict";
 }
 
 def Toy_EqualOp : Op<Toy_Dialect, "eq"> {
-  let summary = "Equal operation (e.g., x EQ y)";
+  let summary = "Equal operation (e.g., x == y)";
   let arguments = (ins IntegerOrFloatType:$lhs, IntegerOrFloatType:$rhs);
   let results = (outs I1:$result);
-
-  let assemblyFormat = "$predicate `==` $lhs `,` $rhs attr-dict `:` type($lhs)";
+  let assemblyFormat = "$lhs `==` $rhs `:` type($lhs) attr-dict";
 }
 
 def Toy_NotEqualOp : Op<Toy_Dialect, "neq"> {
-  let summary = "Not equal operation (e.g., x NEQ y)";
+  let summary = "Not equal operation (e.g., x != y)";
   let arguments = (ins IntegerOrFloatType:$lhs, IntegerOrFloatType:$rhs);
   let results = (outs I1:$result);
-
-  let assemblyFormat = "$predicate `!=` $lhs `,` $rhs attr-dict `:` type($lhs)";
+  let assemblyFormat = "$lhs `!=` $rhs `:` type($lhs) attr-dict";
 }
 
 def Toy_OrOp : Op<Toy_Dialect, "or"> {
-  let summary = "Bitwise or boolean OR operation (e.g., x OR y)";
-  let arguments = (ins IntegerOrFloatType:$lhs, IntegerOrFloatType:$rhs);
+  let summary = "Bitwise or boolean OR operation (e.g., x | y)";
+  let arguments = (ins IntegerType:$lhs, IntegerType:$rhs);
   let results = (outs I1:$result);
-
-  let assemblyFormat = "$predicate `|` $lhs `,` $rhs attr-dict `:` type($lhs)";
+  let assemblyFormat = "$lhs `|` $rhs `:` type($lhs) attr-dict";
 }
 
 def Toy_AndOp : Op<Toy_Dialect, "and"> {
-  let summary = "Bitwise or boolean AND operation (e.g., x AND y)";
-  let arguments = (ins IntegerOrFloatType:$lhs, IntegerOrFloatType:$rhs);
+  let summary = "Bitwise or boolean AND operation (e.g., x & y)";
+  let arguments = (ins IntegerType:$lhs, IntegerType:$rhs);
   let results = (outs I1:$result);
-
-  let assemblyFormat = "$predicate `&` $lhs `,` $rhs attr-dict `:` type($lhs)";
+  let assemblyFormat = "$lhs `&` $rhs `:` type($lhs) attr-dict";
 }
 
 def Toy_XorOp : Op<Toy_Dialect, "xor"> {
-  let summary = "Bitwise or boolean XOR operation (e.g., x XOR y)";
-  let arguments = (ins IntegerOrFloatType:$lhs, IntegerOrFloatType:$rhs);
+  let summary = "Bitwise or boolean XOR operation (e.g., x ^ y)";
+  let arguments = (ins IntegerType:$lhs, IntegerType:$rhs);
   let results = (outs I1:$result);
-
-  let assemblyFormat = "$predicate `^` $lhs `,` $rhs attr-dict `:` type($lhs)";
+  let assemblyFormat = "$lhs `^` $rhs `:` type($lhs) attr-dict";
 }
 
 def Toy_NotOp : Op<Toy_Dialect, "not"> {
-  let summary = "Logical NOT operation (e.g., NOT x)";
+  let summary = "Logical NOT operation (e.g., !x)";
   let arguments = (ins IntegerType:$lhs);
   let results = (outs I1:$result);
+  let assemblyFormat = "`!` $lhs `:` type($lhs) attr-dict";
 }
