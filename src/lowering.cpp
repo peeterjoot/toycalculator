@@ -509,7 +509,8 @@ namespace toy
     };
 
     // Lower LessOp, ... (after type conversions, if required)
-    template <class IOpType, class FOpType>
+    template <class ToyOp, class IOpType, class FOpType, mlir::LLVM::ICmpPredicate ICmpPred,
+              mlir::LLVM::FCmpPredicate FCmpPred>
     class ComparisonOpLowering : public ConversionPattern
     {
        private:
@@ -517,25 +518,25 @@ namespace toy
 
        public:
         ComparisonOpLowering( loweringContext& lState_, MLIRContext* ctx )
-            : ConversionPattern( toy::ComparisonOp::getOperationName(), 1, ctx ), lState{ lState_ }
+            : ConversionPattern( ToyOp::getOperationName(), 1, ctx ), lState{ lState_ }
         {
         }
 
         LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
                                        ConversionPatternRewriter& rewriter ) const override
         {
-            auto ComparisonOp = cast<toy::ComparisonOp>( op );
-            auto loc = ComparisonOp.getLoc();
+            auto compareOp = cast<ToyOp>( op );
+            auto loc = compareOp.getLoc();
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering ComparisonOp: " << *op << '\n' );
 
-            auto lhs = lessOp.getLhs();
-            auto rhs = lessOp.getRhs();
+            auto lhs = compareOp.getLhs();
+            auto rhs = compareOp.getRhs();
 
-            auto lhsi = mlir::dyn_cast<IntegerType>( lhs );
-            auto rhsi = mlir::dyn_cast<IntegerType>( rhs );
-            auto lhsf = mlir::dyn_cast<FloatType>( lhs );
-            auto rhsf = mlir::dyn_cast<FloatType>( rhs );
+            auto lhsi = mlir::dyn_cast<IntegerType>( lhs.getType() );
+            auto rhsi = mlir::dyn_cast<IntegerType>( rhs.getType() );
+            auto lhsf = mlir::dyn_cast<FloatType>( lhs.getType() );
+            auto rhsf = mlir::dyn_cast<FloatType>( rhs.getType() );
 
             if ( lhsi && rhsi )
             {
@@ -546,26 +547,26 @@ namespace toy
                 {
                     if ( lwidth == 1 )
                     {
-                        lhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, rhsi.getType(), lhs );
+                        lhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, rhsi, lhs );
                     }
                     else
                     {
-                        lhs = rewriter.create<mlir::LLVM::SExtOp>( loc, rhsi.getType(), lhs );
+                        lhs = rewriter.create<mlir::LLVM::SExtOp>( loc, rhsi, lhs );
                     }
                 }
                 else if ( rwidth < lwidth )
                 {
                     if ( rwidth == 1 )
                     {
-                        rhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, lhsi.getType(), rhs );
+                        rhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, lhsi, rhs );
                     }
                     else
                     {
-                        rhs = rewriter.create<mlir::LLVM::SExtOp>( loc, lhsi.getType(), rhs );
+                        rhs = rewriter.create<mlir::LLVM::SExtOp>( loc, lhsi, rhs );
                     }
                 }
 
-                auto cmp = rewriter.create<IOpType>( loc, LLVM::ICmpPredicate::slt, lhs, rhs );
+                auto cmp = rewriter.create<IOpType>( loc, ICmpPred, lhs, rhs );
                 rewriter.replaceOp( op, cmp.getResult() );
             }
             else if ( lhsf && rhsf )
@@ -582,7 +583,7 @@ namespace toy
                     rhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, rewriter.getF64Type(), rhs );
                 }
 
-                auto cmp = rewriter.create<FOpType>( loc, mlir::LLVM::FCmpPredicate::OLT, lhs, rhs );
+                auto cmp = rewriter.create<FOpType>( loc, FCmpPred, lhs, rhs );
                 rewriter.replaceOp( op, cmp.getResult() );
             }
             else
@@ -590,18 +591,18 @@ namespace toy
                 // convert integer type to float
                 if ( lhsi && rhsf )
                 {
-                    rhs = rewriter.create<mlir::arith::SIToFPOp>( loc, rhsf.getType(), lhs );
+                    rhs = rewriter.create<mlir::arith::SIToFPOp>( loc, rhsf, lhs );
                 }
                 else if ( rhsi && lhsf )
                 {
-                    lhs = rewriter.create<mlir::arith::SIToFPOp>( loc, lhsf.getType(), rhs );
+                    lhs = rewriter.create<mlir::arith::SIToFPOp>( loc, lhsf, rhs );
                 }
                 else
                 {
-                    llvm_unreachable( "Comparison lowering: confused." );
+                    return rewriter.notifyMatchFailure( op, "Unsupported type combination" );
                 }
 
-                auto cmp = rewriter.create<FOpType>( loc, mlir::LLVM::FCmpPredicate::OLT, lhs, rhs );
+                auto cmp = rewriter.create<FOpType>( loc, FCmpPred, lhs, rhs );
                 rewriter.replaceOp( op, cmp.getResult() );
             }
 
@@ -609,7 +610,8 @@ namespace toy
         }
     };
 
-    using LessOpLowering = ComparisonOpLowering<mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp>;
+    using LessOpLowering = ComparisonOpLowering<toy::LessOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp,
+                                                LLVM::ICmpPredicate::slt, mlir::LLVM::FCmpPredicate::olt>;
 
     class LoadOpLowering : public ConversionPattern
     {

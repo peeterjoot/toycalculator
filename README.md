@@ -62,8 +62,8 @@ do that without bothering with AI tools that can be more work to use than just d
 
 Basic language constructs to make things more interesting:
 
+* Before the DWARF instrumentation addition, got better .ll and assembly output: review all the handling of optimize/no-optimize.  perhaps because testit is not optimize by default?
 * tests for all the type conversions.
-* not handling optimize/no-optimize properly.
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 * unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.
 * EXIT: enforce i8 return type in the MLIR layer (i.e.: actual UNIX shell semantics.) -- currently set to i32 return.
