@@ -107,6 +107,7 @@ foo
 bin
 simpleless
 lessbug
+lessbug2
 ));
 
 if ( defined $just )

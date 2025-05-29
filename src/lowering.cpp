@@ -591,11 +591,25 @@ namespace toy
                 // convert integer type to float
                 if ( lhsi && rhsf )
                 {
-                    lhs = rewriter.create<mlir::arith::SIToFPOp>( loc, rhsf, lhs );
+                    if ( lhsi.getWidth() == 1 )
+                    {
+                        lhs = rewriter.create<mlir::arith::UIToFPOp>( loc, rhsf, lhs );
+                    }
+                    else
+                    {
+                        lhs = rewriter.create<mlir::arith::SIToFPOp>( loc, rhsf, lhs );
+                    }
                 }
                 else if ( rhsi && lhsf )
                 {
-                    rhs = rewriter.create<mlir::arith::SIToFPOp>( loc, lhsf, rhs );
+                    if ( rhsi.getWidth() == 1 )
+                    {
+                        rhs = rewriter.create<mlir::arith::UIToFPOp>( loc, lhsf, rhs );
+                    }
+                    else
+                    {
+                        rhs = rewriter.create<mlir::arith::SIToFPOp>( loc, lhsf, rhs );
+                    }
                 }
                 else
                 {

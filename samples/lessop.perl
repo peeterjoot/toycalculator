@@ -19,7 +19,10 @@ my %v2 = (
    'g64' => 0.21,
 );
 
-print qq(//THIS IS A GENERATED TEST CASE (./lessop.perl).  DO NOT EDIT\n
+open my $toy, ">lessop.toy" or die;
+open my $etoy, ">expected/lessop.out" or die;
+
+print $toy qq(//THIS IS A GENERATED TEST CASE (./lessop.perl).  DO NOT EDIT\n
 BOOL b;\n);
 
 my @symbols = sort keys %v1;
@@ -33,26 +36,25 @@ foreach my $v ( @symbols )
 
     $type =~ s/INT1$/BOOL/;
 
-    print "$type $v;\n";
+    print $toy "$type $v;\n";
 }
 
 foreach my $v ( sort keys %v1 )
 {
-    print "$v = $v1{$v};\n";
+    print $toy "$v = $v1{$v};\n";
 }
 
 foreach my $v ( sort keys %v2 )
 {
-    print "$v = $v2{$v};\n";
+    print $toy "$v = $v2{$v};\n";
 }
 
-foreach my $v1 ( sort keys %v1 )
+foreach my $v1 ( (qw(i1)) )
+#foreach my $v1 ( sort keys %v1 )
 {
+    #foreach my $v2( (qw(j16)) )
     foreach my $v2( sort keys %v2 )
     {
-        print "b = $v1 < $v2;\nPRINT b;\n";
-        print "b = $v2 < $v1;\nPRINT b;\n";
-
         my $e, $f;
         my $a = $v1{$v1};
         my $b = $v2{$v2};
@@ -64,19 +66,33 @@ foreach my $v1 ( sort keys %v1 )
         if ( $a < $b )
         {
             $e = 1;
-            $f = 0;
         }
         else
         {
             $e = 0;
-            $f = 1;
         }
 
-        print "//b = $v1 < $v2;\n";
-        print "//$e\n";
-        print "//b = $v2 < $v1;\n";
-        print "//$f\n";
+        if ( $b < $a )
+        {
+            $f = 1;
+        }
+        else
+        {
+            $f = 0;
+        }
+
+        #print "//b = $v1 < $v2;\n";
+        print $etoy "$e\n";
+        print $toy "b = $v1 < $v2;\nPRINT b;\n";
+
+        #print "//b = $v2 < $v1;\n";
+        print $etoy "$f\n";
+        print $toy "b = $v2 < $v1;\nPRINT b;\n";
+
     }
 }
+
+close $toy;
+close $etoy;
 
 # vim: et ts=4 sw=4
