@@ -105,6 +105,7 @@ simplest
 dcl
 foo
 bin
+simpleless
 ));
 
 if ( defined $just )

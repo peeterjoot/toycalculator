@@ -463,7 +463,7 @@ namespace toy
             auto rlit = rhs->numericLiteral();
             error =
                 buildUnaryExpression( nullptr, rlit ? rlit->INTEGERLITERAL() : nullptr,
-                                      rlit ? rlit->FLOATLITERAL() : nullptr, lhs->VARIABLENAME(), loc, rhsValue, rty );
+                                      rlit ? rlit->FLOATLITERAL() : nullptr, rhs->VARIABLENAME(), loc, rhsValue, rty );
             if ( error )
             {
                 return;

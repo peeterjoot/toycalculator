@@ -1,0 +1,521 @@
+//THIS IS A GENERATED TEST CASE (./lessop.perl).  DO NOT EDIT
+
+BOOL b;
+FLOAT32 f32;
+FLOAT64 f64;
+BOOL i1;
+INT16 i16;
+INT32 i32;
+INT64 i64;
+INT8 i8;
+FLOAT32 g32;
+FLOAT64 g64;
+BOOL j1;
+INT16 j16;
+INT32 j32;
+INT64 j64;
+INT8 j8;
+f32 = 1.1;
+f64 = 0.22;
+i1 = TRUE;
+i16 = 1000;
+i32 = 100000;
+i64 = 100000000000;
+i8 = 10;
+g32 = 1;
+g64 = 0.21;
+j1 = FALSE;
+j16 = 100;
+j32 = 10000;
+j64 = 10000000000;
+j8 = 1;
+b = f32 < g32;
+PRINT b;
+b = g32 < f32;
+PRINT b;
+b = f32 < g64;
+PRINT b;
+b = g64 < f32;
+PRINT b;
+b = f32 < j1;
+PRINT b;
+b = j1 < f32;
+PRINT b;
+b = f32 < j16;
+PRINT b;
+b = j16 < f32;
+PRINT b;
+b = f32 < j32;
+PRINT b;
+b = j32 < f32;
+PRINT b;
+b = f32 < j64;
+PRINT b;
+b = j64 < f32;
+PRINT b;
+b = f32 < j8;
+PRINT b;
+b = j8 < f32;
+PRINT b;
+b = f64 < g32;
+PRINT b;
+b = g32 < f64;
+PRINT b;
+b = f64 < g64;
+PRINT b;
+b = g64 < f64;
+PRINT b;
+b = f64 < j1;
+PRINT b;
+b = j1 < f64;
+PRINT b;
+b = f64 < j16;
+PRINT b;
+b = j16 < f64;
+PRINT b;
+b = f64 < j32;
+PRINT b;
+b = j32 < f64;
+PRINT b;
+b = f64 < j64;
+PRINT b;
+b = j64 < f64;
+PRINT b;
+b = f64 < j8;
+PRINT b;
+b = j8 < f64;
+PRINT b;
+b = i1 < g32;
+PRINT b;
+b = g32 < i1;
+PRINT b;
+b = i1 < g64;
+PRINT b;
+b = g64 < i1;
+PRINT b;
+b = i1 < j1;
+PRINT b;
+b = j1 < i1;
+PRINT b;
+b = i1 < j16;
+PRINT b;
+b = j16 < i1;
+PRINT b;
+b = i1 < j32;
+PRINT b;
+b = j32 < i1;
+PRINT b;
+b = i1 < j64;
+PRINT b;
+b = j64 < i1;
+PRINT b;
+b = i1 < j8;
+PRINT b;
+b = j8 < i1;
+PRINT b;
+b = i16 < g32;
+PRINT b;
+b = g32 < i16;
+PRINT b;
+b = i16 < g64;
+PRINT b;
+b = g64 < i16;
+PRINT b;
+b = i16 < j1;
+PRINT b;
+b = j1 < i16;
+PRINT b;
+b = i16 < j16;
+PRINT b;
+b = j16 < i16;
+PRINT b;
+b = i16 < j32;
+PRINT b;
+b = j32 < i16;
+PRINT b;
+b = i16 < j64;
+PRINT b;
+b = j64 < i16;
+PRINT b;
+b = i16 < j8;
+PRINT b;
+b = j8 < i16;
+PRINT b;
+b = i32 < g32;
+PRINT b;
+b = g32 < i32;
+PRINT b;
+b = i32 < g64;
+PRINT b;
+b = g64 < i32;
+PRINT b;
+b = i32 < j1;
+PRINT b;
+b = j1 < i32;
+PRINT b;
+b = i32 < j16;
+PRINT b;
+b = j16 < i32;
+PRINT b;
+b = i32 < j32;
+PRINT b;
+b = j32 < i32;
+PRINT b;
+b = i32 < j64;
+PRINT b;
+b = j64 < i32;
+PRINT b;
+b = i32 < j8;
+PRINT b;
+b = j8 < i32;
+PRINT b;
+b = i64 < g32;
+PRINT b;
+b = g32 < i64;
+PRINT b;
+b = i64 < g64;
+PRINT b;
+b = g64 < i64;
+PRINT b;
+b = i64 < j1;
+PRINT b;
+b = j1 < i64;
+PRINT b;
+b = i64 < j16;
+PRINT b;
+b = j16 < i64;
+PRINT b;
+b = i64 < j32;
+PRINT b;
+b = j32 < i64;
+PRINT b;
+b = i64 < j64;
+PRINT b;
+b = j64 < i64;
+PRINT b;
+b = i64 < j8;
+PRINT b;
+b = j8 < i64;
+PRINT b;
+b = i8 < g32;
+PRINT b;
+b = g32 < i8;
+PRINT b;
+b = i8 < g64;
+PRINT b;
+b = g64 < i8;
+PRINT b;
+b = i8 < j1;
+PRINT b;
+b = j1 < i8;
+PRINT b;
+b = i8 < j16;
+PRINT b;
+b = j16 < i8;
+PRINT b;
+b = i8 < j32;
+PRINT b;
+b = j32 < i8;
+PRINT b;
+b = i8 < j64;
+PRINT b;
+b = j64 < i8;
+PRINT b;
+b = i8 < j8;
+PRINT b;
+b = j8 < i8;
+PRINT b;
+b = f32 < g32;
+PRINT b;
+b = g32 < f32;
+PRINT b;
+//0
+//1
+b = f32 < g64;
+PRINT b;
+b = g64 < f32;
+PRINT b;
+//0
+//1
+b = f32 < j1;
+PRINT b;
+b = j1 < f32;
+PRINT b;
+//0
+//1
+b = f32 < j16;
+PRINT b;
+b = j16 < f32;
+PRINT b;
+//1
+//0
+b = f32 < j32;
+PRINT b;
+b = j32 < f32;
+PRINT b;
+//1
+//0
+b = f32 < j64;
+PRINT b;
+b = j64 < f32;
+PRINT b;
+//1
+//0
+b = f32 < j8;
+PRINT b;
+b = j8 < f32;
+PRINT b;
+//0
+//1
+b = f64 < g32;
+PRINT b;
+b = g32 < f64;
+PRINT b;
+//1
+//0
+b = f64 < g64;
+PRINT b;
+b = g64 < f64;
+PRINT b;
+//0
+//1
+b = f64 < j1;
+PRINT b;
+b = j1 < f64;
+PRINT b;
+//0
+//1
+b = f64 < j16;
+PRINT b;
+b = j16 < f64;
+PRINT b;
+//1
+//0
+b = f64 < j32;
+PRINT b;
+b = j32 < f64;
+PRINT b;
+//1
+//0
+b = f64 < j64;
+PRINT b;
+b = j64 < f64;
+PRINT b;
+//1
+//0
+b = f64 < j8;
+PRINT b;
+b = j8 < f64;
+PRINT b;
+//1
+//0
+b = i1 < g32;
+PRINT b;
+b = g32 < i1;
+PRINT b;
+//0
+//1
+b = i1 < g64;
+PRINT b;
+b = g64 < i1;
+PRINT b;
+//0
+//1
+b = i1 < j1;
+PRINT b;
+b = j1 < i1;
+PRINT b;
+//0
+//1
+b = i1 < j16;
+PRINT b;
+b = j16 < i1;
+PRINT b;
+//1
+//0
+b = i1 < j32;
+PRINT b;
+b = j32 < i1;
+PRINT b;
+//1
+//0
+b = i1 < j64;
+PRINT b;
+b = j64 < i1;
+PRINT b;
+//1
+//0
+b = i1 < j8;
+PRINT b;
+b = j8 < i1;
+PRINT b;
+//0
+//1
+b = i16 < g32;
+PRINT b;
+b = g32 < i16;
+PRINT b;
+//0
+//1
+b = i16 < g64;
+PRINT b;
+b = g64 < i16;
+PRINT b;
+//0
+//1
+b = i16 < j1;
+PRINT b;
+b = j1 < i16;
+PRINT b;
+//0
+//1
+b = i16 < j16;
+PRINT b;
+b = j16 < i16;
+PRINT b;
+//0
+//1
+b = i16 < j32;
+PRINT b;
+b = j32 < i16;
+PRINT b;
+//1
+//0
+b = i16 < j64;
+PRINT b;
+b = j64 < i16;
+PRINT b;
+//1
+//0
+b = i16 < j8;
+PRINT b;
+b = j8 < i16;
+PRINT b;
+//0
+//1
+b = i32 < g32;
+PRINT b;
+b = g32 < i32;
+PRINT b;
+//0
+//1
+b = i32 < g64;
+PRINT b;
+b = g64 < i32;
+PRINT b;
+//0
+//1
+b = i32 < j1;
+PRINT b;
+b = j1 < i32;
+PRINT b;
+//0
+//1
+b = i32 < j16;
+PRINT b;
+b = j16 < i32;
+PRINT b;
+//0
+//1
+b = i32 < j32;
+PRINT b;
+b = j32 < i32;
+PRINT b;
+//0
+//1
+b = i32 < j64;
+PRINT b;
+b = j64 < i32;
+PRINT b;
+//1
+//0
+b = i32 < j8;
+PRINT b;
+b = j8 < i32;
+PRINT b;
+//0
+//1
+b = i64 < g32;
+PRINT b;
+b = g32 < i64;
+PRINT b;
+//0
+//1
+b = i64 < g64;
+PRINT b;
+b = g64 < i64;
+PRINT b;
+//0
+//1
+b = i64 < j1;
+PRINT b;
+b = j1 < i64;
+PRINT b;
+//0
+//1
+b = i64 < j16;
+PRINT b;
+b = j16 < i64;
+PRINT b;
+//0
+//1
+b = i64 < j32;
+PRINT b;
+b = j32 < i64;
+PRINT b;
+//0
+//1
+b = i64 < j64;
+PRINT b;
+b = j64 < i64;
+PRINT b;
+//0
+//1
+b = i64 < j8;
+PRINT b;
+b = j8 < i64;
+PRINT b;
+//0
+//1
+b = i8 < g32;
+PRINT b;
+b = g32 < i8;
+PRINT b;
+//0
+//1
+b = i8 < g64;
+PRINT b;
+b = g64 < i8;
+PRINT b;
+//0
+//1
+b = i8 < j1;
+PRINT b;
+b = j1 < i8;
+PRINT b;
+//0
+//1
+b = i8 < j16;
+PRINT b;
+b = j16 < i8;
+PRINT b;
+//1
+//0
+b = i8 < j32;
+PRINT b;
+b = j32 < i8;
+PRINT b;
+//1
+//0
+b = i8 < j64;
+PRINT b;
+b = j64 < i8;
+PRINT b;
+//1
+//0
+b = i8 < j8;
+PRINT b;
+b = j8 < i8;
+PRINT b;
+//0
+//1
