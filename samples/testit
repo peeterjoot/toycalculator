@@ -63,6 +63,7 @@ my $myName = '' ;
 my $fatal = 1;
 my $just;
 my $optimize = 0;
+my $assembly = 1;
 
 #Getopt::Long::Configure( 'pass_through' ) ;
 GetOptions (
@@ -70,6 +71,7 @@ GetOptions (
    'fatal!'             => \$fatal,
    'just=s'             => \$just,
    'optimize!'          => \$optimize,
+   'assembly!'          => \$assembly,
 ) or pod2usage(-verbose => 0) ;
 
 # Validate/handle options, and everything else...
@@ -87,7 +89,8 @@ else
 
 system( qq(rm -rf out) );
 
-my @tests = (qw(
+my %tests = map { $_ => 1 } (qw(
+lessop
 boolop
 converti
 addi
@@ -103,6 +106,11 @@ dcl
 foo
 bin
 ));
+
+if ( defined $just )
+{
+    $tests{$just}++ unless ( defined $tests{$just} );
+}
 
 my %expectedRC = (
    'bool' => 1,
@@ -123,7 +131,7 @@ sub verbose_system
 }
 
 my $pwd = `pwd` ; chomp $pwd;
-foreach my $stem (@tests)
+foreach my $stem (sort keys %tests)
 {
     next if ( defined $just and $just ne $stem );
 
@@ -133,7 +141,12 @@ foreach my $stem (@tests)
     print "##########################################################################\n";
     verbose_system( qq(../build/toycalculator --output-directory out -g $stem.toy $flags --emit-llvm --emit-mlir) );
 
-    verbose_system( qq(objdump -dr --no-show-raw-insn out/${stem}.o) );
+    verbose_system( qq(objdump -dr --no-show-raw-insn out/${stem}.o > out/${stem}.s) );
+
+    if ( $assembly )
+    {
+        verbose_system( qq(cat out/${stem}.s) );
+    }
 
     my $rc = verbose_system( qq(./out/${stem} > out/${stem}.out) );
     verbose_system( qq(cat out/${stem}.out) );
