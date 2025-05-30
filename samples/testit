@@ -90,25 +90,27 @@ else
 system( qq(rm -rf out) );
 
 my %tests = map { $_ => 1 } (qw(
-lessop
+addi
+bin
+bool
 boolop
 converti
-addi
-types
-lesseqop
-test
-unary
-bool
+dcl
+empty
+eqop
 exit3
 exitx
-empty
-simplest
-dcl
 foo
-bin
-simpleless
 lessbug
 lessbug2
+lesseqop
+lessop
+neqop
+simpleless
+simplest
+test
+types
+unary
 ));
 
 if ( defined $just )

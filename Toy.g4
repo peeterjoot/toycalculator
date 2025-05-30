@@ -74,9 +74,12 @@ binaryElement
   | unaryOperator? VARIABLENAME
   ;
 
-// A binary operator for addition, subtraction, multiplication, or division.
+// A binary operator for addition, subtraction, multiplication, or division, ...
 binaryOperator
-  : MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR | LESSTHAN | GREATERTHAN | LESSEQUAL | GREATEREQUAL | EQUALITYOP | BOOLEANOR | BOOLEANAND | BOOLEANXOR
+  : MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR
+  | LESSTHAN | GREATERTHAN | LESSEQUAL | GREATEREQUAL
+  | EQUALITYOP | NOTEQUALOP
+  | BOOLEANOR | BOOLEANAND | BOOLEANXOR
   ;
 
 // An optional unary operator for positive or negative (e.g., '+' or '-').
@@ -132,6 +135,11 @@ EQUALITYOP
   : 'EQ'
   ;
 
+// Matches the equality operator (e.g., 'NE').
+NOTEQUALOP
+  : 'NE'
+  ;
+
 // Matches the semicolon that terminates statements (e.g., ';').
 ENDOFSTATEMENT
   : ';'
@@ -181,10 +189,6 @@ LESSEQUAL
 
 GREATEREQUAL
   : '>='
-  ;
-
-EQUAL
-  : '=='
   ;
 
 // Matches the 'OR' keyword for boolean or bitwise OR

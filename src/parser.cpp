@@ -515,6 +515,11 @@ namespace toy
                 auto b = builder.create<toy::EqualOp>( loc, opType, lhsValue, rhsValue );
                 resultValue = b.getResult();
             }
+            else if ( opText == "NE" )
+            {
+                auto b = builder.create<toy::NotEqualOp>( loc, opType, lhsValue, rhsValue );
+                resultValue = b.getResult();
+            }
             else if ( opText == "AND" )
             {
                 auto b = builder.create<toy::AndOp>( loc, opType, lhsValue, rhsValue );
