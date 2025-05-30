@@ -989,9 +989,10 @@ namespace toy
     using MulOpLowering = BinaryOpLowering<toy::MulOp, LLVM::MulOp, LLVM::FMulOp, true>;
     using DivOpLowering = BinaryOpLowering<toy::DivOp, LLVM::SDivOp, LLVM::FDivOp, true>;
 
-    using XorOpLowering = BinaryOpLowering<toy::XorOp, mlir::LLVM::XOrOp, false>;
-    using AndOpLowering = BinaryOpLowering<toy::AndOp, mlir::LLVM::AndOp, false>;
-    using OrOpLowering  = BinaryOpLowering<toy::OrOp, mlir::LLVM::OrOp, false>;
+    // LLVM::FAddOp is a dummy operation here, knowing that it will not ever be used:
+    using XorOpLowering = BinaryOpLowering<toy::XorOp, mlir::LLVM::XOrOp, LLVM::FAddOp, false>;
+    using AndOpLowering = BinaryOpLowering<toy::AndOp, mlir::LLVM::AndOp, LLVM::FAddOp, false>;
+    using OrOpLowering  = BinaryOpLowering<toy::OrOp, mlir::LLVM::OrOp, LLVM::FAddOp, false>;
 
     // Lower arith.constant to LLVM constant.
     class ConstantOpLowering : public ConversionPattern
