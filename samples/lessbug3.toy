@@ -1,0 +1,9 @@
+BOOL b;
+BOOL i1;
+INT16 l16;
+i1 = TRUE;
+l16 = -100;
+b = i1 < l16;
+PRINT b;
+b = i1 > l16;
+PRINT b;

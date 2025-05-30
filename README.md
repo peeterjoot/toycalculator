@@ -14,8 +14,9 @@ It implements a toy calculator language that supports a few primitive linguistic
 * boolean, integer and floating point constants.
 * an ASSIGNMENT operator `(=)` with unary `(+,-)` and binary operators `(+,-,*,/)`.
 * DWARF instrumentation support, sufficient to for line stepping, breakpoints, continue, and variable inspection (and probably modification: untested.)
-* comparison operators (<, <=, EQ, NE) yielding BOOL values.
-* integer bitwise operators (OR, AND, XOR)
+* comparison operators (<, <=, EQ, NE) yielding BOOL values.  These work for any combinations of floating and integer types (including BOOL.)
+* integer bitwise operators (OR, AND, XOR).  These only for for integer types (including BOOL.)
+* a NOT operator, yielding BOOL.
 
 Computations occur in assignment operations, and any types are first promoted to the type of the variable.
 This means that 'x = 1.99 + 2.99' has the value 3, if x is an integer variable.
@@ -54,7 +55,7 @@ do that without bothering with AI tools that can be more work to use than just d
 * -debug-only=toy-driver
 * -debug-only=toy-lowering
 * --debug-mlir
-* -g (show MLIR location info in the dump, and lowered LLVM-IR.)  May not be propagating this properly now.
+* -g (show MLIR location info in the dump, and lowered LLVM-IR.)
 * -O[0123] -- the usual.
 * --stdout.  MLIR and LLVM-IR output to stdout instead of to files.
 * --no-emit-object
@@ -64,10 +65,10 @@ do that without bothering with AI tools that can be more work to use than just d
 
 Basic language constructs to make things more interesting:
 
-* NOT operator should be implemented or removed from the grammar.
-* Before the DWARF instrumentation addition, got better .ll and assembly output: review all the handling of optimize/no-optimize.  perhaps because testit is not optimize by default?
-* gdb session for simpleless is not behaving right with respect to 'n' (by the third PRINT)
-* tests for all the type conversions.
+* NOT operator: add more comprehensive all types testing.
+* Implement string constants, at least for PRINT.  In big generated tests, it's hard to see where a failure occurs.  Have hacked around that in `samples/*.perl` generators, by showing big unique integer values.
+* gdb session for simpleless.toy is not behaving right with respect to 'n' (by the third PRINT)
+* tests for all the type conversions (i.e.: binary and unary arith operators)
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 * unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.
 * EXIT: enforce i8 return type in the MLIR layer (i.e.: actual UNIX shell semantics.) -- currently set to i32 return.

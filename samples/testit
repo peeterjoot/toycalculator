@@ -10,7 +10,7 @@ testit - A little test driver.
 
 =head1 SYNOPSIS
 
-testit [--help] --no-fatal [--just tcname] [--optimize]
+testit [--help] --no-fatal [--just tcname] [--optimize] [--no-debug]
 
 =head1 DESCRIPTION
 
@@ -25,6 +25,14 @@ Warn, insted of die, on error.
 =item --just testname
 
 Run only testname.  Given full source test.toy, say, this is the test file stem test.
+
+=item --no-debug
+
+Do not pass -g to compiler.
+
+=item --optimize
+
+Pass -O 2 to compiler.
 
 =back
 
@@ -63,6 +71,7 @@ my $myName = '' ;
 my $fatal = 1;
 my $just;
 my $optimize = 0;
+my $debug = 1;
 my $assembly = 1;
 
 #Getopt::Long::Configure( 'pass_through' ) ;
@@ -72,19 +81,21 @@ GetOptions (
    'just=s'             => \$just,
    'optimize!'          => \$optimize,
    'assembly!'          => \$assembly,
+   'debug!'             => \$debug,
 ) or pod2usage(-verbose => 0) ;
 
 # Validate/handle options, and everything else...
 
-my $flags;
+my $flags = '';
 
 if ( $optimize )
 {
-    $flags = '-O 2';
+    $flags .= ' -O 2';
 }
-else
+
+if ( $debug )
 {
-    $flags = '-g';
+    $flags .= ' -g';
 }
 
 system( qq(rm -rf out) );
@@ -149,7 +160,8 @@ foreach my $stem (sort keys %tests)
     verbose_system( qq(cat $stem.toy) );
 
     print "##########################################################################\n";
-    verbose_system( qq(../build/toycalculator --output-directory out -g $stem.toy $flags --emit-llvm --emit-mlir) );
+    my $cmd = qq(../build/toycalculator --output-directory out $stem.toy $flags --emit-llvm --emit-mlir);
+    verbose_system( $cmd );
 
     verbose_system( qq(objdump -dr --no-show-raw-insn out/${stem}.o > out/${stem}.s) );
 

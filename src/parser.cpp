@@ -436,8 +436,10 @@ namespace toy
                 }
                 else if ( opText == "NOT" )
                 {
-                    auto op = builder.create<toy::NotOp>( loc, opType, lhsValue );
-                    resultValue = op.getResult();
+                    auto rhsValue = builder.create<mlir::arith::ConstantIntOp>( loc, 0, 64 );
+
+                    auto b = builder.create<toy::EqualOp>( loc, opType, lhsValue, rhsValue );
+                    resultValue = b.getResult();
                 }
             }
         }

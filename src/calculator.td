@@ -177,10 +177,3 @@ def Toy_XorOp : Op<Toy_Dialect, "xor"> {
   let results = (outs Toy_IntOrFloat:$result);
   //let assemblyFormat = "$lhs `^` $rhs `:` type($result) attr-dict";
 }
-
-def Toy_NotOp : Op<Toy_Dialect, "not"> {
-  let summary = "Logical NOT operation (e.g., !x)";
-  let arguments = (ins Toy_IntOrFloat:$lhs);
-  let results = (outs I1:$result);
-  //let assemblyFormat = "`!` $lhs `:` type($result) attr-dict";
-}

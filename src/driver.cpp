@@ -62,9 +62,8 @@ static llvm::cl::opt<bool> debugInfo( "g",
                                                       "creation in the lowered LLVM IR)" ),
                                       llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
 
-static llvm::cl::opt<bool> compileOnly( "c",
-                                      llvm::cl::desc( "Compile only and don't link." ),
-                                      llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
+static llvm::cl::opt<bool> compileOnly( "c", llvm::cl::desc( "Compile only and don't link." ), llvm::cl::init( false ),
+                                        llvm::cl::cat( ToyCategory ) );
 
 static llvm::cl::opt<std::string> outDir(
     "output-directory", llvm::cl::desc( "Output directory for generated files (e.g., .mlir, .ll, .o)" ),
@@ -112,8 +111,28 @@ enum class return_codes : int
     unknown_error
 };
 
-static
-void invokeLinker( const char* argv0, llvm::SmallString<128> & exePath, llvm::SmallString<128> & objectPath );
+static void invokeLinker( const char* argv0, llvm::SmallString<128>& exePath, llvm::SmallString<128>& objectPath );
+
+static void writeLL( std::unique_ptr<llvm::Module>& llvmModule, llvm::SmallString<128>& dirWithStem )
+{
+    if ( toStdout )
+    {
+        llvmModule->print( llvm::outs(), nullptr, debugInfo /* print debug info */ );
+    }
+    else
+    {
+        llvm::SmallString<128> path = dirWithStem;
+        path += ".ll";
+        std::error_code EC;
+        llvm::raw_fd_ostream out( path.str(), EC, llvm::sys::fs::OF_Text );
+        if ( EC )
+        {
+            throw toy::exception_with_context( __FILE__, __LINE__, __func__, "Failed to open file: " + EC.message() );
+        }
+
+        llvmModule->print( out, nullptr, debugInfo /* print debug info */ );
+    }
+}
 
 using namespace toy;
 
@@ -241,6 +260,7 @@ int main( int argc, char** argv )
 
         driverState st;
         st.isOptimized = optLevel != OptLevel::O0 ? true : false;
+        st.wantDebug = debugInfo;
         st.filename = filename;
 
         pm.addPass( mlir::createToyToLLVMLoweringPass( &st ) );
@@ -274,32 +294,16 @@ int main( int argc, char** argv )
         auto emitObject = !noEmitObject;
         if ( emitLLVM || emitObject )
         {
-            if ( emitLLVM )
+            // Verify the module to ensure debug info is valid
+            if ( llvm::verifyModule( *llvmModule, &llvm::errs() ) )
             {
-                // Verify the module to ensure debug info is valid
-                if ( llvm::verifyModule( *llvmModule, &llvm::errs() ) )
-                {
-                    throw exception_with_context( __FILE__, __LINE__, __func__, "Invalid LLVM IR module" );
-                }
+                throw exception_with_context( __FILE__, __LINE__, __func__, "Invalid LLVM IR module" );
+            }
 
-                if ( toStdout )
-                {
-                    llvmModule->print( llvm::outs(), nullptr, debugInfo /* print debug info */ );
-                }
-                else
-                {
-                    llvm::SmallString<128> path = dirWithStem;
-                    path += ".ll";
-                    std::error_code EC;
-                    llvm::raw_fd_ostream out( path.str(), EC, llvm::sys::fs::OF_Text );
-                    if ( EC )
-                    {
-                        throw exception_with_context( __FILE__, __LINE__, __func__,
-                                                      "Failed to open file: " + EC.message() );
-                    }
-
-                    llvmModule->print( out, nullptr, debugInfo /* print debug info */ );
-                }
+            // Dump the pre-optimized LL if we aren't creating a .o
+            if ( emitLLVM && !emitObject )
+            {
+                writeLL( llvmModule, dirWithStem );
             }
 
             if ( emitObject )
@@ -381,6 +385,8 @@ int main( int argc, char** argv )
 
                 LLVM_DEBUG( { llvm::outs() << "Generated object file: " << outputFilename << '\n'; } );
 
+                writeLL( llvmModule, dirWithStem );
+
                 if ( compileOnly == false )
                 {
                     invokeLinker( argv[0], dirWithStem, outputFilename );
@@ -397,7 +403,7 @@ int main( int argc, char** argv )
     return (int)return_codes::success;
 }
 
-void invokeLinker( const char* argv0, llvm::SmallString<128> & exePath, llvm::SmallString<128> & objectPath )
+void invokeLinker( const char* argv0, llvm::SmallString<128>& exePath, llvm::SmallString<128>& objectPath )
 {
     // Get the driver path
     std::string driver = llvm::sys::fs::getMainExecutable( argv0, (void*)&main );
@@ -412,7 +418,7 @@ void invokeLinker( const char* argv0, llvm::SmallString<128> & exePath, llvm::Sm
         std::error_code ec = linkerPath.getError();
 
         throw exception_with_context( __FILE__, __LINE__, __func__,
-                            std::format( "Error finding path for linker '{}': {}\n", linker, ec.message() ) );
+                                      std::format( "Error finding path for linker '{}': {}\n", linker, ec.message() ) );
     }
     LLVM_DEBUG( { llvm::outs() << "Linker path: " << linkerPath.get() << '\n'; } );
 
@@ -440,7 +446,7 @@ void invokeLinker( const char* argv0, llvm::SmallString<128> & exePath, llvm::Sm
     if ( result != 0 )
     {
         throw exception_with_context( __FILE__, __LINE__, __func__,
-                            std::format( "Linker failed with exit code: {}, rc = {}\n", errMsg, result ) );
+                                      std::format( "Linker failed with exit code: {}, rc = {}\n", errMsg, result ) );
     }
 }
 

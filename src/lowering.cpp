@@ -150,119 +150,125 @@ namespace toy
             mainFunc = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), ENTRY_SYMBOL_NAME, mainFuncType,
                                                          LLVM::Linkage::External );
 
-            // Construct module level DI state:
-            fileAttr = mlir::LLVM::DIFileAttr::get( ctx, driverState.filename, "." );
-            auto distinctAttr = mlir::DistinctAttr::create( builder.getUnitAttr() );
-            auto compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
-                ctx, distinctAttr, llvm::dwarf::DW_LANG_C, fileAttr, builder.getStringAttr( COMPILER_NAME ), false,
-                mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
-            auto ta = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
-                                                        builder.getStringAttr( "int" ), 32,
-                                                        (unsigned)llvm::dwarf::DW_ATE_signed );
-            llvm::SmallVector<mlir::LLVM::DITypeAttr, 1> typeArray;
-            typeArray.push_back( ta );
-            auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get( ctx, 0, typeArray );
-            subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
-                ctx, mlir::DistinctAttr::create( builder.getUnitAttr() ), compileUnitAttr, fileAttr,
-                builder.getStringAttr( ENTRY_SYMBOL_NAME ), builder.getStringAttr( ENTRY_SYMBOL_NAME ), fileAttr, 1, 1,
-                mlir::LLVM::DISubprogramFlags::Definition, subprogramType, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{},
-                llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
-            mainFunc->setAttr( "llvm.debug.subprogram", subprogramAttr );
+            if ( driverState.wantDebug )
+            {
+                // Construct module level DI state:
+                fileAttr = mlir::LLVM::DIFileAttr::get( ctx, driverState.filename, "." );
+                auto distinctAttr = mlir::DistinctAttr::create( builder.getUnitAttr() );
+                auto compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
+                    ctx, distinctAttr, llvm::dwarf::DW_LANG_C, fileAttr, builder.getStringAttr( COMPILER_NAME ), false,
+                    mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
+                auto ta = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                            builder.getStringAttr( "int" ), 32,
+                                                            (unsigned)llvm::dwarf::DW_ATE_signed );
+                llvm::SmallVector<mlir::LLVM::DITypeAttr, 1> typeArray;
+                typeArray.push_back( ta );
+                auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get( ctx, 0, typeArray );
+                subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
+                    ctx, mlir::DistinctAttr::create( builder.getUnitAttr() ), compileUnitAttr, fileAttr,
+                    builder.getStringAttr( ENTRY_SYMBOL_NAME ), builder.getStringAttr( ENTRY_SYMBOL_NAME ), fileAttr, 1,
+                    1, mlir::LLVM::DISubprogramFlags::Definition, subprogramType,
+                    llvm::ArrayRef<mlir::LLVM::DINodeAttr>{}, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
+                mainFunc->setAttr( "llvm.debug.subprogram", subprogramAttr );
 
-            // This is the key to ensure that translateModuleToLLVMIR does not strip the location info (instead converts
-            // loc's into !dbg's)
-            mainFunc->setLoc( builder.getFusedLoc( { module.getLoc() }, subprogramAttr ) );
+                // This is the key to ensure that translateModuleToLLVMIR does not strip the location info (instead
+                // converts loc's into !dbg's)
+                mainFunc->setLoc( builder.getFusedLoc( { module.getLoc() }, subprogramAttr ) );
+            }
         }
 
         void constructVariableDI( llvm::StringRef varName, mlir::Type& elemType, mlir::FileLineColLoc loc,
                                   unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp )
         {
             auto ctx = builder.getContext();
-            allocaOp->setAttr( "bindc_name", builder.getStringAttr( varName ) );
-
-            mlir::LLVM::DILocalVariableAttr diVar;
-
-            if ( mlir::isa<mlir::IntegerType>( elemType ) )
+            if ( driverState.wantDebug )
             {
-                const char* typeName{};
-                unsigned dwType = llvm::dwarf::DW_ATE_signed;
-                unsigned sz = elemSizeInBits;
+                allocaOp->setAttr( "bindc_name", builder.getStringAttr( varName ) );
 
-                switch ( elemSizeInBits )
+                mlir::LLVM::DILocalVariableAttr diVar;
+
+                if ( mlir::isa<mlir::IntegerType>( elemType ) )
                 {
-                    case 1:
+                    const char* typeName{};
+                    unsigned dwType = llvm::dwarf::DW_ATE_signed;
+                    unsigned sz = elemSizeInBits;
+
+                    switch ( elemSizeInBits )
                     {
-                        typeName = "bool";
-                        dwType = llvm::dwarf::DW_ATE_boolean;
-                        sz = 8;
-                        break;
+                        case 1:
+                        {
+                            typeName = "bool";
+                            dwType = llvm::dwarf::DW_ATE_boolean;
+                            sz = 8;
+                            break;
+                        }
+                        case 8:
+                        {
+                            typeName = "int8_t";
+                            break;
+                        }
+                        case 16:
+                        {
+                            typeName = "int16_t";
+                            break;
+                        }
+                        case 32:
+                        {
+                            typeName = "int32_t";
+                            break;
+                        }
+                        case 64:
+                        {
+                            typeName = "int64_t";
+                            break;
+                        }
+                        default:
+                        {
+                            llvm_unreachable( "Unsupported float type size" );
+                        }
                     }
-                    case 8:
+
+                    auto diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                                                                    builder.getStringAttr( typeName ), sz, dwType );
+
+                    diVar = mlir::LLVM::DILocalVariableAttr::get( ctx, subprogramAttr, builder.getStringAttr( varName ),
+                                                                  fileAttr, loc.getLine(), 0, sz, diType,
+                                                                  mlir::LLVM::DIFlags::Zero );
+                }
+                else
+                {
+                    const char* typeName{};
+
+                    switch ( elemSizeInBits )
                     {
-                        typeName = "int8_t";
-                        break;
+                        case 32:
+                        {
+                            typeName = "float";
+                            break;
+                        }
+                        case 64:
+                        {
+                            typeName = "double";
+                            break;
+                        }
+                        default:
+                        {
+                            llvm_unreachable( "Unsupported float type size" );
+                        }
                     }
-                    case 16:
-                    {
-                        typeName = "int16_t";
-                        break;
-                    }
-                    case 32:
-                    {
-                        typeName = "int32_t";
-                        break;
-                    }
-                    case 64:
-                    {
-                        typeName = "int64_t";
-                        break;
-                    }
-                    default:
-                    {
-                        llvm_unreachable( "Unsupported float type size" );
-                    }
+
+                    auto diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                                                                    builder.getStringAttr( typeName ), elemSizeInBits,
+                                                                    llvm::dwarf::DW_ATE_float );
+
+                    diVar = mlir::LLVM::DILocalVariableAttr::get( ctx, subprogramAttr, builder.getStringAttr( varName ),
+                                                                  fileAttr, loc.getLine(), 0, elemSizeInBits, diType,
+                                                                  mlir::LLVM::DIFlags::Zero );
                 }
 
-                auto diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
-                                                                builder.getStringAttr( typeName ), sz, dwType );
-
-                diVar = mlir::LLVM::DILocalVariableAttr::get( ctx, subprogramAttr, builder.getStringAttr( varName ),
-                                                              fileAttr, loc.getLine(), 0, sz, diType,
-                                                              mlir::LLVM::DIFlags::Zero );
+                builder.setInsertionPointAfter( allocaOp );
+                builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
             }
-            else
-            {
-                const char* typeName{};
-
-                switch ( elemSizeInBits )
-                {
-                    case 32:
-                    {
-                        typeName = "float";
-                        break;
-                    }
-                    case 64:
-                    {
-                        typeName = "double";
-                        break;
-                    }
-                    default:
-                    {
-                        llvm_unreachable( "Unsupported float type size" );
-                    }
-                }
-
-                auto diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
-                                                                builder.getStringAttr( typeName ), elemSizeInBits,
-                                                                llvm::dwarf::DW_ATE_float );
-
-                diVar = mlir::LLVM::DILocalVariableAttr::get( ctx, subprogramAttr, builder.getStringAttr( varName ),
-                                                              fileAttr, loc.getLine(), 0, elemSizeInBits, diType,
-                                                              mlir::LLVM::DIFlags::Zero );
-            }
-
-            builder.setInsertionPointAfter( allocaOp );
-            builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
 
             symbolToAlloca[varName] = allocaOp;
         }
@@ -378,7 +384,6 @@ namespace toy
             auto allocaOp = rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, one, alignment );
 
             lState.constructVariableDI( varName, elemType, getLocation( loc ), elemSizeInBits, allocaOp );
-
 
             auto parentOp = op->getParentOp();
             // Erase the declare op
@@ -992,7 +997,7 @@ namespace toy
     // LLVM::FAddOp is a dummy operation here, knowing that it will not ever be used:
     using XorOpLowering = BinaryOpLowering<toy::XorOp, mlir::LLVM::XOrOp, LLVM::FAddOp, false>;
     using AndOpLowering = BinaryOpLowering<toy::AndOp, mlir::LLVM::AndOp, LLVM::FAddOp, false>;
-    using OrOpLowering  = BinaryOpLowering<toy::OrOp, mlir::LLVM::OrOp, LLVM::FAddOp, false>;
+    using OrOpLowering = BinaryOpLowering<toy::OrOp, mlir::LLVM::OrOp, LLVM::FAddOp, false>;
 
     // Lower arith.constant to LLVM constant.
     class ConstantOpLowering : public ConversionPattern

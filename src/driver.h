@@ -15,6 +15,7 @@ namespace toy
     struct driverState
     {
         bool isOptimized;
+        bool wantDebug;
         std::string filename;
     };
 }
