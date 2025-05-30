@@ -581,11 +581,11 @@ namespace toy
 
                 if ( lwidth < rwidth )
                 {
-                    lhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, rewriter.getF64Type(), lhs );
+                    lhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, rhsf, lhs );
                 }
                 else if ( rwidth < lwidth )
                 {
-                    rhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, rewriter.getF64Type(), rhs );
+                    rhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, lhsf, rhs );
                 }
 
                 auto cmp = rewriter.create<FOpType>( loc, FCmpPred, lhs, rhs );
@@ -637,6 +637,14 @@ namespace toy
     using LessEqualOpLowering =
         ComparisonOpLowering<toy::LessEqualOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, LLVM::ICmpPredicate::sle,
                              LLVM::ICmpPredicate::ule, mlir::LLVM::FCmpPredicate::ole>;
+
+    using EqualOpLowering =
+        ComparisonOpLowering<toy::EqualOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, mlir::LLVM::ICmpPredicate::eq,
+                             mlir::LLVM::ICmpPredicate::eq, mlir::LLVM::FCmpPredicate::oeq>;
+
+    using NotEqualOpLowering =
+        ComparisonOpLowering<toy::NotEqualOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, mlir::LLVM::ICmpPredicate::ne,
+                             mlir::LLVM::ICmpPredicate::ne, mlir::LLVM::FCmpPredicate::one>;
 
     class LoadOpLowering : public ConversionPattern
     {
@@ -1061,6 +1069,8 @@ namespace toy
             patterns1.insert<DivOpLowering>( lState, ctx );
             patterns1.insert<NegOpLowering>( lState, ctx );
             patterns1.insert<LessOpLowering>( lState, ctx );
+            patterns1.insert<EqualOpLowering>( lState, ctx );
+            patterns1.insert<NotEqualOpLowering>( lState, ctx );
             patterns1.insert<LessEqualOpLowering>( lState, ctx );
             patterns1.insert<PrintOpLowering>( lState, ctx );
             patterns1.insert<ConstantOpLowering>( lState, ctx );

@@ -10,7 +10,7 @@ compareop.perl - generate comparison (binary operator) test cases.
 
 =head1 SYNOPSIS
 
-compareop.perl [--help] [--lt|--le]
+compareop.perl [--help] [--lt|--le|--eq|--ne]
 
 =head1 DESCRIPTION
 
@@ -25,6 +25,14 @@ Generate a test case for '<'
 =item --le
 
 Generate a test case for '<='
+
+=item --eq
+
+Generate a test case for '=='
+
+=item --ne
+
+Generate a test case for '!='
 
 =back
 
@@ -60,6 +68,8 @@ select STDOUT ; $| = 1 ;
 my $myName = '' ;
 my $lt = 0;
 my $le = 0;
+my $eq = 0;
+my $ne = 0;
 my @origARGV = @ARGV;
 
 ($myName = $0) =~ s@.*[/\\]@@ ;
@@ -69,12 +79,15 @@ GetOptions (
    'help'               => sub { pod2usage(-verbose => 2) ; },
    'lt!'                => \$lt,
    'le!'                => \$le,
+   'eq!'                => \$eq,
+   'ne!'                => \$ne,
 ) or pod2usage(-verbose => 0) ;
 
 # Validate/handle options, and everything else...
 
 my $name = '';
 my $op = '';
+
 if ( $lt )
 {
     $name = 'less';
@@ -85,28 +98,50 @@ elsif ( $le )
     $name = 'lesseq';
     $op = '<=';
 }
+elsif ( $eq )
+{
+    $name = 'eq';
+    $op = 'EQ';
+}
+elsif ( $ne )
+{
+    $name = 'neq';
+    $op = 'NE';
+}
 else
 {
-    die 'one of --lt or --le required';
+    die 'One of --lt, --le, --eq, or --ne required';
 }
 
 my %v1 = (
-   'i1' => 'TRUE',
-   'i8' => 10,
+   'i1'  => 'TRUE',
+   'i8'  => 10,
    'i16' => 1000,
    'i32' => 100000,
    'i64' => 100000000000,
    'f32' => 1.1,
    'f64' => 0.22,
+   'k8'  => -10,
+   'k16' => -1000,
+   'k32' => -100000,
+   'k64' => -100000000000,
+   'h32' => -1.1,
+   'h64' => -0.22,
 );
 my %v2 = (
-   'j1' => 'FALSE',
-   'j8' => 1,
+   'j1'  => 'FALSE',
+   'j8'  => 1,
    'j16' => 100,
    'j32' => 10000,
    'j64' => 10000000000,
    'g32' => 1.0,
    'g64' => 0.21,
+   'l8'  => -1,
+   'l16' => -100,
+   'l32' => -10000,
+   'l64' => -10000000000,
+   'm32' => -1.0,
+   'm64' => -0.21,
 );
 
 open my $toy, ">${name}op.toy" or die;
@@ -122,8 +157,8 @@ push( @symbols, sort keys %v2 );
 foreach my $v ( @symbols )
 {
     my $type = $v;
-    $type =~ s/^[ij]/INT/;
-    $type =~ s/^[fg]/FLOAT/;
+    $type =~ s/^[ijkl]/INT/;
+    $type =~ s/^[fghm]/FLOAT/;
 
     $type =~ s/INT1$/BOOL/;
 
@@ -141,10 +176,8 @@ foreach my $v ( sort keys %v2 )
 }
 
 my $i = 12340000;
-#foreach my $v1 ( (qw(i1)) )
 foreach my $v1 ( sort keys %v1 )
 {
-    #foreach my $v2( (qw(j16)) )
     foreach my $v2( sort keys %v2 )
     {
         my ($e, $f);
@@ -155,31 +188,25 @@ foreach my $v1 ( sort keys %v1 )
         $a =~ s/FALSE/0/;
         $b =~ s/FALSE/0/;
 
-        if ( $lt ) {
-            if ( $a < $b ) {
-                $e = 1;
-            } else {
-                $e = 0;
-            }
-
-            if ( $b < $a ) {
-                $f = 1;
-            } else {
-                $f = 0;
-            }
+        if ( $lt )
+        {
+            $e = ( $a < $b ) ? 1 : 0;
+            $f = ( $b < $a ) ? 1 : 0;
         }
-        elsif ( $le ) {
-            if ( $a <= $b ) {
-                $e = 1;
-            } else {
-                $e = 0;
-            }
-
-            if ( $b <= $a ) {
-                $f = 1;
-            } else {
-                $f = 0;
-            }
+        elsif ( $le )
+        {
+            $e = ( $a <= $b ) ? 1 : 0;
+            $f = ( $b <= $a ) ? 1 : 0;
+        }
+        elsif ( $eq )
+        {
+            $e = ( $a == $b ) ? 1 : 0;
+            $f = ( $b == $a ) ? 1 : 0;
+        }
+        elsif ( $ne )
+        {
+            $e = ( $a != $b ) ? 1 : 0;
+            $f = ( $b != $a ) ? 1 : 0;
         }
 
         my $m = sprintf( "i = %d;\nPRINT i;\n", $i );
