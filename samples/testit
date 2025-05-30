@@ -104,12 +104,12 @@ foo
 lessbug
 lessbug2
 neqop
+simpleless
 simplest
 test
 types
 unary
 ));
-#simpleless
 #lessop
 #lesseqop
 
