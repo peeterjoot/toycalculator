@@ -188,6 +188,9 @@ foreach my $v1 ( sort keys %v1 )
         $a =~ s/FALSE/0/;
         $b =~ s/FALSE/0/;
 
+        $a = int( $a ) unless ( $a =~ /\./ );
+        $b = int( $b ) unless ( $b =~ /\./ );
+
         if ( $lt )
         {
             $e = ( $a < $b ) ? 1 : 0;

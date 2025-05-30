@@ -104,6 +104,9 @@ exitx
 foo
 lessbug
 lessbug2
+lessbug3
+lesseqop
+lessop
 neqop
 orop
 simpleless
@@ -113,8 +116,6 @@ types
 unary
 xorop
 ));
-#lessop
-#lesseqop
 
 if ( defined $just )
 {
