@@ -509,10 +509,8 @@ namespace toy
     };
 
     // Lower LessOp, ... (after type conversions, if required)
-    template <class ToyOp, class IOpType, class FOpType,
-              mlir::LLVM::ICmpPredicate ICmpPredS,
-              mlir::LLVM::ICmpPredicate ICmpPredU,
-              mlir::LLVM::FCmpPredicate FCmpPred>
+    template <class ToyOp, class IOpType, class FOpType, mlir::LLVM::ICmpPredicate ICmpPredS,
+              mlir::LLVM::ICmpPredicate ICmpPredU, mlir::LLVM::FCmpPredicate FCmpPred>
     class ComparisonOpLowering : public ConversionPattern
     {
        private:
@@ -568,7 +566,7 @@ namespace toy
                         rhs = rewriter.create<mlir::LLVM::SExtOp>( loc, lhsi, rhs );
                     }
                 }
-                else if ( (rwidth == lwidth) && (rwidth == 1) )
+                else if ( ( rwidth == lwidth ) && ( rwidth == 1 ) )
                 {
                     pred = ICmpPredU;
                 }
@@ -631,8 +629,14 @@ namespace toy
         }
     };
 
-    using LessOpLowering = ComparisonOpLowering<toy::LessOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp,
-                                                LLVM::ICmpPredicate::slt, LLVM::ICmpPredicate::ult, mlir::LLVM::FCmpPredicate::olt>;
+    using LessOpLowering =
+        ComparisonOpLowering<toy::LessOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, LLVM::ICmpPredicate::slt,
+                             LLVM::ICmpPredicate::ult, mlir::LLVM::FCmpPredicate::olt>;
+
+
+    using LessEqualOpLowering =
+        ComparisonOpLowering<toy::LessEqualOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, LLVM::ICmpPredicate::sle,
+                             LLVM::ICmpPredicate::ule, mlir::LLVM::FCmpPredicate::ole>;
 
     class LoadOpLowering : public ConversionPattern
     {
@@ -1057,6 +1061,7 @@ namespace toy
             patterns1.insert<DivOpLowering>( lState, ctx );
             patterns1.insert<NegOpLowering>( lState, ctx );
             patterns1.insert<LessOpLowering>( lState, ctx );
+            patterns1.insert<LessEqualOpLowering>( lState, ctx );
             patterns1.insert<PrintOpLowering>( lState, ctx );
             patterns1.insert<ConstantOpLowering>( lState, ctx );
             patterns1.insert<AssignOpLowering>( lState, ctx );
