@@ -571,7 +571,7 @@ namespace toy
                     pred = ICmpPredU;
                 }
 
-                auto cmp = rewriter.create<IOpType>( loc, ICmpPredU, lhs, rhs );
+                auto cmp = rewriter.create<IOpType>( loc, pred, lhs, rhs );
                 rewriter.replaceOp( op, cmp.getResult() );
             }
             else if ( lhsf && rhsf )
@@ -632,7 +632,6 @@ namespace toy
     using LessOpLowering =
         ComparisonOpLowering<toy::LessOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, LLVM::ICmpPredicate::slt,
                              LLVM::ICmpPredicate::ult, mlir::LLVM::FCmpPredicate::olt>;
-
 
     using LessEqualOpLowering =
         ComparisonOpLowering<toy::LessEqualOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, LLVM::ICmpPredicate::sle,
@@ -863,7 +862,7 @@ namespace toy
     };
 
     // Lower toy.binary to LLVM arithmetic.
-    template <class ToyBinaryOpType, class llvmIOpType, class llvmFOpType>
+    template <class ToyBinaryOpType, class llvmIOpType, class llvmFOpType, bool allowFloat>
     class BinaryOpLowering : public ConversionPattern
     {
        private:
@@ -906,7 +905,14 @@ namespace toy
                 }
                 else if ( lhs.getType().isF32() || lhs.getType().isF64() )
                 {
-                    lhs = rewriter.create<LLVM::FPToSIOp>( loc, resultType, lhs );
+                    if ( allowFloat )
+                    {
+                        lhs = rewriter.create<LLVM::FPToSIOp>( loc, resultType, lhs );
+                    }
+                    else
+                    {
+                        llvm_unreachable( "float types unsupported for integer binary operation" );
+                    }
                 }
 
                 if ( auto rhsi = mlir::dyn_cast<IntegerType>( rhs.getType() ) )
@@ -924,13 +930,20 @@ namespace toy
                 }
                 else if ( rhs.getType().isF32() || rhs.getType().isF64() )
                 {
-                    rhs = rewriter.create<LLVM::FPToSIOp>( loc, resultType, rhs );
+                    if ( allowFloat )
+                    {
+                        rhs = rewriter.create<LLVM::FPToSIOp>( loc, resultType, rhs );
+                    }
+                    else
+                    {
+                        llvm_unreachable( "float types unsupported for integer binary operation" );
+                    }
                 }
 
                 auto result = rewriter.create<llvmIOpType>( loc, lhs, rhs );
                 rewriter.replaceOp( op, result );
             }
-            else
+            else if ( allowFloat )
             {
                 // Floating-point addition: ensure both operands are f64.
                 if ( auto lhsi = mlir::dyn_cast<IntegerType>( lhs.getType() ) )
@@ -962,83 +975,6 @@ namespace toy
                 auto result = rewriter.create<llvmFOpType>( loc, lhs, rhs );
                 rewriter.replaceOp( op, result );
             }
-
-            return success();
-        }
-    };
-
-    using AddOpLowering = BinaryOpLowering<toy::AddOp, LLVM::AddOp, LLVM::FAddOp>;
-    using SubOpLowering = BinaryOpLowering<toy::SubOp, LLVM::SubOp, LLVM::FSubOp>;
-    using MulOpLowering = BinaryOpLowering<toy::MulOp, LLVM::MulOp, LLVM::FMulOp>;
-    using DivOpLowering = BinaryOpLowering<toy::DivOp, LLVM::SDivOp, LLVM::FDivOp>;
-
-    template <class ToyBinaryOpType, class llvmIOpType>
-    class IntegerBinaryOpLowering : public ConversionPattern
-    {
-       private:
-        loweringContext& lState;
-
-       public:
-        IntegerBinaryOpLowering( loweringContext& lState_, MLIRContext* ctx )
-            : ConversionPattern( ToyBinaryOpType::getOperationName(), 1, ctx ), lState{ lState_ }
-        {
-        }
-
-        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
-                                       ConversionPatternRewriter& rewriter ) const override
-        {
-            auto binaryOp = cast<ToyBinaryOpType>( op );
-            auto loc = binaryOp.getLoc();
-
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.binary: " << *op << '\n' );
-
-            auto resultType = binaryOp.getResult().getType();
-
-            Value lhs = operands[0];
-            Value rhs = operands[1];
-            if ( resultType.isIntOrIndex() )
-            {
-                auto rwidth = resultType.getIntOrFloatBitWidth();
-
-                if ( auto lhsi = mlir::dyn_cast<IntegerType>( lhs.getType() ) )
-                {
-                    auto width = lhsi.getWidth();
-
-                    if ( rwidth > width )
-                    {
-                        lhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, resultType, lhs );
-                    }
-                    else if ( rwidth < width )
-                    {
-                        lhs = rewriter.create<mlir::LLVM::TruncOp>( loc, resultType, lhs );
-                    }
-                }
-                else if ( lhs.getType().isF32() || lhs.getType().isF64() )
-                {
-                    llvm_unreachable( "float types unsupported for integer binary operation" );
-                }
-
-                if ( auto rhsi = mlir::dyn_cast<IntegerType>( rhs.getType() ) )
-                {
-                    auto width = rhsi.getWidth();
-
-                    if ( rwidth > width )
-                    {
-                        rhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, resultType, rhs );
-                    }
-                    else if ( rwidth < width )
-                    {
-                        rhs = rewriter.create<mlir::LLVM::TruncOp>( loc, resultType, rhs );
-                    }
-                }
-                else if ( rhs.getType().isF32() || rhs.getType().isF64() )
-                {
-                    llvm_unreachable( "float types unsupported for integer binary operation" );
-                }
-
-                auto result = rewriter.create<llvmIOpType>( loc, lhs, rhs );
-                rewriter.replaceOp( op, result );
-            }
             else
             {
                 llvm_unreachable( "float types unsupported for integer binary operation" );
@@ -1048,9 +984,14 @@ namespace toy
         }
     };
 
-    using XorOpLowering = IntegerBinaryOpLowering<toy::XorOp, mlir::LLVM::XOrOp>;
-    using AndOpLowering = IntegerBinaryOpLowering<toy::AndOp, mlir::LLVM::AndOp>;
-    using OrOpLowering = IntegerBinaryOpLowering<toy::OrOp, mlir::LLVM::OrOp>;
+    using AddOpLowering = BinaryOpLowering<toy::AddOp, LLVM::AddOp, LLVM::FAddOp, true>;
+    using SubOpLowering = BinaryOpLowering<toy::SubOp, LLVM::SubOp, LLVM::FSubOp, true>;
+    using MulOpLowering = BinaryOpLowering<toy::MulOp, LLVM::MulOp, LLVM::FMulOp, true>;
+    using DivOpLowering = BinaryOpLowering<toy::DivOp, LLVM::SDivOp, LLVM::FDivOp, true>;
+
+    using XorOpLowering = BinaryOpLowering<toy::XorOp, mlir::LLVM::XOrOp, false>;
+    using AndOpLowering = BinaryOpLowering<toy::AndOp, mlir::LLVM::AndOp, false>;
+    using OrOpLowering  = BinaryOpLowering<toy::OrOp, mlir::LLVM::OrOp, false>;
 
     // Lower arith.constant to LLVM constant.
     class ConstantOpLowering : public ConversionPattern
