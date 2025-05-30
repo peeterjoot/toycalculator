@@ -95,6 +95,7 @@ boolop
 converti
 addi
 types
+lesseqop
 test
 unary
 bool
