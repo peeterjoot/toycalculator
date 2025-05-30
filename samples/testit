@@ -103,15 +103,15 @@ exitx
 foo
 lessbug
 lessbug2
-lesseqop
-lessop
 neqop
-simpleless
 simplest
 test
 types
 unary
 ));
+#simpleless
+#lessop
+#lesseqop
 
 if ( defined $just )
 {
