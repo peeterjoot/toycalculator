@@ -14,6 +14,8 @@ It implements a toy calculator language that supports a few primitive linguistic
 * boolean, integer and floating point constants.
 * an ASSIGNMENT operator `(=)` with unary `(+,-)` and binary operators `(+,-,*,/)`.
 * DWARF instrumentation support, sufficient to for line stepping, breakpoints, continue, and variable inspection (and probably modification: untested.)
+* comparison operators (<, <=, EQ, NE) yielding BOOL values.
+* integer bitwise operators (OR, AND, XOR)
 
 Computations occur in assignment operations, and any types are first promoted to the type of the variable.
 This means that 'x = 1.99 + 2.99' has the value 3, if x is an integer variable.

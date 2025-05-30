@@ -146,35 +146,35 @@ def Toy_LessEqualOp : Op<Toy_Dialect, "less_eq"> {
 }
 
 def Toy_EqualOp : Op<Toy_Dialect, "eq"> {
-  let summary = "Equal operation (e.g., x == y)";
+  let summary = "Equal operation (e.g., x EQ y)";
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
   let results = (outs I1:$result);
   //let assemblyFormat = "$lhs `==` $rhs `:` type($result) attr-dict";
 }
 
 def Toy_NotEqualOp : Op<Toy_Dialect, "neq"> {
-  let summary = "Not equal operation (e.g., x != y)";
+  let summary = "Not equal operation (e.g., x NE y)";
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
   let results = (outs I1:$result);
   //let assemblyFormat = "$lhs `!=` $rhs `:` type($result) attr-dict";
 }
 
 def Toy_OrOp : Op<Toy_Dialect, "or"> {
-  let summary = "Bitwise or boolean OR operation (e.g., x | y)";
+  let summary = "Bitwise or boolean OR operation (e.g., x OR y)";
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
   let results = (outs I1:$result);
   //let assemblyFormat = "$lhs `|` $rhs `:` type($result) attr-dict";
 }
 
 def Toy_AndOp : Op<Toy_Dialect, "and"> {
-  let summary = "Bitwise or boolean AND operation (e.g., x & y)";
+  let summary = "Bitwise or boolean AND operation (e.g., x AND y)";
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
   let results = (outs I1:$result);
   //let assemblyFormat = "$lhs `&` $rhs `:` type($result) attr-dict";
 }
 
 def Toy_XorOp : Op<Toy_Dialect, "xor"> {
-  let summary = "Bitwise or boolean XOR operation (e.g., x ^ y)";
+  let summary = "Bitwise or boolean XOR operation (e.g., x XOR y)";
   let arguments = (ins AnyType:$lhs, AnyType:$rhs);
   let results = (outs I1:$result);
   //let assemblyFormat = "$lhs `^` $rhs `:` type($result) attr-dict";
