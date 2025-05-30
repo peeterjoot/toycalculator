@@ -91,6 +91,7 @@ system( qq(rm -rf out) );
 
 my %tests = map { $_ => 1 } (qw(
 addi
+andop
 bin
 bool
 boolop
@@ -104,11 +105,13 @@ foo
 lessbug
 lessbug2
 neqop
+orop
 simpleless
 simplest
 test
 types
 unary
+xorop
 ));
 #lessop
 #lesseqop
