@@ -1,11 +1,13 @@
 BOOL b;
 BOOL i1;
 BOOL j1;
-j1 = FALSE;
 i1 = TRUE;
+j1 = FALSE;
 PRINT i1;
 PRINT j1;
+// 1 < 0 => 0
 b = i1 < j1;
 PRINT b;
+// 0 < 1 => 1
 b = j1 < i1;
 PRINT b;
