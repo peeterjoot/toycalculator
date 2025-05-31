@@ -22,7 +22,7 @@ startRule
 
 // A statement can be a declaration, assignment, print, or comment.
 statement
-  : (declare | boolDeclare | intDeclare | floatDeclare | assignment | print) ENDOFSTATEMENT_TOKEN
+  : (declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print) ENDOFSTATEMENT_TOKEN
   ;
 
 // A single-line comment
@@ -47,9 +47,9 @@ floatDeclare
   : (FLOAT32_TOKEN | FLOAT64_TOKEN) VARIABLENAME_PATTERN //(ARRAY_BOUNDS_EXPRESSION)?
   ;
 
-//stringDeclare
-//  : STRING_TOKEN VARIABLENAME_PATTERN //ARRAY_BOUNDS_EXPRESSION
-//  ;
+stringDeclare
+  : STRING_TOKEN VARIABLENAME_PATTERN ARRAY_BOUNDS_EXPRESSION
+  ;
 
 // Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
 exitStatement
@@ -105,9 +105,9 @@ literal
 // Lexer Rules
 // ===========
 
-//ARRAY_BOUNDS_EXPRESSION
-//  : ARRAY_START_TOKEN INTEGER_PATTERN ARRAY_END_TOKEN
-//  ;
+ARRAY_BOUNDS_EXPRESSION
+  : ARRAY_START_TOKEN INTEGER_PATTERN ARRAY_END_TOKEN
+  ;
 
 //INDEX_EXPRESSION
 //  : ARRAY_START_TOKEN (VARIABLENAME_PATTERN | INTEGER_PATTERN) ARRAY_END_TOKEN
@@ -301,6 +301,10 @@ PRINT_TOKEN
 // Matches the 'EXIT' keyword for print statements.
 EXIT_TOKEN
   : 'EXIT'
+  ;
+
+STRING_TOKEN
+  : 'STRING'
   ;
 
 // Matches variable names (e.g., 'x', 'foo'), consisting of letters (any case) and numbers, but starting with a letter.
