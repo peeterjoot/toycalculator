@@ -47,9 +47,9 @@ floatDeclare
   : (FLOAT32_TOKEN | FLOAT64_TOKEN) VARIABLENAME_PATTERN //(ARRAY_BOUNDS_EXPRESSION)?
   ;
 
-stringDeclare
-  : STRING_TOKEN VARIABLENAME_PATTERN //ARRAY_BOUNDS_EXPRESSION
-  ;
+//stringDeclare
+//  : STRING_TOKEN VARIABLENAME_PATTERN //ARRAY_BOUNDS_EXPRESSION
+//  ;
 
 // Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
 exitStatement
@@ -145,6 +145,11 @@ STRING_PATTERN
 // +7.3334E-1
 FLOAT_PATTERN
   : (PLUSCHAR_TOKEN | MINUS_TOKEN)? [0-9]+( DECIMALSEP_TOKEN [0-9]+)? (EXPONENT_TOKEN MINUS_TOKEN? [0-9]+)?
+  ;
+
+// Matches single-line comments (e.g., '// comment') and skips them.
+COMMENT_SKIP_RULE
+  : '//' ~[\r\n]* -> skip
   ;
 
 // Matches the equals sign for assignments (e.g., '=').
@@ -301,11 +306,6 @@ PRINT_TOKEN
 // Matches the 'EXIT' keyword for print statements.
 EXIT_TOKEN
   : 'EXIT'
-  ;
-
-// Matches single-line comments (e.g., '// comment') and skips them.
-COMMENT_SKIP_RULE
-  : '//' ~[\r\n]* -> skip
   ;
 
 // Matches whitespace (spaces, tabs, newlines) and skips it.
