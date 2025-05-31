@@ -1,0 +1,1 @@
+/usr/local/llvm-20.1.5/bin/flang-new -fc1 -emit-fir hello.f90 -o hello.mlir
