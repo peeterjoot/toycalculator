@@ -113,11 +113,6 @@ literal
 //  : ARRAY_START_TOKEN (VARIABLENAME_PATTERN | INTEGER_PATTERN) ARRAY_END_TOKEN
 //  ;
 
-// Matches variable names (e.g., 'x', 'foo'), consisting of letters (any case) and numbers, but starting with a letter.
-VARIABLENAME_PATTERN
-  : [a-zA-Z][a-zA-Z0-9]*
-  ;
-
 // Matches integer literals, optionally signed (e.g., '42', '-123', '+7').
 INTEGER_PATTERN
   : (PLUSCHAR_TOKEN | MINUS_TOKEN)? [0-9]+
@@ -306,6 +301,11 @@ PRINT_TOKEN
 // Matches the 'EXIT' keyword for print statements.
 EXIT_TOKEN
   : 'EXIT'
+  ;
+
+// Matches variable names (e.g., 'x', 'foo'), consisting of letters (any case) and numbers, but starting with a letter.
+VARIABLENAME_PATTERN
+  : [a-zA-Z][a-zA-Z0-9]*
   ;
 
 // Matches whitespace (spaces, tabs, newlines) and skips it.
