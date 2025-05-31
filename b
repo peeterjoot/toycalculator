@@ -6,7 +6,7 @@
 
 b main
 # pick which sample program to use for the compiler debugging.
-run ../samples/lessbug2.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+run ../samples/array.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 
 b __assert_perror_fail
 

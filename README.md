@@ -65,6 +65,7 @@ do that without bothering with AI tools that can be more work to use than just d
 
 Basic language constructs to make things more interesting:
 
+* Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure.
 * NOT operator: add more comprehensive all types testing.
 * Implement string constants, at least for PRINT.  In big generated tests, it's hard to see where a failure occurs.  Have hacked around that in `samples/*.perl` generators, by showing big unique integer values.
 * gdb session for simpleless.toy is not behaving right with respect to 'n' (by the third PRINT)

@@ -97,7 +97,7 @@ namespace toy
         std::string currentVarName;
         semantic_errors lastSemError{ semantic_errors::not_an_error };
         std::unordered_map<std::string, variable_state> var_states;
-        std::map<std::string, mlir::Operation*> var_storage;    // Maps declarations for variable names to DeclareOp's
+        std::map<std::string, mlir::Operation *> var_storage;    // Maps declarations for variable names to DeclareOp's
         bool assignmentTargetValid;
         lastOperator lastOp{ lastOperator::notAnOp };
 
@@ -108,7 +108,10 @@ namespace toy
         inline bool buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode, tNode *variableNode,
                                           mlir::Location loc, mlir::Value &value, theTypes &ty );
 
-        inline bool registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty );
+        // @param asz [in]
+        //    Array size or zero for scalar.
+        inline bool registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
+                                         ToyParser::ArrayBoundsExpressionContext *arrayBounds );
 
        public:
         MLIRListener( const std::string &_filename );
@@ -129,6 +132,8 @@ namespace toy
         void enterIntDeclare( ToyParser::IntDeclareContext *ctx ) override;
 
         void enterFloatDeclare( ToyParser::FloatDeclareContext *ctx ) override;
+
+        void enterStringDeclare( ToyParser::StringDeclareContext *ctx ) override;
 
         void enterPrint( ToyParser::PrintContext *ctx ) override;
 

@@ -188,7 +188,8 @@ namespace toy
     }
 
     // \retval true if error
-    inline bool MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty )
+    inline bool MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
+                                                   ToyParser::ArrayBoundsExpressionContext *arrayBounds )
     {
         auto varState = var_states[varName];
         if ( varState != variable_state::undeclared )
@@ -200,6 +201,14 @@ namespace toy
 
         var_states[varName] = variable_state::declared;
 
+        size_t asz{};
+        if ( arrayBounds )
+        {
+            auto index = arrayBounds->INTEGER_PATTERN();
+            asz = std::stoi( index->getText() );
+        }
+
+        // TODO: propagate the asz to DeclareOp (modifying it appropriately)
         auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), mlir::TypeAttr::get( ty ) );
         var_storage[varName] = dcl;
 
@@ -249,7 +258,7 @@ namespace toy
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME_PATTERN()->getText();
 
-        registerDeclaration( loc, varName, builder.getF64Type() );
+        registerDeclaration( loc, varName, builder.getF64Type(), ctx->arrayBoundsExpression() );
     }
 
     void MLIRListener::enterBoolDeclare( ToyParser::BoolDeclareContext *ctx )
@@ -257,7 +266,7 @@ namespace toy
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME_PATTERN()->getText();
-        registerDeclaration( loc, varName, builder.getI1Type() );
+        registerDeclaration( loc, varName, builder.getI1Type(), ctx->arrayBoundsExpression() );
     }
 
     void MLIRListener::enterIntDeclare( ToyParser::IntDeclareContext *ctx )
@@ -266,22 +275,21 @@ namespace toy
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME_PATTERN()->getText();
 
-        // Allocate memref<...> for the variable
         if ( ctx->INT8_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getI8Type() );
+            registerDeclaration( loc, varName, builder.getI8Type(), ctx->arrayBoundsExpression() );
         }
         else if ( ctx->INT16_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getI16Type() );
+            registerDeclaration( loc, varName, builder.getI16Type(), ctx->arrayBoundsExpression() );
         }
         else if ( ctx->INT32_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getI32Type() );
+            registerDeclaration( loc, varName, builder.getI32Type(), ctx->arrayBoundsExpression() );
         }
         else if ( ctx->INT64_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getI64Type() );
+            registerDeclaration( loc, varName, builder.getI64Type(), ctx->arrayBoundsExpression() );
         }
         else
         {
@@ -296,20 +304,30 @@ namespace toy
         auto loc = getLocation( ctx );
         auto varName = ctx->VARIABLENAME_PATTERN()->getText();
 
-        // Allocate memref<...> for the variable
         if ( ctx->FLOAT32_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getF32Type() );
+            registerDeclaration( loc, varName, builder.getF32Type(), ctx->arrayBoundsExpression() );
         }
         else if ( ctx->FLOAT64_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getF64Type() );
+            registerDeclaration( loc, varName, builder.getF64Type(), ctx->arrayBoundsExpression() );
         }
         else
         {
             throw exception_with_context( __FILE__, __LINE__, __func__,
                                           "Internal error: Unsupported floating point declaration size.\n" );
         }
+    }
+
+    void MLIRListener::enterStringDeclare( ToyParser::StringDeclareContext *ctx )
+    {
+        lastOp = lastOperator::declareOp;
+        auto loc = getLocation( ctx );
+        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
+        ToyParser::ArrayBoundsExpressionContext *arrayBounds = ctx->arrayBoundsExpression();
+        assert( arrayBounds );
+
+        registerDeclaration( loc, varName, builder.getI8Type(), arrayBounds );
     }
 
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
@@ -417,9 +435,9 @@ namespace toy
             auto lit = ctx->literal();
 
             theTypes ty;
-            bool error =
-                buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                      lit ? lit->FLOAT_PATTERN() : nullptr, ctx->VARIABLENAME_PATTERN(), loc, lhsValue, ty );
+            bool error = buildUnaryExpression(
+                lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+                lit ? lit->FLOAT_PATTERN() : nullptr, ctx->VARIABLENAME_PATTERN(), loc, lhsValue, ty );
             if ( error )
             {
                 return;
@@ -452,9 +470,9 @@ namespace toy
             auto opText = ctx->binaryOperator()->getText();
 
             auto llit = lhs->numericLiteral();
-            error =
-                buildUnaryExpression( nullptr, llit ? llit->INTEGER_PATTERN() : nullptr,
-                                      llit ? llit->FLOAT_PATTERN() : nullptr, lhs->VARIABLENAME_PATTERN(), loc, lhsValue, lty );
+            error = buildUnaryExpression( nullptr, llit ? llit->INTEGER_PATTERN() : nullptr,
+                                          llit ? llit->FLOAT_PATTERN() : nullptr, lhs->VARIABLENAME_PATTERN(), loc,
+                                          lhsValue, lty );
             if ( error )
             {
                 return;
@@ -463,9 +481,9 @@ namespace toy
             mlir::Value rhsValue;
             theTypes rty;
             auto rlit = rhs->numericLiteral();
-            error =
-                buildUnaryExpression( nullptr, rlit ? rlit->INTEGER_PATTERN() : nullptr,
-                                      rlit ? rlit->FLOAT_PATTERN() : nullptr, rhs->VARIABLENAME_PATTERN(), loc, rhsValue, rty );
+            error = buildUnaryExpression( nullptr, rlit ? rlit->INTEGER_PATTERN() : nullptr,
+                                          rlit ? rlit->FLOAT_PATTERN() : nullptr, rhs->VARIABLENAME_PATTERN(), loc,
+                                          rhsValue, rty );
             if ( error )
             {
                 return;
