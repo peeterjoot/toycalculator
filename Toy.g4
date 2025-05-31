@@ -32,24 +32,24 @@ comment
 
 // A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').  These are currently implicitly double.
 declare
-  : (DCL_TOKEN|DECLARE_TOKEN) VARIABLENAME_PATTERN
+  : (DCL_TOKEN|DECLARE_TOKEN) VARIABLENAME_PATTERN ARRAY_BOUNDS_EXPRESSION?
   ;
 
 boolDeclare
-  : BOOL_TOKEN VARIABLENAME_PATTERN
+  : BOOL_TOKEN VARIABLENAME_PATTERN ARRAY_BOUNDS_EXPRESSION?
   ;
 
 intDeclare
-  : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN) VARIABLENAME_PATTERN
+  : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN) VARIABLENAME_PATTERN ARRAY_BOUNDS_EXPRESSION?
   ;
 
 floatDeclare
-  : (FLOAT32_TOKEN | FLOAT64_TOKEN) VARIABLENAME_PATTERN
+  : (FLOAT32_TOKEN | FLOAT64_TOKEN) VARIABLENAME_PATTERN ARRAY_BOUNDS_EXPRESSION?
   ;
 
-//stringDeclare
-//  : STRING_TOKEN FIXME-size VARIABLENAME_PATTERN
-//  ;
+stringDeclare
+  : STRING_TOKEN VARIABLENAME_PATTERN ARRAY_BOUNDS_EXPRESSION
+  ;
 
 // Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
 exitStatement
@@ -63,7 +63,7 @@ print
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
 assignment
-  : VARIABLENAME_PATTERN EQUALS_TOKEN assignmentExpression
+  : VARIABLENAME_PATTERN INDEX_EXPRESSION? EQUALS_TOKEN assignmentExpression
   ;
 
 // The right-hand side of an assignment, either a binary or unary expression.
@@ -101,6 +101,15 @@ literal
 
 // Lexer Rules
 // ===========
+
+ARRAY_BOUNDS_EXPRESSION
+  : ARRAY_START_TOKEN INTEGER_PATTERN ARRAY_END_TOKEN
+  ;
+
+INDEX_EXPRESSION
+  : ARRAY_START_TOKEN (VARIABLENAME_PATTERN | INTEGER_PATTERN) ARRAY_END_TOKEN
+  ;
+
 // Matches integer literals, optionally signed (e.g., '42', '-123', '+7').
 INTEGER_PATTERN
   : (PLUSCHAR_TOKEN | MINUS_TOKEN)? [0-9]+
@@ -128,6 +137,11 @@ STRING_PATTERN
 // +7.3334E-1
 FLOAT_PATTERN
   : (PLUSCHAR_TOKEN | MINUS_TOKEN)? [0-9]+( DECIMALSEP_TOKEN [0-9]+)? (EXPONENT_TOKEN MINUS_TOKEN? [0-9]+)?
+  ;
+
+// Matches variable names (e.g., 'x', 'foo'), consisting of letters (any case) and numbers, but starting with a letter.
+VARIABLENAME_PATTERN
+  : [a-zA-Z][a-zA-Z0-9]*
   ;
 
 // Matches single-line comments (e.g., '// comment') and skips them.
@@ -184,6 +198,14 @@ DIV_TOKEN
   : '/'
   ;
 
+ARRAY_START_TOKEN
+  : '['
+  ;
+
+ARRAY_END_TOKEN
+  : ']'
+  ;
+
 // Matches the plus sign for addition or positive (e.g., '+').
 PLUSCHAR_TOKEN
   : '+'
@@ -231,17 +253,42 @@ DCL_TOKEN
   ;
 
 // signed integers of various sizes, and ieee float/double types:
-INT8_TOKEN : 'INT8' ;
-INT16_TOKEN : 'INT16' ;
-INT32_TOKEN : 'INT32' ;
-INT64_TOKEN : 'INT64' ;
-FLOAT32_TOKEN : 'FLOAT32' ;
-FLOAT64_TOKEN : 'FLOAT64' ;
+INT8_TOKEN
+  : 'INT8'
+  ;
+
+INT16_TOKEN
+  : 'INT16'
+  ;
+
+INT32_TOKEN
+  : 'INT32'
+  ;
+
+INT64_TOKEN
+  : 'INT64'
+  ;
+
+FLOAT32_TOKEN
+  : 'FLOAT32'
+  ;
+
+FLOAT64_TOKEN
+  : 'FLOAT64'
+  ;
 
 // Boolean tokens:
-BOOL_TOKEN : 'BOOL' ;
-TRUE_LITERAL : 'TRUE' ;
-FALSE_LITERAL : 'FALSE' ;
+BOOL_TOKEN
+  : 'BOOL'
+  ;
+
+TRUE_LITERAL
+  : 'TRUE'
+  ;
+
+FALSE_LITERAL
+  : 'FALSE'
+  ;
 
 // Matches the 'DECLARE' keyword for declarations.
 DECLARE_TOKEN
@@ -256,11 +303,6 @@ PRINT_TOKEN
 // Matches the 'EXIT' keyword for print statements.
 EXIT_TOKEN
   : 'EXIT'
-  ;
-
-// Matches variable names (e.g., 'x', 'foo'), consisting of letters (any case) and numbers, but starting with a letter.
-VARIABLENAME_PATTERN
-  : [a-zA-Z][a-zA-Z0-9]*
   ;
 
 // Matches whitespace (spaces, tabs, newlines) and skips it.
