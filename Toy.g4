@@ -32,11 +32,11 @@ comment
 
 // A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').  These are currently implicitly double.
 declare
-  : (DCL|DECLARE) VARIABLENAME
+  : (DCLTOKEN|DECLARETOKEN) VARIABLENAME
   ;
 
 boolDeclare
-  : BOOL VARIABLENAME
+  : BOOLTOKEN VARIABLENAME
   ;
 
 intDeclare
@@ -54,7 +54,7 @@ exitStatement
 
 // A print statement that outputs a variable (e.g., 'PRINT x;').
 print
-  : PRINT VARIABLENAME | STRING
+  : PRINT VARIABLENAME | STRINGLITERAL
   ;
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
@@ -84,7 +84,7 @@ binaryOperator
 
 // An optional unary operator for positive or negative (e.g., '+' or '-').
 unaryOperator
-  : MINUSCHAR | PLUSCHAR | NOT
+  : MINUSCHAR | PLUSCHAR | NOTTOKEN
   ;
 
 numericLiteral
@@ -103,10 +103,10 @@ INTEGERLITERAL
   ;
 
 BOOLEANLITERAL
-  : TRUE | FALSE
+  : TRUELITERAL | FALSELITERAL
   ;
 
-STRING
+STRINGLITERAL
   : DQUOTE (~["])* DQUOTE
   ;
 // allowing for escaped quotes:
@@ -217,12 +217,12 @@ BOOLEANXOR
   ;
 
 // Matches the 'NOT' keyword for BOOL inversion
-NOT
+NOTTOKEN
   : 'NOT'
   ;
 
 // Matches the 'DCL' keyword for declarations.
-DCL
+DCLTOKEN
   : 'DCL'
   ;
 
@@ -235,12 +235,12 @@ FLOAT32 : 'FLOAT32' ;
 FLOAT64 : 'FLOAT64' ;
 
 // Boolean tokens:
-BOOL : 'BOOL' ;
-TRUE : 'TRUE' ;
-FALSE : 'FALSE' ;
+BOOLTOKEN : 'BOOL' ;
+TRUELITERAL : 'TRUE' ;
+FALSELITERAL : 'FALSE' ;
 
 // Matches the 'DECLARE' keyword for declarations.
-DECLARE
+DECLARETOKEN
   : 'DECLARE'
   ;
 
