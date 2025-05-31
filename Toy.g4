@@ -54,7 +54,7 @@ exitStatement
 
 // A print statement that outputs a variable (e.g., 'PRINT x;').
 print
-  : PRINT VARIABLENAME
+  : PRINT VARIABLENAME | STRING
   ;
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
@@ -106,6 +106,12 @@ BOOLEANLITERAL
   : TRUE | FALSE
   ;
 
+STRING
+  : DQUOTE (~["])* DQUOTE
+  ;
+// allowing for escaped quotes:
+//  : DQUOTE (~["\\] | '\\' .)* DQUOTE
+
 // Matches floating point literal.  Examples:
 // 42
 // -123
@@ -128,6 +134,10 @@ COMMENT
 // Matches the equals sign for assignments (e.g., '=').
 EQUALS
   : '='
+  ;
+
+DQUOTE
+  : '"'
   ;
 
 // Matches the equality operator (e.g., 'EQ').
