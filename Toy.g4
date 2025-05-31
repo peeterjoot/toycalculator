@@ -27,7 +27,7 @@ statement
 
 // A single-line comment
 comment
-  : COMMENT_TOKEN
+  : COMMENT_SKIP_RULE
   ;
 
 // A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').  These are currently implicitly double.
@@ -131,7 +131,7 @@ FLOAT_PATTERN
   ;
 
 // Matches single-line comments (e.g., '// comment') and skips them.
-COMMENT_TOKEN
+COMMENT_SKIP_RULE
   : '//' ~[\r\n]* -> skip
   ;
 
