@@ -138,7 +138,7 @@ namespace toy
 
             llvm::APFloat apVal( val );
 
-            // Like the INTEGERLITERAL node above, create the float literal with
+            // Like the INTEGER_PATTERN node above, create the float literal with
             // the max sized type. Would need a grammar change to have a
             // specific type (i.e.: size) associated with literals.
             value = builder.create<mlir::arith::ConstantFloatOp>( loc, apVal, builder.getF64Type() );
@@ -247,7 +247,7 @@ namespace toy
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME()->getText();
+        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
 
         registerDeclaration( loc, varName, builder.getF64Type() );
     }
@@ -256,7 +256,7 @@ namespace toy
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME()->getText();
+        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
         registerDeclaration( loc, varName, builder.getI1Type() );
     }
 
@@ -264,22 +264,22 @@ namespace toy
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME()->getText();
+        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
 
         // Allocate memref<...> for the variable
-        if ( ctx->INT8() )
+        if ( ctx->INT8_TOKEN() )
         {
             registerDeclaration( loc, varName, builder.getI8Type() );
         }
-        else if ( ctx->INT16() )
+        else if ( ctx->INT16_TOKEN() )
         {
             registerDeclaration( loc, varName, builder.getI16Type() );
         }
-        else if ( ctx->INT32() )
+        else if ( ctx->INT32_TOKEN() )
         {
             registerDeclaration( loc, varName, builder.getI32Type() );
         }
-        else if ( ctx->INT64() )
+        else if ( ctx->INT64_TOKEN() )
         {
             registerDeclaration( loc, varName, builder.getI64Type() );
         }
@@ -294,14 +294,14 @@ namespace toy
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME()->getText();
+        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
 
         // Allocate memref<...> for the variable
-        if ( ctx->FLOAT32() )
+        if ( ctx->FLOAT32_TOKEN() )
         {
             registerDeclaration( loc, varName, builder.getF32Type() );
         }
-        else if ( ctx->FLOAT64() )
+        else if ( ctx->FLOAT64_TOKEN() )
         {
             registerDeclaration( loc, varName, builder.getF64Type() );
         }
@@ -316,7 +316,7 @@ namespace toy
     {
         lastOp = lastOperator::printOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME()->getText();
+        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
         auto varState = var_states[varName];
         if ( varState == variable_state::undeclared )
         {
@@ -348,7 +348,7 @@ namespace toy
         auto loc = getLocation( ctx );
 
         auto lit = ctx->numericLiteral();
-        auto var = ctx->VARIABLENAME();
+        auto var = ctx->VARIABLENAME_PATTERN();
 
         if ( ( lit == nullptr ) && ( var == nullptr ) )
         {
@@ -360,8 +360,8 @@ namespace toy
             mlir::Value value;
 
             theTypes ty;
-            bool error = buildUnaryExpression( nullptr, lit ? lit->INTEGERLITERAL() : nullptr,
-                                               lit ? lit->FLOATLITERAL() : nullptr, var, loc, value, ty );
+            bool error = buildUnaryExpression( nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                               lit ? lit->FLOAT_PATTERN() : nullptr, var, loc, value, ty );
             if ( error )
             {
                 return;
@@ -376,7 +376,7 @@ namespace toy
         lastOp = lastOperator::assignmentOp;
         assignmentTargetValid = true;
         auto loc = getLocation( ctx );
-        currentVarName = ctx->VARIABLENAME()->getText();
+        currentVarName = ctx->VARIABLENAME_PATTERN()->getText();
         auto varState = var_states[currentVarName];
         if ( varState == variable_state::declared )
         {
@@ -418,8 +418,8 @@ namespace toy
 
             theTypes ty;
             bool error =
-                buildUnaryExpression( lit ? lit->BOOLEANLITERAL() : nullptr, lit ? lit->INTEGERLITERAL() : nullptr,
-                                      lit ? lit->FLOATLITERAL() : nullptr, ctx->VARIABLENAME(), loc, lhsValue, ty );
+                buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                      lit ? lit->FLOAT_PATTERN() : nullptr, ctx->VARIABLENAME_PATTERN(), loc, lhsValue, ty );
             if ( error )
             {
                 return;
@@ -453,8 +453,8 @@ namespace toy
 
             auto llit = lhs->numericLiteral();
             error =
-                buildUnaryExpression( nullptr, llit ? llit->INTEGERLITERAL() : nullptr,
-                                      llit ? llit->FLOATLITERAL() : nullptr, lhs->VARIABLENAME(), loc, lhsValue, lty );
+                buildUnaryExpression( nullptr, llit ? llit->INTEGER_PATTERN() : nullptr,
+                                      llit ? llit->FLOAT_PATTERN() : nullptr, lhs->VARIABLENAME_PATTERN(), loc, lhsValue, lty );
             if ( error )
             {
                 return;
@@ -464,8 +464,8 @@ namespace toy
             theTypes rty;
             auto rlit = rhs->numericLiteral();
             error =
-                buildUnaryExpression( nullptr, rlit ? rlit->INTEGERLITERAL() : nullptr,
-                                      rlit ? rlit->FLOATLITERAL() : nullptr, rhs->VARIABLENAME(), loc, rhsValue, rty );
+                buildUnaryExpression( nullptr, rlit ? rlit->INTEGER_PATTERN() : nullptr,
+                                      rlit ? rlit->FLOAT_PATTERN() : nullptr, rhs->VARIABLENAME_PATTERN(), loc, rhsValue, rty );
             if ( error )
             {
                 return;

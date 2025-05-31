@@ -13,104 +13,108 @@
 // - a print operation.
 grammar Toy;
 
-// Parser Rules
-// ============
+// Parser Rules (start with lower case)
+// ====================================
 // Entry point for the grammar, matching zero or more statements followed by optional EXIT, and then EOF.
 startRule
-  : (statement|comment)* (exitStatement ENDOFSTATEMENT)? comment* EOF
+  : (statement|comment)* (exitStatement ENDOFSTATEMENT_TOKEN)? comment* EOF
   ;
 
 // A statement can be a declaration, assignment, print, or comment.
 statement
-  : (declare | boolDeclare | intDeclare | floatDeclare | assignment | print) ENDOFSTATEMENT
+  : (declare | boolDeclare | intDeclare | floatDeclare | assignment | print) ENDOFSTATEMENT_TOKEN
   ;
 
-// A single-line comment, handled by the COMMENT lexer token.
+// A single-line comment
 comment
-  : COMMENT
+  : COMMENT_TOKEN
   ;
 
 // A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').  These are currently implicitly double.
 declare
-  : (DCLTOKEN|DECLARETOKEN) VARIABLENAME
+  : (DCL_TOKEN|DECLARE_TOKEN) VARIABLENAME_PATTERN
   ;
 
 boolDeclare
-  : BOOLTOKEN VARIABLENAME
+  : BOOL_TOKEN VARIABLENAME_PATTERN
   ;
 
 intDeclare
-  : (INT8|INT16|INT32|INT64) VARIABLENAME
+  : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN) VARIABLENAME_PATTERN
   ;
 
 floatDeclare
-  : (FLOAT32|FLOAT64) VARIABLENAME
+  : (FLOAT32_TOKEN | FLOAT64_TOKEN) VARIABLENAME_PATTERN
   ;
+
+//stringDeclare
+//  : STRING_TOKEN FIXME-size VARIABLENAME_PATTERN
+//  ;
 
 // Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
 exitStatement
-  : EXIT (numericLiteral | VARIABLENAME)?
+  : EXIT_TOKEN (numericLiteral | VARIABLENAME_PATTERN)?
   ;
 
 // A print statement that outputs a variable (e.g., 'PRINT x;').
 print
-  : PRINT VARIABLENAME | STRINGLITERAL
+  : PRINT_TOKEN VARIABLENAME_PATTERN
   ;
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
 assignment
-  : VARIABLENAME EQUALS assignmentExpression
+  : VARIABLENAME_PATTERN EQUALS_TOKEN assignmentExpression
   ;
 
 // The right-hand side of an assignment, either a binary or unary expression.
 assignmentExpression
   : literal
-  | unaryOperator? VARIABLENAME
+  | unaryOperator? VARIABLENAME_PATTERN
   | binaryElement binaryOperator binaryElement
   ;
 
 binaryElement
   : numericLiteral
-  | unaryOperator? VARIABLENAME
+  | unaryOperator? VARIABLENAME_PATTERN
   ;
 
 // A binary operator for addition, subtraction, multiplication, or division, ...
 binaryOperator
-  : MINUSCHAR | PLUSCHAR | TIMESCHAR | DIVCHAR
-  | LESSTHAN | GREATERTHAN | LESSEQUAL | GREATEREQUAL
-  | EQUALITYOP | NOTEQUALOP
-  | BOOLEANOR | BOOLEANAND | BOOLEANXOR
+  : MINUS_TOKEN | PLUSCHAR_TOKEN | TIMES_TOKEN | DIV_TOKEN
+  | LESSTHAN_TOKEN | GREATERTHAN_TOKEN | LESSEQUAL_TOKEN | GREATEREQUAL_TOKEN
+  | EQUALITY_TOKEN | NOTEQUAL_TOKEN
+  | BOOLEANOR_TOKEN | BOOLEANAND_TOKEN | BOOLEANXOR_TOKEN
   ;
 
 // An optional unary operator for positive or negative (e.g., '+' or '-').
 unaryOperator
-  : MINUSCHAR | PLUSCHAR | NOTTOKEN
+  : MINUS_TOKEN | PLUSCHAR_TOKEN | NOT_TOKEN
   ;
 
 numericLiteral
-  : INTEGERLITERAL | FLOATLITERAL
+  : INTEGER_PATTERN | FLOAT_PATTERN
   ;
 
 literal
-  : INTEGERLITERAL | FLOATLITERAL | BOOLEANLITERAL
+  : INTEGER_PATTERN | FLOAT_PATTERN | BOOLEAN_PATTERN
   ;
 
 // Lexer Rules
 // ===========
 // Matches integer literals, optionally signed (e.g., '42', '-123', '+7').
-INTEGERLITERAL
-  : (PLUSCHAR | MINUSCHAR)? [0-9]+
+INTEGER_PATTERN
+  : (PLUSCHAR_TOKEN | MINUS_TOKEN)? [0-9]+
   ;
 
-BOOLEANLITERAL
-  : TRUELITERAL | FALSELITERAL
+BOOLEAN_PATTERN
+  : TRUE_LITERAL | FALSE_LITERAL
   ;
 
-STRINGLITERAL
-  : DQUOTE (~["])* DQUOTE
+STRING_PATTERN
+  : DQUOTE_TOKEN (~["])* DQUOTE_TOKEN
   ;
-// allowing for escaped quotes:
-//  : DQUOTE (~["\\] | '\\' .)* DQUOTE
+// Could allow for escaped quotes, but let's get the simple case working first:
+//  : DQUOTE_TOKEN (~["\\] | '\\' .)* DQUOTE_TOKEN
 
 // Matches floating point literal.  Examples:
 // 42
@@ -122,140 +126,140 @@ STRINGLITERAL
 // 42.3334E7
 // -123.3334E0
 // +7.3334E-1
-FLOATLITERAL
-  : (PLUSCHAR | MINUSCHAR)? [0-9]+( DECIMALSEP [0-9]+)? (EXPONENT MINUSCHAR? [0-9]+)?
+FLOAT_PATTERN
+  : (PLUSCHAR_TOKEN | MINUS_TOKEN)? [0-9]+( DECIMALSEP_TOKEN [0-9]+)? (EXPONENT_TOKEN MINUS_TOKEN? [0-9]+)?
   ;
 
 // Matches single-line comments (e.g., '// comment') and skips them.
-COMMENT
+COMMENT_TOKEN
   : '//' ~[\r\n]* -> skip
   ;
 
 // Matches the equals sign for assignments (e.g., '=').
-EQUALS
+EQUALS_TOKEN
   : '='
   ;
 
-DQUOTE
+DQUOTE_TOKEN
   : '"'
   ;
 
 // Matches the equality operator (e.g., 'EQ').
-EQUALITYOP
+EQUALITY_TOKEN
   : 'EQ'
   ;
 
 // Matches the equality operator (e.g., 'NE').
-NOTEQUALOP
+NOTEQUAL_TOKEN
   : 'NE'
   ;
 
 // Matches the semicolon that terminates statements (e.g., ';').
-ENDOFSTATEMENT
+ENDOFSTATEMENT_TOKEN
   : ';'
   ;
 
 // Matches the minus sign for subtraction or negation (e.g., '-').
-MINUSCHAR
+MINUS_TOKEN
   : '-'
   ;
 
 // Matches the multiplication operator (e.g., '*').
-TIMESCHAR
+TIMES_TOKEN
   : '*'
   ;
 
 // Matches a North american decimal separator
-DECIMALSEP
+DECIMALSEP_TOKEN
   : '.'
   ;
 
 // Matches a North american decimal separator
-EXPONENT
+EXPONENT_TOKEN
   : 'E'
   ;
 
 // Matches the division operator (e.g., '/').
-DIVCHAR
+DIV_TOKEN
   : '/'
   ;
 
 // Matches the plus sign for addition or positive (e.g., '+').
-PLUSCHAR
+PLUSCHAR_TOKEN
   : '+'
   ;
 
-LESSTHAN
+LESSTHAN_TOKEN
   : '<'
   ;
 
-GREATERTHAN
+GREATERTHAN_TOKEN
   : '>'
   ;
 
-LESSEQUAL
+LESSEQUAL_TOKEN
   : '<='
   ;
 
-GREATEREQUAL
+GREATEREQUAL_TOKEN
   : '>='
   ;
 
 // Matches the 'OR' keyword for boolean or bitwise OR
-BOOLEANOR
+BOOLEANOR_TOKEN
   : 'OR'
   ;
 
 // Matches the 'AND' keyword for boolean or bitwise AND
-BOOLEANAND
+BOOLEANAND_TOKEN
   : 'AND'
   ;
 
 // Matches the 'XOR' keyword for boolean or bitwise XOR
-BOOLEANXOR
+BOOLEANXOR_TOKEN
   : 'XOR'
   ;
 
 // Matches the 'NOT' keyword for BOOL inversion
-NOTTOKEN
+NOT_TOKEN
   : 'NOT'
   ;
 
 // Matches the 'DCL' keyword for declarations.
-DCLTOKEN
+DCL_TOKEN
   : 'DCL'
   ;
 
 // signed integers of various sizes, and ieee float/double types:
-INT8 : 'INT8' ;
-INT16 : 'INT16' ;
-INT32 : 'INT32' ;
-INT64 : 'INT64' ;
-FLOAT32 : 'FLOAT32' ;
-FLOAT64 : 'FLOAT64' ;
+INT8_TOKEN : 'INT8' ;
+INT16_TOKEN : 'INT16' ;
+INT32_TOKEN : 'INT32' ;
+INT64_TOKEN : 'INT64' ;
+FLOAT32_TOKEN : 'FLOAT32' ;
+FLOAT64_TOKEN : 'FLOAT64' ;
 
 // Boolean tokens:
-BOOLTOKEN : 'BOOL' ;
-TRUELITERAL : 'TRUE' ;
-FALSELITERAL : 'FALSE' ;
+BOOL_TOKEN : 'BOOL' ;
+TRUE_LITERAL : 'TRUE' ;
+FALSE_LITERAL : 'FALSE' ;
 
 // Matches the 'DECLARE' keyword for declarations.
-DECLARETOKEN
+DECLARE_TOKEN
   : 'DECLARE'
   ;
 
 // Matches the 'PRINT' keyword for print statements.
-PRINT
+PRINT_TOKEN
   : 'PRINT'
   ;
 
 // Matches the 'EXIT' keyword for print statements.
-EXIT
+EXIT_TOKEN
   : 'EXIT'
   ;
 
 // Matches variable names (e.g., 'x', 'foo'), consisting of letters (any case) and numbers, but starting with a letter.
-VARIABLENAME
+VARIABLENAME_PATTERN
   : [a-zA-Z][a-zA-Z0-9]*
   ;
 
