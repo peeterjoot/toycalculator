@@ -1,0 +1,10 @@
+STRING t[2];
+STRING u[3];
+STRING s[2];
+INT8 s2;
+s = "hi";
+t = "hi";
+u = "hi";
+u = "bye";
+//PRINT s;
+s2 = 1;

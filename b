@@ -6,9 +6,12 @@
 
 b main
 # pick which sample program to use for the compiler debugging.
-run ../samples/lessbug2.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+run ../samples/test.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+#run ../samples/array.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 
 b __assert_perror_fail
+#b parser.cpp:597
+#b MLIRListener::enterAssignmentExpression
 
 #b buildUnaryExpression
 #b createDICompileUnitAttr
@@ -39,7 +42,7 @@ b __assert_perror_fail
 #b toy::ExitOpLowering::matchAndRewrite
 #b toy::LoadOpLowering::matchAndRewrite
 #b toy::MLIRListener::enterAssignment
-#b toy::PrintOpLowering::matchAndRewrite
+b toy::PrintOpLowering::matchAndRewrite
 #b toy::ProgramOpLowering::matchAndRewrite
 #b ToyToLLVMLoweringPass::runOnOperation
 #b translateModuleToLLVMIR

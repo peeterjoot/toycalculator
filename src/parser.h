@@ -26,13 +26,15 @@ namespace toy
 {
     enum class theTypes : int
     {
+        unknown,
         boolean,
         integer8,
         integer16,
         integer32,
         integer64,
         float32,
-        float64
+        float64,
+        string
     };
 
     inline bool isBoolean( theTypes ty )
@@ -65,7 +67,7 @@ namespace toy
         declareOp,
         printOp,
         assignmentOp,
-        returnOp
+        exitOp
     };
 
     enum class variable_state : int
@@ -92,12 +94,13 @@ namespace toy
         DialectCtx dialect;
         mlir::OpBuilder builder;
         mlir::Location currentAssignLoc;
+        mlir::FileLineColLoc lastLocation;
         mlir::ModuleOp mod;
         toy::ProgramOp programOp;
         std::string currentVarName;
         semantic_errors lastSemError{ semantic_errors::not_an_error };
         std::unordered_map<std::string, variable_state> var_states;
-        std::map<std::string, mlir::Operation*> var_storage;    // Maps declarations for variable names to DeclareOp's
+        std::map<std::string, mlir::Operation *> var_storage;    // Maps declarations for variable names to DeclareOp's
         bool assignmentTargetValid;
         lastOperator lastOp{ lastOperator::notAnOp };
 
@@ -105,10 +108,14 @@ namespace toy
 
         inline std::string formatLocation( mlir::Location loc );
 
-        inline bool buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode, tNode *variableNode,
-                                          mlir::Location loc, mlir::Value &value, theTypes &ty );
+        inline std::string buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
+                                                 tNode *variableNode, tNode *stringNode, mlir::Location loc,
+                                                 mlir::Value &value, theTypes &ty );
 
-        inline bool registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty );
+        // @param asz [in]
+        //    Array size or zero for scalar.
+        inline bool registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
+                                         ToyParser::ArrayBoundsExpressionContext *arrayBounds );
 
        public:
         MLIRListener( const std::string &_filename );
@@ -129,6 +136,8 @@ namespace toy
         void enterIntDeclare( ToyParser::IntDeclareContext *ctx ) override;
 
         void enterFloatDeclare( ToyParser::FloatDeclareContext *ctx ) override;
+
+        void enterStringDeclare( ToyParser::StringDeclareContext *ctx ) override;
 
         void enterPrint( ToyParser::PrintContext *ctx ) override;
 

@@ -190,18 +190,19 @@ foreach my $stem (sort keys %tests)
     }
     else
     {
-        warn "ERROR: COMPARE FILE NOT FOUND: expected/$stem.out\n";
+        my $msg = "ERROR: COMPARE FILE NOT FOUND: expected/$stem.out\n";
+        push( @warnings, $msg );
     }
 }
 
 if ( scalar( @warnings ) )
 {
     print "ERRORS:\n\n";
-}
 
-foreach ( @warnings )
-{
-    warn $_;
+    foreach ( @warnings )
+    {
+        warn $_;
+    }
 }
 
 exit 0;

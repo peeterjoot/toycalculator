@@ -39,7 +39,10 @@ namespace toy
             col = ctx->getStart()->getCharPositionInLine();
         }
 
-        return mlir::FileLineColLoc::get( builder.getStringAttr( filename ), line, col + 1 );
+        auto loc = mlir::FileLineColLoc::get( builder.getStringAttr( filename ), line, col + 1 );
+        lastLocation = loc;
+
+        return loc;
     }
 
     inline std::string MLIRListener::formatLocation( mlir::Location loc )
@@ -53,7 +56,7 @@ namespace toy
 
     inline theTypes getCompilerType( mlir::Type mtype )
     {
-        theTypes ty;
+        theTypes ty = theTypes::unknown;
 
         if ( auto intType = mlir::dyn_cast<mlir::IntegerType>( mtype ) )
         {
@@ -79,7 +82,7 @@ namespace toy
                                                   "internal error: unexpected integer width" );
             }
         }
-        if ( auto floatType = mlir::dyn_cast<mlir::FloatType>( mtype ) )
+        else if ( auto floatType = mlir::dyn_cast<mlir::FloatType>( mtype ) )
         {
             switch ( floatType.getWidth() )
             {
@@ -94,14 +97,33 @@ namespace toy
                                                   "internal error: unexpected float width" );
             }
         }
+        else
+        // if ( auto stringType = mlir::dyn_cast<mlir::StringAttr>( mtype ) ) // hack
+        {
+            ty = theTypes::string;
+        }
+
+        if ( ty == theTypes::unknown )
+        {
+            throw exception_with_context( __FILE__, __LINE__, __func__, "internal error: unhandled type" );
+        }
 
         return ty;
     }
 
+    inline std::string stripQuotes( const std::string &input )
+    {
+        assert( input.size() >= 2 );
+        assert( input.front() == '"' );
+        assert( input.back() == '"' );
+
+        return input.substr( 1, input.size() - 2 );
+    }
+
     // \retval true if error
-    inline bool MLIRListener::buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
-                                                    tNode *variableNode, mlir::Location loc, mlir::Value &value,
-                                                    theTypes &ty )
+    inline std::string MLIRListener::buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
+                                                           tNode *variableNode, tNode *stringNode, mlir::Location loc,
+                                                           mlir::Value &value, theTypes &ty )
     {
         if ( booleanNode )
         {
@@ -138,7 +160,7 @@ namespace toy
 
             llvm::APFloat apVal( val );
 
-            // Like the INTEGERLITERAL node above, create the float literal with
+            // Like the INTEGER_PATTERN node above, create the float literal with
             // the max sized type. Would need a grammar change to have a
             // specific type (i.e.: size) associated with literals.
             value = builder.create<mlir::arith::ConstantFloatOp>( loc, apVal, builder.getF64Type() );
@@ -153,17 +175,17 @@ namespace toy
             if ( varState == variable_state::undeclared )
             {
                 lastSemError = semantic_errors::variable_not_declared;
-                llvm::errs() << std::format( "{}error: Variable {} not declared in expr\n", formatLocation( loc ),
-                                             varName );
-                return true;
+                throw exception_with_context(
+                    __FILE__, __LINE__, __func__,
+                    std::format( "{}error: Variable {} not declared in expr\n", formatLocation( loc ), varName ) );
             }
 
             if ( varState != variable_state::assigned )
             {
                 lastSemError = semantic_errors::variable_not_assigned;
-                llvm::errs() << std::format( "{}error: Variable {} not assigned in expr\n", formatLocation( loc ),
-                                             varName );
-                return true;
+                throw exception_with_context(
+                    __FILE__, __LINE__, __func__,
+                    std::format( "{}error: Variable {} not assigned in expr\n", formatLocation( loc ), varName ) );
             }
 
             auto dcl = var_storage[varName];
@@ -173,22 +195,25 @@ namespace toy
             value = builder.create<toy::LoadOp>( loc, varType, builder.getStringAttr( varName ) );
 
             ty = getCompilerType( varType );
+        }
+        else if ( stringNode )
+        {
+            ty = theTypes::string;
 
-            return false;
+            return stripQuotes( stringNode->getText() );
         }
         else
         {
-            // lastSemError = semantic_errors::unknown_error;
-            // return true;
             throw exception_with_context( __FILE__, __LINE__, __func__,
                                           std::format( "{}error: Invalid operand\n", formatLocation( loc ) ) );
         }
 
-        return false;
+        return std::string();
     }
 
     // \retval true if error
-    inline bool MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty )
+    inline bool MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
+                                                   ToyParser::ArrayBoundsExpressionContext *arrayBounds )
     {
         auto varState = var_states[varName];
         if ( varState != variable_state::undeclared )
@@ -200,8 +225,26 @@ namespace toy
 
         var_states[varName] = variable_state::declared;
 
-        auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), mlir::TypeAttr::get( ty ) );
-        var_storage[varName] = dcl;
+        size_t arraySize{};
+        if ( arrayBounds )
+        {
+            auto index = arrayBounds->INTEGER_PATTERN();
+            arraySize = std::stoi( index->getText() );
+        }
+
+        if ( arraySize )
+        {
+            auto sizeAttr = builder.getI64IntegerAttr( arraySize );
+            auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), mlir::TypeAttr::get( ty ),
+                                                       sizeAttr );
+            var_storage[varName] = dcl;
+        }
+        else
+        {
+            auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), mlir::TypeAttr::get( ty ),
+                                                       nullptr );
+            var_storage[varName] = dcl;
+        }
 
         return false;
     }
@@ -226,12 +269,11 @@ namespace toy
 
     void MLIRListener::exitStartRule( ToyParser::StartRuleContext *ctx )
     {
-        if ( lastOp != lastOperator::returnOp )
+        if ( lastOp != lastOperator::exitOp )
         {
-            auto loc = getLocation( ctx );
             // Empty ValueRange means we are building a toy.return with no
             // operands:
-            builder.create<toy::ExitOp>( loc, mlir::ValueRange{} );
+            builder.create<toy::ExitOp>( lastLocation, mlir::ValueRange{} );
         }
 
         builder.setInsertionPointToEnd( mod.getBody() );
@@ -247,41 +289,40 @@ namespace toy
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME()->getText();
+        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
 
-        registerDeclaration( loc, varName, builder.getF64Type() );
+        registerDeclaration( loc, varName, builder.getF64Type(), ctx->arrayBoundsExpression() );
     }
 
     void MLIRListener::enterBoolDeclare( ToyParser::BoolDeclareContext *ctx )
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME()->getText();
-        registerDeclaration( loc, varName, builder.getI1Type() );
+        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
+        registerDeclaration( loc, varName, builder.getI1Type(), ctx->arrayBoundsExpression() );
     }
 
     void MLIRListener::enterIntDeclare( ToyParser::IntDeclareContext *ctx )
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME()->getText();
+        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
 
-        // Allocate memref<...> for the variable
-        if ( ctx->INT8() )
+        if ( ctx->INT8_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getI8Type() );
+            registerDeclaration( loc, varName, builder.getI8Type(), ctx->arrayBoundsExpression() );
         }
-        else if ( ctx->INT16() )
+        else if ( ctx->INT16_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getI16Type() );
+            registerDeclaration( loc, varName, builder.getI16Type(), ctx->arrayBoundsExpression() );
         }
-        else if ( ctx->INT32() )
+        else if ( ctx->INT32_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getI32Type() );
+            registerDeclaration( loc, varName, builder.getI32Type(), ctx->arrayBoundsExpression() );
         }
-        else if ( ctx->INT64() )
+        else if ( ctx->INT64_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getI64Type() );
+            registerDeclaration( loc, varName, builder.getI64Type(), ctx->arrayBoundsExpression() );
         }
         else
         {
@@ -294,16 +335,15 @@ namespace toy
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME()->getText();
+        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
 
-        // Allocate memref<...> for the variable
-        if ( ctx->FLOAT32() )
+        if ( ctx->FLOAT32_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getF32Type() );
+            registerDeclaration( loc, varName, builder.getF32Type(), ctx->arrayBoundsExpression() );
         }
-        else if ( ctx->FLOAT64() )
+        else if ( ctx->FLOAT64_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getF64Type() );
+            registerDeclaration( loc, varName, builder.getF64Type(), ctx->arrayBoundsExpression() );
         }
         else
         {
@@ -312,11 +352,22 @@ namespace toy
         }
     }
 
+    void MLIRListener::enterStringDeclare( ToyParser::StringDeclareContext *ctx )
+    {
+        lastOp = lastOperator::declareOp;
+        auto loc = getLocation( ctx );
+        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
+        ToyParser::ArrayBoundsExpressionContext *arrayBounds = ctx->arrayBoundsExpression();
+        assert( arrayBounds );
+
+        registerDeclaration( loc, varName, builder.getI8Type(), arrayBounds );
+    }
+
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
     {
         lastOp = lastOperator::printOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME()->getText();
+        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
         auto varState = var_states[varName];
         if ( varState == variable_state::undeclared )
         {
@@ -344,11 +395,11 @@ namespace toy
 
     void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )
     {
-        lastOp = lastOperator::returnOp;
+        lastOp = lastOperator::exitOp;
         auto loc = getLocation( ctx );
 
         auto lit = ctx->numericLiteral();
-        auto var = ctx->VARIABLENAME();
+        auto var = ctx->VARIABLENAME_PATTERN();
 
         if ( ( lit == nullptr ) && ( var == nullptr ) )
         {
@@ -360,12 +411,12 @@ namespace toy
             mlir::Value value;
 
             theTypes ty;
-            bool error = buildUnaryExpression( nullptr, lit ? lit->INTEGERLITERAL() : nullptr,
-                                               lit ? lit->FLOATLITERAL() : nullptr, var, loc, value, ty );
-            if ( error )
-            {
-                return;
-            }
+            auto s =
+                buildUnaryExpression( nullptr,    // booleanNode
+                                      lit ? lit->INTEGER_PATTERN() : nullptr, lit ? lit->FLOAT_PATTERN() : nullptr, var,
+                                      nullptr,    // stringNode
+                                      loc, value, ty );
+            assert( s.length() == 0 );
 
             builder.create<toy::ExitOp>( loc, mlir::ValueRange{ value } );
         }
@@ -376,7 +427,7 @@ namespace toy
         lastOp = lastOperator::assignmentOp;
         assignmentTargetValid = true;
         auto loc = getLocation( ctx );
-        currentVarName = ctx->VARIABLENAME()->getText();
+        currentVarName = ctx->VARIABLENAME_PATTERN()->getText();
         auto varState = var_states[currentVarName];
         if ( varState == variable_state::declared )
         {
@@ -399,7 +450,6 @@ namespace toy
             return;
         }
         auto loc = getLocation( ctx );
-        bool error;
         mlir::Value resultValue;
 
         auto dcl = var_storage[currentVarName];
@@ -410,6 +460,8 @@ namespace toy
         mlir::Value lhsValue;
         theTypes lty;
         auto bsz = ctx->binaryElement().size();
+        std::string s;
+
         if ( bsz == 0 )
         {
             mlir::Value lhsValue;
@@ -417,13 +469,9 @@ namespace toy
             auto lit = ctx->literal();
 
             theTypes ty;
-            bool error =
-                buildUnaryExpression( lit ? lit->BOOLEANLITERAL() : nullptr, lit ? lit->INTEGERLITERAL() : nullptr,
-                                      lit ? lit->FLOATLITERAL() : nullptr, ctx->VARIABLENAME(), loc, lhsValue, ty );
-            if ( error )
-            {
-                return;
-            }
+            s = buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                      lit ? lit->FLOAT_PATTERN() : nullptr, ctx->VARIABLENAME_PATTERN(),
+                                      lit ? lit->STRING_PATTERN() : nullptr, loc, lhsValue, ty );
 
             resultValue = lhsValue;
             if ( auto unaryOp = ctx->unaryOperator() )
@@ -433,6 +481,7 @@ namespace toy
                 {
                     auto op = builder.create<toy::NegOp>( loc, opType, lhsValue );
                     resultValue = op.getResult();
+                    assert( s.length() == 0 );
                 }
                 else if ( opText == "NOT" )
                 {
@@ -440,6 +489,7 @@ namespace toy
 
                     auto b = builder.create<toy::EqualOp>( loc, opType, lhsValue, rhsValue );
                     resultValue = b.getResult();
+                    assert( s.length() == 0 );
                 }
             }
         }
@@ -452,24 +502,22 @@ namespace toy
             auto opText = ctx->binaryOperator()->getText();
 
             auto llit = lhs->numericLiteral();
-            error =
-                buildUnaryExpression( nullptr, llit ? llit->INTEGERLITERAL() : nullptr,
-                                      llit ? llit->FLOATLITERAL() : nullptr, lhs->VARIABLENAME(), loc, lhsValue, lty );
-            if ( error )
-            {
-                return;
-            }
+            s = buildUnaryExpression( nullptr,    // booleanNode
+                                      llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
+                                      lhs->VARIABLENAME_PATTERN(),
+                                      nullptr,    // stringNode
+                                      loc, lhsValue, lty );
+            assert( s.length() == 0 );
 
             mlir::Value rhsValue;
             theTypes rty;
             auto rlit = rhs->numericLiteral();
-            error =
-                buildUnaryExpression( nullptr, rlit ? rlit->INTEGERLITERAL() : nullptr,
-                                      rlit ? rlit->FLOATLITERAL() : nullptr, rhs->VARIABLENAME(), loc, rhsValue, rty );
-            if ( error )
-            {
-                return;
-            }
+            s = buildUnaryExpression( nullptr,    // booleanNode
+                                      rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
+                                      rhs->VARIABLENAME_PATTERN(),
+                                      nullptr,    // stringNode
+                                      loc, rhsValue, rty );
+            assert( s.length() == 0 );
 
             // Create the binary operator (supports +, -, *, /)
             if ( opText == "+" )
@@ -546,8 +594,15 @@ namespace toy
 
         assert( !currentVarName.empty() );
 
-        // auto dcl = var_storage[currentVarName];
-        builder.create<toy::AssignOp>( loc, builder.getStringAttr( currentVarName ), resultValue );
+        if ( s.length() )
+        {
+            auto strAttr = builder.getStringAttr( s );
+            builder.create<toy::AssignStringOp>( loc, builder.getStringAttr( currentVarName ), strAttr );
+        }
+        else
+        {
+            builder.create<toy::AssignOp>( loc, builder.getStringAttr( currentVarName ), resultValue );
+        }
 
         var_states[currentVarName] = variable_state::assigned;
         currentVarName.clear();

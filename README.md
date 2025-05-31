@@ -17,6 +17,7 @@ It implements a toy calculator language that supports a few primitive linguistic
 * comparison operators (<, <=, EQ, NE) yielding BOOL values.  These work for any combinations of floating and integer types (including BOOL.)
 * integer bitwise operators (OR, AND, XOR).  These only for for integer types (including BOOL.)
 * a NOT operator, yielding BOOL.
+* array declarations, using any of the types above.  STRING is available as an alias for INT8 array.  string assignments of string literal works.  Print not implemented.
 
 Computations occur in assignment operations, and any types are first promoted to the type of the variable.
 This means that 'x = 1.99 + 2.99' has the value 3, if x is an integer variable.
@@ -43,7 +44,7 @@ do that without bothering with AI tools that can be more work to use than just d
 * src/parser.cpp    -- This is the Antlr4 parse tree walker and the MLIR builder.
 * src/lowering.cpp  -- LLVM-IR lowering classes.
 * prototypes/simplest.cpp  -- A MWE w/ working DWARF instrumentation.  Just emits LLVM-IR and has no assembly printing pass like the toy compiler.
-* `samples/*.toy` and `samples/testit` -- sample programs and a rudimentary regression test suite based on them.
+* `samples/*.toy` and `bin/testit` -- sample programs and a rudimentary regression test suite based on them.
 * bin/build, bin/rebuild -- build scripts (first runs cmake and ninja and sets compiler override if required), second just ninja with some teeing and grepping.
 
 ## Command line options
@@ -65,9 +66,9 @@ do that without bothering with AI tools that can be more work to use than just d
 
 Basic language constructs to make things more interesting:
 
+* Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure.
 * NOT operator: add more comprehensive all types testing.
-* Implement string constants, at least for PRINT.  In big generated tests, it's hard to see where a failure occurs.  Have hacked around that in `samples/*.perl` generators, by showing big unique integer values.
-* gdb session for simpleless.toy is not behaving right with respect to 'n' (by the third PRINT)
+* Implement PRINT string-variable, and PRINT string-literal.
 * tests for all the type conversions (i.e.: binary and unary arith operators)
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 * unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.
@@ -77,6 +78,40 @@ Basic language constructs to make things more interesting:
 * CAST operators.
 * Allow EXIT at more than the end of program (that restriction is currently enforced in the grammar.)
 * Don't have any traits defined for my MLIR operations (initially caused compile errors, and I just commented-out or omitted after that.)
+* gdb session for simpleless.toy is not behaving right with respect to 'n':
+Breakpoint 1, main () at simpleless.toy:4
+4       i1 = TRUE;
+(gdb) n
+5       j1 = FALSE;
+(gdb)
+6       PRINT i1;
+(gdb)
+1
+7       PRINT j1;
+(gdb)
+0
+9       b = i1 < j1;
+(gdb)
+10      PRINT b;
+(gdb)
+9       b = i1 < j1;
+(gdb)
+10      PRINT b;
+(gdb)
+0
+12      b = j1 < i1;
+(gdb)
+13      PRINT b;
+(gdb)
+12      b = j1 < i1;
+(gdb)
+13      PRINT b;
+(gdb)
+1
+__libc_start_call_main (main=main@entry=0x400470 <main>, argc=argc@entry=1, argv=argv@entry=0x7fffffffdc08) at ../sysdeps/nptl/libc_start_call_main.h:74
+74        exit (result);
+
+-- see the line numbers jump around.
 
 Trickier, but would be fun:
 * Implement a JIT so that the "language" has an interpretor mode, as well as static compilation.

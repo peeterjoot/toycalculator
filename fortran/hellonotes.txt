@@ -1,0 +1,17 @@
+hello.f90 -> hello.mlir (build with ./bh)
+
+the use of the string
+
+    %3 = fir.address_of(@_QQclX48656C6C6F2C20776F726C6421) : !fir.ref<!fir.char<1,13>>
+    %4 = fir.declare %3 typeparams %c13 {fortran_attrs = #fir.var_attrs<parameter>, uniq_name = "_QQclX48656C6C6F2C20776F726C6421"} : (!fir.ref<!fir.char<1,13>>
+, index) -> !fir.ref<!fir.char<1,13>>
+    %5 = fir.convert %4 : (!fir.ref<!fir.char<1,13>>) -> !fir.ref<i8>
+    %6 = fir.convert %c13 : (index) -> i64
+    %7 = fir.call @_FortranAioOutputAscii(%2, %5, %6) fastmath<contract> : (!fir.ref<i8>, !fir.ref<i8>, i64) -> i1
+
+The declaration of the string:
+
+  fir.global linkonce @_QQclX004930bb1d195902d8c6477e59199dd7 constant : !fir.char<1,44> {
+    %0 = fir.string_lit "/home/pjoot/toycalculator/fortran/hello.f90\00"(44) : !fir.char<1,44>
+    fir.has_value %0 : !fir.char<1,44>
+  }
