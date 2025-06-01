@@ -128,7 +128,8 @@ int main( int argc, char **argv )
     globalOp->setAttr( "unnamed_addr", builder.getUnitAttr() );
 
     // Create main function
-    auto funcType = builder.getFunctionType( {}, builder.getI32Type() );
+    auto i32Type = builder.getI32Type();
+    auto funcType = builder.getFunctionType( {}, i32Type );
     auto func = builder.create<mlir::func::FuncOp>( loc, "main", funcType );
     auto &block = *func.addEntryBlock();
     builder.setInsertionPointToStart( &block );
@@ -139,11 +140,11 @@ int main( int argc, char **argv )
     auto compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
         &context, distinctAttr, llvm::dwarf::DW_LANG_C, fileAttr, builder.getStringAttr( "testcompiler" ), false,
         mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
-    auto ta =
+    auto intTypeAttr =
         mlir::LLVM::DIBasicTypeAttr::get( &context, (unsigned)llvm::dwarf::DW_TAG_base_type,
                                           builder.getStringAttr( "int" ), 32, (unsigned)llvm::dwarf::DW_ATE_signed );
     llvm::SmallVector<mlir::LLVM::DITypeAttr, 1> typeArray;
-    typeArray.push_back( ta );
+    typeArray.push_back( intTypeAttr );
     auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get( &context, 0, typeArray );
     auto subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
         &context, mlir::DistinctAttr::create( builder.getUnitAttr() ), compileUnitAttr, fileAttr,
@@ -174,7 +175,7 @@ int main( int argc, char **argv )
 
     // Reference the global string (e.g., store its address to a pointer)
     auto strPtrLoc = mlir::FileLineColLoc::get( builder.getStringAttr( "test.c" ), str_ptr_LINE, THE_COLUMN_START );
-    auto strPtrAlloca = builder.create<mlir::LLVM::AllocaOp>( strPtrLoc, ptrType, int64Type, one, 8 );
+    auto strPtrAlloca = builder.create<mlir::LLVM::AllocaOp>( strPtrLoc, ptrType, ptrType, one, 8 );
 
     // Variable DI for str_ptr
     strPtrAlloca->setAttr( "bindc_name", builder.getStringAttr( "str_ptr" ) );
@@ -194,7 +195,6 @@ int main( int argc, char **argv )
 
     // Return 0
     auto retLoc = mlir::FileLineColLoc::get( builder.getStringAttr( "test.c" ), return_LINE, THE_COLUMN_START );
-    auto i32Type = builder.getI32Type();
     auto zero = builder.create<mlir::LLVM::ConstantOp>( retLoc, i32Type, builder.getI32IntegerAttr( 0 ) );
     builder.create<mlir::func::ReturnOp>( retLoc, mlir::ValueRange{ zero } );
 
