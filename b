@@ -9,7 +9,7 @@ b main
 run ../samples/array.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 
 b __assert_perror_fail
-b parser.cpp:597
+#b parser.cpp:597
 #b MLIRListener::enterAssignmentExpression
 
 #b buildUnaryExpression

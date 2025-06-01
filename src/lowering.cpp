@@ -535,6 +535,57 @@ namespace toy
         }
     };
 
+    class AssignStringOpLowering : public ConversionPattern
+    {
+       private:
+        loweringContext& lState;
+
+       public:
+        AssignStringOpLowering( loweringContext& lState_, MLIRContext* ctx )
+            : ConversionPattern( toy::AssignStringOp::getOperationName(), 1, ctx ), lState{ lState_ }
+        {
+        }
+
+        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
+                                       ConversionPatternRewriter& rewriter ) const override
+        {
+            auto assignOp = cast<toy::AssignStringOp>( op );
+            auto loc = assignOp.getLoc();
+
+            LLVM_DEBUG( llvm::dbgs() << "Lowering AssignOp: " << *op << '\n' );
+
+            auto name = assignOp.getName();
+            auto value = assignOp.getValue();
+            auto allocaOp = lState.symbolToAlloca[name];
+
+            LLVM_DEBUG( llvm::dbgs() << "name: " << name << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "value: " << value << '\n' );
+
+            // extract parameters from the allocaOp so we know what to do here:
+            Type elemType = allocaOp.getElemType();
+            int64_t numElems{};
+            if ( auto constOp = allocaOp.getArraySize().getDefiningOp<LLVM::ConstantOp>() )
+            {
+                auto intAttr = mlir::dyn_cast<IntegerAttr>( constOp.getValue() );
+                numElems = intAttr.getInt();
+            }
+            LLVM_DEBUG( llvm::dbgs() << "numElems: " << numElems << '\n' );
+            assert( numElems );
+
+            LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
+
+            assert( 0 );
+
+#if 0
+            rewriter.create<LLVM::StoreOp>( loc, value, allocaOp );
+            rewriter.eraseOp( op );
+            return success();
+#else
+            return failure();
+#endif
+        }
+    };
+
     // Lower LessOp, ... (after type conversions, if required)
     template <class ToyOp, class IOpType, class FOpType, mlir::LLVM::ICmpPredicate ICmpPredS,
               mlir::LLVM::ICmpPredicate ICmpPredU, mlir::LLVM::FCmpPredicate FCmpPred>
@@ -1127,6 +1178,7 @@ namespace toy
             patterns1.insert<PrintOpLowering>( lState, ctx );
             patterns1.insert<ConstantOpLowering>( lState, ctx );
             patterns1.insert<AssignOpLowering>( lState, ctx );
+            patterns1.insert<AssignStringOpLowering>( lState, ctx );
             patterns1.insert<ExitOpLowering>( lState, ctx );
             patterns1.insert<ProgramOpLowering>( lState, ctx );
 

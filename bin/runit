@@ -1,3 +1,4 @@
 #../build/toycalculator $*
-prog=test.toy
-../build/toycalculator ../samples/$prog --stdout --emit-mlir --emit-llvm --no-emit-object --debug -g $* 2>&1
+prog=$*
+#prog=test.toy
+../build/toycalculator ../samples/$prog --stdout --emit-mlir --emit-llvm --no-emit-object --debug -g 2>&1

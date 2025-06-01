@@ -63,9 +63,9 @@ def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
 
 def Toy_AssignStringOp : Op<Toy_Dialect, "string_assign"> {
   let summary = "Assign a string literal to an i8 array variable";
-  let arguments = (ins StrAttr:$name, Builtin_StringAttr:$stringValue);
+  let arguments = (ins StrAttr:$name, Builtin_StringAttr:$value);
   let results = (outs);
-  let assemblyFormat = "$name `=` `string` $stringValue attr-dict";
+  let assemblyFormat = "$name `=` $value attr-dict";
 }
 
 def Toy_LoadOp : Op<Toy_Dialect, "load"> {
