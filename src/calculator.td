@@ -16,6 +16,7 @@ include "mlir/IR/DialectBase.td"
 include "mlir/IR/OpBase.td"
 include "mlir/IR/BuiltinTypes.td"
 include "mlir/IR/SymbolInterfaces.td"
+include "mlir/IR/BuiltinAttributes.td"
 
 def Toy_Dialect : Dialect {
   let name = "toy";
@@ -38,6 +39,13 @@ def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
   let summary = "Declare a variable or array, specifying its name, type (integer or float), and optional size.";
   let arguments = (ins StrAttr:$name, TypeAttr:$type, OptionalAttr<I64Attr>:$size);
   let results = (outs);
+
+  // Default assemblyFormat gives:
+  //   "toy.declare"() {name = "x", type = i32} : () -> ()
+  // whereas with this, I'll get a more compact representation like:
+  //   toy.declare "x" : i32
+  //
+  //let assemblyFormat = "$name `:` $type attr-dict"; // FIXME: add $size
 }
 
 def Toy_IntOrFloat : TypeConstraint<
@@ -46,11 +54,11 @@ def Toy_IntOrFloat : TypeConstraint<
 
 def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
   let summary = "Assign a value to a variable associated with a declaration";
-  let arguments = (ins StrAttr:$name, AnyType:$value);
+  let arguments = (ins StrAttr:$name, AnyType:$value, OptionalAttr<Builtin_StringAttr>:$stringValue);
   let results = (outs);
 
   // toy.assign "x", %0 : i32
-  let assemblyFormat = "$name `,` $value `:` type($value) attr-dict";
+  //let assemblyFormat = "$name `,` $value `:` type($value) attr-dict";
 }
 
 def Toy_LoadOp : Op<Toy_Dialect, "load"> {

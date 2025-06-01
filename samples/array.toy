@@ -1,4 +1,4 @@
 STRING s[2];
 INT8 s2;
-//s = "hi";
+s = "hi";
 //PRINT s;

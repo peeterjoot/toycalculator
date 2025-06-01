@@ -356,7 +356,7 @@ namespace toy
 
             auto varName = declareOp.getName();
             auto elemType = declareOp.getType();
-            int64_t numElements = 1;    // scalar only for now.
+            //int64_t numElements = 1;    // scalar only for now.
 
             if ( !elemType.isIntOrFloat() )
             {
@@ -364,7 +364,7 @@ namespace toy
             }
 
             unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
-            unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
+            //unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
 
 #if 0    // FIXME: could pack array creation for i1 types.  For now, just use a separate byte for each.
             if ( elemType.isInteger( 1 ) )

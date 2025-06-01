@@ -26,13 +26,15 @@ namespace toy
 {
     enum class theTypes : int
     {
+        unknown,
         boolean,
         integer8,
         integer16,
         integer32,
         integer64,
         float32,
-        float64
+        float64,
+        string
     };
 
     inline bool isBoolean( theTypes ty )
@@ -105,8 +107,9 @@ namespace toy
 
         inline std::string formatLocation( mlir::Location loc );
 
-        inline bool buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode, tNode *variableNode,
-                                          mlir::Location loc, mlir::Value &value, theTypes &ty );
+        inline std::string buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
+                                                 tNode *variableNode, tNode *stringNode, mlir::Location loc,
+                                                 mlir::Value &value, theTypes &ty );
 
         // @param asz [in]
         //    Array size or zero for scalar.
