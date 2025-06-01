@@ -35,16 +35,9 @@ def Toy_ProgramOp : Op<Toy_Dialect, "program"> {
 }
 
 def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
-  let summary = "Declare a variable, specifying its name and type.";
-  let arguments = (ins StrAttr:$name, TypeAttr:$type);
+  let summary = "Declare a variable or array, specifying its name, type (integer or float), and optional size.";
+  let arguments = (ins StrAttr:$name, TypeAttr:$type, OptionalAttr<I64Attr>:$size);
   let results = (outs);
-
-  // Default assemblyFormat gives:
-  //   "toy.declare"() {name = "x", type = i32} : () -> ()
-  // whereas with this, I'll get a more compact representation like:
-  //   toy.declare "x" : i32
-  //
-  let assemblyFormat = "$name `:` $type attr-dict";
 }
 
 def Toy_IntOrFloat : TypeConstraint<

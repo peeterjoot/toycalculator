@@ -365,10 +365,15 @@ namespace toy
 
             unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
             unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
-            int64_t totalSizeInBytes = numElements * elemSizeInBytes;
+
+#if 0    // FIXME: could pack array creation for i1 types.  For now, just use a separate byte for each.
+            if ( elemType.isInteger( 1 ) )
+            {
+                ...
+            }
+#endif
 
             auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
-            auto one = lState.getI64one( loc, rewriter );
             auto module = op->getParentOfType<ModuleOp>();
             if ( !module )
             {
@@ -377,15 +382,32 @@ namespace toy
 
             mlir::DataLayout dataLayout( module );
             unsigned alignment = dataLayout.getTypePreferredAlignment( elemType );
-            assert( alignment == totalSizeInBytes );    // only simple fixed size types are currently supported (no
-                                                        // arrays, or structures.)
 
             rewriter.setInsertionPoint( op );
-            auto allocaOp = rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, one, alignment );
+
+            mlir::Value sizeVal;
+            if ( declareOp.getSize().has_value() )
+            {
+                // Array: Use size attribute, no caching in lState
+                int64_t arraySize = declareOp.getSize().value();
+                if ( arraySize <= 0 )
+                {
+                    return rewriter.notifyMatchFailure( declareOp, "array size must be positive" );
+                }
+                sizeVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, rewriter.getI64Type(),
+                                                                   rewriter.getI64IntegerAttr( arraySize ) );
+            }
+            else
+            {
+                sizeVal = lState.getI64one( loc, rewriter );
+            }
+
+            auto allocaOp = rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, sizeVal, alignment );
 
             lState.constructVariableDI( varName, elemType, getLocation( loc ), elemSizeInBits, allocaOp );
 
             auto parentOp = op->getParentOp();
+
             // Erase the declare op
             rewriter.eraseOp( op );
 

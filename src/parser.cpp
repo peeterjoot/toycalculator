@@ -201,16 +201,27 @@ namespace toy
 
         var_states[varName] = variable_state::declared;
 
-        size_t asz{};
+        size_t arraySize{};
         if ( arrayBounds )
         {
             auto index = arrayBounds->INTEGER_PATTERN();
-            asz = std::stoi( index->getText() );
+            arraySize = std::stoi( index->getText() );
         }
 
-        // TODO: propagate the asz to DeclareOp (modifying it appropriately)
-        auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), mlir::TypeAttr::get( ty ) );
-        var_storage[varName] = dcl;
+        if ( arraySize )
+        {
+            auto sizeAttr = builder.getI64IntegerAttr( arraySize );
+            auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), mlir::TypeAttr::get( ty ),
+                                                       sizeAttr );
+            var_storage[varName] = dcl;
+        }
+        else
+        {
+            auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), mlir::TypeAttr::get( ty ),
+                                                       nullptr );
+            var_storage[varName] = dcl;
+        }
+
 
         return false;
     }
