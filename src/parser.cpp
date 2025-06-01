@@ -595,7 +595,7 @@ namespace toy
         if ( s.length() )
         {
             auto strAttr = builder.getStringAttr( s );
-            builder.create<toy::AssignOp>( loc, builder.getStringAttr( currentVarName ), strAttr );
+            builder.create<toy::AssignStringOp>( loc, builder.getStringAttr( currentVarName ), strAttr );
         }
         else
         {
