@@ -23,6 +23,7 @@
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
 #include <mlir/IR/Block.h>
+#include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/Location.h>    // For FileLineColLoc
 #include <mlir/IR/OperationSupport.h>
@@ -356,7 +357,7 @@ namespace toy
 
             auto varName = declareOp.getName();
             auto elemType = declareOp.getType();
-            //int64_t numElements = 1;    // scalar only for now.
+            // int64_t numElements = 1;    // scalar only for now.
 
             if ( !elemType.isIntOrFloat() )
             {
@@ -364,7 +365,7 @@ namespace toy
             }
 
             unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
-            //unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
+            // unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
 
 #if 0    // FIXME: could pack array creation for i1 types.  For now, just use a separate byte for each.
             if ( elemType.isInteger( 1 ) )
@@ -542,7 +543,7 @@ namespace toy
 
        public:
         AssignStringOpLowering( loweringContext& lState_, MLIRContext* ctx )
-            : ConversionPattern( toy::AssignStringOp::getOperationName(), 1, ctx ), lState{ lState_ }
+            : ConversionPattern( toy::AssignStringOp::getOperationName(), 1, ctx ), lState( lState_ )
         {
         }
 
@@ -561,28 +562,79 @@ namespace toy
             LLVM_DEBUG( llvm::dbgs() << "name: " << name << '\n' );
             LLVM_DEBUG( llvm::dbgs() << "value: " << value << '\n' );
 
-            // extract parameters from the allocaOp so we know what to do here:
+            // Extract alloca parameters
             Type elemType = allocaOp.getElemType();
-            int64_t numElems{};
+            int64_t numElems = 0;
             if ( auto constOp = allocaOp.getArraySize().getDefiningOp<LLVM::ConstantOp>() )
             {
                 auto intAttr = mlir::dyn_cast<IntegerAttr>( constOp.getValue() );
                 numElems = intAttr.getInt();
             }
             LLVM_DEBUG( llvm::dbgs() << "numElems: " << numElems << '\n' );
-            assert( numElems );
-
             LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
 
-            assert( 0 );
+            if ( !elemType.isa<mlir::IntegerType>() || elemType.getIntOrFloatBitWidth() != 8 )
+            {
+                return rewriter.notifyMatchFailure( assignOp, "string assignment requires i8 array" );
+            }
+            if ( numElems == 0 )
+            {
+                return rewriter.notifyMatchFailure( assignOp, "invalid array size" );
+            }
 
+            // Compute copy size (include null terminator if space allows)
+            size_t strLen = value.size();
+            //size_t copySize = std::min( strLen + 1, static_cast<size_t>( numElems ) );    // +1 for \0
+            size_t copySize = numElems;
+            if ( strLen > static_cast<size_t>( numElems ) )
+            {
+                return rewriter.notifyMatchFailure( assignOp, "string too large for array" );
+            }
+
+            // Create global string constant
+            auto moduleOp = assignOp->getParentOfType<mlir::ModuleOp>();
+            auto i8Type = rewriter.getI8Type();
+            auto arrayType = mlir::LLVM::LLVMArrayType::get( i8Type, copySize );
+
+            // Build string data (append \0)
+            SmallVector<char> stringData( value.begin(), value.end() );
 #if 0
-            rewriter.create<LLVM::StoreOp>( loc, value, allocaOp );
+            if ( copySize > strLen )
+            {
+                stringData.push_back( '\0' );    // Append null terminator
+            }
+#endif
+            auto denseAttr = DenseElementsAttr::get(
+                RankedTensorType::get( { static_cast<int64_t>( copySize ) }, i8Type ), ArrayRef<char>( stringData ) );
+
+fixme(); // hash instead.
+            // Create unique global name
+            std::string globalName = "str_" + std::to_string( moduleOp.getOperations().size() );
+            auto globalOp =
+                rewriter.create<LLVM::GlobalOp>( loc, arrayType,
+                                                 true, //isConstant
+                                                 LLVM::Linkage::Private, globalName, denseAttr );
+            globalOp->setAttr( "unnamed_addr", rewriter.getUnitAttr() );
+
+            // Get pointer to global string
+            auto globalPtr = rewriter.create<LLVM::AddressOfOp>( loc, globalOp );
+            auto ptrType = mlir::LLVM::LLVMPointerType::get( rewriter.getContext() );
+
+            // Get destination pointer (alloca result)
+            auto destPtr = allocaOp.getResult();
+
+            // Create memcpy
+            auto sizeConst =
+                rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( copySize ) );
+            rewriter.create<LLVM::MemcpyOp>( loc,
+                                             destPtr,      // Destination
+                                             globalPtr,    // Source
+                                             sizeConst,    // Size
+                                             rewriter.getBoolAttr( false ) // isVolatile
+                                             );
+
             rewriter.eraseOp( op );
             return success();
-#else
-            return failure();
-#endif
         }
     };
 

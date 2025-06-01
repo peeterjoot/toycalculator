@@ -1,4 +1,9 @@
 STRING s[2];
+STRING t[2];
+STRING u[3];
 INT8 s2;
 s = "hi";
+t = "hi";
+u = "hi";
+u = "bye";
 //PRINT s;
