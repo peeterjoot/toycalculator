@@ -53,8 +53,8 @@ def Toy_IntOrFloat : TypeConstraint<
   "integer or float type">;
 
 def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
-  let summary = "Assign a value to a variable associated with a declaration";
-  let arguments = (ins StrAttr:$name, AnyType:$value, OptionalAttr<Builtin_StringAttr>:$stringValue);
+  let summary = "Assign a value or string literal to a variable associated with a declaration";
+  let arguments = (ins StrAttr:$name, AnyAttr:$value);
   let results = (outs);
 
   // toy.assign "x", %0 : i32

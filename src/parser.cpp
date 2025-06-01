@@ -448,7 +448,7 @@ namespace toy
             return;
         }
         auto loc = getLocation( ctx );
-        mlir::Value resultValue{};
+        mlir::Value resultValue;
 
         auto dcl = var_storage[currentVarName];
         auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
@@ -595,11 +595,11 @@ namespace toy
         if ( s.length() )
         {
             auto strAttr = builder.getStringAttr( s );
-            builder.create<toy::AssignOp>( loc, builder.getStringAttr( currentVarName ), resultValue, strAttr );
+            builder.create<toy::AssignOp>( loc, builder.getStringAttr( currentVarName ), strAttr );
         }
         else
         {
-            builder.create<toy::AssignOp>( loc, builder.getStringAttr( currentVarName ), resultValue, nullptr );
+            builder.create<toy::AssignOp>( loc, builder.getStringAttr( currentVarName ), resultValue );
         }
 
         var_states[currentVarName] = variable_state::assigned;
