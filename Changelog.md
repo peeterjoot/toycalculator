@@ -1,3 +1,22 @@
+## tag: V3
+
+(not yet created)
+
+* Fixed -g/-OX propagation to lowering.  If -g not specified, now don't generate the DI.
+* Show the optimized .ll with --emit-llvm instead of the just-lowered .ll (unless not invoking the assembly printer, where the ll optimization passes are registered.)
+* move samples/testit.sh to bin/testit
+* comparison operators (<, <=, EQ, NE) yielding BOOL values.  These work for any combinations of floating and integer types (including BOOL.)
+* integer bitwise operators (OR, AND, XOR).  These only for for integer types (including BOOL.)
+* a NOT operator, yielding BOOL.
+* Array declaration and lowering support.
+* String assignment support (WIP.)
+* Reorganize the grammar so that all the simple lexer tokens are last.  Rename a bunch of the tokens, introducing some consistency.
+* testit: Document --optimize.  Add --assembly, --no-debug
+* test case generators for all the boolean and bitwise operations.
+* calculator.td: introduce IntOrFloat constraint type, replacing AnyType usage; array decl support, and string support (WIP.)
+* driver: writeLL helper function, pass -g to lowering if set.
+* parser: handle large integer constants properly, array decl support, string support: WIP.
+
 ## tag: V2
 
 This release:

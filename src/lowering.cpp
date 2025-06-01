@@ -56,54 +56,73 @@ namespace toy
 
     class loweringContext
     {
-       public:
-        ModuleOp& module;
-        const toy::driverState& driverState;
-        OpBuilder builder;
-        DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> symbolToAlloca;
-        mlir::LLVM::LLVMFuncOp mainFunc;
-        mlir::LLVM::LLVMFuncOp printFuncF64;
-        mlir::LLVM::LLVMFuncOp printFuncI64;
+       private:
+        // Caching these may not be a good idea, as they are created with a single loc value, but using an existing
+        // constant is also allowed, so maybe that's okay?
+        mlir::LLVM::ConstantOp pr_one_I64;
+        mlir::LLVM::ConstantOp pr_zero_F64;
+        mlir::LLVM::ConstantOp pr_zero_I32;
+        bool pr_one_I64_set{};
+        bool pr_zero_F64_set{};
+        bool pr_zero_I32_set{};
 
-        loweringContext( ModuleOp& module_, const toy::driverState& driverState_ )
-            : module{ module_ }, driverState{ driverState_ }, builder{ module.getRegion() }
+        mlir::LLVM::DIFileAttr pr_fileAttr;
+        mlir::LLVM::DISubprogramAttr pr_subprogramAttr;
+        DenseMap<llvm::StringRef, mlir::LLVM::GlobalOp> pr_stringLiterals;
+        mlir::LLVM::LLVMFuncOp pr_mainFunc;
+        mlir::LLVM::LLVMFuncOp pr_printFuncF64;
+        mlir::LLVM::LLVMFuncOp pr_printFuncI64;
+
+        const toy::driverState& pr_driverState;
+        ModuleOp& pr_module;
+        OpBuilder pr_builder;
+       public:
+        DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> symbolToAlloca;
+
+        loweringContext( ModuleOp& module, const toy::driverState& driverState )
+            : pr_driverState{ driverState }, pr_module{ module }, pr_builder{ module.getRegion() }
         {
+        }
+
+        OpBuilder & getBuilder()
+        {
+            return pr_builder;
         }
 
         mlir::LLVM::ConstantOp getI64one( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
-            if ( !c_one_I64 )
+            if ( !pr_one_I64_set )
             {
-                one_I64 =
+                pr_one_I64 =
                     rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( 1 ) );
-                c_one_I64 = true;
+                pr_one_I64_set = true;
             }
 
-            return one_I64;
+            return pr_one_I64;
         }
 
         mlir::LLVM::ConstantOp getI32zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
-            if ( !c_zero_I32 )
+            if ( !pr_zero_I32_set )
             {
-                zero_I32 =
+                pr_zero_I32 =
                     rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr( 0 ) );
-                c_zero_I32 = true;
+                pr_zero_I32_set = true;
             }
 
-            return zero_I32;
+            return pr_zero_I32;
         }
 
         mlir::LLVM::ConstantOp getF64zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
-            if ( !c_zero_F64 )
+            if ( !pr_zero_F64_set )
             {
-                zero_F64 =
+                pr_zero_F64 =
                     rewriter.create<LLVM::ConstantOp>( loc, rewriter.getF64Type(), rewriter.getF64FloatAttr( 0 ) );
-                c_zero_F64 = true;
+                pr_zero_F64_set = true;
             }
 
-            return zero_F64;
+            return pr_zero_F64;
         }
 
         // Set data_layout,ident,target_triple:
@@ -124,67 +143,75 @@ namespace toy
             assert( targetMachine );
             std::string dataLayoutStr = targetMachine->createDataLayout().getStringRepresentation();
 
-            module->setAttr( "llvm.data_layout", builder.getStringAttr( dataLayoutStr ) );
-            module->setAttr( "llvm.target_triple", builder.getStringAttr( targetTriple ) );
+            pr_module->setAttr( "llvm.data_layout", pr_builder.getStringAttr( dataLayoutStr ) );
+            pr_module->setAttr( "llvm.target_triple", pr_builder.getStringAttr( targetTriple ) );
 #endif
-            module->setAttr( "llvm.ident", builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
+            pr_module->setAttr( "llvm.ident", pr_builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
         }
 
         void createToyPrintProto()
         {
-            auto ctx = builder.getContext();
-            builder.setInsertionPointToStart( module.getBody() );
-            auto printFuncF64Type =
-                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { builder.getF64Type() }, false );
+            auto ctx = pr_builder.getContext();
+            pr_builder.setInsertionPointToStart( pr_module.getBody() );
+            auto pr_printFuncF64Type =
+                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { pr_builder.getF64Type() }, false );
             auto printFuncI64Type =
-                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { builder.getI64Type() }, false );
-            printFuncF64 = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_f64", printFuncF64Type,
+                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { pr_builder.getI64Type() }, false );
+            pr_printFuncF64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_f64", pr_printFuncF64Type,
                                                              LLVM::Linkage::External );
-            printFuncI64 = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), "__toy_print_i64", printFuncI64Type,
+            pr_printFuncI64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_i64", printFuncI64Type,
                                                              LLVM::Linkage::External );
+        }
+
+        // Create an entry block in the "main" function
+        Block* addEntryBlock( ConversionPatternRewriter& rewriter )
+        {
+            Block* entryBlock = pr_mainFunc.addEntryBlock( rewriter );
+            rewriter.setInsertionPointToStart( entryBlock );
+            return entryBlock;
         }
 
         void createMain()
         {
-            auto ctx = builder.getContext();
-            auto mainFuncType = LLVM::LLVMFunctionType::get( builder.getI32Type(), {}, false );
-            mainFunc = builder.create<LLVM::LLVMFuncOp>( module.getLoc(), ENTRY_SYMBOL_NAME, mainFuncType,
-                                                         LLVM::Linkage::External );
+            auto ctx = pr_builder.getContext();
+            auto mainFuncType = LLVM::LLVMFunctionType::get( pr_builder.getI32Type(), {}, false );
+            pr_mainFunc = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), ENTRY_SYMBOL_NAME, mainFuncType,
+                                                            LLVM::Linkage::External );
 
-            if ( driverState.wantDebug )
+            if ( pr_driverState.wantDebug )
             {
-                // Construct module level DI state:
-                fileAttr = mlir::LLVM::DIFileAttr::get( ctx, driverState.filename, "." );
-                auto distinctAttr = mlir::DistinctAttr::create( builder.getUnitAttr() );
+                // Construct pr_module level DI state:
+                pr_fileAttr = mlir::LLVM::DIFileAttr::get( ctx, pr_driverState.filename, "." );
+                auto distinctAttr = mlir::DistinctAttr::create( pr_builder.getUnitAttr() );
                 auto compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
-                    ctx, distinctAttr, llvm::dwarf::DW_LANG_C, fileAttr, builder.getStringAttr( COMPILER_NAME ), false,
-                    mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
+                    ctx, distinctAttr, llvm::dwarf::DW_LANG_C, pr_fileAttr, pr_builder.getStringAttr( COMPILER_NAME ),
+                    false, mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
                 auto ta = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
-                                                            builder.getStringAttr( "int" ), 32,
+                                                            pr_builder.getStringAttr( "int" ), 32,
                                                             (unsigned)llvm::dwarf::DW_ATE_signed );
                 llvm::SmallVector<mlir::LLVM::DITypeAttr, 1> typeArray;
                 typeArray.push_back( ta );
                 auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get( ctx, 0, typeArray );
-                subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
-                    ctx, mlir::DistinctAttr::create( builder.getUnitAttr() ), compileUnitAttr, fileAttr,
-                    builder.getStringAttr( ENTRY_SYMBOL_NAME ), builder.getStringAttr( ENTRY_SYMBOL_NAME ), fileAttr, 1,
-                    1, mlir::LLVM::DISubprogramFlags::Definition, subprogramType,
+                pr_subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
+                    ctx, mlir::DistinctAttr::create( pr_builder.getUnitAttr() ), compileUnitAttr, pr_fileAttr,
+                    pr_builder.getStringAttr( ENTRY_SYMBOL_NAME ), pr_builder.getStringAttr( ENTRY_SYMBOL_NAME ), pr_fileAttr,
+                    1, 1, mlir::LLVM::DISubprogramFlags::Definition, subprogramType,
                     llvm::ArrayRef<mlir::LLVM::DINodeAttr>{}, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
-                mainFunc->setAttr( "llvm.debug.subprogram", subprogramAttr );
+                pr_mainFunc->setAttr( "llvm.debug.subprogram", pr_subprogramAttr );
 
                 // This is the key to ensure that translateModuleToLLVMIR does not strip the location info (instead
                 // converts loc's into !dbg's)
-                mainFunc->setLoc( builder.getFusedLoc( { module.getLoc() }, subprogramAttr ) );
+                pr_mainFunc->setLoc( pr_builder.getFusedLoc( { pr_module.getLoc() }, pr_subprogramAttr ) );
             }
         }
 
         void constructVariableDI( llvm::StringRef varName, mlir::Type& elemType, mlir::FileLineColLoc loc,
                                   unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp )
         {
-            auto ctx = builder.getContext();
-            if ( driverState.wantDebug )
+            auto ctx = pr_builder.getContext();
+            if ( pr_driverState.wantDebug )
             {
-                allocaOp->setAttr( "bindc_name", builder.getStringAttr( varName ) );
+                allocaOp->setAttr( "bindc_name", pr_builder.getStringAttr( varName ) );
 
                 mlir::LLVM::DILocalVariableAttr diVar;
 
@@ -230,11 +257,11 @@ namespace toy
                     }
 
                     auto diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
-                                                                    builder.getStringAttr( typeName ), sz, dwType );
+                                                                    pr_builder.getStringAttr( typeName ), sz, dwType );
 
-                    diVar = mlir::LLVM::DILocalVariableAttr::get( ctx, subprogramAttr, builder.getStringAttr( varName ),
-                                                                  fileAttr, loc.getLine(), 0, sz, diType,
-                                                                  mlir::LLVM::DIFlags::Zero );
+                    diVar = mlir::LLVM::DILocalVariableAttr::get(
+                        ctx, pr_subprogramAttr, pr_builder.getStringAttr( varName ), pr_fileAttr, loc.getLine(), 0, sz,
+                        diType, mlir::LLVM::DIFlags::Zero );
                 }
                 else
                 {
@@ -259,33 +286,93 @@ namespace toy
                     }
 
                     auto diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
-                                                                    builder.getStringAttr( typeName ), elemSizeInBits,
+                                                                    pr_builder.getStringAttr( typeName ), elemSizeInBits,
                                                                     llvm::dwarf::DW_ATE_float );
 
-                    diVar = mlir::LLVM::DILocalVariableAttr::get( ctx, subprogramAttr, builder.getStringAttr( varName ),
-                                                                  fileAttr, loc.getLine(), 0, elemSizeInBits, diType,
-                                                                  mlir::LLVM::DIFlags::Zero );
+                    diVar = mlir::LLVM::DILocalVariableAttr::get(
+                        ctx, pr_subprogramAttr, pr_builder.getStringAttr( varName ), pr_fileAttr, loc.getLine(), 0,
+                        elemSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
                 }
 
-                builder.setInsertionPointAfter( allocaOp );
-                builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
+                pr_builder.setInsertionPointAfter( allocaOp );
+                pr_builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
             }
 
             symbolToAlloca[varName] = allocaOp;
         }
 
-       private:
-        // caching these may not be a good idea, as they are created with a single loc value, but using an existing
-        // constant is also allowed, so maybe that's okay.
-        mlir::LLVM::ConstantOp one_I64;
-        mlir::LLVM::ConstantOp zero_F64;
-        mlir::LLVM::ConstantOp zero_I32;
 
-        bool c_one_I64{};
-        bool c_zero_F64{};
-        bool c_zero_I32{};
-        mlir::LLVM::DIFileAttr fileAttr;
-        mlir::LLVM::DISubprogramAttr subprogramAttr;
+        mlir::LLVM::CallOp createPrintCall( ConversionPatternRewriter& rewriter, mlir::Location loc, mlir::Value input )
+        {
+            mlir::Type inputType = input.getType();
+            mlir::LLVM::CallOp result;
+
+            if ( auto inputi = mlir::dyn_cast<IntegerType>( inputType ) )
+            {
+                auto width = inputi.getWidth();
+
+                if ( width == 1 )
+                {
+                    input = rewriter.create<mlir::LLVM::ZExtOp>( loc, rewriter.getI64Type(), input );
+                }
+                else if ( width < 64 )
+                {
+                    input = rewriter.create<mlir::LLVM::SExtOp>( loc, rewriter.getI64Type(), input );
+                }
+
+                result = rewriter.create<LLVM::CallOp>( loc, pr_printFuncI64, ValueRange{ input } );
+            }
+            else
+            {
+                if ( inputType.isF32() )
+                {
+                    input = rewriter.create<LLVM::FPExtOp>( loc, rewriter.getF64Type(), input );
+                }
+                else
+                {
+                    assert( inputType.isF64() );
+                }
+                result = rewriter.create<LLVM::CallOp>( loc, pr_printFuncF64, ValueRange{ input } );
+            }
+
+            return result;
+        }
+
+        mlir::LLVM::GlobalOp lookupOrInsertGlobalOp( ConversionPatternRewriter& rewriter, mlir::StringAttr& stringLit,
+                                                     mlir::Location loc, size_t copySize, size_t strLen )
+        {
+            mlir::LLVM::GlobalOp globalOp;
+            auto it = pr_stringLiterals.find( stringLit.str() );
+            if ( it != pr_stringLiterals.end() )
+            {
+                globalOp = it->second;
+                LLVM_DEBUG( llvm::dbgs() << "Reusing global: " << globalOp.getSymName() << '\n' );
+            }
+            else
+            {
+                auto i8Type = rewriter.getI8Type();
+                auto arrayType = mlir::LLVM::LLVMArrayType::get( i8Type, copySize );
+
+                SmallVector<char> stringData( stringLit.begin(), stringLit.end() );
+                if ( copySize > strLen )
+                {
+                    stringData.push_back( '\0' );
+                }
+                auto denseAttr =
+                    DenseElementsAttr::get( RankedTensorType::get( { static_cast<int64_t>( copySize ) }, i8Type ),
+                                            ArrayRef<char>( stringData ) );
+
+                std::string globalName = "str_" + std::to_string( pr_stringLiterals.size() );
+                globalOp = rewriter.create<LLVM::GlobalOp>( loc, arrayType, true, LLVM::Linkage::Private, globalName,
+                                                            denseAttr );
+                globalOp->setAttr( "unnamed_addr", rewriter.getUnitAttr() );
+
+                pr_stringLiterals[stringLit.str()] = globalOp;
+                LLVM_DEBUG( llvm::dbgs() << "Created global: " << globalName << '\n' );
+            }
+
+            return globalOp;
+        }
     };
 
     // Lower toy.program to an LLVM function.
@@ -308,9 +395,7 @@ namespace toy
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.program: " << *op << '\n' << loc << '\n' );
 
-            // Create an entry block in the function
-            Block* entryBlock = lState.mainFunc.addEntryBlock( rewriter );
-            rewriter.setInsertionPointToStart( entryBlock );
+            Block* entryBlock = lState.addEntryBlock( rewriter );
 
             // Inline the toy.program's region into the function's entry block
             Region& programRegion = programOp.getRegion();
@@ -562,7 +647,6 @@ namespace toy
             LLVM_DEBUG( llvm::dbgs() << "name: " << name << '\n' );
             LLVM_DEBUG( llvm::dbgs() << "value: " << value << '\n' );
 
-            // Extract alloca parameters
             Type elemType = allocaOp.getElemType();
             int64_t numElems = 0;
             if ( auto constOp = allocaOp.getArraySize().getDefiningOp<LLVM::ConstantOp>() )
@@ -582,56 +666,24 @@ namespace toy
                 return rewriter.notifyMatchFailure( assignOp, "invalid array size" );
             }
 
-            // Compute copy size (include null terminator if space allows)
             size_t strLen = value.size();
-            //size_t copySize = std::min( strLen + 1, static_cast<size_t>( numElems ) );    // +1 for \0
-            size_t copySize = numElems;
+            size_t copySize = std::min( strLen + 1, static_cast<size_t>( numElems ) );
             if ( strLen > static_cast<size_t>( numElems ) )
             {
                 return rewriter.notifyMatchFailure( assignOp, "string too large for array" );
             }
 
-            // Create global string constant
-            auto moduleOp = assignOp->getParentOfType<mlir::ModuleOp>();
-            auto i8Type = rewriter.getI8Type();
-            auto arrayType = mlir::LLVM::LLVMArrayType::get( i8Type, copySize );
+            mlir::LLVM::GlobalOp globalOp = lState.lookupOrInsertGlobalOp( rewriter, value, loc, copySize, strLen );
 
-            // Build string data (append \0)
-            SmallVector<char> stringData( value.begin(), value.end() );
-#if 0
-            if ( copySize > strLen )
-            {
-                stringData.push_back( '\0' );    // Append null terminator
-            }
-#endif
-            auto denseAttr = DenseElementsAttr::get(
-                RankedTensorType::get( { static_cast<int64_t>( copySize ) }, i8Type ), ArrayRef<char>( stringData ) );
-
-fixme(); // hash instead.
-            // Create unique global name
-            std::string globalName = "str_" + std::to_string( moduleOp.getOperations().size() );
-            auto globalOp =
-                rewriter.create<LLVM::GlobalOp>( loc, arrayType,
-                                                 true, //isConstant
-                                                 LLVM::Linkage::Private, globalName, denseAttr );
-            globalOp->setAttr( "unnamed_addr", rewriter.getUnitAttr() );
-
-            // Get pointer to global string
             auto globalPtr = rewriter.create<LLVM::AddressOfOp>( loc, globalOp );
             auto ptrType = mlir::LLVM::LLVMPointerType::get( rewriter.getContext() );
 
-            // Get destination pointer (alloca result)
             auto destPtr = allocaOp.getResult();
 
-            // Create memcpy
             auto sizeConst =
                 rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( copySize ) );
-            rewriter.create<LLVM::MemcpyOp>( loc,
-                                             destPtr,      // Destination
-                                             globalPtr,    // Source
-                                             sizeConst,    // Size
-                                             rewriter.getBoolAttr( false ) // isVolatile
-                                             );
+
+            rewriter.create<LLVM::MemcpyOp>( loc, destPtr, globalPtr, sizeConst, rewriter.getBoolAttr( false ) );
 
             rewriter.eraseOp( op );
             return success();
@@ -923,37 +975,9 @@ fixme(); // hash instead.
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.print: " << *op << '\n' );
 
-            auto input = printOp.getInput();
-            auto inputType = input.getType();
-            mlir::LLVM::CallOp result;
+            mlir::Value input = printOp.getInput();
 
-            if ( auto inputi = mlir::dyn_cast<IntegerType>( inputType ) )
-            {
-                auto width = inputi.getWidth();
-
-                if ( width == 1 )
-                {
-                    input = rewriter.create<mlir::LLVM::ZExtOp>( loc, rewriter.getI64Type(), input );
-                }
-                else if ( width < 64 )
-                {
-                    input = rewriter.create<mlir::LLVM::SExtOp>( loc, rewriter.getI64Type(), input );
-                }
-
-                result = rewriter.create<LLVM::CallOp>( loc, lState.printFuncI64, ValueRange{ input } );
-            }
-            else
-            {
-                if ( inputType.isF32() )
-                {
-                    input = rewriter.create<LLVM::FPExtOp>( loc, rewriter.getF64Type(), input );
-                }
-                else
-                {
-                    assert( inputType.isF64() );
-                }
-                result = rewriter.create<LLVM::CallOp>( loc, lState.printFuncF64, ValueRange{ input } );
-            }
+            mlir::LLVM::CallOp result = lState.createPrintCall( rewriter, loc, input );
 
             rewriter.replaceOp( op, result );
             return success();
@@ -1192,7 +1216,7 @@ fixme(); // hash instead.
 
             lState.setModuleAttrs();
 
-            auto ctx = lState.builder.getContext();
+            auto ctx = lState.getBuilder().getContext();
             lState.createToyPrintProto();
             lState.createMain();
 
