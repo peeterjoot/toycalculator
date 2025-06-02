@@ -61,6 +61,17 @@
 
 #include <optional>
 
+// I have no intention of cross compiling and have assumed target-platform=host-platform=linux 64-bit.
+// These defines aren't an attempt to make the code portable, assuming that any other target will ever
+// be used, but are simply to help give meaning to random 4,8,32,64 values scattered below.
+#define TARGET_CHAR_SIZE_IN_BITS 8
+#define TARGET_INT_SIZE_IN_BYTES sizeof( int )
+#define TARGET_INT_SIZE_IN_BITS ( TARGET_INT_SIZE_IN_BYTES * 8 )
+#define TARGET_LONG_SIZE_IN_BYTES sizeof( long )
+#define TARGET_LONG_SIZE_IN_BITS ( TARGET_LONG_SIZE_IN_BYTES * 8 )
+#define TARGET_POINTER_SIZE_IN_BYTES sizeof( char * )
+#define TARGET_POINTER_SIZE_IN_BITS ( TARGET_POINTER_SIZE_IN_BYTES * 8 )
+
 int main( int argc, char **argv )
 {
     llvm::InitLLVM init( argc, argv );
@@ -109,8 +120,8 @@ int main( int argc, char **argv )
 #define return_LINE 5
 #define THE_COLUMN_START 3
     mlir::OpBuilder builder( &context );
-    auto loc = mlir::FileLineColLoc::get( builder.getStringAttr( "test.c" ), MODULE_LINE, 1 );
-    auto module = mlir::ModuleOp::create( loc );
+    auto moduleLoc = mlir::FileLineColLoc::get( builder.getStringAttr( "test.c" ), MODULE_LINE, 1 );
+    auto module = mlir::ModuleOp::create( moduleLoc );
     module->setAttr( "llvm.data_layout", builder.getStringAttr( dataLayoutStr ) );
     module->setAttr( "llvm.ident", builder.getStringAttr( "toycompiler 0.0" ) );
     module->setAttr( "llvm.target_triple", builder.getStringAttr( targetTriple ) );
@@ -123,16 +134,15 @@ int main( int argc, char **argv )
     auto denseAttr = mlir::DenseElementsAttr::get( mlir::RankedTensorType::get( { 3 }, i8Type ),
                                                    llvm::ArrayRef<char>( stringData ) );
     auto globalOp =
-        builder.create<mlir::LLVM::GlobalOp>( loc, arrayType,
+        builder.create<mlir::LLVM::GlobalOp>( moduleLoc, arrayType,
                                               /*isConstant=*/true, mlir::LLVM::Linkage::Private, "str_0", denseAttr );
     globalOp->setAttr( "unnamed_addr", builder.getUnitAttr() );
 
-#define TARGET_INT_SIZE_IN_BYTES sizeof( int )
-#define TARGET_INT_SIZE_IN_BITS ( TARGET_INT_SIZE_IN_BYTES * 8 )
     // Create main function
+    auto mainLoc = mlir::FileLineColLoc::get( builder.getStringAttr( "test.c" ), main_LINE, 1 );
     auto i32Type = builder.getI32Type();
     auto funcType = builder.getFunctionType( {}, i32Type );
-    auto func = builder.create<mlir::func::FuncOp>( loc, "main", funcType );
+    auto func = builder.create<mlir::func::FuncOp>( mainLoc, "main", funcType );
     auto &block = *func.addEntryBlock();
     builder.setInsertionPointToStart( &block );
 
@@ -155,16 +165,13 @@ int main( int argc, char **argv )
         llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
     func->setAttr( "llvm.debug.subprogram", subprogramAttr );
 
-#define TARGET_LONG_SIZE_IN_BYTES sizeof( long )
-#define TARGET_LONG_SIZE_IN_BITS ( TARGET_LONG_SIZE_IN_BYTES * 8 )
     // Add (long) variable x
     auto varLoc = mlir::FileLineColLoc::get( builder.getStringAttr( "test.c" ), x_LINE, THE_COLUMN_START );
     auto ptrType = mlir::LLVM::LLVMPointerType::get( &context );
     auto i64Type = builder.getI64Type();
     auto constOneI64 = builder.create<mlir::LLVM::ConstantOp>( varLoc, i64Type, builder.getI64IntegerAttr( 1 ) );
-    mlir::Type int64Type = mlir::IntegerType::get( &context, TARGET_LONG_SIZE_IN_BITS );
     auto allocaOp =
-        builder.create<mlir::LLVM::AllocaOp>( varLoc, ptrType, int64Type, constOneI64, TARGET_LONG_SIZE_IN_BYTES );
+        builder.create<mlir::LLVM::AllocaOp>( varLoc, ptrType, i64Type, constOneI64, TARGET_LONG_SIZE_IN_BYTES );
 
     // Variable DI for x
     allocaOp->setAttr( "bindc_name", builder.getStringAttr( "x" ) );
@@ -180,8 +187,6 @@ int main( int argc, char **argv )
     auto const42 = builder.create<mlir::LLVM::ConstantOp>( varLoc, i64Type, builder.getI64IntegerAttr( 42 ) );
     builder.create<mlir::LLVM::StoreOp>( varLoc, const42, allocaOp );
 
-#define TARGET_POINTER_SIZE_IN_BYTES sizeof( char * )
-#define TARGET_POINTER_SIZE_IN_BITS ( TARGET_POINTER_SIZE_IN_BYTES * 8 )
     // Reference the global string (e.g., store its address to a pointer)
     auto strPtrLoc = mlir::FileLineColLoc::get( builder.getStringAttr( "test.c" ), str_ptr_LINE, THE_COLUMN_START );
     auto strPtrAlloca =
@@ -191,7 +196,7 @@ int main( int argc, char **argv )
     strPtrAlloca->setAttr( "bindc_name", builder.getStringAttr( "str_ptr" ) );
     auto charType =
         mlir::LLVM::DIBasicTypeAttr::get( &context, llvm::dwarf::DW_TAG_base_type, builder.getStringAttr( "char" ),
-                                          TARGET_POINTER_SIZE_IN_BYTES, llvm::dwarf::DW_ATE_signed_char );
+                                          TARGET_CHAR_SIZE_IN_BITS, llvm::dwarf::DW_ATE_signed_char );
     auto di_str_ptrType = mlir::LLVM::DIDerivedTypeAttr::get(
         &context, llvm::dwarf::DW_TAG_pointer_type, builder.getStringAttr( "char *" ), charType,
         TARGET_POINTER_SIZE_IN_BITS, TARGET_POINTER_SIZE_IN_BITS, 0, std::nullopt, mlir::LLVM::DINodeAttr() );
@@ -215,8 +220,8 @@ int main( int argc, char **argv )
     //
     // Without this, translateModuleToLLVMIR() strips out all the location info and doesn't convert the MLIR loc()'s to
     // !dbg statements
-    //  -- which was painful to figure out.
-    func->setLoc( builder.getFusedLoc( { loc }, subprogramAttr ) );
+    //  (this was painful to figure out.)
+    func->setLoc( builder.getFusedLoc( { mainLoc }, subprogramAttr ) );
 
     // Causes: already in an operation block:
     // module.push_back( func );
