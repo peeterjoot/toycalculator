@@ -207,7 +207,7 @@ namespace toy
         }
 
         void constructVariableDI( llvm::StringRef varName, mlir::Type& elemType, mlir::FileLineColLoc loc,
-                                  unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp )
+                                  unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp, int64_t arraySize = 1 )
         {
             auto ctx = pr_builder.getContext();
             if ( pr_driverState.wantDebug )
@@ -216,24 +216,25 @@ namespace toy
 
                 mlir::LLVM::DILocalVariableAttr diVar;
 
+                const char* typeName{};
+                unsigned dwType = llvm::dwarf::DW_ATE_signed;
+                unsigned elemStorageSizeInBits = elemSizeInBits; // storage for i1 is "upgraded" to i8 at alloca time.
+
                 if ( mlir::isa<mlir::IntegerType>( elemType ) )
                 {
-                    const char* typeName{};
-                    unsigned dwType = llvm::dwarf::DW_ATE_signed;
-                    unsigned sz = elemSizeInBits;
-
                     switch ( elemSizeInBits )
                     {
                         case 1:
                         {
                             typeName = "bool";
                             dwType = llvm::dwarf::DW_ATE_boolean;
-                            sz = 8;
+                            elemStorageSizeInBits = 8;
                             break;
                         }
                         case 8:
                         {
                             typeName = "int8_t";
+                            dwType = llvm::dwarf::DW_ATE_signed_char;
                             break;
                         }
                         case 16:
@@ -256,17 +257,10 @@ namespace toy
                             llvm_unreachable( "Unsupported float type size" );
                         }
                     }
-
-                    auto diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
-                                                                    pr_builder.getStringAttr( typeName ), sz, dwType );
-
-                    diVar = mlir::LLVM::DILocalVariableAttr::get(
-                        ctx, pr_subprogramAttr, pr_builder.getStringAttr( varName ), pr_fileAttr, loc.getLine(), 0, sz,
-                        diType, mlir::LLVM::DIFlags::Zero );
                 }
                 else
                 {
-                    const char* typeName{};
+                    dwType = llvm::dwarf::DW_ATE_float;
 
                     switch ( elemSizeInBits )
                     {
@@ -285,15 +279,33 @@ namespace toy
                             llvm_unreachable( "Unsupported float type size" );
                         }
                     }
-
-                    auto diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
-                                                                    pr_builder.getStringAttr( typeName ),
-                                                                    elemSizeInBits, llvm::dwarf::DW_ATE_float );
-
-                    diVar = mlir::LLVM::DILocalVariableAttr::get(
-                        ctx, pr_subprogramAttr, pr_builder.getStringAttr( varName ), pr_fileAttr, loc.getLine(), 0,
-                        elemSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
                 }
+
+                mlir::LLVM::DIBasicTypeAttr diType;
+                auto totalSizeInBits = elemSizeInBits;
+                if ( arraySize > 1 )
+                {
+                    auto baseType = mlir::LLVM::DIBasicTypeAttr::get(
+                        ctx, llvm::dwarf::DW_TAG_base_type, pr_builder.getStringAttr( typeName ), elemStorageSizeInBits, dwType );
+
+                    auto subrange = mlir::LLVM::DISubrangeAttr::get( ctx, arraySize );
+                    auto alignInBits = elemStorageSizeInBits;
+                    auto offsetInBits = 0;
+                    totalSizeInBits *= arraySize;
+
+                    diType = mlir::LLVM::DICompositeTypeAttr::get(
+                        ctx, llvm::dwarf::DW_TAG_array_type, pr_builder.getStringAttr( "" ), baseType, alignInBits,
+                        totalSizeInBits, offsetInBits, { subrange } );
+                }
+                else
+                {
+                    diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                                                               pr_builder.getStringAttr( typeName ), elemStorageSizeInBits, dwType );
+                }
+
+                diVar = mlir::LLVM::DILocalVariableAttr::get(
+                    ctx, pr_subprogramAttr, pr_builder.getStringAttr( varName ), pr_fileAttr, loc.getLine(), 0,
+                    totalSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
 
                 pr_builder.setInsertionPointAfter( allocaOp );
                 pr_builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
@@ -301,7 +313,6 @@ namespace toy
 
             symbolToAlloca[varName] = allocaOp;
         }
-
 
         mlir::LLVM::CallOp createPrintCall( ConversionPatternRewriter& rewriter, mlir::Location loc, mlir::Value input )
         {
