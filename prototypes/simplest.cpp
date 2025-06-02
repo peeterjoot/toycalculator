@@ -97,7 +97,7 @@ int main( int argc, char **argv )
 /*
 1:const char * str = "hi";
 2:int main() { // this is a dummy program corresponding to the LLVM-IR produced by prototypes/simplest.cpp
-3:    int x = 42;
+3:    long x = 42;
 4:    char * str_ptr = str;
 5:    return 0;
 6:}
@@ -127,6 +127,8 @@ int main( int argc, char **argv )
                                               /*isConstant=*/true, mlir::LLVM::Linkage::Private, "str_0", denseAttr );
     globalOp->setAttr( "unnamed_addr", builder.getUnitAttr() );
 
+#define TARGET_INT_SIZE_IN_BYTES sizeof( int )
+#define TARGET_INT_SIZE_IN_BITS ( TARGET_INT_SIZE_IN_BYTES * 8 )
     // Create main function
     auto i32Type = builder.getI32Type();
     auto funcType = builder.getFunctionType( {}, i32Type );
@@ -140,11 +142,11 @@ int main( int argc, char **argv )
     auto compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
         &context, distinctAttr, llvm::dwarf::DW_LANG_C, fileAttr, builder.getStringAttr( "testcompiler" ), false,
         mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
-    auto intTypeAttr =
-        mlir::LLVM::DIBasicTypeAttr::get( &context, (unsigned)llvm::dwarf::DW_TAG_base_type,
-                                          builder.getStringAttr( "int" ), 32, (unsigned)llvm::dwarf::DW_ATE_signed );
+    auto returnTypeAttr = mlir::LLVM::DIBasicTypeAttr::get( &context, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                            builder.getStringAttr( "int" ), TARGET_INT_SIZE_IN_BITS,
+                                                            (unsigned)llvm::dwarf::DW_ATE_signed );
     llvm::SmallVector<mlir::LLVM::DITypeAttr, 1> typeArray;
-    typeArray.push_back( intTypeAttr );
+    typeArray.push_back( returnTypeAttr );
     auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get( &context, 0, typeArray );
     auto subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
         &context, mlir::DistinctAttr::create( builder.getUnitAttr() ), compileUnitAttr, fileAttr,
@@ -153,39 +155,49 @@ int main( int argc, char **argv )
         llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
     func->setAttr( "llvm.debug.subprogram", subprogramAttr );
 
-    // Add variable x
+#define TARGET_LONG_SIZE_IN_BYTES sizeof( long )
+#define TARGET_LONG_SIZE_IN_BITS ( TARGET_LONG_SIZE_IN_BYTES * 8 )
+    // Add (long) variable x
     auto varLoc = mlir::FileLineColLoc::get( builder.getStringAttr( "test.c" ), x_LINE, THE_COLUMN_START );
     auto ptrType = mlir::LLVM::LLVMPointerType::get( &context );
     auto i64Type = builder.getI64Type();
-    auto one = builder.create<mlir::LLVM::ConstantOp>( varLoc, i64Type, builder.getI64IntegerAttr( 1 ) );
-    mlir::Type int64Type = mlir::IntegerType::get( &context, 64 );
-    auto allocaOp = builder.create<mlir::LLVM::AllocaOp>( varLoc, ptrType, int64Type, one, 4 );
+    auto constOneI64 = builder.create<mlir::LLVM::ConstantOp>( varLoc, i64Type, builder.getI64IntegerAttr( 1 ) );
+    mlir::Type int64Type = mlir::IntegerType::get( &context, TARGET_LONG_SIZE_IN_BITS );
+    auto allocaOp =
+        builder.create<mlir::LLVM::AllocaOp>( varLoc, ptrType, int64Type, constOneI64, TARGET_LONG_SIZE_IN_BYTES );
 
     // Variable DI for x
     allocaOp->setAttr( "bindc_name", builder.getStringAttr( "x" ) );
-    auto di_xType = mlir::LLVM::DIBasicTypeAttr::get( &context, llvm::dwarf::DW_TAG_base_type,
-                                                    builder.getStringAttr( "long" ), 64, llvm::dwarf::DW_ATE_signed );
-    auto di_xVar = mlir::LLVM::DILocalVariableAttr::get( &context, subprogramAttr, builder.getStringAttr( "x" ), fileAttr,
-                                                       x_LINE, 0, 64, di_xType, mlir::LLVM::DIFlags::Zero );
+    auto di_xType =
+        mlir::LLVM::DIBasicTypeAttr::get( &context, llvm::dwarf::DW_TAG_base_type, builder.getStringAttr( "long" ),
+                                          TARGET_LONG_SIZE_IN_BITS, llvm::dwarf::DW_ATE_signed );
+    auto di_xVar =
+        mlir::LLVM::DILocalVariableAttr::get( &context, subprogramAttr, builder.getStringAttr( "x" ), fileAttr, x_LINE,
+                                              0, TARGET_LONG_SIZE_IN_BITS, di_xType, mlir::LLVM::DIFlags::Zero );
     builder.create<mlir::LLVM::DbgDeclareOp>( varLoc, allocaOp, di_xVar );
 
     // store 42 into x
     auto const42 = builder.create<mlir::LLVM::ConstantOp>( varLoc, i64Type, builder.getI64IntegerAttr( 42 ) );
     builder.create<mlir::LLVM::StoreOp>( varLoc, const42, allocaOp );
 
+#define TARGET_POINTER_SIZE_IN_BYTES sizeof( char * )
+#define TARGET_POINTER_SIZE_IN_BITS ( TARGET_POINTER_SIZE_IN_BYTES * 8 )
     // Reference the global string (e.g., store its address to a pointer)
     auto strPtrLoc = mlir::FileLineColLoc::get( builder.getStringAttr( "test.c" ), str_ptr_LINE, THE_COLUMN_START );
-    auto strPtrAlloca = builder.create<mlir::LLVM::AllocaOp>( strPtrLoc, ptrType, ptrType, one, 8 );
+    auto strPtrAlloca =
+        builder.create<mlir::LLVM::AllocaOp>( strPtrLoc, ptrType, ptrType, constOneI64, TARGET_POINTER_SIZE_IN_BYTES );
 
     // Variable DI for str_ptr
     strPtrAlloca->setAttr( "bindc_name", builder.getStringAttr( "str_ptr" ) );
-    auto charType = mlir::LLVM::DIBasicTypeAttr::get(
-        &context, llvm::dwarf::DW_TAG_base_type, builder.getStringAttr( "char" ), 8, llvm::dwarf::DW_ATE_signed_char );
-    auto di_str_ptrType = mlir::LLVM::DIDerivedTypeAttr::get( &context, llvm::dwarf::DW_TAG_pointer_type,
-                                                          builder.getStringAttr( "char *" ), charType, 64, 64, 0,
-                                                          std::nullopt, mlir::LLVM::DINodeAttr() );
-    auto di_str_ptrVar = mlir::LLVM::DILocalVariableAttr::get( &context, subprogramAttr, builder.getStringAttr( "str_ptr" ),
-                                                          fileAttr, str_ptr_LINE, 0, 64, di_str_ptrType, mlir::LLVM::DIFlags::Zero );
+    auto charType =
+        mlir::LLVM::DIBasicTypeAttr::get( &context, llvm::dwarf::DW_TAG_base_type, builder.getStringAttr( "char" ),
+                                          TARGET_POINTER_SIZE_IN_BYTES, llvm::dwarf::DW_ATE_signed_char );
+    auto di_str_ptrType = mlir::LLVM::DIDerivedTypeAttr::get(
+        &context, llvm::dwarf::DW_TAG_pointer_type, builder.getStringAttr( "char *" ), charType,
+        TARGET_POINTER_SIZE_IN_BITS, TARGET_POINTER_SIZE_IN_BITS, 0, std::nullopt, mlir::LLVM::DINodeAttr() );
+    auto di_str_ptrVar = mlir::LLVM::DILocalVariableAttr::get(
+        &context, subprogramAttr, builder.getStringAttr( "str_ptr" ), fileAttr, str_ptr_LINE, 0,
+        TARGET_POINTER_SIZE_IN_BITS, di_str_ptrType, mlir::LLVM::DIFlags::Zero );
 
     builder.create<mlir::LLVM::DbgDeclareOp>( strPtrLoc, strPtrAlloca, di_str_ptrVar );
 
@@ -198,10 +210,11 @@ int main( int argc, char **argv )
     auto zero = builder.create<mlir::LLVM::ConstantOp>( retLoc, i32Type, builder.getI32IntegerAttr( 0 ) );
     builder.create<mlir::func::ReturnOp>( retLoc, mlir::ValueRange{ zero } );
 
-    // The following fused location must be set before the final call to translateModuleToLLVMIR(), and is different from all the rest of
-    // the normal MLIR loc() info.
+    // The following fused location must be set before the final call to translateModuleToLLVMIR(), and is different
+    // from all the rest of the normal MLIR loc() info.
     //
-    // Without this, translateModuleToLLVMIR() strips out all the location info and doesn't convert the MLIR loc()'s to !dbg statements
+    // Without this, translateModuleToLLVMIR() strips out all the location info and doesn't convert the MLIR loc()'s to
+    // !dbg statements
     //  -- which was painful to figure out.
     func->setLoc( builder.getFusedLoc( { loc }, subprogramAttr ) );
 
