@@ -67,7 +67,7 @@ namespace toy
         declareOp,
         printOp,
         assignmentOp,
-        returnOp
+        exitOp
     };
 
     enum class variable_state : int
@@ -94,6 +94,7 @@ namespace toy
         DialectCtx dialect;
         mlir::OpBuilder builder;
         mlir::Location currentAssignLoc;
+        mlir::FileLineColLoc lastLocation;
         mlir::ModuleOp mod;
         toy::ProgramOp programOp;
         std::string currentVarName;

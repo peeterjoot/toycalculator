@@ -68,7 +68,7 @@ namespace toy
 
         mlir::LLVM::DIFileAttr pr_fileAttr;
         mlir::LLVM::DISubprogramAttr pr_subprogramAttr;
-        DenseMap<llvm::StringRef, mlir::LLVM::GlobalOp> pr_stringLiterals;
+        std::unordered_map<std::string, mlir::LLVM::GlobalOp> pr_stringLiterals;
         mlir::LLVM::LLVMFuncOp pr_mainFunc;
         mlir::LLVM::LLVMFuncOp pr_printFuncF64;
         mlir::LLVM::LLVMFuncOp pr_printFuncI64;
@@ -76,6 +76,7 @@ namespace toy
         const toy::driverState& pr_driverState;
         ModuleOp& pr_module;
         OpBuilder pr_builder;
+
        public:
         DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> symbolToAlloca;
 
@@ -84,7 +85,7 @@ namespace toy
         {
         }
 
-        OpBuilder & getBuilder()
+        OpBuilder& getBuilder()
         {
             return pr_builder;
         }
@@ -157,10 +158,10 @@ namespace toy
                 LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { pr_builder.getF64Type() }, false );
             auto printFuncI64Type =
                 LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { pr_builder.getI64Type() }, false );
-            pr_printFuncF64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_f64", pr_printFuncF64Type,
-                                                             LLVM::Linkage::External );
-            pr_printFuncI64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_i64", printFuncI64Type,
-                                                             LLVM::Linkage::External );
+            pr_printFuncF64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_f64",
+                                                                   pr_printFuncF64Type, LLVM::Linkage::External );
+            pr_printFuncI64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_i64",
+                                                                   printFuncI64Type, LLVM::Linkage::External );
         }
 
         // Create an entry block in the "main" function
@@ -176,7 +177,7 @@ namespace toy
             auto ctx = pr_builder.getContext();
             auto mainFuncType = LLVM::LLVMFunctionType::get( pr_builder.getI32Type(), {}, false );
             pr_mainFunc = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), ENTRY_SYMBOL_NAME, mainFuncType,
-                                                            LLVM::Linkage::External );
+                                                               LLVM::Linkage::External );
 
             if ( pr_driverState.wantDebug )
             {
@@ -194,8 +195,8 @@ namespace toy
                 auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get( ctx, 0, typeArray );
                 pr_subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
                     ctx, mlir::DistinctAttr::create( pr_builder.getUnitAttr() ), compileUnitAttr, pr_fileAttr,
-                    pr_builder.getStringAttr( ENTRY_SYMBOL_NAME ), pr_builder.getStringAttr( ENTRY_SYMBOL_NAME ), pr_fileAttr,
-                    1, 1, mlir::LLVM::DISubprogramFlags::Definition, subprogramType,
+                    pr_builder.getStringAttr( ENTRY_SYMBOL_NAME ), pr_builder.getStringAttr( ENTRY_SYMBOL_NAME ),
+                    pr_fileAttr, 1, 1, mlir::LLVM::DISubprogramFlags::Definition, subprogramType,
                     llvm::ArrayRef<mlir::LLVM::DINodeAttr>{}, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
                 pr_mainFunc->setAttr( "llvm.debug.subprogram", pr_subprogramAttr );
 
@@ -286,8 +287,8 @@ namespace toy
                     }
 
                     auto diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
-                                                                    pr_builder.getStringAttr( typeName ), elemSizeInBits,
-                                                                    llvm::dwarf::DW_ATE_float );
+                                                                    pr_builder.getStringAttr( typeName ),
+                                                                    elemSizeInBits, llvm::dwarf::DW_ATE_float );
 
                     diVar = mlir::LLVM::DILocalVariableAttr::get(
                         ctx, pr_subprogramAttr, pr_builder.getStringAttr( varName ), pr_fileAttr, loc.getLine(), 0,
@@ -350,6 +351,9 @@ namespace toy
             }
             else
             {
+                auto savedIP = rewriter.saveInsertionPoint();
+                rewriter.setInsertionPointToStart( pr_module.getBody() );
+
                 auto i8Type = rewriter.getI8Type();
                 auto arrayType = mlir::LLVM::LLVMArrayType::get( i8Type, copySize );
 
@@ -369,6 +373,8 @@ namespace toy
 
                 pr_stringLiterals[stringLit.str()] = globalOp;
                 LLVM_DEBUG( llvm::dbgs() << "Created global: " << globalName << '\n' );
+
+                rewriter.restoreInsertionPoint( savedIP );
             }
 
             return globalOp;

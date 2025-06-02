@@ -16,6 +16,7 @@
 * calculator.td: introduce IntOrFloat constraint type, replacing AnyType usage; array decl support, and string support (WIP.)
 * driver: writeLL helper function, pass -g to lowering if set.
 * parser: handle large integer constants properly, array decl support, string support: WIP.
+* simplest.cpp: This MWE is updated to include a global variable and global variable access.
 
 ## tag: V2
 

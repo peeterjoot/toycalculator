@@ -1,7 +1,7 @@
 /**
  * @file    prototypes/simplest.cpp
  * @author  Peeter Joot <peeterjoot@pm.me>
- * @brief   This is a standalone MLIR -> LLVM-IR generation program, with working DWARF instrumentation.
+ * @brief   Standalone MLIR -> LLVM-IR generation program with DWARF instrumentation.
  *
  * @section Description
  *

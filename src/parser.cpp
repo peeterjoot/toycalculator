@@ -39,7 +39,10 @@ namespace toy
             col = ctx->getStart()->getCharPositionInLine();
         }
 
-        return mlir::FileLineColLoc::get( builder.getStringAttr( filename ), line, col + 1 );
+        auto loc = mlir::FileLineColLoc::get( builder.getStringAttr( filename ), line, col + 1 );
+        lastLocation = loc;
+
+        return loc;
     }
 
     inline std::string MLIRListener::formatLocation( mlir::Location loc )
@@ -266,12 +269,11 @@ namespace toy
 
     void MLIRListener::exitStartRule( ToyParser::StartRuleContext *ctx )
     {
-        if ( lastOp != lastOperator::returnOp )
+        if ( lastOp != lastOperator::exitOp )
         {
-            auto loc = getLocation( ctx );
             // Empty ValueRange means we are building a toy.return with no
             // operands:
-            builder.create<toy::ExitOp>( loc, mlir::ValueRange{} );
+            builder.create<toy::ExitOp>( lastLocation, mlir::ValueRange{} );
         }
 
         builder.setInsertionPointToEnd( mod.getBody() );
@@ -393,7 +395,7 @@ namespace toy
 
     void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )
     {
-        lastOp = lastOperator::returnOp;
+        lastOp = lastOperator::exitOp;
         auto loc = getLocation( ctx );
 
         auto lit = ctx->numericLiteral();
