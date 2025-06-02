@@ -501,10 +501,11 @@ namespace toy
             rewriter.setInsertionPoint( op );
 
             mlir::Value sizeVal;
+            int64_t arraySize = 1;
             if ( declareOp.getSize().has_value() )
             {
                 // Array: Use size attribute, no caching in lState
-                int64_t arraySize = declareOp.getSize().value();
+                arraySize = declareOp.getSize().value();
                 if ( arraySize <= 0 )
                 {
                     return rewriter.notifyMatchFailure( declareOp, "array size must be positive" );
@@ -519,7 +520,7 @@ namespace toy
 
             auto allocaOp = rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, sizeVal, alignment );
 
-            lState.constructVariableDI( varName, elemType, getLocation( loc ), elemSizeInBits, allocaOp );
+            lState.constructVariableDI( varName, elemType, getLocation( loc ), elemSizeInBits, allocaOp, arraySize );
 
             auto parentOp = op->getParentOp();
 
