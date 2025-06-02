@@ -219,8 +219,7 @@ namespace toy
 
                 const char* typeName{};
                 unsigned dwType = llvm::dwarf::DW_ATE_signed;
-                unsigned elemStorageSizeInBits =
-                    elemSizeInBits;    // storage for i1 is "upgraded" to i8 at alloca time.
+                unsigned elemStorageSizeInBits = elemSizeInBits;    // Storage size (e.g., i1 uses i8)
 
                 if ( mlir::isa<mlir::IntegerType>( elemType ) )
                 {
@@ -235,7 +234,7 @@ namespace toy
                         }
                         case 8:
                         {
-                            typeName = "int8_t";
+                            typeName = "char";    // Use "char" for STRING arrays
                             dwType = llvm::dwarf::DW_ATE_signed_char;
                             break;
                         }
@@ -256,14 +255,13 @@ namespace toy
                         }
                         default:
                         {
-                            llvm_unreachable( "Unsupported float type size" );
+                            llvm_unreachable( "Unsupported integer type size" );
                         }
                     }
                 }
-                else
+                else if ( mlir::isa<mlir::FloatType>( elemType ) )
                 {
                     dwType = llvm::dwarf::DW_ATE_float;
-
                     switch ( elemSizeInBits )
                     {
                         case 32:
@@ -282,6 +280,10 @@ namespace toy
                         }
                     }
                 }
+                else
+                {
+                    llvm_unreachable( "Unsupported type for debug info" );
+                }
 
                 unsigned totalSizeInBits = elemStorageSizeInBits * arraySize;
                 if ( arraySize > 1 )
@@ -299,10 +301,11 @@ namespace toy
 
                     // Create array type
                     auto alignInBits = elemStorageSizeInBits;    // Alignment matches element size
-                    auto offsetInBits = 0;
                     diType = mlir::LLVM::DICompositeTypeAttr::get(
-                        ctx, llvm::dwarf::DW_TAG_array_type, pr_builder.getStringAttr( "" ), baseType, alignInBits,
-                        totalSizeInBits, offsetInBits, { subrange } );
+                        ctx, llvm::dwarf::DW_TAG_array_type, pr_builder.getStringAttr( "" ), pr_fileAttr,
+                        /*line=*/0, pr_subprogramAttr, baseType, mlir::LLVM::DIFlags::Zero, totalSizeInBits,
+                        alignInBits, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{ subrange },
+                        /*dataLocation=*/nullptr, /*rank=*/nullptr, /*allocated=*/nullptr, /*associated=*/nullptr );
                 }
                 else
                 {
@@ -313,8 +316,8 @@ namespace toy
                 }
 
                 diVar = mlir::LLVM::DILocalVariableAttr::get(
-                    ctx, pr_subprogramAttr, pr_builder.getStringAttr( varName ), pr_fileAttr, loc.getLine(), 0,
-                    totalSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
+                    ctx, pr_subprogramAttr, pr_builder.getStringAttr( varName ), pr_fileAttr, loc.getLine(),
+                    /*argNo=*/0, totalSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
 
                 pr_builder.setInsertionPointAfter( allocaOp );
                 pr_builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
