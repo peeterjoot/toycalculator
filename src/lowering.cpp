@@ -215,10 +215,12 @@ namespace toy
                 allocaOp->setAttr( "bindc_name", pr_builder.getStringAttr( varName ) );
 
                 mlir::LLVM::DILocalVariableAttr diVar;
+                mlir::LLVM::DITypeAttr diType;
 
                 const char* typeName{};
                 unsigned dwType = llvm::dwarf::DW_ATE_signed;
-                unsigned elemStorageSizeInBits = elemSizeInBits; // storage for i1 is "upgraded" to i8 at alloca time.
+                unsigned elemStorageSizeInBits =
+                    elemSizeInBits;    // storage for i1 is "upgraded" to i8 at alloca time.
 
                 if ( mlir::isa<mlir::IntegerType>( elemType ) )
                 {
@@ -281,26 +283,33 @@ namespace toy
                     }
                 }
 
-                mlir::LLVM::DIBasicTypeAttr diType;
-                auto totalSizeInBits = elemSizeInBits;
+                unsigned totalSizeInBits = elemStorageSizeInBits * arraySize;
                 if ( arraySize > 1 )
                 {
-                    auto baseType = mlir::LLVM::DIBasicTypeAttr::get(
-                        ctx, llvm::dwarf::DW_TAG_base_type, pr_builder.getStringAttr( typeName ), elemStorageSizeInBits, dwType );
+                    // Create base type for array elements
+                    auto baseType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                                                                      pr_builder.getStringAttr( typeName ),
+                                                                      elemStorageSizeInBits, dwType );
 
-                    auto subrange = mlir::LLVM::DISubrangeAttr::get( ctx, arraySize );
-                    auto alignInBits = elemStorageSizeInBits;
+                    // Create subrange for array (count = arraySize, lowerBound = 0)
+                    auto countAttr = mlir::IntegerAttr::get( mlir::IntegerType::get( ctx, 64 ), arraySize );
+                    auto lowerBoundAttr = mlir::IntegerAttr::get( mlir::IntegerType::get( ctx, 64 ), 0 );
+                    auto subrange = mlir::LLVM::DISubrangeAttr::get( ctx, countAttr, lowerBoundAttr,
+                                                                     /*upperBound=*/nullptr, /*stride=*/nullptr );
+
+                    // Create array type
+                    auto alignInBits = elemStorageSizeInBits;    // Alignment matches element size
                     auto offsetInBits = 0;
-                    totalSizeInBits *= arraySize;
-
                     diType = mlir::LLVM::DICompositeTypeAttr::get(
                         ctx, llvm::dwarf::DW_TAG_array_type, pr_builder.getStringAttr( "" ), baseType, alignInBits,
                         totalSizeInBits, offsetInBits, { subrange } );
                 }
                 else
                 {
+                    // Scalar type
                     diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
-                                                               pr_builder.getStringAttr( typeName ), elemStorageSizeInBits, dwType );
+                                                               pr_builder.getStringAttr( typeName ),
+                                                               elemStorageSizeInBits, dwType );
                 }
 
                 diVar = mlir::LLVM::DILocalVariableAttr::get(
@@ -674,7 +683,7 @@ namespace toy
             LLVM_DEBUG( llvm::dbgs() << "numElems: " << numElems << '\n' );
             LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
 
-            if ( !elemType.isa<mlir::IntegerType>() || elemType.getIntOrFloatBitWidth() != 8 )
+            if ( !mlir::isa<mlir::IntegerType>( elemType ) || elemType.getIntOrFloatBitWidth() != 8 )
             {
                 return rewriter.notifyMatchFailure( assignOp, "string assignment requires i8 array" );
             }
