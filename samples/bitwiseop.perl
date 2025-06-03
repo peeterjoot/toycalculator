@@ -121,7 +121,7 @@ open my $toy, ">${name}op.toy" or die;
 open my $etoy, ">expected/${name}op.out" or die;
 
 print $toy qq(//THIS IS A GENERATED TEST CASE (./$myName @origARGV).  DO NOT EDIT\n
-INT32 i;
+STRING s[16];
 INT64 r;\n);
 
 my @symbols = sort keys %v1;
@@ -146,7 +146,6 @@ foreach my $v ( sort keys %v2 )
     print $toy "$v = $v2{$v};\n";
 }
 
-my $i = 12340000;
 foreach my $v1 ( sort keys %v1 )
 {
     foreach my $v2( sort keys %v2 )
@@ -175,10 +174,8 @@ foreach my $v1 ( sort keys %v1 )
             $e = ( $a ^ $b );
         }
 
-        my $m = sprintf( "i = %d;\nPRINT i;\n", $i );
-        print $etoy "$i\n$e\n";
-        print $toy "${m}r = $v1 ${op} $v2;\nPRINT r;\n";
-        $i++;
+        print $etoy "$v1 ${op} $v2\n$e\n";
+        print $toy "s = \"$v1 ${op} $v2\";\nPRINT s;\nr = $v1 ${op} $v2;\nPRINT r;\n";
     }
 }
 
