@@ -9,9 +9,9 @@
 
 extern "C"
 {
-    void __toy_print_string( const char * str )
+    void __toy_print_string( size_t len, const char * str )
     {
-        printf( "%s\n", str );
+        printf( "%.*s\n", (int)len, str );
     }
 
     void __toy_print_f64( double value )
@@ -26,11 +26,6 @@ extern "C"
     }
 
 #if 0
-    void __toy_print_nstring( size_t len, const char * str )
-    {
-        printf( "%.*s\n", (int)len, str );
-    }
-
     void __toy_print_f32( float value )
     {
         printf( "%f\n", value );

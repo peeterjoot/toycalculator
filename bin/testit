@@ -103,6 +103,7 @@ system( qq(rm -rf out) );
 my %tests = map { $_ => 1 } (qw(
 addi
 andop
+array
 bin
 bool
 boolop

@@ -1,12 +1,10 @@
 ## tag: V3
 
-WIP.
-
 LANGUAGE ELEMENTS:
 * comparison operators (<, <=, EQ, NE) yielding BOOL values.  These work for any combinations of floating and integer types (including BOOL.)
 * integer bitwise operators (OR, AND, XOR).  These only for for integer types (including BOOL.)
 * a NOT operator, yielding BOOL.
-* Array + string declaration and lowering support, including debug instrumentation.
+* Array + string declaration and lowering support, including debug instrumentation, and print support for string variables.
 * String assignment support.
 
 TEST:
@@ -21,15 +19,9 @@ INTERNALS:
 * Reorganize the grammar so that all the simple lexer tokens are last.  Rename a bunch of the tokens, introducing some consistency.
 * calculator.td: introduce IntOrFloat constraint type, replacing AnyType usage; array decl support, and string support.
 * driver: writeLL helper function, pass -g to lowering if set.
-* parser: handle large integer constants properly, array decl support, string support: WIP.
+* parser: handle large integer constants properly, array decl support, and string support.
 * simplest.cpp: This MWE is updated to include a global variable and global variable access.
 * parser: implicit exit: use the last saved location, instead of the module start.  This means the line numbers don't jump around at the very end of the program anymore (i.e.: implicit return/exit)
-
-TODO (tag criteria?)
-* print string-variable.
-* print string-literal (perhaps rework string assignment if this is done.)
-* array member assignment.
-* debug test cases for non-string array variables.  Need array member assignment first.
 
 ## tag: V2
 
