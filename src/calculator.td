@@ -95,9 +95,14 @@ def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
   }];
 }
 
+//def StringType : Toy_Type<"String"> {
+//    let mnemonic = "string";
+//}
+
 def Toy_PrintOp : Op<Toy_Dialect, "print"> {
   let summary = "Print a variable";
-  let arguments = (ins Toy_IntOrFloat:$input);
+  //let arguments = (ins Toy_IntOrFloat:$input);
+  let arguments = (ins AnyType:$input);
   let results = (outs);
   let assemblyFormat = "$input `:` type($input) attr-dict";
 }

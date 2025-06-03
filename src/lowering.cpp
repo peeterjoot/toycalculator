@@ -72,6 +72,7 @@ namespace toy
         mlir::LLVM::LLVMFuncOp pr_mainFunc;
         mlir::LLVM::LLVMFuncOp pr_printFuncF64;
         mlir::LLVM::LLVMFuncOp pr_printFuncI64;
+        mlir::LLVM::LLVMFuncOp pr_printFuncString;
 
         const toy::driverState& pr_driverState;
         ModuleOp& pr_module;
@@ -154,14 +155,22 @@ namespace toy
         {
             auto ctx = pr_builder.getContext();
             pr_builder.setInsertionPointToStart( pr_module.getBody() );
+
             auto pr_printFuncF64Type =
                 LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { pr_builder.getF64Type() }, false );
-            auto printFuncI64Type =
-                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { pr_builder.getI64Type() }, false );
             pr_printFuncF64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_f64",
                                                                    pr_printFuncF64Type, LLVM::Linkage::External );
+
+            auto printFuncI64Type =
+                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { pr_builder.getI64Type() }, false );
             pr_printFuncI64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_i64",
                                                                    printFuncI64Type, LLVM::Linkage::External );
+
+            auto ptrType = LLVM::LLVMPointerType::get( ctx );
+            auto printFuncStringType = LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ),
+                                                                    { pr_builder.getI64Type(), ptrType }, false );
+            pr_printFuncString = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_string",
+                                                                      printFuncStringType, LLVM::Linkage::External );
         }
 
         // Create an entry block in the "main" function
@@ -346,7 +355,7 @@ namespace toy
 
                 result = rewriter.create<LLVM::CallOp>( loc, pr_printFuncI64, ValueRange{ input } );
             }
-            else
+            else if ( auto inputf = mlir::dyn_cast<FloatType>( inputType ) )
             {
                 if ( inputType.isF32() )
                 {
@@ -357,6 +366,39 @@ namespace toy
                     assert( inputType.isF64() );
                 }
                 result = rewriter.create<LLVM::CallOp>( loc, pr_printFuncF64, ValueRange{ input } );
+            }
+            else if ( inputType.isa<mlir::LLVM::LLVMPointerType>() )
+            {
+                // Find AllocaOp for size and element type
+                auto loadOp = input.getDefiningOp<toy::LoadOp>();
+                assert( loadOp );
+
+                auto varName = loadOp.getName();
+                auto allocaOp = symbolToAlloca[varName];
+                assert( allocaOp );
+
+                // Validate element type is i8
+                auto elemType = allocaOp.getElemType();
+                assert( elemType.isa<mlir::IntegerType>() &&
+                        ( elemType.cast<mlir::IntegerType>().getWidth() == 8 ) );    // must be i8
+
+                // Get array size
+                int64_t numElems = 0;
+                if ( auto constOp = allocaOp.getArraySize().getDefiningOp<mlir::LLVM::ConstantOp>() )
+                {
+                    auto intAttr = mlir::dyn_cast<mlir::IntegerAttr>( constOp.getValue() );
+                    numElems = intAttr.getInt();
+                }
+                assert( numElems );
+
+                auto sizeConst = rewriter.create<mlir::LLVM::ConstantOp>( loc, rewriter.getI64Type(),
+                                                                          rewriter.getI64IntegerAttr( numElems ) );
+
+                result = rewriter.create<mlir::LLVM::CallOp>( loc, pr_printFuncString, ValueRange{ sizeConst, input } );
+            }
+            else
+            {
+                assert( 0 ); // Error: unsupported type
             }
 
             return result;
@@ -706,7 +748,6 @@ namespace toy
             mlir::LLVM::GlobalOp globalOp = lState.lookupOrInsertGlobalOp( rewriter, value, loc, copySize, strLen );
 
             auto globalPtr = rewriter.create<LLVM::AddressOfOp>( loc, globalOp );
-            auto ptrType = mlir::LLVM::LLVMPointerType::get( rewriter.getContext() );
 
             auto destPtr = allocaOp.getResult();
 
@@ -880,16 +921,24 @@ namespace toy
             auto name = loadOp.getName();
             auto allocaOp = lState.symbolToAlloca[name];
 
-            // name: i1v
             LLVM_DEBUG( llvm::dbgs() << "name: " << name << '\n' );
 
             Type elemType = allocaOp.getElemType();
-            LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
 
-            auto load = rewriter.create<LLVM::LoadOp>( loc, elemType, allocaOp );
-            LLVM_DEBUG( llvm::dbgs() << "new load op: " << load << '\n' );
+            if ( loadOp.getResult().getType().isa<mlir::LLVM::LLVMPointerType>() )
+            {
+                // Return the allocated pointer
+                LLVM_DEBUG( llvm::dbgs() << "Loading array address: " << allocaOp.getResult() << '\n' );
+                rewriter.replaceOp( op, allocaOp.getResult() );
+            }
+            else
+            {
+                // Scalar load
+                auto load = rewriter.create<LLVM::LoadOp>( loc, elemType, allocaOp );
+                LLVM_DEBUG( llvm::dbgs() << "new load op: " << load << '\n' );
+                rewriter.replaceOp( op, load.getResult() );
+            }
 
-            rewriter.replaceOp( op, load.getResult() );
             return success();
         }
     };
@@ -1006,6 +1055,7 @@ namespace toy
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.print: " << *op << '\n' );
 
             mlir::Value input = printOp.getInput();
+            LLVM_DEBUG( llvm::dbgs() << "input: " << input << '\n' );
 
             mlir::LLVM::CallOp result = lState.createPrintCall( rewriter, loc, input );
 

@@ -27,6 +27,7 @@ namespace toy
         context.getOrLoadDialect<toy::ToyDialect>();
         context.getOrLoadDialect<mlir::arith::ArithDialect>();
         context.getOrLoadDialect<mlir::memref::MemRefDialect>();
+        context.getOrLoadDialect<mlir::LLVM::LLVMDialect>();
     }
 
     inline mlir::Location MLIRListener::getLocation( antlr4::ParserRuleContext *ctx )
@@ -387,7 +388,20 @@ namespace toy
         auto dcl = var_storage[varName];
         auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
 
-        mlir::Type varType = declareOp.getTypeAttr().getValue();
+        mlir::Type varType;
+        mlir::Type elemType = declareOp.getTypeAttr().getValue();
+
+        if ( declareOp.getSizeAttr() )    // Check if size attribute exists
+        {
+            // Array: load a generic pointer
+            varType = mlir::LLVM::LLVMPointerType::get(builder.getContext(), /*addressSpace=*/0);
+        }
+        else
+        {
+            // Scalar: load the value
+            varType = elemType;
+        }
+
         auto value = builder.create<toy::LoadOp>( loc, varType, builder.getStringAttr( varName ) );
 
         builder.create<toy::PrintOp>( loc, value );

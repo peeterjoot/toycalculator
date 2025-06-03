@@ -66,9 +66,11 @@ do that without bothering with AI tools that can be more work to use than just d
 
 Basic language constructs to make things more interesting:
 
+* print string-literal (perhaps rework string assignment, if a string-literal op is introduced.)
+* array member assignment.
+* debug test cases for non-string array variables.  Need array member assignment first.
 * Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure.
 * NOT operator: add more comprehensive all types testing.
-* Implement PRINT string-variable, and PRINT string-literal.
 * tests for all the type conversions (i.e.: binary and unary arith operators)
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 * unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.
@@ -78,7 +80,7 @@ Basic language constructs to make things more interesting:
 * CAST operators.
 * Allow EXIT at more than the end of program (that restriction is currently enforced in the grammar.)
 * Don't have any traits defined for my MLIR operations (initially caused compile errors, and I just commented-out or omitted after that.)
-* gdb session for simpleless.toy is not behaving right with respect to 'n':
+* gdb session for simpleless.toy is not behaving right with respect to 'next':
 Breakpoint 1, main () at simpleless.toy:4
 4       i1 = TRUE;
 (gdb) n
