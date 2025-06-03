@@ -1,0 +1,10 @@
+# run from samples/
+
+./compareop.perl --lt
+./compareop.perl --le
+./compareop.perl --eq
+./compareop.perl --ne
+
+./bitwiseop.perl --or
+./bitwiseop.perl --and
+./bitwiseop.perl --xor
