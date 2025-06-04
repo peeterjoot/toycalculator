@@ -62,9 +62,6 @@ namespace toy
         mlir::LLVM::ConstantOp pr_one_I64;
         mlir::LLVM::ConstantOp pr_zero_F64;
         mlir::LLVM::ConstantOp pr_zero_I32;
-        bool pr_one_I64_set{};
-        bool pr_zero_F64_set{};
-        bool pr_zero_I32_set{};
 
         mlir::LLVM::DIFileAttr pr_fileAttr;
         mlir::LLVM::DISubprogramAttr pr_subprogramAttr;
@@ -93,11 +90,10 @@ namespace toy
 
         mlir::LLVM::ConstantOp getI64one( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
-            if ( !pr_one_I64_set )
+            if ( !pr_one_I64 )
             {
                 pr_one_I64 =
                     rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( 1 ) );
-                pr_one_I64_set = true;
             }
 
             return pr_one_I64;
@@ -105,11 +101,10 @@ namespace toy
 
         mlir::LLVM::ConstantOp getI32zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
-            if ( !pr_zero_I32_set )
+            if ( !pr_zero_I32 )
             {
                 pr_zero_I32 =
                     rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr( 0 ) );
-                pr_zero_I32_set = true;
             }
 
             return pr_zero_I32;
@@ -117,11 +112,10 @@ namespace toy
 
         mlir::LLVM::ConstantOp getF64zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
-            if ( !pr_zero_F64_set )
+            if ( !pr_zero_F64 )
             {
                 pr_zero_F64 =
                     rewriter.create<LLVM::ConstantOp>( loc, rewriter.getF64Type(), rewriter.getF64FloatAttr( 0 ) );
-                pr_zero_F64_set = true;
             }
 
             return pr_zero_F64;
@@ -151,26 +145,53 @@ namespace toy
             pr_module->setAttr( "llvm.ident", pr_builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
         }
 
-        void createToyPrintProto()
+        mlir::LLVM::LLVMFuncOp toyPrintF64( )
         {
-            auto ctx = pr_builder.getContext();
-            pr_builder.setInsertionPointToStart( pr_module.getBody() );
+            if ( !pr_printFuncF64 )
+            {
+                auto ctx = pr_builder.getContext();
+                pr_builder.setInsertionPointToStart( pr_module.getBody() );
 
-            auto pr_printFuncF64Type =
-                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { pr_builder.getF64Type() }, false );
-            pr_printFuncF64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_f64",
-                                                                   pr_printFuncF64Type, LLVM::Linkage::External );
+                auto pr_printFuncF64Type =
+                    LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { pr_builder.getF64Type() }, false );
+                pr_printFuncF64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_f64",
+                                                                       pr_printFuncF64Type, LLVM::Linkage::External );
+            }
 
-            auto printFuncI64Type =
-                LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { pr_builder.getI64Type() }, false );
-            pr_printFuncI64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_i64",
-                                                                   printFuncI64Type, LLVM::Linkage::External );
+            return pr_printFuncF64;
+        }
 
-            auto ptrType = LLVM::LLVMPointerType::get( ctx );
-            auto printFuncStringType = LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ),
-                                                                    { pr_builder.getI64Type(), ptrType }, false );
-            pr_printFuncString = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_string",
-                                                                      printFuncStringType, LLVM::Linkage::External );
+        mlir::LLVM::LLVMFuncOp toyPrintI64( )
+        {
+            if ( !pr_printFuncI64 )
+            {
+                auto ctx = pr_builder.getContext();
+                pr_builder.setInsertionPointToStart( pr_module.getBody() );
+
+                auto printFuncI64Type =
+                    LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { pr_builder.getI64Type() }, false );
+                pr_printFuncI64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_i64",
+                                                                       printFuncI64Type, LLVM::Linkage::External );
+            }
+
+            return pr_printFuncI64;
+        }
+
+        mlir::LLVM::LLVMFuncOp toyPrintString( )
+        {
+            if ( !pr_printFuncString )
+            {
+                auto ctx = pr_builder.getContext();
+                pr_builder.setInsertionPointToStart( pr_module.getBody() );
+
+                auto ptrType = LLVM::LLVMPointerType::get( ctx );
+                auto printFuncStringType = LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ),
+                                                                        { pr_builder.getI64Type(), ptrType }, false );
+                pr_printFuncString = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_string",
+                                                                          printFuncStringType, LLVM::Linkage::External );
+            }
+
+            return pr_printFuncString;
         }
 
         // Create an entry block in the "main" function
@@ -353,7 +374,7 @@ namespace toy
                     input = rewriter.create<mlir::LLVM::SExtOp>( loc, rewriter.getI64Type(), input );
                 }
 
-                result = rewriter.create<LLVM::CallOp>( loc, pr_printFuncI64, ValueRange{ input } );
+                result = rewriter.create<LLVM::CallOp>( loc, toyPrintI64(), ValueRange{ input } );
             }
             else if ( auto inputf = mlir::dyn_cast<FloatType>( inputType ) )
             {
@@ -365,7 +386,7 @@ namespace toy
                 {
                     assert( inputType.isF64() );
                 }
-                result = rewriter.create<LLVM::CallOp>( loc, pr_printFuncF64, ValueRange{ input } );
+                result = rewriter.create<LLVM::CallOp>( loc, toyPrintF64(), ValueRange{ input } );
             }
             else if ( inputType.isa<mlir::LLVM::LLVMPointerType>() )
             {
@@ -394,7 +415,7 @@ namespace toy
                 auto sizeConst = rewriter.create<mlir::LLVM::ConstantOp>( loc, rewriter.getI64Type(),
                                                                           rewriter.getI64IntegerAttr( numElems ) );
 
-                result = rewriter.create<mlir::LLVM::CallOp>( loc, pr_printFuncString, ValueRange{ sizeConst, input } );
+                result = rewriter.create<mlir::LLVM::CallOp>( loc, toyPrintString(), ValueRange{ sizeConst, input } );
             }
             else
             {
@@ -1297,7 +1318,6 @@ namespace toy
             lState.setModuleAttrs();
 
             auto ctx = lState.getBuilder().getContext();
-            lState.createToyPrintProto();
             lState.createMain();
 
             // Initialize the type converter
