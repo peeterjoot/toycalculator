@@ -1,3 +1,8 @@
+## tag: V4 (WIP)
+
+INTERNALS:
+* Generate the __toy_print... prototypes on demand, to clutter up the generated code less.  Can do this by saving and restoring the insertion point to the module level (where the symbol table and globals live.)
+
 ## tag: V3
 
 LANGUAGE ELEMENTS:
