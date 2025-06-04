@@ -145,50 +145,58 @@ namespace toy
             pr_module->setAttr( "llvm.ident", pr_builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
         }
 
-        mlir::LLVM::LLVMFuncOp toyPrintF64( )
+        mlir::LLVM::LLVMFuncOp toyPrintF64()
         {
             if ( !pr_printFuncF64 )
             {
-                auto ctx = pr_builder.getContext();
+                auto oldIP = pr_builder.saveInsertionPoint();
                 pr_builder.setInsertionPointToStart( pr_module.getBody() );
 
+                auto ctx = pr_builder.getContext();
                 auto pr_printFuncF64Type =
                     LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { pr_builder.getF64Type() }, false );
                 pr_printFuncF64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_f64",
                                                                        pr_printFuncF64Type, LLVM::Linkage::External );
+                pr_builder.restoreInsertionPoint( oldIP );
             }
 
             return pr_printFuncF64;
         }
 
-        mlir::LLVM::LLVMFuncOp toyPrintI64( )
+        mlir::LLVM::LLVMFuncOp toyPrintI64()
         {
             if ( !pr_printFuncI64 )
             {
-                auto ctx = pr_builder.getContext();
+                auto oldIP = pr_builder.saveInsertionPoint();
                 pr_builder.setInsertionPointToStart( pr_module.getBody() );
 
+                auto ctx = pr_builder.getContext();
                 auto printFuncI64Type =
                     LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { pr_builder.getI64Type() }, false );
                 pr_printFuncI64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_i64",
                                                                        printFuncI64Type, LLVM::Linkage::External );
+
+                pr_builder.restoreInsertionPoint( oldIP );
             }
 
             return pr_printFuncI64;
         }
 
-        mlir::LLVM::LLVMFuncOp toyPrintString( )
+        mlir::LLVM::LLVMFuncOp toyPrintString()
         {
             if ( !pr_printFuncString )
             {
-                auto ctx = pr_builder.getContext();
+                auto oldIP = pr_builder.saveInsertionPoint();
                 pr_builder.setInsertionPointToStart( pr_module.getBody() );
 
+                auto ctx = pr_builder.getContext();
                 auto ptrType = LLVM::LLVMPointerType::get( ctx );
                 auto printFuncStringType = LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ),
                                                                         { pr_builder.getI64Type(), ptrType }, false );
-                pr_printFuncString = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_string",
-                                                                          printFuncStringType, LLVM::Linkage::External );
+                pr_printFuncString = pr_builder.create<LLVM::LLVMFuncOp>(
+                    pr_module.getLoc(), "__toy_print_string", printFuncStringType, LLVM::Linkage::External );
+
+                pr_builder.restoreInsertionPoint( oldIP );
             }
 
             return pr_printFuncString;
@@ -419,7 +427,7 @@ namespace toy
             }
             else
             {
-                assert( 0 ); // Error: unsupported type
+                assert( 0 );    // Error: unsupported type
             }
 
             return result;
