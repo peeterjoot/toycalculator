@@ -66,6 +66,14 @@ do that without bothering with AI tools that can be more work to use than just d
 
 Basic language constructs to make things more interesting:
 
+* string literal tests for edge cases: array.toy (delete shortstring.toy):
+
+Empty string: STRING s[5]; s = ""; PRINT s;
+
+Exact size: STRING s[2]; s = "hi"; PRINT s; -- done.
+
+Longer string: STRING s[3]; s = "hello"; PRINT s; (check truncation or error handling)
+
 * rework the generated test cases using the new string literal support.
 * array member assignment.
 * debug test cases for non-string array variables.  Need array member assignment first.
