@@ -107,6 +107,7 @@ array
 bin
 bool
 boolop
+shortstring
 converti
 dcl
 empty
