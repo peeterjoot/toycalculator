@@ -74,7 +74,6 @@ Exact size: STRING s[2]; s = "hi"; PRINT s; -- done.
 
 Longer string: STRING s[3]; s = "hello"; PRINT s; (check truncation or error handling)
 
-* rework the generated test cases using the new string literal support.
 * array member assignment.
 * debug test cases for non-string array variables.  Need array member assignment first.
 * Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure.

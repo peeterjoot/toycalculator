@@ -121,7 +121,6 @@ open my $toy, ">${name}op.toy" or die;
 open my $etoy, ">expected/${name}op.out" or die;
 
 print $toy qq(//THIS IS A GENERATED TEST CASE (./$myName @origARGV).  DO NOT EDIT\n
-STRING s[16];
 INT64 r;\n);
 
 my @symbols = sort keys %v1;
@@ -175,7 +174,7 @@ foreach my $v1 ( sort keys %v1 )
         }
 
         print $etoy "$v1 ${op} $v2\n$e\n";
-        print $toy "s = \"$v1 ${op} $v2\";\nPRINT s;\nr = $v1 ${op} $v2;\nPRINT r;\n";
+        print $toy "PRINT \"$v1 ${op} $v2\";\nr = $v1 ${op} $v2;\nPRINT r;\n";
     }
 }
 
