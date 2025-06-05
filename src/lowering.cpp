@@ -30,6 +30,7 @@
 #include <mlir/Pass/Pass.h>
 #include <mlir/Transforms/DialectConversion.h>
 
+#include <format>
 #include <numeric>
 
 #include "ToyDialect.h"
@@ -433,6 +434,20 @@ namespace toy
             return result;
         }
 
+        mlir::LLVM::GlobalOp lookupGlobalOp( mlir::StringAttr& stringLit )
+        {
+            mlir::LLVM::GlobalOp globalOp;
+            auto it = pr_stringLiterals.find( stringLit.str() );
+            if ( it != pr_stringLiterals.end() )
+            {
+                globalOp = it->second;
+                LLVM_DEBUG( llvm::dbgs() << std::format( "Found global: {} for string literal '{}'\n",
+                                                         globalOp.getSymName().str(), stringLit.str() ) );
+            }
+
+            return globalOp;
+        }
+
         mlir::LLVM::GlobalOp lookupOrInsertGlobalOp( ConversionPatternRewriter& rewriter, mlir::StringAttr& stringLit,
                                                      mlir::Location loc, size_t copySize, size_t strLen )
         {
@@ -604,6 +619,41 @@ namespace toy
         }
     };
 
+    class StringLiteralOpLowering : public ConversionPattern
+    {
+       private:
+        loweringContext& lState;
+
+       public:
+        StringLiteralOpLowering( loweringContext& lState_, MLIRContext* ctx )
+            : ConversionPattern( toy::StringLiteralOp::getOperationName(), 1, ctx ), lState( lState_ )
+        {
+        }
+
+        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
+                                       ConversionPatternRewriter& rewriter ) const override
+        {
+            auto stringLiteralOp = cast<toy::StringLiteralOp>( op );
+            auto loc = stringLiteralOp.getLoc();
+
+            auto strAttr = stringLiteralOp.getValueAttr();
+            auto strValue = strAttr.getValue().str();
+            auto strLen = strValue.size();
+
+            auto globalOp = lState.lookupOrInsertGlobalOp( rewriter, strAttr, loc, strLen, strLen );
+            if ( !globalOp )
+            {
+                return rewriter.notifyMatchFailure( op, "Failed to create or lookup string literal global" );
+            }
+
+            auto addr = rewriter.create<LLVM::AddressOfOp>( loc, globalOp );
+
+            // Replace the string literal op with the pointer to the global
+            rewriter.replaceOp( op, addr.getResult() );
+            return success();
+        }
+    };
+
     // Lower AssignOp to llvm.store (after type conversions, if required)
     class AssignOpLowering : public ConversionPattern
     {
@@ -641,149 +691,124 @@ namespace toy
 
             // extract parameters from the allocaOp so we know what to do here:
             Type elemType = allocaOp.getElemType();
-            if ( auto constOp = allocaOp.getArraySize().getDefiningOp<LLVM::ConstantOp>() )
-            {
-                if ( auto intAttr = mlir::dyn_cast<IntegerAttr>( constOp.getValue() ) )
-                {
-                    int64_t numElems = intAttr.getInt();
-
-                    assert( numElems == 1 );
-                }
-                else
-                {
-                    assert( 0 );    // shouldn't happen.
-                }
-            }
-
-            // LLVM_DEBUG( llvm::dbgs() << "memType: " << memType << '\n' );
-            LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
-            // LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
-
-            if ( mlir::isa<mlir::Float64Type>( valType ) )
-            {
-                if ( mlir::isa<mlir::IntegerType>( elemType ) )
-                {
-                    value = rewriter.create<LLVM::FPToSIOp>( loc, elemType, value );
-                }
-                else if ( mlir::isa<mlir::Float32Type>( elemType ) )
-                {
-                    value = rewriter.create<LLVM::FPTruncOp>( loc, elemType, value );
-                }
-            }
-            else if ( mlir::isa<mlir::Float32Type>( valType ) )
-            {
-                if ( mlir::isa<mlir::IntegerType>( elemType ) )
-                {
-                    value = rewriter.create<LLVM::FPToSIOp>( loc, elemType, value );
-                }
-                else if ( mlir::isa<mlir::Float64Type>( elemType ) )
-                {
-                    value = rewriter.create<LLVM::FPExtOp>( loc, elemType, value );
-                }
-            }
-            else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
-            {
-                auto vwidth = viType.getWidth();
-
-                if ( mlir::isa<mlir::Float64Type>( elemType ) || mlir::isa<mlir::Float32Type>( elemType ) )
-                {
-                    if ( vwidth == 1 )
-                    {
-                        value = rewriter.create<LLVM::UIToFPOp>( loc, elemType, value );
-                    }
-                    else
-                    {
-                        value = rewriter.create<LLVM::SIToFPOp>( loc, elemType, value );
-                    }
-                }
-                else
-                {
-                    auto miType = mlir::cast<mlir::IntegerType>( elemType );
-
-                    auto mwidth = miType.getWidth();
-                    if ( vwidth > mwidth )
-                    {
-                        value = rewriter.create<mlir::LLVM::TruncOp>( loc, elemType, value );
-                    }
-                    else if ( vwidth < mwidth )
-                    {
-                        value = rewriter.create<mlir::LLVM::ZExtOp>( loc, elemType, value );
-                    }
-                }
-            }
-            else
-            {
-                llvm_unreachable( "AssignOp lowering: expect only fixed size floating or integer types." );
-            }
-
-            rewriter.create<LLVM::StoreOp>( loc, value, allocaOp );
-            rewriter.eraseOp( op );
-            return success();
-        }
-    };
-
-    class AssignStringOpLowering : public ConversionPattern
-    {
-       private:
-        loweringContext& lState;
-
-       public:
-        AssignStringOpLowering( loweringContext& lState_, MLIRContext* ctx )
-            : ConversionPattern( toy::AssignStringOp::getOperationName(), 1, ctx ), lState( lState_ )
-        {
-        }
-
-        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
-                                       ConversionPatternRewriter& rewriter ) const override
-        {
-            auto assignOp = cast<toy::AssignStringOp>( op );
-            auto loc = assignOp.getLoc();
-
-            LLVM_DEBUG( llvm::dbgs() << "Lowering AssignOp: " << *op << '\n' );
-
-            auto name = assignOp.getName();
-            auto value = assignOp.getValue();
-            auto allocaOp = lState.symbolToAlloca[name];
-
-            LLVM_DEBUG( llvm::dbgs() << "name: " << name << '\n' );
-            LLVM_DEBUG( llvm::dbgs() << "value: " << value << '\n' );
-
-            Type elemType = allocaOp.getElemType();
             int64_t numElems = 0;
             if ( auto constOp = allocaOp.getArraySize().getDefiningOp<LLVM::ConstantOp>() )
             {
                 auto intAttr = mlir::dyn_cast<IntegerAttr>( constOp.getValue() );
                 numElems = intAttr.getInt();
             }
-            LLVM_DEBUG( llvm::dbgs() << "numElems: " << numElems << '\n' );
+
+            // LLVM_DEBUG( llvm::dbgs() << "memType: " << memType << '\n' );
             LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
+            // LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
 
-            if ( !mlir::isa<mlir::IntegerType>( elemType ) || elemType.getIntOrFloatBitWidth() != 8 )
+            if ( numElems == 1 )
             {
-                return rewriter.notifyMatchFailure( assignOp, "string assignment requires i8 array" );
+                if ( mlir::isa<mlir::Float64Type>( valType ) )
+                {
+                    if ( mlir::isa<mlir::IntegerType>( elemType ) )
+                    {
+                        value = rewriter.create<LLVM::FPToSIOp>( loc, elemType, value );
+                    }
+                    else if ( mlir::isa<mlir::Float32Type>( elemType ) )
+                    {
+                        value = rewriter.create<LLVM::FPTruncOp>( loc, elemType, value );
+                    }
+                }
+                else if ( mlir::isa<mlir::Float32Type>( valType ) )
+                {
+                    if ( mlir::isa<mlir::IntegerType>( elemType ) )
+                    {
+                        value = rewriter.create<LLVM::FPToSIOp>( loc, elemType, value );
+                    }
+                    else if ( mlir::isa<mlir::Float64Type>( elemType ) )
+                    {
+                        value = rewriter.create<LLVM::FPExtOp>( loc, elemType, value );
+                    }
+                }
+                else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
+                {
+                    auto vwidth = viType.getWidth();
+
+                    if ( mlir::isa<mlir::Float64Type>( elemType ) || mlir::isa<mlir::Float32Type>( elemType ) )
+                    {
+                        if ( vwidth == 1 )
+                        {
+                            value = rewriter.create<LLVM::UIToFPOp>( loc, elemType, value );
+                        }
+                        else
+                        {
+                            value = rewriter.create<LLVM::SIToFPOp>( loc, elemType, value );
+                        }
+                    }
+                    else
+                    {
+                        auto miType = mlir::cast<mlir::IntegerType>( elemType );
+
+                        auto mwidth = miType.getWidth();
+                        if ( vwidth > mwidth )
+                        {
+                            value = rewriter.create<mlir::LLVM::TruncOp>( loc, elemType, value );
+                        }
+                        else if ( vwidth < mwidth )
+                        {
+                            value = rewriter.create<mlir::LLVM::ZExtOp>( loc, elemType, value );
+                        }
+                    }
+                }
+
+                rewriter.create<LLVM::StoreOp>( loc, value, allocaOp );
             }
-            if ( numElems == 0 )
+            else if ( auto stringLitOp = value.getDefiningOp<toy::StringLiteralOp>() )
             {
-                return rewriter.notifyMatchFailure( assignOp, "invalid array size" );
-            }
+                if ( !mlir::isa<mlir::IntegerType>( elemType ) || elemType.getIntOrFloatBitWidth() != 8 )
+                {
+                    return rewriter.notifyMatchFailure( assignOp, "string assignment requires i8 array" );
+                }
+                if ( numElems == 0 )
+                {
+                    return rewriter.notifyMatchFailure( assignOp, "invalid array size" );
+                }
 
-            size_t strLen = value.size();
-            size_t copySize = std::min( strLen + 1, static_cast<size_t>( numElems ) );
-            if ( strLen > static_cast<size_t>( numElems ) )
+                auto strAttr = stringLitOp.getValueAttr();
+                llvm::StringRef strValue = strAttr.getValue();
+                size_t literalStrLen = strValue.size();
+                mlir::LLVM::GlobalOp globalOp = lState.lookupGlobalOp( strAttr );
+
+                auto globalPtr = rewriter.create<LLVM::AddressOfOp>( loc, globalOp );
+
+                auto destPtr = allocaOp.getResult();
+
+                auto copySize = std::min( (int)numElems, (int)literalStrLen );
+                auto sizeConst = rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(),
+                                                                    rewriter.getI64IntegerAttr( copySize ) );
+
+                rewriter.create<LLVM::MemcpyOp>( loc, destPtr, globalPtr, sizeConst, rewriter.getBoolAttr( false ) );
+
+                // If target array is larger than string literal, zero out the remaining bytes
+                if ( numElems > literalStrLen )
+                {
+                    // Compute the offset: destPtr + literalStrLen
+                    auto offsetConst = rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(),
+                                                                          rewriter.getI64IntegerAttr( literalStrLen ) );
+                    auto destPtrOffset = rewriter.create<LLVM::GEPOp>( loc, destPtr.getType(), elemType, destPtr,
+                                                                       ValueRange{ offsetConst } );
+
+                    // Compute the number of bytes to zero: numElems - literalStrLen
+                    auto remainingSize = rewriter.create<LLVM::ConstantOp>(
+                        loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( numElems - literalStrLen ) );
+
+                    // Set remaining bytes to zero
+                    auto zeroVal =
+                        rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI8Type(), rewriter.getI8IntegerAttr( 0 ) );
+                    rewriter.create<LLVM::MemsetOp>( loc, destPtrOffset, zeroVal, remainingSize,
+                                                     rewriter.getBoolAttr( false ) );
+                }
+            }
+            else
             {
-                return rewriter.notifyMatchFailure( assignOp, "string too large for array" );
+                llvm_unreachable( "AssignOp lowering: expect only fixed size floating or integer types." );
             }
-
-            mlir::LLVM::GlobalOp globalOp = lState.lookupOrInsertGlobalOp( rewriter, value, loc, copySize, strLen );
-
-            auto globalPtr = rewriter.create<LLVM::AddressOfOp>( loc, globalOp );
-
-            auto destPtr = allocaOp.getResult();
-
-            auto sizeConst =
-                rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( copySize ) );
-
-            rewriter.create<LLVM::MemcpyOp>( loc, destPtr, globalPtr, sizeConst, rewriter.getBoolAttr( false ) );
 
             rewriter.eraseOp( op );
             return success();
@@ -1362,7 +1387,7 @@ namespace toy
             patterns1.insert<PrintOpLowering>( lState, ctx );
             patterns1.insert<ConstantOpLowering>( lState, ctx );
             patterns1.insert<AssignOpLowering>( lState, ctx );
-            patterns1.insert<AssignStringOpLowering>( lState, ctx );
+            patterns1.insert<StringLiteralOpLowering>( lState, ctx );
             patterns1.insert<ExitOpLowering>( lState, ctx );
             patterns1.insert<ProgramOpLowering>( lState, ctx );
 

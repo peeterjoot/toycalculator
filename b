@@ -37,12 +37,12 @@ b __assert_perror_fail
 #b ProgramOpLowering::matchAndRewrite
 #b ReturnOpLowering::matchAndRewrite
 #b std::stoi
-#b toy::AssignOpLowering::matchAndRewrite
+b toy::AssignOpLowering::matchAndRewrite
 #b toy::DeclareOpLowering::matchAndRewrite
 #b toy::ExitOpLowering::matchAndRewrite
-b toy::LoadOpLowering::matchAndRewrite
+#b toy::LoadOpLowering::matchAndRewrite
 #b toy::MLIRListener::enterAssignment
-b toy::PrintOpLowering::matchAndRewrite
+#b toy::PrintOpLowering::matchAndRewrite
 #b toy::ProgramOpLowering::matchAndRewrite
 #b ToyToLLVMLoweringPass::runOnOperation
 #b translateModuleToLLVMIR

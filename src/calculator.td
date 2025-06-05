@@ -53,19 +53,12 @@ def Toy_IntOrFloat : TypeConstraint<
   "integer or float type">;
 
 def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
-  let summary = "Assign a (non-string) value to a variable associated with a declaration";
+  let summary = "Assign a value or string literal to a variable";
   let arguments = (ins StrAttr:$name, AnyType:$value);
   let results = (outs);
 
   // toy.assign "x", %0 : i32
   let assemblyFormat = "$name `,` $value `:` type($value) attr-dict";
-}
-
-def Toy_AssignStringOp : Op<Toy_Dialect, "string_assign"> {
-  let summary = "Assign a string literal to an i8 array variable";
-  let arguments = (ins StrAttr:$name, Builtin_StringAttr:$value);
-  let results = (outs);
-  let assemblyFormat = "$name `=` $value attr-dict";
 }
 
 def Toy_LoadOp : Op<Toy_Dialect, "load"> {
@@ -95,12 +88,19 @@ def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
   }];
 }
 
+def Toy_StringLiteralOp : Op<Toy_Dialect, "string_literal"> {
+  let summary = "String literal operation";
+  let arguments = (ins StrAttr:$value);
+  let results = (outs AnyType:$result);
+  //let assemblyFormat = "`\"`$value`\"` `:` type($result) attr-dict";
+}
+
 //def StringType : Toy_Type<"String"> {
 //    let mnemonic = "string";
 //}
 
 def Toy_PrintOp : Op<Toy_Dialect, "print"> {
-  let summary = "Print a variable";
+  let summary = "Print a variable or string literal";
   let arguments = (ins AnyType:$input);
   let results = (outs);
   let assemblyFormat = "$input `:` type($input) attr-dict";

@@ -611,7 +611,11 @@ namespace toy
         if ( s.length() )
         {
             auto strAttr = builder.getStringAttr( s );
-            builder.create<toy::AssignStringOp>( loc, builder.getStringAttr( currentVarName ), strAttr );
+
+            auto ptrType = mlir::LLVM::LLVMPointerType::get( &dialect.context );
+            auto stringLiteral = builder.create<toy::StringLiteralOp>( loc, ptrType, strAttr );
+
+            builder.create<toy::AssignOp>( loc, builder.getStringAttr( currentVarName ), stringLiteral );
         }
         else
         {
