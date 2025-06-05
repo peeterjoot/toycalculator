@@ -91,6 +91,8 @@ namespace toy
 
         mlir::LLVM::ConstantOp getI64one( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
+            //return rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( 1 ) );
+
             if ( !pr_one_I64 )
             {
                 pr_one_I64 =
@@ -102,6 +104,7 @@ namespace toy
 
         mlir::LLVM::ConstantOp getI32zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
+            //return rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr( 0 ) );
             if ( !pr_zero_I32 )
             {
                 pr_zero_I32 =
@@ -113,6 +116,7 @@ namespace toy
 
         mlir::LLVM::ConstantOp getF64zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
+            //return rewriter.create<LLVM::ConstantOp>( loc, rewriter.getF64Type(), rewriter.getF64FloatAttr( 0 ) );
             if ( !pr_zero_F64 )
             {
                 pr_zero_F64 =

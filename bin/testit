@@ -107,7 +107,6 @@ array
 bin
 bool
 boolop
-shortstring
 converti
 dcl
 empty
@@ -130,6 +129,7 @@ types
 unary
 xorop
 ));
+#shortstring
 
 if ( defined $just )
 {
