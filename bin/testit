@@ -123,6 +123,7 @@ neqop
 orop
 simpleless
 simplest
+stringlit
 test
 types
 unary

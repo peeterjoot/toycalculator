@@ -365,75 +365,6 @@ namespace toy
             symbolToAlloca[varName] = allocaOp;
         }
 
-        mlir::LLVM::CallOp createPrintCall( ConversionPatternRewriter& rewriter, mlir::Location loc, mlir::Value input )
-        {
-            mlir::Type inputType = input.getType();
-            mlir::LLVM::CallOp result;
-
-            if ( auto inputi = mlir::dyn_cast<IntegerType>( inputType ) )
-            {
-                auto width = inputi.getWidth();
-
-                if ( width == 1 )
-                {
-                    input = rewriter.create<mlir::LLVM::ZExtOp>( loc, rewriter.getI64Type(), input );
-                }
-                else if ( width < 64 )
-                {
-                    input = rewriter.create<mlir::LLVM::SExtOp>( loc, rewriter.getI64Type(), input );
-                }
-
-                result = rewriter.create<LLVM::CallOp>( loc, toyPrintI64(), ValueRange{ input } );
-            }
-            else if ( auto inputf = mlir::dyn_cast<FloatType>( inputType ) )
-            {
-                if ( inputType.isF32() )
-                {
-                    input = rewriter.create<LLVM::FPExtOp>( loc, rewriter.getF64Type(), input );
-                }
-                else
-                {
-                    assert( inputType.isF64() );
-                }
-                result = rewriter.create<LLVM::CallOp>( loc, toyPrintF64(), ValueRange{ input } );
-            }
-            else if ( inputType.isa<mlir::LLVM::LLVMPointerType>() )
-            {
-                // Find AllocaOp for size and element type
-                auto loadOp = input.getDefiningOp<toy::LoadOp>();
-                assert( loadOp );
-
-                auto varName = loadOp.getName();
-                auto allocaOp = symbolToAlloca[varName];
-                assert( allocaOp );
-
-                // Validate element type is i8
-                auto elemType = allocaOp.getElemType();
-                assert( elemType.isa<mlir::IntegerType>() &&
-                        ( elemType.cast<mlir::IntegerType>().getWidth() == 8 ) );    // must be i8
-
-                // Get array size
-                int64_t numElems = 0;
-                if ( auto constOp = allocaOp.getArraySize().getDefiningOp<mlir::LLVM::ConstantOp>() )
-                {
-                    auto intAttr = mlir::dyn_cast<mlir::IntegerAttr>( constOp.getValue() );
-                    numElems = intAttr.getInt();
-                }
-                assert( numElems );
-
-                auto sizeConst = rewriter.create<mlir::LLVM::ConstantOp>( loc, rewriter.getI64Type(),
-                                                                          rewriter.getI64IntegerAttr( numElems ) );
-
-                result = rewriter.create<mlir::LLVM::CallOp>( loc, toyPrintString(), ValueRange{ sizeConst, input } );
-            }
-            else
-            {
-                assert( 0 );    // Error: unsupported type
-            }
-
-            return result;
-        }
-
         mlir::LLVM::GlobalOp lookupGlobalOp( mlir::StringAttr& stringLit )
         {
             mlir::LLVM::GlobalOp globalOp;
@@ -487,6 +418,88 @@ namespace toy
             }
 
             return globalOp;
+        }
+
+        mlir::LLVM::CallOp createPrintCall( ConversionPatternRewriter& rewriter, mlir::Location loc, mlir::Value input )
+        {
+            mlir::Type inputType = input.getType();
+            mlir::LLVM::CallOp result;
+
+            if ( auto inputi = mlir::dyn_cast<IntegerType>( inputType ) )
+            {
+                auto width = inputi.getWidth();
+
+                if ( width == 1 )
+                {
+                    input = rewriter.create<mlir::LLVM::ZExtOp>( loc, rewriter.getI64Type(), input );
+                }
+                else if ( width < 64 )
+                {
+                    input = rewriter.create<mlir::LLVM::SExtOp>( loc, rewriter.getI64Type(), input );
+                }
+
+                result = rewriter.create<LLVM::CallOp>( loc, toyPrintI64(), ValueRange{ input } );
+            }
+            else if ( auto inputf = mlir::dyn_cast<FloatType>( inputType ) )
+            {
+                if ( inputType.isF32() )
+                {
+                    input = rewriter.create<LLVM::FPExtOp>( loc, rewriter.getF64Type(), input );
+                }
+                else
+                {
+                    assert( inputType.isF64() );
+                }
+                result = rewriter.create<LLVM::CallOp>( loc, toyPrintF64(), ValueRange{ input } );
+            }
+            else if ( inputType.isa<mlir::LLVM::LLVMPointerType>() )
+            {
+                // Find AllocaOp for size and element type
+                int64_t numElems = 0;
+                if ( auto loadOp = input.getDefiningOp<toy::LoadOp>() )
+                {
+                    auto varName = loadOp.getName();
+                    auto allocaOp = symbolToAlloca[varName];
+                    assert( allocaOp );
+
+                    // Validate element type is i8
+                    auto elemType = allocaOp.getElemType();
+                    assert( elemType.isa<mlir::IntegerType>() &&
+                            ( elemType.cast<mlir::IntegerType>().getWidth() == 8 ) );    // must be i8
+
+                    // Get array size
+                    if ( auto constOp = allocaOp.getArraySize().getDefiningOp<mlir::LLVM::ConstantOp>() )
+                    {
+                        auto intAttr = mlir::dyn_cast<mlir::IntegerAttr>( constOp.getValue() );
+                        numElems = intAttr.getInt();
+                    }
+                }
+                else if ( auto stringLitOp = input.getDefiningOp<toy::StringLiteralOp>() )
+                {
+                    auto strAttr = stringLitOp.getValueAttr();
+                    llvm::StringRef strValue = strAttr.getValue();
+                    numElems = strValue.size();
+
+                    mlir::LLVM::GlobalOp globalOp = lookupGlobalOp( strAttr );
+                    input = rewriter.create<LLVM::AddressOfOp>( loc, globalOp );
+                }
+                else
+                {
+                    assert( 0 ); // should not get here.
+                }
+                assert( numElems );
+
+                auto sizeConst = rewriter.create<mlir::LLVM::ConstantOp>( loc, rewriter.getI64Type(),
+                                                                          rewriter.getI64IntegerAttr( numElems ) );
+
+                result = rewriter.create<mlir::LLVM::CallOp>( loc, toyPrintString(), ValueRange{ sizeConst, input } );
+            }
+            else
+            {
+                assert( 0 );    // Error: unsupported type
+            }
+
+            return result;
         }
     };
 

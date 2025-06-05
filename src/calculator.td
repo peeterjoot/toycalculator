@@ -92,12 +92,7 @@ def Toy_StringLiteralOp : Op<Toy_Dialect, "string_literal"> {
   let summary = "String literal operation";
   let arguments = (ins StrAttr:$value);
   let results = (outs AnyType:$result);
-  //let assemblyFormat = "`\"`$value`\"` `:` type($result) attr-dict";
 }
-
-//def StringType : Toy_Type<"String"> {
-//    let mnemonic = "string";
-//}
 
 def Toy_PrintOp : Op<Toy_Dialect, "print"> {
   let summary = "Print a variable or string literal";

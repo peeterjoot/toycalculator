@@ -17,7 +17,7 @@ It implements a toy calculator language that supports a few primitive linguistic
 * comparison operators (<, <=, EQ, NE) yielding BOOL values.  These work for any combinations of floating and integer types (including BOOL.)
 * integer bitwise operators (OR, AND, XOR).  These only for for integer types (including BOOL.)
 * a NOT operator, yielding BOOL.
-* array declarations, using any of the types above.  STRING is available as an alias for INT8 array.  string assignments of string literal works.  Print not implemented.
+* array declarations, using any of the types above.  STRING is available as an alias for INT8 array.  string literal ASSIGN and PRINT implemented.
 
 Computations occur in assignment operations, and any types are first promoted to the type of the variable.
 This means that 'x = 1.99 + 2.99' has the value 3, if x is an integer variable.
@@ -66,7 +66,7 @@ do that without bothering with AI tools that can be more work to use than just d
 
 Basic language constructs to make things more interesting:
 
-* print string-literal (perhaps rework string assignment, if a string-literal op is introduced.)
+* rework the generated test cases using the new string literal support.
 * array member assignment.
 * debug test cases for non-string array variables.  Need array member assignment first.
 * Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure.
@@ -80,7 +80,7 @@ Basic language constructs to make things more interesting:
 * CAST operators.
 * Allow EXIT at more than the end of program (that restriction is currently enforced in the grammar.)
 * Don't have any traits defined for my MLIR operations (initially caused compile errors, and I just commented-out or omitted after that.)
-* gdb session for simpleless.toy is not behaving right with respect to 'next':
+* gdb session for simpleless.toy is not behaving right with respect to 'next'.  Suspect that this is due to my cachine of the one/zero constants, reusing previous location info inappropriately.  Try not caching that and see if it fixes it.
 Breakpoint 1, main () at simpleless.toy:4
 4       i1 = TRUE;
 (gdb) n

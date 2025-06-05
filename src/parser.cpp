@@ -368,43 +368,63 @@ namespace toy
     {
         lastOp = lastOperator::printOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
-        auto varState = var_states[varName];
-        if ( varState == variable_state::undeclared )
-        {
-            lastSemError = semantic_errors::variable_not_declared;
-            llvm::errs() << std::format( "{}error: Variable {} not declared in PRINT\n", formatLocation( loc ),
-                                         varName );
-            return;
-        }
-        if ( varState != variable_state::assigned )
-        {
-            lastSemError = semantic_errors::variable_not_assigned;
-            llvm::errs() << std::format( "{}error: Variable {} not assigned in PRINT\n", formatLocation( loc ),
-                                         varName );
-            return;
-        }
-
-        auto dcl = var_storage[varName];
-        auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
 
         mlir::Type varType;
-        mlir::Type elemType = declareOp.getTypeAttr().getValue();
 
-        if ( declareOp.getSizeAttr() )    // Check if size attribute exists
+        auto varNameObject = ctx->VARIABLENAME_PATTERN();
+        if ( varNameObject )
         {
-            // Array: load a generic pointer
-            varType = mlir::LLVM::LLVMPointerType::get(builder.getContext(), /*addressSpace=*/0);
+            auto varName = varNameObject->getText();
+            auto varState = var_states[varName];
+            if ( varState == variable_state::undeclared )
+            {
+                lastSemError = semantic_errors::variable_not_declared;
+                llvm::errs() << std::format( "{}error: Variable {} not declared in PRINT\n", formatLocation( loc ),
+                                             varName );
+                return;
+            }
+            if ( varState != variable_state::assigned )
+            {
+                lastSemError = semantic_errors::variable_not_assigned;
+                llvm::errs() << std::format( "{}error: Variable {} not assigned in PRINT\n", formatLocation( loc ),
+                                             varName );
+                return;
+            }
+
+            auto dcl = var_storage[varName];
+            auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
+
+            mlir::Type elemType = declareOp.getTypeAttr().getValue();
+
+            if ( declareOp.getSizeAttr() )    // Check if size attribute exists
+            {
+                // Array: load a generic pointer
+                varType = mlir::LLVM::LLVMPointerType::get(builder.getContext(), /*addressSpace=*/0);
+            }
+            else
+            {
+                // Scalar: load the value
+                varType = elemType;
+            }
+
+            auto value = builder.create<toy::LoadOp>( loc, varType, builder.getStringAttr( varName ) );
+            builder.create<toy::PrintOp>( loc, value );
+        }
+        else if ( auto theString = ctx->STRING_PATTERN() )
+        {
+            auto s = stripQuotes( theString->getText() );
+            auto strAttr = builder.getStringAttr( s );
+
+            auto ptrType = mlir::LLVM::LLVMPointerType::get( &dialect.context );
+            auto stringLiteral = builder.create<toy::StringLiteralOp>( loc, ptrType, strAttr );
+
+            builder.create<toy::PrintOp>( loc, stringLiteral );
         }
         else
         {
-            // Scalar: load the value
-            varType = elemType;
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          std::format( "{}error: unexpected print context {}\n", formatLocation( loc ), ctx->getText() ) );
         }
-
-        auto value = builder.create<toy::LoadOp>( loc, varType, builder.getStringAttr( varName ) );
-
-        builder.create<toy::PrintOp>( loc, value );
     }
 
     void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )

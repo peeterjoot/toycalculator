@@ -62,7 +62,7 @@ exitStatement
 
 // A print statement that outputs a variable (e.g., 'PRINT x;').
 print
-  : PRINT_TOKEN VARIABLENAME_PATTERN
+  : PRINT_TOKEN (VARIABLENAME_PATTERN | STRING_PATTERN)
   ;
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
