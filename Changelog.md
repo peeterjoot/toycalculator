@@ -2,6 +2,15 @@
 
 INTERNALS:
 * Generate the __toy_print... prototypes on demand, to clutter up the generated code less.  Can do this by saving and restoring the insertion point to the module level (where the symbol table and globals live.)
+* Introduce a string literal op, replacing a customized string assign operator:
+
+    toy.string_assign "s" = "hi"
+
+with:
+
+    %0 = "toy.string_literal"() <{value = "hi"}> : () -> !llvm.ptr
+    toy.assign "s", %0 : !llvm.ptr
+*
 
 ## tag: V3
 
