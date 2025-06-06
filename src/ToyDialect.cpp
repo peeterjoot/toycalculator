@@ -3,7 +3,7 @@
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   Includes the source headers generated from ToyDialect.td
  */
-#include "ToyDialect.h"
+#include "ToyDialect.hpp"
 
 #define GET_OP_CLASSES
 #include "ToyDialect.cpp.inc"

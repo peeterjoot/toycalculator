@@ -1,0 +1,29 @@
+FUNCTION plus3( INT32 v ) : INT32
+{
+    //INT32 r;
+    //r = 3 + v;
+    RETURN r;
+};
+
+FUNCTION zero( ) : INT32
+{
+    RETURN 0;
+};
+
+FUNCTION add( INT32 v, INT32 w ) : INT32
+{
+    //INT32 r;
+    //r = v + w;
+    RETURN r;
+};
+
+FUNCTION bar0 ( )
+{
+    PRINT "bar0";
+    RETURN;
+};
+
+FUNCTION bar1 ( )
+{
+    PRINT "bar0";
+};

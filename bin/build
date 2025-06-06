@@ -80,6 +80,18 @@ if ( defined $ENV{'WSL_DISTRO_NAME'} )
    $flags .= '-DCMAKE_CXX_COMPILER=/usr/bin/g++-14 ';
    $flags .= '-DCMAKE_C_COMPILER=/usr/bin/gcc-14 ';
 }
+else
+{
+   #$flags .= '-DCMAKE_CXX_COMPILER=/usr/bin/clang++ ';
+   #$flags .= '-DCMAKE_C_COMPILER=/usr/bin/clang ';
+
+   # try without PATH for ccache:
+   $flags .= '-DCMAKE_CXX_COMPILER=clang++ ';
+   $flags .= '-DCMAKE_C_COMPILER=clang ';
+}
+
+# for a compilation database:
+$flags .= '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON ';
 
 if ( $dobuild ) {
    mysystem(qq(

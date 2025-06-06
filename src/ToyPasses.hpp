@@ -1,5 +1,5 @@
 /**
- * @file    ToyPasses.h
+ * @file    ToyPasses.hpp
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   Pass for MLIR lowering to LLVM-IR.
  */
@@ -8,8 +8,8 @@
 
 #include <mlir/Pass/Pass.h>
 
-#include "lowering.h"
-#include "driver.h"
+#include "lowering.hpp"
+#include "driver.hpp"
 
 namespace mlir
 {
@@ -21,7 +21,7 @@ namespace mlir
 }    // namespace mlir
 
 #define GEN_PASS_REGISTRATION
-#include "ToyPasses.h.inc"
+#include "ToyPasses.hpp.inc"
 
 #endif    // TOY_PASSES_H
 

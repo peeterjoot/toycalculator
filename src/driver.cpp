@@ -39,13 +39,13 @@
 #include <format>
 #include <fstream>
 
-#include "ToyDialect.h"
-#include "ToyExceptions.h"
+#include "ToyDialect.hpp"
+#include "ToyExceptions.hpp"
 #include "ToyLexer.h"
-#include "ToyPasses.h"
-#include "driver.h"
-#include "lowering.h"
-#include "parser.h"
+#include "ToyPasses.hpp"
+#include "driver.hpp"
+#include "lowering.hpp"
+#include "parser.hpp"
 
 #define DEBUG_TYPE "toy-driver"
 
@@ -177,6 +177,10 @@ int main( int argc, char** argv )
         antlr4::CommonTokenStream tokens( &lexer );
         ToyParser parser( &tokens );
 
+        // Remove default error listener and add MLIRListener for errors
+        parser.removeErrorListeners();
+        parser.addErrorListener( &listener );
+
         antlr4::tree::ParseTree* tree = parser.startRule();
         antlr4::tree::ParseTreeWalker::DEFAULT.walk( &listener, tree );
 
@@ -263,15 +267,33 @@ int main( int argc, char** argv )
         st.wantDebug = debugInfo;
         st.filename = filename;
 
+        LLVM_DEBUG( { llvm::errs() << "IR before stage I lowering:\n"; module->dump(); } );
+
         pm.addPass( mlir::createToyToLLVMLoweringPass( &st ) );
         pm.addPass( mlir::createConvertSCFToCFPass() );
-        pm.addPass( mlir::createConvertFuncToLLVMPass() );
         pm.addPass( mlir::createFinalizeMemRefToLLVMConversionPass() );
         pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
 
         if ( llvm::failed( pm.run( module ) ) )
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__, "LLVM lowering failed" );
+            llvm::errs() << "IR after stage I lowering failure:\n";
+            module->dump();
+            throw exception_with_context( __FILE__, __LINE__, __func__, "Stage I LLVM lowering failed" );
+        }
+
+        mlir::PassManager pm2( context );
+        if ( llvmDEBUG )
+        {
+            pm2.enableIRPrinting();
+        }
+
+        pm2.addPass( mlir::createConvertFuncToLLVMPass() );
+
+        if ( llvm::failed( pm2.run( module ) ) )
+        {
+            llvm::errs() << "IR after stage II lowering failure:\n";
+            module->dump();
+            throw exception_with_context( __FILE__, __LINE__, __func__, "Stage II LLVM lowering failed" );
         }
 
         if ( toStdout )

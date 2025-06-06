@@ -14,11 +14,12 @@
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/TargetParser/Host.h>
 #include <mlir/Conversion/ArithToLLVM/ArithToLLVM.h>
+#include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Conversion/LLVMCommon/Pattern.h>
 #include <mlir/Conversion/LLVMCommon/TypeConverter.h>
 #include <mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
-#include <mlir/Dialect/Func/IR/FuncOps.h>    // For future multi-function support.
+#include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/Dialect/LLVMIR/LLVMAttrs.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
@@ -33,14 +34,12 @@
 #include <format>
 #include <numeric>
 
-#include "ToyDialect.h"
-#include "lowering.h"
+#include "ToyDialect.hpp"
+#include "ToyExceptions.hpp"
+#include "constants.hpp"
+#include "lowering.hpp"
 
 #define DEBUG_TYPE "toy-lowering"
-
-#define ENTRY_SYMBOL_NAME "main"
-#define COMPILER_NAME "toycalculator"
-#define COMPILER_VERSION " V2"
 
 using namespace mlir;
 
@@ -55,19 +54,35 @@ namespace toy
         return fileLineLoc;
     }
 
+    toy::FuncOp getEnclosingFuncOp( mlir::Operation* op )
+    {
+        while ( op )
+        {
+            if ( auto funcOp = dyn_cast<toy::FuncOp>( op ) )
+            {
+                return funcOp;
+            }
+            op = op->getParentOp();
+        }
+        return nullptr;
+    }
+
     class loweringContext
     {
        private:
         // Caching these may not be a good idea, as they are created with a single loc value, but using an existing
         // constant is also allowed, so maybe that's okay?
-        mlir::LLVM::ConstantOp pr_one_I64;
-        mlir::LLVM::ConstantOp pr_zero_F64;
+        mlir::LLVM::ConstantOp pr_zero_I8;
+        mlir::LLVM::ConstantOp pr_zero_I16;
         mlir::LLVM::ConstantOp pr_zero_I32;
+        mlir::LLVM::ConstantOp pr_zero_I64;
+        mlir::LLVM::ConstantOp pr_one_I64;
+        mlir::LLVM::ConstantOp pr_zero_F32;
+        mlir::LLVM::ConstantOp pr_zero_F64;
 
         mlir::LLVM::DIFileAttr pr_fileAttr;
         mlir::LLVM::DISubprogramAttr pr_subprogramAttr;
         std::unordered_map<std::string, mlir::LLVM::GlobalOp> pr_stringLiterals;
-        mlir::LLVM::LLVMFuncOp pr_mainFunc;
         mlir::LLVM::LLVMFuncOp pr_printFuncF64;
         mlir::LLVM::LLVMFuncOp pr_printFuncI64;
         mlir::LLVM::LLVMFuncOp pr_printFuncString;
@@ -75,55 +90,162 @@ namespace toy
         const toy::driverState& pr_driverState;
         ModuleOp& pr_module;
         OpBuilder pr_builder;
+        std::unordered_map<std::string, mlir::Operation *> pr_symbolToAlloca;
 
        public:
-        DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> symbolToAlloca;
+        mlir::IntegerType tyI1;
+        mlir::IntegerType tyI8;
+        mlir::IntegerType tyI16;
+        mlir::IntegerType tyI32;
+        mlir::IntegerType tyI64;
+        mlir::FloatType tyF32;
+        mlir::FloatType tyF64;
+        mlir::LLVM::LLVMPointerType tyPtr;
+        LLVMTypeConverter typeConverter;
 
         loweringContext( ModuleOp& module, const toy::driverState& driverState )
-            : pr_driverState{ driverState }, pr_module{ module }, pr_builder{ module.getRegion() }
+            : pr_driverState{ driverState },
+              pr_module{ module },
+              pr_builder{ module.getRegion() },
+              typeConverter{ pr_builder.getContext() }
         {
+            tyI1 = pr_builder.getI1Type();
+            tyI8 = pr_builder.getI8Type();
+            tyI16 = pr_builder.getI16Type();
+            tyI32 = pr_builder.getI32Type();
+            tyI64 = pr_builder.getI64Type();
+
+            tyF32 = pr_builder.getF32Type();
+            tyF64 = pr_builder.getF64Type();
+
+            tyPtr = LLVM::LLVMPointerType::get( pr_builder.getContext() );
         }
 
-        OpBuilder& getBuilder()
+        unsigned preferredTypeAlignment( Operation* op, mlir::Type elemType )
         {
-            return pr_builder;
+            auto module = op->getParentOfType<ModuleOp>();
+            assert( module );
+            mlir::DataLayout dataLayout( module );
+            unsigned alignment = dataLayout.getTypePreferredAlignment( elemType );
+
+            return alignment;
         }
 
-        mlir::LLVM::ConstantOp getI64one( mlir::Location loc, ConversionPatternRewriter& rewriter )
+        // Note for future: c++-14 now allows auto-return for a simple function like this.
+        mlir::MLIRContext* getContext()
         {
-            //return rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( 1 ) );
+            return pr_builder.getContext();
+        }
 
-            if ( !pr_one_I64 )
+        bool isTypeFloat( mlir::Type ty ) const
+        {
+            return ( ( ty == tyF32 ) || ( ty == tyF64 ) );
+        }
+
+        mlir::LLVM::ConstantOp getI8zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
+        {
+            if ( !pr_zero_I8 )
             {
-                pr_one_I64 =
-                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( 1 ) );
+                pr_zero_I8 = rewriter.create<LLVM::ConstantOp>( loc, tyI8, rewriter.getI8IntegerAttr( 0 ) );
             }
 
-            return pr_one_I64;
+            return pr_zero_I8;
+        }
+
+        mlir::LLVM::ConstantOp getI16zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
+        {
+            if ( !pr_zero_I16 )
+            {
+                pr_zero_I16 = rewriter.create<LLVM::ConstantOp>( loc, tyI16, rewriter.getI16IntegerAttr( 0 ) );
+            }
+
+            return pr_zero_I16;
         }
 
         mlir::LLVM::ConstantOp getI32zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
-            //return rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr( 0 ) );
             if ( !pr_zero_I32 )
             {
-                pr_zero_I32 =
-                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI32Type(), rewriter.getI32IntegerAttr( 0 ) );
+                pr_zero_I32 = rewriter.create<LLVM::ConstantOp>( loc, tyI32, rewriter.getI32IntegerAttr( 0 ) );
             }
 
             return pr_zero_I32;
         }
 
+        mlir::LLVM::ConstantOp getI64zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
+        {
+            if ( !pr_zero_I64 )
+            {
+                pr_zero_I64 = rewriter.create<LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( 0 ) );
+            }
+
+            return pr_zero_I64;
+        }
+
+        /// Returns a cached zero constant for the given integer width (i8, i16, i32, i64).
+        /// Throws an exception for unsupported widths.
+        mlir::LLVM::ConstantOp getIzero( mlir::Location loc, ConversionPatternRewriter& rewriter, unsigned width )
+        {
+            switch ( width )
+            {
+                case 8:
+                    return getI8zero( loc, rewriter );
+                case 16:
+                    return getI16zero( loc, rewriter );
+                case 32:
+                    return getI32zero( loc, rewriter );
+                case 64:
+                    return getI64zero( loc, rewriter );
+            }
+
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          std::format( "Unexpected integer size {}", width ) );
+        }
+
+        mlir::LLVM::ConstantOp getI64one( mlir::Location loc, ConversionPatternRewriter& rewriter )
+        {
+            if ( !pr_one_I64 )
+            {
+                pr_one_I64 = rewriter.create<LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( 1 ) );
+            }
+
+            return pr_one_I64;
+        }
+
+        mlir::LLVM::ConstantOp getF32zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
+        {
+            if ( !pr_zero_F32 )
+            {
+                pr_zero_F32 = rewriter.create<LLVM::ConstantOp>( loc, tyF32, rewriter.getF32FloatAttr( 0 ) );
+            }
+
+            return pr_zero_F32;
+        }
+
+        /// Returns a cached zero constant for the given float width (f32, f64).
+        /// Throws an exception for unsupported widths.
         mlir::LLVM::ConstantOp getF64zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
-            //return rewriter.create<LLVM::ConstantOp>( loc, rewriter.getF64Type(), rewriter.getF64FloatAttr( 0 ) );
             if ( !pr_zero_F64 )
             {
-                pr_zero_F64 =
-                    rewriter.create<LLVM::ConstantOp>( loc, rewriter.getF64Type(), rewriter.getF64FloatAttr( 0 ) );
+                pr_zero_F64 = rewriter.create<LLVM::ConstantOp>( loc, tyF64, rewriter.getF64FloatAttr( 0 ) );
             }
 
             return pr_zero_F64;
+        }
+
+        mlir::LLVM::ConstantOp getFzero( mlir::Location loc, ConversionPatternRewriter& rewriter, unsigned width )
+        {
+            switch ( width )
+            {
+                case 32:
+                    return getF32zero( loc, rewriter );
+                case 64:
+                    return getF64zero( loc, rewriter );
+            }
+
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          std::format( "Unexpected float size {}", width ) );
         }
 
         // Set data_layout,ident,target_triple:
@@ -159,7 +281,7 @@ namespace toy
 
                 auto ctx = pr_builder.getContext();
                 auto pr_printFuncF64Type =
-                    LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { pr_builder.getF64Type() }, false );
+                    LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { tyF64 }, false );
                 pr_printFuncF64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_f64",
                                                                        pr_printFuncF64Type, LLVM::Linkage::External );
                 pr_builder.restoreInsertionPoint( oldIP );
@@ -176,8 +298,7 @@ namespace toy
                 pr_builder.setInsertionPointToStart( pr_module.getBody() );
 
                 auto ctx = pr_builder.getContext();
-                auto printFuncI64Type =
-                    LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { pr_builder.getI64Type() }, false );
+                auto printFuncI64Type = LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { tyI64 }, false );
                 pr_printFuncI64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_i64",
                                                                        printFuncI64Type, LLVM::Linkage::External );
 
@@ -195,9 +316,8 @@ namespace toy
                 pr_builder.setInsertionPointToStart( pr_module.getBody() );
 
                 auto ctx = pr_builder.getContext();
-                auto ptrType = LLVM::LLVMPointerType::get( ctx );
-                auto printFuncStringType = LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ),
-                                                                        { pr_builder.getI64Type(), ptrType }, false );
+                auto printFuncStringType =
+                    LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { tyI64, tyPtr }, false );
                 pr_printFuncString = pr_builder.create<LLVM::LLVMFuncOp>(
                     pr_module.getLoc(), "__toy_print_string", printFuncStringType, LLVM::Linkage::External );
 
@@ -207,20 +327,17 @@ namespace toy
             return pr_printFuncString;
         }
 
-        // Create an entry block in the "main" function
-        Block* addEntryBlock( ConversionPatternRewriter& rewriter )
-        {
-            Block* entryBlock = pr_mainFunc.addEntryBlock( rewriter );
-            rewriter.setInsertionPointToStart( entryBlock );
-            return entryBlock;
-        }
-
-        void createMain()
+        void createFuncDebug( const std::string& funcName )
         {
             auto ctx = pr_builder.getContext();
-            auto mainFuncType = LLVM::LLVMFunctionType::get( pr_builder.getI32Type(), {}, false );
-            pr_mainFunc = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), ENTRY_SYMBOL_NAME, mainFuncType,
-                                                               LLVM::Linkage::External );
+            mlir::SymbolTable symbolTable( pr_module );
+
+            auto func = symbolTable.lookup<toy::FuncOp>( funcName );
+            if ( !func )
+            {
+                pr_module.emitError() << std::format( "No '{}' function found in module\n", funcName );
+                return;
+            }
 
             if ( pr_driverState.wantDebug )
             {
@@ -230,23 +347,58 @@ namespace toy
                 auto compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
                     ctx, distinctAttr, llvm::dwarf::DW_LANG_C, pr_fileAttr, pr_builder.getStringAttr( COMPILER_NAME ),
                     false, mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
-                auto ta = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
-                                                            pr_builder.getStringAttr( "int" ), 32,
-                                                            (unsigned)llvm::dwarf::DW_ATE_signed );
+                // FIXME: this will be wrong for anything but "main":
+                assert( funcName == ENTRY_SYMBOL_NAME );
+                auto funcReturnTypeAttr = mlir::LLVM::DIBasicTypeAttr::get(
+                    ctx, (unsigned)llvm::dwarf::DW_TAG_base_type, pr_builder.getStringAttr( "int" ), 32,
+                    (unsigned)llvm::dwarf::DW_ATE_signed );
                 llvm::SmallVector<mlir::LLVM::DITypeAttr, 1> typeArray;
-                typeArray.push_back( ta );
+                typeArray.push_back( funcReturnTypeAttr );
+
+                assert( funcName == ENTRY_SYMBOL_NAME );
                 auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get( ctx, 0, typeArray );
+
+                assert(
+                    funcName ==
+                    ENTRY_SYMBOL_NAME );    // This saved var is also wrong for anything but a single function program:
                 pr_subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
                     ctx, mlir::DistinctAttr::create( pr_builder.getUnitAttr() ), compileUnitAttr, pr_fileAttr,
-                    pr_builder.getStringAttr( ENTRY_SYMBOL_NAME ), pr_builder.getStringAttr( ENTRY_SYMBOL_NAME ),
-                    pr_fileAttr, 1, 1, mlir::LLVM::DISubprogramFlags::Definition, subprogramType,
-                    llvm::ArrayRef<mlir::LLVM::DINodeAttr>{}, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
-                pr_mainFunc->setAttr( "llvm.debug.subprogram", pr_subprogramAttr );
+                    pr_builder.getStringAttr( funcName ), pr_builder.getStringAttr( funcName ), pr_fileAttr, 1, 1,
+                    mlir::LLVM::DISubprogramFlags::Definition, subprogramType, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{},
+                    llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
+                func->setAttr( "llvm.debug.subprogram", pr_subprogramAttr );
 
                 // This is the key to ensure that translateModuleToLLVMIR does not strip the location info (instead
                 // converts loc's into !dbg's)
-                pr_mainFunc->setLoc( pr_builder.getFusedLoc( { pr_module.getLoc() }, pr_subprogramAttr ) );
+                func->setLoc( pr_builder.getFusedLoc( { pr_module.getLoc() }, pr_subprogramAttr ) );
             }
+        }
+
+        mlir::LLVM::AllocaOp lookupLocalSymbolReference( mlir::Operation* op, const std::string& varName )
+        {
+            toy::FuncOp parentFunc = getEnclosingFuncOp( op );
+
+            LLVM_DEBUG( {
+                llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
+                parentFunc->dump();
+            } );
+
+            auto funcName = parentFunc->getName().getStringRef().str();
+
+            std::string funcNameAndVarName = funcName + "::" + varName;
+
+            auto alloca = pr_symbolToAlloca[funcNameAndVarName];
+            return mlir::dyn_cast<mlir::LLVM::AllocaOp>( alloca );
+        }
+
+        void createLocalSymbolReference( mlir::LLVM::AllocaOp allocaOp, const std::string& varName )
+        {
+            auto parentFunc = getEnclosingFuncOp( allocaOp );
+            auto funcName = parentFunc->getName().getStringRef().str();
+
+            std::string funcNameAndVarName = funcName + "::" + varName;
+
+            pr_symbolToAlloca[funcNameAndVarName] = allocaOp;
         }
 
         void constructVariableDI( llvm::StringRef varName, mlir::Type& elemType, mlir::FileLineColLoc loc,
@@ -337,8 +489,8 @@ namespace toy
                                                                       elemStorageSizeInBits, dwType );
 
                     // Create subrange for array (count = arraySize, lowerBound = 0)
-                    auto countAttr = mlir::IntegerAttr::get( mlir::IntegerType::get( ctx, 64 ), arraySize );
-                    auto lowerBoundAttr = mlir::IntegerAttr::get( mlir::IntegerType::get( ctx, 64 ), 0 );
+                    auto countAttr = mlir::IntegerAttr::get( tyI64, arraySize );
+                    auto lowerBoundAttr = mlir::IntegerAttr::get( tyI64, 0 );
                     auto subrange = mlir::LLVM::DISubrangeAttr::get( ctx, countAttr, lowerBoundAttr,
                                                                      /*upperBound=*/nullptr, /*stride=*/nullptr );
 
@@ -366,7 +518,7 @@ namespace toy
                 pr_builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
             }
 
-            symbolToAlloca[varName] = allocaOp;
+            createLocalSymbolReference( allocaOp, varName.str() );
         }
 
         mlir::LLVM::GlobalOp lookupGlobalOp( mlir::StringAttr& stringLit )
@@ -384,7 +536,7 @@ namespace toy
         }
 
         mlir::LLVM::GlobalOp lookupOrInsertGlobalOp( ConversionPatternRewriter& rewriter, mlir::StringAttr& stringLit,
-                                                     mlir::Location loc, size_t copySize, size_t strLen )
+                                                     mlir::Location loc, size_t strLen )
         {
             mlir::LLVM::GlobalOp globalOp;
             auto it = pr_stringLiterals.find( stringLit.str() );
@@ -398,17 +550,11 @@ namespace toy
                 auto savedIP = rewriter.saveInsertionPoint();
                 rewriter.setInsertionPointToStart( pr_module.getBody() );
 
-                auto i8Type = rewriter.getI8Type();
-                auto arrayType = mlir::LLVM::LLVMArrayType::get( i8Type, copySize );
+                auto arrayType = mlir::LLVM::LLVMArrayType::get( tyI8, strLen );
 
                 SmallVector<char> stringData( stringLit.begin(), stringLit.end() );
-                if ( copySize > strLen )
-                {
-                    stringData.push_back( '\0' );
-                }
-                auto denseAttr =
-                    DenseElementsAttr::get( RankedTensorType::get( { static_cast<int64_t>( copySize ) }, i8Type ),
-                                            ArrayRef<char>( stringData ) );
+                auto denseAttr = DenseElementsAttr::get(
+                    RankedTensorType::get( { static_cast<int64_t>( strLen ) }, tyI8 ), ArrayRef<char>( stringData ) );
 
                 std::string globalName = "str_" + std::to_string( pr_stringLiterals.size() );
                 globalOp = rewriter.create<LLVM::GlobalOp>( loc, arrayType, true, LLVM::Linkage::Private, globalName,
@@ -435,43 +581,46 @@ namespace toy
 
                 if ( width == 1 )
                 {
-                    input = rewriter.create<mlir::LLVM::ZExtOp>( loc, rewriter.getI64Type(), input );
+                    input = rewriter.create<mlir::LLVM::ZExtOp>( loc, tyI64, input );
                 }
                 else if ( width < 64 )
                 {
-                    input = rewriter.create<mlir::LLVM::SExtOp>( loc, rewriter.getI64Type(), input );
+                    input = rewriter.create<mlir::LLVM::SExtOp>( loc, tyI64, input );
                 }
 
                 result = rewriter.create<LLVM::CallOp>( loc, toyPrintI64(), ValueRange{ input } );
             }
             else if ( auto inputf = mlir::dyn_cast<FloatType>( inputType ) )
             {
-                if ( inputType.isF32() )
+                if ( inputType == tyF32 )
                 {
-                    input = rewriter.create<LLVM::FPExtOp>( loc, rewriter.getF64Type(), input );
+                    input = rewriter.create<LLVM::FPExtOp>( loc, tyF64, input );
                 }
                 else
                 {
-                    assert( inputType.isF64() );
+                    assert( inputType == tyF64 );
                 }
                 result = rewriter.create<LLVM::CallOp>( loc, toyPrintF64(), ValueRange{ input } );
             }
-            else if ( inputType.isa<mlir::LLVM::LLVMPointerType>() )
+            else if ( inputType == tyPtr )
             {
                 // Find AllocaOp for size and element type
                 int64_t numElems = 0;
                 if ( auto loadOp = input.getDefiningOp<toy::LoadOp>() )
                 {
-                    auto varName = loadOp.getName();
-                    auto allocaOp = symbolToAlloca[varName];
-                    assert( allocaOp );
+                    auto varNameAttr = loadOp.getVarName();
+                    assert( varNameAttr );
+
+                    // Get string (e.g., "x")
+                    auto varName = varNameAttr.getLeafReference().str();
+                    LLVM_DEBUG( { llvm::dbgs() << "LoadOp variable name: " << varName << "\n"; } );
+
+                    auto allocaOp = lookupLocalSymbolReference( loadOp, varName );
 
                     // Validate element type is i8
                     auto elemType = allocaOp.getElemType();
-                    assert( elemType.isa<mlir::IntegerType>() &&
-                            ( elemType.cast<mlir::IntegerType>().getWidth() == 8 ) );    // must be i8
+                    assert( elemType == tyI8 );
 
-                    // Get array size
                     if ( auto constOp = allocaOp.getArraySize().getDefiningOp<mlir::LLVM::ConstantOp>() )
                     {
                         auto intAttr = mlir::dyn_cast<mlir::IntegerAttr>( constOp.getValue() );
@@ -489,12 +638,12 @@ namespace toy
                 }
                 else
                 {
-                    assert( 0 ); // should not get here.
+                    assert( 0 );    // should not get here.
                 }
                 assert( numElems );
 
-                auto sizeConst = rewriter.create<mlir::LLVM::ConstantOp>( loc, rewriter.getI64Type(),
-                                                                          rewriter.getI64IntegerAttr( numElems ) );
+                auto sizeConst =
+                    rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( numElems ) );
 
                 result = rewriter.create<mlir::LLVM::CallOp>( loc, toyPrintString(), ValueRange{ sizeConst, input } );
             }
@@ -508,44 +657,50 @@ namespace toy
     };
 
     // Lower toy.program to an LLVM function.
-    class ProgramOpLowering : public ConversionPattern
+    class FuncOpLowering : public mlir::ConversionPattern
     {
        private:
         loweringContext& lState;
 
        public:
-        ProgramOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( toy::ProgramOp::getOperationName(), 1, context ), lState{ lState_ }
+        FuncOpLowering( loweringContext& lState_, MLIRContext* context )
+            : ConversionPattern( toy::FuncOp::getOperationName(), 1, context ), lState{ lState_ }
         {
         }
 
-        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
-                                       ConversionPatternRewriter& rewriter ) const override
+        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
+                                             mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            auto programOp = cast<toy::ProgramOp>( op );
-            auto loc = programOp.getLoc();
+            toy::FuncOp funcOp = mlir::cast<toy::FuncOp>( op );
+            auto loc = funcOp.getLoc();
 
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.program: " << *op << '\n' << loc << '\n' );
+            mlir::StringAttr funcName = funcOp.getSymNameAttribute();
+            LLVM_DEBUG( {
+                llvm::dbgs() << std::format( "Lowering toy.func: funcName: {}\n", funcName.str() ) << *op << '\n'
+                             << loc << '\n';
+            } );
 
-            Block* entryBlock = lState.addEntryBlock( rewriter );
-
-            // Inline the toy.program's region into the function's entry block
-            Region& programRegion = programOp.getRegion();
-            if ( !programRegion.hasOneBlock() )
+            auto mlirFuncType = funcOp.getFunctionTypeAttrValue();
+            auto llvmResultType = lState.typeConverter.convertType( mlirFuncType.getResults()[0] );
+            SmallVector<Type> llvmArgTypes;
+            for ( auto argType : mlirFuncType.getInputs() )
             {
-                return rewriter.notifyMatchFailure( programOp, "toy.program must have exactly one block" );
+                llvmArgTypes.push_back( lState.typeConverter.convertType( argType ) );
             }
+            auto funcType = LLVM::LLVMFunctionType::get( llvmResultType, llvmArgTypes, false /* isVarArg */ );
+            auto func = rewriter.create<LLVM::LLVMFuncOp>( loc, funcName, funcType, LLVM::Linkage::External );
 
-            // Move the block's operations (e.g., toy.return) into the entry
-            // block
-            Block& programBlock = programRegion.front();
-            rewriter.inlineRegionBefore( programRegion, entryBlock );
-            rewriter.mergeBlocks( &programBlock, entryBlock,
-                                  /* argValues */ {} );
+            Region& programRegion = funcOp.getRegion();
+            rewriter.inlineRegionBefore( programRegion, func.getRegion(), func.getRegion().end() );
+
+            if ( auto debugAttr = funcOp->getAttr( "llvm.debug.subprogram" ) )
+            {
+                func->setAttr( "llvm.debug.subprogram", debugAttr );
+            }
 
             // Erase the original program op
             rewriter.eraseOp( op );
-            // LLVM_DEBUG(llvm::dbgs() << "IR after erasing toy.program:\n" << *op->getParentOp() << "\n");
+            // LLVM_DEBUG(llvm::dbgs() << "IR after erasing toy.func:\n" << *op->getParentOp() << "\n");
 
             // Recursively convert the inlined operations (e.g., toy.return)
             return success();
@@ -572,9 +727,10 @@ namespace toy
             //   toy.declare "x" : i32
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.declare: " << declareOp << '\n' );
 
+            rewriter.setInsertionPoint( op );
+
             auto varName = declareOp.getName();
             auto elemType = declareOp.getType();
-            // int64_t numElements = 1;    // scalar only for now.
 
             if ( !elemType.isIntOrFloat() )
             {
@@ -590,30 +746,18 @@ namespace toy
                 ...
             }
 #endif
-
-            auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
-            auto module = op->getParentOfType<ModuleOp>();
-            if ( !module )
-            {
-                return rewriter.notifyMatchFailure( declareOp, "declare op must be inside a module" );
-            }
-
-            mlir::DataLayout dataLayout( module );
-            unsigned alignment = dataLayout.getTypePreferredAlignment( elemType );
-
-            rewriter.setInsertionPoint( op );
+            unsigned alignment = lState.preferredTypeAlignment( op, elemType );
 
             mlir::Value sizeVal;
             int64_t arraySize = 1;
             if ( declareOp.getSize().has_value() )
             {
-                // Array: Use size attribute, no caching in lState
                 arraySize = declareOp.getSize().value();
                 if ( arraySize <= 0 )
                 {
                     return rewriter.notifyMatchFailure( declareOp, "array size must be positive" );
                 }
-                sizeVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, rewriter.getI64Type(),
+                sizeVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.tyI64,
                                                                    rewriter.getI64IntegerAttr( arraySize ) );
             }
             else
@@ -621,16 +765,10 @@ namespace toy
                 sizeVal = lState.getI64one( loc, rewriter );
             }
 
-            auto allocaOp = rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, sizeVal, alignment );
-
+            auto allocaOp = rewriter.create<LLVM::AllocaOp>( loc, lState.tyPtr, elemType, sizeVal, alignment );
             lState.constructVariableDI( varName, elemType, getLocation( loc ), elemSizeInBits, allocaOp, arraySize );
 
-            auto parentOp = op->getParentOp();
-
-            // Erase the declare op
             rewriter.eraseOp( op );
-
-            LLVM_DEBUG( llvm::dbgs() << "IR after lowering toy.declare:\n" << parentOp << '\n' );
 
             return success();
         }
@@ -657,7 +795,7 @@ namespace toy
             auto strValue = strAttr.getValue().str();
             auto strLen = strValue.size();
 
-            auto globalOp = lState.lookupOrInsertGlobalOp( rewriter, strAttr, loc, strLen, strLen );
+            auto globalOp = lState.lookupOrInsertGlobalOp( rewriter, strAttr, loc, strLen );
             if ( !globalOp )
             {
                 return rewriter.notifyMatchFailure( op, "Failed to create or lookup string literal global" );
@@ -693,18 +831,24 @@ namespace toy
             // toy.assign "x", %0 : i32
             LLVM_DEBUG( llvm::dbgs() << "Lowering AssignOp: " << *op << '\n' );
 
-            auto name = assignOp.getName();
+            auto varNameAttr = assignOp.getVarName();
+            assert( varNameAttr );
+
+            // Get string (e.g., "x")
+            auto varName = varNameAttr.getLeafReference().str();
+            LLVM_DEBUG( { llvm::dbgs() << "LoadOp variable name: " << varName << "\n"; } );
+
+            auto allocaOp = lState.lookupLocalSymbolReference( assignOp, varName );
+
             auto value = assignOp.getValue();
             auto valType = value.getType();
-            auto allocaOp = lState.symbolToAlloca[name];
 
-            // name: i1v
+            // varName: i1v
             // value: %true = arith.constant true
             // valType: i1
-            LLVM_DEBUG( llvm::dbgs() << "name: " << name << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "varName: " << varName << '\n' );
             LLVM_DEBUG( llvm::dbgs() << "value: " << value << '\n' );
             LLVM_DEBUG( llvm::dbgs() << "valType: " << valType << '\n' );
-            // allocaOp.dump(); // %1 = llvm.alloca %0 x i1 {alignment = 1 : i64} : (i64) -> !llvm.ptr
 
             // extract parameters from the allocaOp so we know what to do here:
             Type elemType = allocaOp.getElemType();
@@ -721,24 +865,24 @@ namespace toy
 
             if ( numElems == 1 )
             {
-                if ( mlir::isa<mlir::Float64Type>( valType ) )
+                if ( valType == lState.tyF64 )
                 {
                     if ( mlir::isa<mlir::IntegerType>( elemType ) )
                     {
                         value = rewriter.create<LLVM::FPToSIOp>( loc, elemType, value );
                     }
-                    else if ( mlir::isa<mlir::Float32Type>( elemType ) )
+                    else if ( elemType == lState.tyF32 )
                     {
                         value = rewriter.create<LLVM::FPTruncOp>( loc, elemType, value );
                     }
                 }
-                else if ( mlir::isa<mlir::Float32Type>( valType ) )
+                else if ( valType == lState.tyF32 )
                 {
                     if ( mlir::isa<mlir::IntegerType>( elemType ) )
                     {
                         value = rewriter.create<LLVM::FPToSIOp>( loc, elemType, value );
                     }
-                    else if ( mlir::isa<mlir::Float64Type>( elemType ) )
+                    else if ( elemType == lState.tyF64 )
                     {
                         value = rewriter.create<LLVM::FPExtOp>( loc, elemType, value );
                     }
@@ -747,7 +891,7 @@ namespace toy
                 {
                     auto vwidth = viType.getWidth();
 
-                    if ( mlir::isa<mlir::Float64Type>( elemType ) || mlir::isa<mlir::Float32Type>( elemType ) )
+                    if ( lState.isTypeFloat( elemType ) )
                     {
                         if ( vwidth == 1 )
                         {
@@ -774,11 +918,12 @@ namespace toy
                     }
                 }
 
-                rewriter.create<LLVM::StoreOp>( loc, value, allocaOp );
+                unsigned alignment = lState.preferredTypeAlignment( op, elemType );
+                rewriter.create<LLVM::StoreOp>( loc, value, allocaOp, alignment );
             }
             else if ( auto stringLitOp = value.getDefiningOp<toy::StringLiteralOp>() )
             {
-                if ( !mlir::isa<mlir::IntegerType>( elemType ) || elemType.getIntOrFloatBitWidth() != 8 )
+                if ( elemType != lState.tyI8 )
                 {
                     return rewriter.notifyMatchFailure( assignOp, "string assignment requires i8 array" );
                 }
@@ -797,29 +942,27 @@ namespace toy
                 auto destPtr = allocaOp.getResult();
 
                 auto copySize = std::min( (int)numElems, (int)literalStrLen );
-                auto sizeConst = rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(),
-                                                                    rewriter.getI64IntegerAttr( copySize ) );
+                auto sizeConst =
+                    rewriter.create<LLVM::ConstantOp>( loc, lState.tyI64, rewriter.getI64IntegerAttr( copySize ) );
 
                 rewriter.create<LLVM::MemcpyOp>( loc, destPtr, globalPtr, sizeConst, rewriter.getBoolAttr( false ) );
 
                 // If target array is larger than string literal, zero out the remaining bytes
-                if ( numElems > literalStrLen )
+                if ( numElems > (int64_t)literalStrLen )
                 {
                     // Compute the offset: destPtr + literalStrLen
-                    auto offsetConst = rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI64Type(),
+                    auto offsetConst = rewriter.create<LLVM::ConstantOp>( loc, lState.tyI64,
                                                                           rewriter.getI64IntegerAttr( literalStrLen ) );
                     auto destPtrOffset = rewriter.create<LLVM::GEPOp>( loc, destPtr.getType(), elemType, destPtr,
                                                                        ValueRange{ offsetConst } );
 
                     // Compute the number of bytes to zero: numElems - literalStrLen
                     auto remainingSize = rewriter.create<LLVM::ConstantOp>(
-                        loc, rewriter.getI64Type(), rewriter.getI64IntegerAttr( numElems - literalStrLen ) );
+                        loc, lState.tyI64, rewriter.getI64IntegerAttr( numElems - literalStrLen ) );
 
                     // Set remaining bytes to zero
-                    auto zeroVal =
-                        rewriter.create<LLVM::ConstantOp>( loc, rewriter.getI8Type(), rewriter.getI8IntegerAttr( 0 ) );
-                    rewriter.create<LLVM::MemsetOp>( loc, destPtrOffset, zeroVal, remainingSize,
-                                                     rewriter.getBoolAttr( false ) );
+                    rewriter.create<LLVM::MemsetOp>( loc, destPtrOffset, lState.getI8zero( loc, rewriter ),
+                                                     remainingSize, rewriter.getBoolAttr( false ) );
                 }
             }
             else
@@ -857,37 +1000,37 @@ namespace toy
             auto lhs = compareOp.getLhs();
             auto rhs = compareOp.getRhs();
 
-            auto lhsi = mlir::dyn_cast<IntegerType>( lhs.getType() );
-            auto rhsi = mlir::dyn_cast<IntegerType>( rhs.getType() );
-            auto lhsf = mlir::dyn_cast<FloatType>( lhs.getType() );
-            auto rhsf = mlir::dyn_cast<FloatType>( rhs.getType() );
+            auto lTyI = mlir::dyn_cast<IntegerType>( lhs.getType() );
+            auto rTyI = mlir::dyn_cast<IntegerType>( rhs.getType() );
+            auto lTyF = mlir::dyn_cast<FloatType>( lhs.getType() );
+            auto rTyF = mlir::dyn_cast<FloatType>( rhs.getType() );
 
-            if ( lhsi && rhsi )
+            if ( lTyI && rTyI )
             {
-                auto lwidth = lhsi.getWidth();
-                auto rwidth = rhsi.getWidth();
+                auto lwidth = lTyI.getWidth();
+                auto rwidth = rTyI.getWidth();
                 auto pred = ICmpPredS;
 
                 if ( rwidth > lwidth )
                 {
                     if ( lwidth == 1 )
                     {
-                        lhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, rhsi, lhs );
+                        lhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, rTyI, lhs );
                     }
                     else
                     {
-                        lhs = rewriter.create<mlir::LLVM::SExtOp>( loc, rhsi, lhs );
+                        lhs = rewriter.create<mlir::LLVM::SExtOp>( loc, rTyI, lhs );
                     }
                 }
                 else if ( rwidth < lwidth )
                 {
                     if ( rwidth == 1 )
                     {
-                        rhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, lhsi, rhs );
+                        rhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, lTyI, rhs );
                     }
                     else
                     {
-                        rhs = rewriter.create<mlir::LLVM::SExtOp>( loc, lhsi, rhs );
+                        rhs = rewriter.create<mlir::LLVM::SExtOp>( loc, lTyI, rhs );
                     }
                 }
                 else if ( ( rwidth == lwidth ) && ( rwidth == 1 ) )
@@ -898,18 +1041,18 @@ namespace toy
                 auto cmp = rewriter.create<IOpType>( loc, pred, lhs, rhs );
                 rewriter.replaceOp( op, cmp.getResult() );
             }
-            else if ( lhsf && rhsf )
+            else if ( lTyF && rTyF )
             {
-                auto lwidth = lhsf.getWidth();
-                auto rwidth = rhsf.getWidth();
+                auto lwidth = lTyF.getWidth();
+                auto rwidth = rTyF.getWidth();
 
                 if ( lwidth < rwidth )
                 {
-                    lhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, rhsf, lhs );
+                    lhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, rTyF, lhs );
                 }
                 else if ( rwidth < lwidth )
                 {
-                    rhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, lhsf, rhs );
+                    rhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, lTyF, rhs );
                 }
 
                 auto cmp = rewriter.create<FOpType>( loc, FCmpPred, lhs, rhs );
@@ -918,26 +1061,26 @@ namespace toy
             else
             {
                 // convert integer type to float
-                if ( lhsi && rhsf )
+                if ( lTyI && rTyF )
                 {
-                    if ( lhsi.getWidth() == 1 )
+                    if ( lTyI == lState.tyI1 )
                     {
-                        lhs = rewriter.create<mlir::arith::UIToFPOp>( loc, rhsf, lhs );
+                        lhs = rewriter.create<mlir::arith::UIToFPOp>( loc, rTyF, lhs );
                     }
                     else
                     {
-                        lhs = rewriter.create<mlir::arith::SIToFPOp>( loc, rhsf, lhs );
+                        lhs = rewriter.create<mlir::arith::SIToFPOp>( loc, rTyF, lhs );
                     }
                 }
-                else if ( rhsi && lhsf )
+                else if ( rTyI && lTyF )
                 {
-                    if ( rhsi.getWidth() == 1 )
+                    if ( rTyI == lState.tyI1 )
                     {
-                        rhs = rewriter.create<mlir::arith::UIToFPOp>( loc, lhsf, rhs );
+                        rhs = rewriter.create<mlir::arith::UIToFPOp>( loc, lTyF, rhs );
                     }
                     else
                     {
-                        rhs = rewriter.create<mlir::arith::SIToFPOp>( loc, lhsf, rhs );
+                        rhs = rewriter.create<mlir::arith::SIToFPOp>( loc, lTyF, rhs );
                     }
                 }
                 else
@@ -989,14 +1132,14 @@ namespace toy
             // %0 = toy.load "i1v" : i1
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.load: " << *op << '\n' );
 
-            auto name = loadOp.getName();
-            auto allocaOp = lState.symbolToAlloca[name];
+            auto varName = loadOp.getVarNameAttr().getRootReference().getValue().str();
+            auto allocaOp = lState.lookupLocalSymbolReference( loadOp, varName );
 
-            LLVM_DEBUG( llvm::dbgs() << "name: " << name << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "varName: " << varName << '\n' );
 
             Type elemType = allocaOp.getElemType();
 
-            if ( loadOp.getResult().getType().isa<mlir::LLVM::LLVMPointerType>() )
+            if ( loadOp.getResult().getType() == lState.tyPtr )
             {
                 // Return the allocated pointer
                 LLVM_DEBUG( llvm::dbgs() << "Loading array address: " << allocaOp.getResult() << '\n' );
@@ -1051,22 +1194,22 @@ namespace toy
                     operand.dump();
                 } );
 
-                if ( mlir::isa<mlir::Float32Type>( operand.getType() ) ||
-                     mlir::isa<mlir::Float64Type>( operand.getType() ) )
+                auto ty = operand.getType();
+                if ( lState.isTypeFloat( ty ) )
                 {
-                    operand = rewriter.create<LLVM::FPToSIOp>( loc, rewriter.getI32Type(), operand );
+                    operand = rewriter.create<LLVM::FPToSIOp>( loc, lState.tyI32, operand );
                 }
 
                 auto intType = mlir::cast<mlir::IntegerType>( operand.getType() );
                 auto width = intType.getWidth();
                 if ( width > 32 )
                 {
-                    operand = rewriter.create<mlir::LLVM::TruncOp>( loc, rewriter.getI32Type(), operand );
+                    operand = rewriter.create<mlir::LLVM::TruncOp>( loc, lState.tyI32, operand );
                 }
                 else if ( width != 32 )
                 {
                     // SExtOp for sign extend.
-                    operand = rewriter.create<mlir::LLVM::ZExtOp>( loc, rewriter.getI32Type(), operand );
+                    operand = rewriter.create<mlir::LLVM::ZExtOp>( loc, lState.tyI32, operand );
                 }
 
                 LLVM_DEBUG( {
@@ -1152,14 +1295,33 @@ namespace toy
         {
             auto unaryOp = cast<toy::NegOp>( op );
             auto loc = unaryOp.getLoc();
-            auto operand = operands[0];
+            mlir::Value result = operands[0];
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.negate: " << *op << '\n' );
 
-            mlir::Value result = operand;
+            if ( auto resulti = mlir::dyn_cast<IntegerType>( result.getType() ) )
+            {
+                result =
+                    rewriter.create<LLVM::SubOp>( loc, lState.getIzero( loc, rewriter, resulti.getWidth() ), result );
+            }
+            else if ( auto resultf = mlir::dyn_cast<FloatType>( result.getType() ) )
+            {
+                unsigned w{};
+                if ( resultf == lState.tyF32 )
+                {
+                    w = 32;
+                }
+                else if ( resultf == lState.tyF64 )
+                {
+                    w = 64;
+                }
 
-            auto zero = lState.getF64zero( loc, rewriter );
-            result = rewriter.create<LLVM::FSubOp>( loc, zero, result );
+                result = rewriter.create<LLVM::FSubOp>( loc, lState.getFzero( loc, rewriter, w ), result );
+            }
+            else
+            {
+                llvm_unreachable( "Unknown type in negation operation lowering." );
+            }
 
             rewriter.replaceOp( op, result );
             return success();
@@ -1195,9 +1357,9 @@ namespace toy
             {
                 auto rwidth = resultType.getIntOrFloatBitWidth();
 
-                if ( auto lhsi = mlir::dyn_cast<IntegerType>( lhs.getType() ) )
+                if ( auto lTyI = mlir::dyn_cast<IntegerType>( lhs.getType() ) )
                 {
-                    auto width = lhsi.getWidth();
+                    auto width = lTyI.getWidth();
 
                     if ( rwidth > width )
                     {
@@ -1208,7 +1370,7 @@ namespace toy
                         lhs = rewriter.create<mlir::LLVM::TruncOp>( loc, resultType, lhs );
                     }
                 }
-                else if ( lhs.getType().isF32() || lhs.getType().isF64() )
+                else if ( lState.isTypeFloat( lhs.getType() ) )
                 {
                     if ( allowFloat )
                     {
@@ -1220,9 +1382,9 @@ namespace toy
                     }
                 }
 
-                if ( auto rhsi = mlir::dyn_cast<IntegerType>( rhs.getType() ) )
+                if ( auto rTyI = mlir::dyn_cast<IntegerType>( rhs.getType() ) )
                 {
-                    auto width = rhsi.getWidth();
+                    auto width = rTyI.getWidth();
 
                     if ( rwidth > width )
                     {
@@ -1233,7 +1395,7 @@ namespace toy
                         rhs = rewriter.create<mlir::LLVM::TruncOp>( loc, resultType, rhs );
                     }
                 }
-                else if ( rhs.getType().isF32() || rhs.getType().isF64() )
+                else if ( lState.isTypeFloat( rhs.getType() ) )
                 {
                     if ( allowFloat )
                     {
@@ -1251,9 +1413,9 @@ namespace toy
             else if ( allowFloat )
             {
                 // Floating-point addition: ensure both operands are f64.
-                if ( auto lhsi = mlir::dyn_cast<IntegerType>( lhs.getType() ) )
+                if ( auto lTyI = mlir::dyn_cast<IntegerType>( lhs.getType() ) )
                 {
-                    auto width = lhsi.getWidth();
+                    auto width = lTyI.getWidth();
 
                     if ( width == 1 )
                     {
@@ -1264,9 +1426,9 @@ namespace toy
                         lhs = rewriter.create<LLVM::SIToFPOp>( loc, resultType, lhs );
                     }
                 }
-                if ( auto rhsi = mlir::dyn_cast<IntegerType>( rhs.getType() ) )
+                if ( auto rTyI = mlir::dyn_cast<IntegerType>( rhs.getType() ) )
                 {
-                    auto width = rhsi.getWidth();
+                    auto width = rTyI.getWidth();
 
                     if ( width == 1 )
                     {
@@ -1322,15 +1484,13 @@ namespace toy
 
             if ( auto fAttr = dyn_cast<FloatAttr>( valueAttr ) )
             {
-                auto f64Type = rewriter.getF64Type();    // Returns Float64Type for f64
-                auto value = rewriter.create<LLVM::ConstantOp>( loc, f64Type, fAttr );
+                auto value = rewriter.create<LLVM::ConstantOp>( loc, lState.tyF64, fAttr );
                 rewriter.replaceOp( op, value );
                 return success();
             }
             else if ( auto intAttr = dyn_cast<IntegerAttr>( valueAttr ) )
             {
-                auto i64Type = IntegerType::get( rewriter.getContext(), 64 );
-                auto value = rewriter.create<LLVM::ConstantOp>( loc, i64Type, intAttr );
+                auto value = rewriter.create<LLVM::ConstantOp>( loc, lState.tyI64, intAttr );
                 rewriter.replaceOp( op, value );
                 return success();
             }
@@ -1367,26 +1527,23 @@ namespace toy
 
             lState.setModuleAttrs();
 
-            auto ctx = lState.getBuilder().getContext();
-            lState.createMain();
+            auto ctx = lState.getContext();
+            lState.createFuncDebug( ENTRY_SYMBOL_NAME );
 
-            // Initialize the type converter
-            LLVMTypeConverter typeConverter( ctx );
-
-            // Conversion target: only LLVM dialect is legal
+            // Conversion target: only LLVM dialect is legal, except for toy::FuncOp and mlir::ModuleOp
             ConversionTarget target1( getContext() );
             target1.addLegalDialect<LLVM::LLVMDialect>();
             target1.addIllegalOp<arith::ConstantOp>();
             target1.addIllegalOp<toy::DeclareOp, toy::AssignOp, toy::PrintOp, toy::AddOp, toy::SubOp, toy::MulOp,
                                  toy::DivOp, toy::NegOp, toy::ExitOp>();
             target1.addLegalOp<mlir::ModuleOp>();
-            target1.addIllegalDialect<toy::ToyDialect>();
+            target1.addLegalOp<toy::FuncOp>();
 
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns1( ctx );
 
             // The operator ordering here doesn't matter, as there appears to be a graph walk to find all the operator
-            // nodes, and the order is based on that walk (i.e.: ProgramOpLowering happens first.)
+            // nodes, and the order is based on that walk
             patterns1.insert<DeclareOpLowering>( lState, ctx );
             patterns1.insert<LoadOpLowering>( lState, ctx );
             patterns1.insert<AddOpLowering>( lState, ctx );
@@ -1406,19 +1563,36 @@ namespace toy
             patterns1.insert<AssignOpLowering>( lState, ctx );
             patterns1.insert<StringLiteralOpLowering>( lState, ctx );
             patterns1.insert<ExitOpLowering>( lState, ctx );
-            patterns1.insert<ProgramOpLowering>( lState, ctx );
 
-            arith::populateArithToLLVMConversionPatterns( typeConverter, patterns1 );
+            arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns1 );
 
-            if ( failed( applyFullConversion( module, target1, std::move( patterns1 ) ) ) )
+            if ( failed( applyPartialConversion( module, target1, std::move( patterns1 ) ) ) )
             {
-                LLVM_DEBUG( llvm::dbgs() << "Conversion failed\n" );
+                LLVM_DEBUG( llvm::dbgs() << "Toy Lowering: Stage I Conversion failed\n" );
+                signalPassFailure();
+                return;
+            }
+
+            LLVM_DEBUG( { llvm::dbgs() << "Toy Lowering: Stage I Conversion succesful.  Stage II:\n"; } );
+
+            ConversionTarget target2( getContext() );
+            target2.addLegalDialect<LLVM::LLVMDialect>();
+            target2.addLegalOp<mlir::ModuleOp>();
+            target2.addIllegalDialect<toy::ToyDialect>();
+
+            // Patterns for the final FuncOp removal:
+            RewritePatternSet patterns2( ctx );
+            patterns2.insert<FuncOpLowering>( lState, ctx );
+
+            if ( failed( applyFullConversion( module, target2, std::move( patterns2 ) ) ) )
+            {
+                LLVM_DEBUG( llvm::dbgs() << "Toy Lowering: Stage II Conversion failed\n" );
                 signalPassFailure();
                 return;
             }
 
             LLVM_DEBUG( {
-                llvm::dbgs() << "After ToyToLLVMLoweringPass:\n";
+                llvm::dbgs() << "After successfull ToyToLLVMLoweringPass:\n";
                 for ( Operation& op : module->getRegion( 0 ).front() )
                 {
                     op.dump();

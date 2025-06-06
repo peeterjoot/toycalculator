@@ -4,6 +4,7 @@
  * @brief   altlr4 parse tree listener and MLIR builder.
  */
 #include <llvm/Support/Debug.h>
+#include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
@@ -15,8 +16,9 @@
 
 #include <format>
 
-#include "ToyExceptions.h"
-#include "parser.h"
+#include "ToyExceptions.hpp"
+#include "constants.hpp"
+#include "parser.hpp"
 
 #define DEBUG_TYPE "toy-parser"
 
@@ -25,9 +27,34 @@ namespace toy
     DialectCtx::DialectCtx()
     {
         context.getOrLoadDialect<toy::ToyDialect>();
+        context.getOrLoadDialect<mlir::func::FuncDialect>();
         context.getOrLoadDialect<mlir::arith::ArithDialect>();
         context.getOrLoadDialect<mlir::memref::MemRefDialect>();
         context.getOrLoadDialect<mlir::LLVM::LLVMDialect>();
+    }
+
+    toy::DeclareOp MLIRListener::lookupDeclareForVar( const std::string &varName )
+    {
+        auto parentFunc = funcByName[currentFuncName];
+        auto func = mlir::dyn_cast<toy::FuncOp>( parentFunc );
+        LLVM_DEBUG( {
+            llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
+            func->dump();
+        } );
+
+        auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( func, varName );
+        if ( !symbolOp )
+        {
+            throw exception_with_context( __FILE__, __LINE__, __func__, std::format( "Undeclared variable {}", varName ) );
+        }
+
+        auto declareOp = mlir::dyn_cast<toy::DeclareOp>( symbolOp );
+        if ( !declareOp )
+        {
+            throw exception_with_context( __FILE__, __LINE__, __func__, std::format( "Undeclared variable {}", varName ) );
+        }
+
+        return declareOp;
     }
 
     inline mlir::Location MLIRListener::getLocation( antlr4::ParserRuleContext *ctx )
@@ -124,7 +151,7 @@ namespace toy
     // \retval true if error
     inline std::string MLIRListener::buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
                                                            tNode *variableNode, tNode *stringNode, mlir::Location loc,
-                                                           mlir::Value &value, theTypes &ty )
+                                                           mlir::Value &value )
     {
         if ( booleanNode )
         {
@@ -147,13 +174,11 @@ namespace toy
             }
 
             value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 1 );
-            ty = theTypes::boolean;
         }
         else if ( integerNode )
         {
             int64_t val = std::stoll( integerNode->getText() );
             value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
-            ty = theTypes::integer64;
         }
         else if ( floatNode )
         {
@@ -165,13 +190,12 @@ namespace toy
             // the max sized type. Would need a grammar change to have a
             // specific type (i.e.: size) associated with literals.
             value = builder.create<mlir::arith::ConstantFloatOp>( loc, apVal, builder.getF64Type() );
-            ty = theTypes::float64;
         }
         else if ( variableNode )
         {
             auto varName = variableNode->getText();
 
-            auto varState = var_states[varName];
+            auto varState = varStates[varName];
 
             if ( varState == variable_state::undeclared )
             {
@@ -189,18 +213,14 @@ namespace toy
                     std::format( "{}error: Variable {} not assigned in expr\n", formatLocation( loc ), varName ) );
             }
 
-            auto dcl = var_storage[varName];
-            auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
+            auto declareOp = lookupDeclareForVar( varName );
 
             mlir::Type varType = declareOp.getTypeAttr().getValue();
-            value = builder.create<toy::LoadOp>( loc, varType, builder.getStringAttr( varName ) );
-
-            ty = getCompilerType( varType );
+            auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+            value = builder.create<toy::LoadOp>( loc, varType, symRef );
         }
         else if ( stringNode )
         {
-            ty = theTypes::string;
-
             return stripQuotes( stringNode->getText() );
         }
         else
@@ -216,7 +236,7 @@ namespace toy
     inline bool MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                                    ToyParser::ArrayBoundsExpressionContext *arrayBounds )
     {
-        auto varState = var_states[varName];
+        auto varState = varStates[varName];
         if ( varState != variable_state::undeclared )
         {
             lastSemError = semantic_errors::variable_already_declared;
@@ -224,7 +244,7 @@ namespace toy
             return true;
         }
 
-        var_states[varName] = variable_state::declared;
+        varStates[varName] = variable_state::declared;
 
         size_t arraySize{};
         if ( arrayBounds )
@@ -233,19 +253,21 @@ namespace toy
             arraySize = std::stoi( index->getText() );
         }
 
+        auto strAttr = builder.getStringAttr( varName );
         if ( arraySize )
         {
             auto sizeAttr = builder.getI64IntegerAttr( arraySize );
-            auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), mlir::TypeAttr::get( ty ),
-                                                       sizeAttr );
-            var_storage[varName] = dcl;
+            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), sizeAttr );
+            dcl->setAttr( "sym_name", strAttr );
         }
         else
         {
-            auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), mlir::TypeAttr::get( ty ),
-                                                       nullptr );
-            var_storage[varName] = dcl;
+            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr );
+            dcl->setAttr( "sym_name", strAttr );
         }
+
+        // For test purposes to verify that symbol lookup for varName worked right after the DeclareOp build call:
+        //auto ddcl = lookupDeclareForVar( varName );
 
         return false;
     }
@@ -258,14 +280,30 @@ namespace toy
           mod( mlir::ModuleOp::create( currentAssignLoc ) )
     {
         builder.setInsertionPointToStart( mod.getBody() );
+
+        tyI1 = builder.getI1Type();
+        tyI8 = builder.getI8Type();
+        tyI16 = builder.getI16Type();
+        tyI32 = builder.getI32Type();
+        tyI64 = builder.getI64Type();
+
+        tyF32 = builder.getF32Type();
+        tyF64 = builder.getF64Type();
+
+        tyPtr = mlir::LLVM::LLVMPointerType::get( builder.getContext() );
     }
 
     void MLIRListener::enterStartRule( ToyParser::StartRuleContext *ctx )
     {
         auto loc = getLocation( ctx );
-        programOp = builder.create<toy::ProgramOp>( loc );
-        programOp.getBody().push_back( new mlir::Block() );
-        builder.setInsertionPointToStart( &programOp.getBody().front() );
+
+        auto funcType = builder.getFunctionType( {}, tyI32 );
+        auto func = builder.create<toy::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
+
+        currentFuncName = ENTRY_SYMBOL_NAME;
+        funcByName[currentFuncName] = func;
+        auto &block = *func.addEntryBlock();
+        builder.setInsertionPointToStart( &block );
     }
 
     void MLIRListener::exitStartRule( ToyParser::StartRuleContext *ctx )
@@ -286,44 +324,85 @@ namespace toy
         }
     }
 
+    void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
+    {
+        auto loc = getLocation( ctx );
+
+        llvm::errs() << std::format( "{}NYI: {}\n", formatLocation( loc ), ctx->getText() );
+
+        assert( 0 );
+#if 0
+        auto returnType = parseScalarType( ctx->scalarType() );    // Convert scalarType to MLIR Type
+        std::string funcName = ctx->IDENTIFIER()->getText();
+
+        // Collect parameter types and names
+        std::vector<mlir::Type> paramTypes;
+        std::vector<std::string> paramNames;
+        for ( auto *paramCtx : ctx->parameterTypeAndName() )
+        {
+            auto paramType = parseScalarType( paramCtx->scalarType() );    // Convert to MLIR Type
+            auto paramName = paramCtx->IDENTIFIER()->getText();
+            paramTypes.push_back( paramType );
+            paramNames.push_back( paramName );
+        }
+
+        // Create func::FuncOp
+        auto funcType = builder.getFunctionType( paramTypes, returnType );
+        // FIXME: this one should use visibility private
+        auto func = builder.create<toy::FuncOp>( loc, funcName, funcType );
+        auto &block = *func.addEntryBlock();
+        builder.setInsertionPointToStart( &block );
+
+        currentFuncName = funcName;
+        funcByName[currentFuncName] = func;
+
+        // Map parameter names to block arguments
+        for ( size_t i = 0; i < paramNames.size(); ++i )
+        {
+            // Store paramNames[i] -> block.getArgument(i) in a symbol table or map
+            symbolTable.insert( paramNames[i], block.getArgument( i ) );
+        }
+#endif
+    }
+
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
+        auto varName = ctx->IDENTIFIER()->getText();
 
-        registerDeclaration( loc, varName, builder.getF64Type(), ctx->arrayBoundsExpression() );
+        registerDeclaration( loc, varName, tyF64, ctx->arrayBoundsExpression() );
     }
 
     void MLIRListener::enterBoolDeclare( ToyParser::BoolDeclareContext *ctx )
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
-        registerDeclaration( loc, varName, builder.getI1Type(), ctx->arrayBoundsExpression() );
+        auto varName = ctx->IDENTIFIER()->getText();
+        registerDeclaration( loc, varName, tyI1, ctx->arrayBoundsExpression() );
     }
 
     void MLIRListener::enterIntDeclare( ToyParser::IntDeclareContext *ctx )
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
+        auto varName = ctx->IDENTIFIER()->getText();
 
         if ( ctx->INT8_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getI8Type(), ctx->arrayBoundsExpression() );
+            registerDeclaration( loc, varName, tyI8, ctx->arrayBoundsExpression() );
         }
         else if ( ctx->INT16_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getI16Type(), ctx->arrayBoundsExpression() );
+            registerDeclaration( loc, varName, tyI16, ctx->arrayBoundsExpression() );
         }
         else if ( ctx->INT32_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getI32Type(), ctx->arrayBoundsExpression() );
+            registerDeclaration( loc, varName, tyI32, ctx->arrayBoundsExpression() );
         }
         else if ( ctx->INT64_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getI64Type(), ctx->arrayBoundsExpression() );
+            registerDeclaration( loc, varName, tyI64, ctx->arrayBoundsExpression() );
         }
         else
         {
@@ -336,15 +415,15 @@ namespace toy
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
+        auto varName = ctx->IDENTIFIER()->getText();
 
         if ( ctx->FLOAT32_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getF32Type(), ctx->arrayBoundsExpression() );
+            registerDeclaration( loc, varName, tyF32, ctx->arrayBoundsExpression() );
         }
         else if ( ctx->FLOAT64_TOKEN() )
         {
-            registerDeclaration( loc, varName, builder.getF64Type(), ctx->arrayBoundsExpression() );
+            registerDeclaration( loc, varName, tyF64, ctx->arrayBoundsExpression() );
         }
         else
         {
@@ -357,11 +436,21 @@ namespace toy
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
+        auto varName = ctx->IDENTIFIER()->getText();
         ToyParser::ArrayBoundsExpressionContext *arrayBounds = ctx->arrayBoundsExpression();
         assert( arrayBounds );
 
-        registerDeclaration( loc, varName, builder.getI8Type(), arrayBounds );
+        registerDeclaration( loc, varName, tyI8, arrayBounds );
+    }
+
+    void MLIRListener::enterIfelifelse( ToyParser::IfelifelseContext *ctx )
+    {
+        lastOp = lastOperator::ifOp;
+        auto loc = getLocation( ctx );
+
+        llvm::errs() << std::format( "{}NYI: {}\n", formatLocation( loc ), ctx->getText() );
+
+        assert( 0 );
     }
 
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
@@ -371,11 +460,11 @@ namespace toy
 
         mlir::Type varType;
 
-        auto varNameObject = ctx->VARIABLENAME_PATTERN();
+        auto varNameObject = ctx->IDENTIFIER();
         if ( varNameObject )
         {
             auto varName = varNameObject->getText();
-            auto varState = var_states[varName];
+            auto varState = varStates[varName];
             if ( varState == variable_state::undeclared )
             {
                 lastSemError = semantic_errors::variable_not_declared;
@@ -391,15 +480,14 @@ namespace toy
                 return;
             }
 
-            auto dcl = var_storage[varName];
-            auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
+            auto declareOp = lookupDeclareForVar( varName );
 
             mlir::Type elemType = declareOp.getTypeAttr().getValue();
 
             if ( declareOp.getSizeAttr() )    // Check if size attribute exists
             {
                 // Array: load a generic pointer
-                varType = mlir::LLVM::LLVMPointerType::get(builder.getContext(), /*addressSpace=*/0);
+                varType = tyPtr;
             }
             else
             {
@@ -407,7 +495,8 @@ namespace toy
                 varType = elemType;
             }
 
-            auto value = builder.create<toy::LoadOp>( loc, varType, builder.getStringAttr( varName ) );
+            auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+            auto value = builder.create<toy::LoadOp>( loc, varType, symRef );
             builder.create<toy::PrintOp>( loc, value );
         }
         else if ( auto theString = ctx->STRING_PATTERN() )
@@ -415,15 +504,15 @@ namespace toy
             auto s = stripQuotes( theString->getText() );
             auto strAttr = builder.getStringAttr( s );
 
-            auto ptrType = mlir::LLVM::LLVMPointerType::get( &dialect.context );
-            auto stringLiteral = builder.create<toy::StringLiteralOp>( loc, ptrType, strAttr );
+            auto stringLiteral = builder.create<toy::StringLiteralOp>( loc, tyPtr, strAttr );
 
             builder.create<toy::PrintOp>( loc, stringLiteral );
         }
         else
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__,
-                                          std::format( "{}error: unexpected print context {}\n", formatLocation( loc ), ctx->getText() ) );
+            throw exception_with_context(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}error: unexpected print context {}\n", formatLocation( loc ), ctx->getText() ) );
         }
     }
 
@@ -433,7 +522,7 @@ namespace toy
         auto loc = getLocation( ctx );
 
         auto lit = ctx->numericLiteral();
-        auto var = ctx->VARIABLENAME_PATTERN();
+        auto var = ctx->IDENTIFIER();
 
         if ( ( lit == nullptr ) && ( var == nullptr ) )
         {
@@ -444,12 +533,11 @@ namespace toy
         {
             mlir::Value value;
 
-            theTypes ty;
             auto s =
                 buildUnaryExpression( nullptr,    // booleanNode
                                       lit ? lit->INTEGER_PATTERN() : nullptr, lit ? lit->FLOAT_PATTERN() : nullptr, var,
                                       nullptr,    // stringNode
-                                      loc, value, ty );
+                                      loc, value );
             assert( s.length() == 0 );
 
             builder.create<toy::ExitOp>( loc, mlir::ValueRange{ value } );
@@ -461,11 +549,11 @@ namespace toy
         lastOp = lastOperator::assignmentOp;
         assignmentTargetValid = true;
         auto loc = getLocation( ctx );
-        currentVarName = ctx->VARIABLENAME_PATTERN()->getText();
-        auto varState = var_states[currentVarName];
+        currentVarName = ctx->IDENTIFIER()->getText();
+        auto varState = varStates[currentVarName];
         if ( varState == variable_state::declared )
         {
-            var_states[currentVarName] = variable_state::assigned;
+            varStates[currentVarName] = variable_state::assigned;
         }
         else if ( varState == variable_state::undeclared )
         {
@@ -486,13 +574,11 @@ namespace toy
         auto loc = getLocation( ctx );
         mlir::Value resultValue;
 
-        auto dcl = var_storage[currentVarName];
-        auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
+        auto declareOp = lookupDeclareForVar( currentVarName );
         mlir::TypeAttr typeAttr = declareOp.getTypeAttr();
         mlir::Type opType = typeAttr.getValue();
 
         mlir::Value lhsValue;
-        theTypes lty;
         auto bsz = ctx->binaryElement().size();
         std::string s;
 
@@ -502,10 +588,9 @@ namespace toy
 
             auto lit = ctx->literal();
 
-            theTypes ty;
             s = buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                      lit ? lit->FLOAT_PATTERN() : nullptr, ctx->VARIABLENAME_PATTERN(),
-                                      lit ? lit->STRING_PATTERN() : nullptr, loc, lhsValue, ty );
+                                      lit ? lit->FLOAT_PATTERN() : nullptr, ctx->IDENTIFIER(),
+                                      lit ? lit->STRING_PATTERN() : nullptr, loc, lhsValue );
 
             resultValue = lhsValue;
             if ( auto unaryOp = ctx->unaryOperator() )
@@ -538,19 +623,18 @@ namespace toy
             auto llit = lhs->numericLiteral();
             s = buildUnaryExpression( nullptr,    // booleanNode
                                       llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
-                                      lhs->VARIABLENAME_PATTERN(),
+                                      lhs->IDENTIFIER(),
                                       nullptr,    // stringNode
-                                      loc, lhsValue, lty );
+                                      loc, lhsValue );
             assert( s.length() == 0 );
 
             mlir::Value rhsValue;
-            theTypes rty;
             auto rlit = rhs->numericLiteral();
             s = buildUnaryExpression( nullptr,    // booleanNode
                                       rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
-                                      rhs->VARIABLENAME_PATTERN(),
+                                      rhs->IDENTIFIER(),
                                       nullptr,    // stringNode
-                                      loc, rhsValue, rty );
+                                      loc, rhsValue );
             assert( s.length() == 0 );
 
             // Create the binary operator (supports +, -, *, /)
@@ -628,21 +712,21 @@ namespace toy
 
         assert( !currentVarName.empty() );
 
+        auto symRef = mlir::SymbolRefAttr::get( &dialect.context, currentVarName );
         if ( s.length() )
         {
             auto strAttr = builder.getStringAttr( s );
 
-            auto ptrType = mlir::LLVM::LLVMPointerType::get( &dialect.context );
-            auto stringLiteral = builder.create<toy::StringLiteralOp>( loc, ptrType, strAttr );
+            auto stringLiteral = builder.create<toy::StringLiteralOp>( loc, tyPtr, strAttr );
 
-            builder.create<toy::AssignOp>( loc, builder.getStringAttr( currentVarName ), stringLiteral );
+            builder.create<toy::AssignOp>( loc, symRef, stringLiteral );
         }
         else
         {
-            builder.create<toy::AssignOp>( loc, builder.getStringAttr( currentVarName ), resultValue );
+            builder.create<toy::AssignOp>( loc, symRef, resultValue );
         }
 
-        var_states[currentVarName] = variable_state::assigned;
+        varStates[currentVarName] = variable_state::assigned;
         currentVarName.clear();
     }
 }    // namespace toy

@@ -1,10 +1,10 @@
 /**
- * @file    ToyExceptions.h
+ * @file    ToyExceptions.hpp
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   Exception handling classes for the toy compiler.
  */
-#if !defined __ToyExceptions_h_is_included
-#define __ToyExceptions_h_is_included
+#if !defined __ToyExceptions_hpp_is_included
+#define __ToyExceptions_hpp_is_included
 
 #pragma once
 

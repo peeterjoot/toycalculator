@@ -1,0 +1,3 @@
+DCL x;
+x = 3;
+//PRINT x;

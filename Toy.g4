@@ -22,7 +22,22 @@ startRule
 
 // A statement can be a declaration, assignment, print, or comment.
 statement
-  : (declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print) ENDOFSTATEMENT_TOKEN
+  : (returnStatement | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print) ENDOFSTATEMENT_TOKEN
+  ;
+
+ifelifelse
+  : IF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
+    (ELIF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN)*
+    (ELSE_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN)?
+  ;
+
+// For now both return and parameters, can only be scalar types.
+function
+  : FUNCTION_TOKEN IDENTIFIER BRACE_START_TOKEN (parameterTypeAndName (COMMA_TOKEN parameterTypeAndName)*)? BRACE_END_TOKEN (COLON_TOKEN scalarType)? SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
+  ;
+
+booleanValue
+  : booleanElement | (binaryElement predicateOperator binaryElement)
   ;
 
 // A single-line comment
@@ -32,23 +47,32 @@ comment
 
 // A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').  These are currently implicitly double.
 declare
-  : (DCL_TOKEN|DECLARE_TOKEN) VARIABLENAME_PATTERN (arrayBoundsExpression)?
+  : (DCL_TOKEN|DECLARE_TOKEN) IDENTIFIER (arrayBoundsExpression)?
   ;
 
 boolDeclare
-  : BOOL_TOKEN VARIABLENAME_PATTERN (arrayBoundsExpression)?
+  : BOOL_TOKEN IDENTIFIER (arrayBoundsExpression)?
+  ;
+
+parameterTypeAndName
+  //: IDENTIFIER COLON_TOKEN scalarType
+  : scalarType IDENTIFIER
+  ;
+
+scalarType
+  : INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN | FLOAT32_TOKEN | FLOAT64_TOKEN | BOOL_TOKEN
   ;
 
 intDeclare
-  : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN) VARIABLENAME_PATTERN (arrayBoundsExpression)?
+  : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN) IDENTIFIER (arrayBoundsExpression)?
   ;
 
 floatDeclare
-  : (FLOAT32_TOKEN | FLOAT64_TOKEN) VARIABLENAME_PATTERN (arrayBoundsExpression)?
+  : (FLOAT32_TOKEN | FLOAT64_TOKEN) IDENTIFIER (arrayBoundsExpression)?
   ;
 
 stringDeclare
-  : STRING_TOKEN VARIABLENAME_PATTERN arrayBoundsExpression
+  : STRING_TOKEN IDENTIFIER arrayBoundsExpression
   ;
 
 arrayBoundsExpression
@@ -57,32 +81,40 @@ arrayBoundsExpression
 
 // Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
 exitStatement
-  : EXIT_TOKEN (numericLiteral | VARIABLENAME_PATTERN)?
+  : EXIT_TOKEN (numericLiteral | IDENTIFIER)?
+  ;
+
+returnStatement
+  : RETURN_TOKEN (literal | IDENTIFIER)?
   ;
 
 // A print statement that outputs a variable (e.g., 'PRINT x;').
 print
-  : PRINT_TOKEN (VARIABLENAME_PATTERN | STRING_PATTERN)
+  : PRINT_TOKEN (IDENTIFIER | STRING_PATTERN)
   ;
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
 //assignment
-//  : VARIABLENAME_PATTERN (INDEX_EXPRESSION)? EQUALS_TOKEN assignmentExpression
+//  : IDENTIFIER (INDEX_EXPRESSION)? EQUALS_TOKEN assignmentExpression
 //  ;
 assignment
-  : VARIABLENAME_PATTERN EQUALS_TOKEN assignmentExpression
+  : IDENTIFIER EQUALS_TOKEN assignmentExpression
   ;
 
 // The right-hand side of an assignment, either a binary or unary expression.
 assignmentExpression
   : literal
-  | unaryOperator? VARIABLENAME_PATTERN
+  | unaryOperator? IDENTIFIER
   | binaryElement binaryOperator binaryElement
   ;
 
 binaryElement
   : numericLiteral
-  | unaryOperator? VARIABLENAME_PATTERN
+  | unaryOperator? IDENTIFIER
+  ;
+
+booleanElement
+  : booleanLiteral | IDENTIFIER
   ;
 
 // A binary operator for addition, subtraction, multiplication, or division, ...
@@ -91,6 +123,11 @@ binaryOperator
   | LESSTHAN_TOKEN | GREATERTHAN_TOKEN | LESSEQUAL_TOKEN | GREATEREQUAL_TOKEN
   | EQUALITY_TOKEN | NOTEQUAL_TOKEN
   | BOOLEANOR_TOKEN | BOOLEANAND_TOKEN | BOOLEANXOR_TOKEN
+  ;
+
+predicateOperator
+  : LESSTHAN_TOKEN | GREATERTHAN_TOKEN | LESSEQUAL_TOKEN | GREATEREQUAL_TOKEN
+  | EQUALITY_TOKEN | NOTEQUAL_TOKEN
   ;
 
 // An optional unary operator for positive or negative (e.g., '+' or '-').
@@ -106,11 +143,15 @@ literal
   : INTEGER_PATTERN | FLOAT_PATTERN | BOOLEAN_PATTERN | STRING_PATTERN
   ;
 
+booleanLiteral
+  : INTEGER_PATTERN | BOOLEAN_PATTERN
+  ;
+
 // Lexer Rules
 // ===========
 
 //INDEX_EXPRESSION
-//  : ARRAY_START_TOKEN (VARIABLENAME_PATTERN | INTEGER_PATTERN) ARRAY_END_TOKEN
+//  : ARRAY_START_TOKEN (IDENTIFIER | INTEGER_PATTERN) ARRAY_END_TOKEN
 //  ;
 
 // Matches integer literals, optionally signed (e.g., '42', '-123', '+7').
@@ -196,12 +237,36 @@ DIV_TOKEN
   : '/'
   ;
 
+COMMA_TOKEN
+  : ','
+  ;
+
 ARRAY_START_TOKEN
   : '['
   ;
 
 ARRAY_END_TOKEN
   : ']'
+  ;
+
+BRACE_START_TOKEN
+  : '('
+  ;
+
+BRACE_END_TOKEN
+  : ')'
+  ;
+
+SCOPE_START_TOKEN
+  : '{'
+  ;
+
+SCOPE_END_TOKEN
+  : '}'
+  ;
+
+COLON_TOKEN
+  : ':'
   ;
 
 // Matches the plus sign for addition or positive (e.g., '+').
@@ -280,6 +345,18 @@ BOOL_TOKEN
   : 'BOOL'
   ;
 
+IF_TOKEN
+  : 'IF'
+  ;
+
+ELSE_TOKEN
+  : 'ELSE'
+  ;
+
+ELIF_TOKEN
+  : 'ELIF'
+  ;
+
 TRUE_LITERAL
   : 'TRUE'
   ;
@@ -303,13 +380,22 @@ EXIT_TOKEN
   : 'EXIT'
   ;
 
+RETURN_TOKEN
+  : 'RETURN'
+  ;
+
 STRING_TOKEN
   : 'STRING'
   ;
 
-// Matches variable names (e.g., 'x', 'foo'), consisting of letters (any case) and numbers, but starting with a letter.
-VARIABLENAME_PATTERN
-  : [a-zA-Z][a-zA-Z0-9]*
+FUNCTION_TOKEN
+  : 'FUNCTION'
+  ;
+
+// Matches variable names (e.g., 'x', 'foo', 'my_var'), consisting of letters (any case), numbers and underscores, but starting with a letter.
+// This rule must be after the TOKENs above to prohibit variables like 'INT32 INT32;' (error_keyword_declare.toy)
+IDENTIFIER
+  : [a-zA-Z][a-zA-Z0-9_]*
   ;
 
 // Matches whitespace (spaces, tabs, newlines) and skips it.

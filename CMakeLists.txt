@@ -21,7 +21,7 @@ include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_SOURCE_DIR}/ToyParser)
+#include_directories(${CMAKE_BINARY_DIR}/ToyParser) # seems to be implied.
 
 #------------------------------------------------------------------------------
 # antlr4 related rules:
@@ -71,13 +71,13 @@ add_definitions(${LLVM_DEFINITIONS})
 set(LLVM_TARGET_DEFINITIONS src/calculator.td)
 
 # Generate dialect declarations
-mlir_tablegen(ToyDialectDecls.h.inc -gen-dialect-decls -dialect toy)
+mlir_tablegen(ToyDialectDecls.hpp.inc -gen-dialect-decls -dialect toy)
 
 # Generate dialect definitions
 mlir_tablegen(ToyDialectDefs.cpp.inc -gen-dialect-defs -dialect toy)
 
 # Generate operation declarations
-mlir_tablegen(ToyDialect.h.inc -gen-op-decls -dialect toy)
+mlir_tablegen(ToyDialect.hpp.inc -gen-op-decls -dialect toy)
 
 # Generate operation definitions
 mlir_tablegen(ToyDialect.cpp.inc -gen-op-defs -dialect toy)
@@ -85,19 +85,19 @@ mlir_tablegen(ToyDialect.cpp.inc -gen-op-defs -dialect toy)
 # Create a single TableGen target for all generated files
 add_public_tablegen_target(ToyDialectIncGen
   DEPENDS
-    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialectDecls.h.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialectDecls.hpp.inc
     ${CMAKE_CURRENT_BINARY_DIR}/ToyDialectDefs.cpp.inc
-    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialect.h.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialect.hpp.inc
     ${CMAKE_CURRENT_BINARY_DIR}/ToyDialect.cpp.inc
 )
 
 # TableGen for passes
 set(LLVM_TARGET_DEFINITIONS src/ToyPasses.td)
-mlir_tablegen(ToyPasses.h.inc --gen-pass-decls -name Toy -I ${CMAKE_SOURCE_DIR}/src -I ${MLIR_INCLUDE_DIRS})
+mlir_tablegen(ToyPasses.hpp.inc --gen-pass-decls -name Toy -I ${CMAKE_SOURCE_DIR}/src -I ${MLIR_INCLUDE_DIRS})
 
 add_public_tablegen_target(ToyPassesIncGen
   DEPENDS
-    ${CMAKE_CURRENT_BINARY_DIR}/ToyPasses.h.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/ToyPasses.hpp.inc
 )
 #------------------------------------------------------------------------------
 # Targets:
@@ -127,6 +127,10 @@ add_executable(simplest
   prototypes/simplest.cpp
 )
 
+add_executable(hibye
+  prototypes/hibye.cpp
+)
+
 #------------------------------------------------------------------------------
 # compile options (and target dependencies)
 
@@ -134,18 +138,38 @@ add_executable(simplest
 target_include_directories(toycalculator PRIVATE ${ANTLR_OUTPUT_DIR})
 
 # Ensure the ANTLR and TableGen generation runs before building the project
-add_dependencies(toycalculator simplest mlirtest toy_runtime GenerateANTLR ToyDialectIncGen ToyPassesIncGen)
+add_dependencies(toycalculator hibye simplest mlirtest toy_runtime GenerateANTLR ToyDialectIncGen ToyPassesIncGen)
 
 set(COMMON_COMPILE_OPTIONS
-  -fdiagnostics-show-option
-  -fdiagnostics-all-candidates
   -Wall
   -Wextra
+  -Werror
+  -Wno-error=unused-but-set-variable
   -Wno-comment
   -Wno-overloaded-virtual
   -Wno-unused-parameter
   -g
 )
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    message("Compiler is g++")
+    list(APPEND COMMON_COMPILE_OPTIONS
+      -fdiagnostics-show-option
+      -fdiagnostics-all-candidates
+    )
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    message("Compiler is clang++")
+    list(APPEND COMMON_COMPILE_OPTIONS
+      -Wno-error=unused-private-field
+      -Wno-unused-private-field
+      -Wno-error=dangling-assignment-gsl
+      -Wno-dangling-assignment-gsl
+      -Wno-error=unused-variable
+    )
+else()
+    message("Compiler is neither g++ nor clang++: ${CMAKE_CXX_COMPILER_ID}")
+endif()
+
 # -O2
 # an attempt to suppress all the rhs == lhs ambiguous messages from the mlir headers:
 #  -Wno-c++20-compat
@@ -186,6 +210,23 @@ target_link_libraries(mlirtest
 )
 
 target_link_libraries(simplest
+  PRIVATE
+  LLVMSupport
+  LLVMPasses
+  LLVMMC
+  LLVM${LLVM_TARGET_ARCH}AsmParser
+  LLVM${LLVM_TARGET_ARCH}CodeGen
+  LLVM${LLVM_TARGET_ARCH}Desc
+  LLVM${LLVM_TARGET_ARCH}Info
+  MLIRFuncToLLVM
+  MLIRLLVMToLLVMIRTranslation
+  MLIRBuiltinToLLVMIRTranslation
+  MLIRTransforms
+  MLIRPass
+  MLIRMemRefToLLVM
+)
+
+target_link_libraries(hibye
   PRIVATE
   LLVMSupport
   LLVMPasses

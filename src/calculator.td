@@ -6,17 +6,20 @@
 // @description
 //
 // This dialect implements:
-// - a couple simple numeric operators (unary negation, binary +-*/),
-// - an exit operation,
-// - a declare operation,
-// - an assignment operation, and
-// - a print operation.
+// - A couple of simple numeric operators (unary negation, binary +-*/),
+// - An exit operation,
+// - A declare operation,
+// - An assignment operation, and
+// - A print operation.
+// - A Function operation (for the implicit main, and any user defined functions.)
 //
 include "mlir/IR/DialectBase.td"
 include "mlir/IR/OpBase.td"
 include "mlir/IR/BuiltinTypes.td"
 include "mlir/IR/SymbolInterfaces.td"
 include "mlir/IR/BuiltinAttributes.td"
+include "mlir/Interfaces/FunctionInterfaces.td"
+include "mlir/Dialect/LLVMIR/LLVMTypes.td"
 
 def Toy_Dialect : Dialect {
   let name = "toy";
@@ -24,28 +27,83 @@ def Toy_Dialect : Dialect {
   let cppNamespace = "toy";
 }
 
-def Toy_ProgramOp : Op<Toy_Dialect, "program"> {
-  let summary = "Program operation";
-  let arguments = (ins);
+def Toy_FuncOp : Op<Toy_Dialect, "func", [FunctionOpInterface]> {
+  let summary = "Function operation";
+  let description = "A function operation.  Designed to mimic mlir::func::FuncOp, but with a symbol table for local variables.";
+  let arguments = (ins StrAttr:$sym_name, TypeAttr:$function_type, OptionalAttr<StrAttr>:$sym_visibility);
   let results = (outs);
   let regions = (region AnyRegion:$body);
-  let traits = [AutomaticAllocationScope];
+  let traits = [SymbolTable, AutomaticAllocationScope,
+                //IsIsolatedFromAbove,
+                OpAsmOpInterface, Symbol];
+  let extraClassDeclaration = [{
+    mlir::Block *addEntryBlock() {
+      assert(getBody().empty() && "Function already has an entry block!");
+      mlir::Block & entry = getBody().emplaceBlock();
+      auto type = dyn_cast<mlir::FunctionType>(getFunctionTypeAttr().getValue());
+      auto locs = llvm::SmallVector<mlir::Location>(type.getInputs().size(), getLoc());
+      entry.addArguments(type.getInputs(), locs);
+      return &entry;
+    }
 
-  // Only print the region, omit types since they are always unit.
-  let assemblyFormat = "$body attr-dict";
+    // these three are for mlir::func::FuncOp compatibility -- but may not be needed:
+    mlir::FunctionType getFunctionTypeAttrValue() {
+      return dyn_cast<mlir::FunctionType>(getFunctionTypeAttr().getValue());
+    }
+
+    mlir::StringAttr getSymNameAttribute() {
+      return mlir::StringAttr::get(getContext(), getSymName());
+    }
+
+    mlir::StringAttr getSymVisibilityAttribute() {
+      if (auto vis = getSymVisibility()) {
+        return mlir::StringAttr::get(getContext(), *vis);
+      }
+      return nullptr;
+    }
+
+    static void build(::mlir::OpBuilder &builder, ::mlir::OperationState &state,
+                     ::llvm::StringRef symName, ::mlir::FunctionType funcType,
+                     ::mlir::StringAttr symVisibility = nullptr) {
+      state.addAttribute("sym_name", ::mlir::StringAttr::get(state.getContext(), symName));
+      state.addAttribute("function_type", ::mlir::TypeAttr::get(funcType));
+      if (symVisibility) {
+        state.addAttribute("sym_visibility", symVisibility);
+      }
+      state.addRegion();
+    }
+
+    mlir::LogicalResult verify() {
+      if (!getSymNameAttr()) {
+        return emitOpError("requires a 'sym_name' attribute");
+      }
+      if (!getFunctionTypeAttr()) {
+        return emitOpError("requires a 'function_type' attribute");
+      }
+      if (!getBody().empty() && getBody().getBlocks().size() != 1) {
+        return emitOpError("expects exactly one block in the body region");
+      }
+      return mlir::success();
+    }
+  }];
 }
 
 def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
-  let summary = "Declare a variable or array, specifying its name, type (integer or float), and optional size.";
-  let arguments = (ins StrAttr:$name, TypeAttr:$type, OptionalAttr<I64Attr>:$size);
+  let summary = "Declare a variable or array, type (integer or float), and optional size.";
+  let arguments = (ins TypeAttr:$type, OptionalAttr<I64Attr>:$size);
   let results = (outs);
+  let traits = [Symbol];
 
-  // Default assemblyFormat gives:
-  //   "toy.declare"() {name = "x", type = i32} : () -> ()
-  // whereas with this, I'll get a more compact representation like:
-  //   toy.declare "x" : i32
-  //
-  //let assemblyFormat = "$name `:` $type attr-dict"; // FIXME: add $size
+  let extraClassDeclaration = [{
+    mlir::StringAttr getSymNameAttr() { return mlir::dyn_cast<mlir::StringAttr>( getOperation()->getAttr("sym_name") ); }
+
+    mlir::LogicalResult verify() {
+      if (!getSymNameAttr()) {
+        return emitOpError("requires a 'sym_name' attribute of type StringAttr");
+      }
+      return mlir::success();
+    }
+  }];
 }
 
 def Toy_IntOrFloat : TypeConstraint<
@@ -53,21 +111,46 @@ def Toy_IntOrFloat : TypeConstraint<
   "integer or float type">;
 
 def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
-  let summary = "Assign a value or string literal to a variable";
-  let arguments = (ins StrAttr:$name, AnyType:$value);
+  let summary = "Assign a value to a variable by symbol reference.";
+  let arguments = (ins SymbolRefAttr:$var_name, AnyType:$value);
   let results = (outs);
-
-  // toy.assign "x", %0 : i32
-  let assemblyFormat = "$name `,` $value `:` type($value) attr-dict";
+//  let hasVerifier = 1;
+//  let extraClassDeclaration = [{
+//    mlir::SymbolRefAttr getVarName() {
+//      return getVarNameAttr();
+//    }
+//    mlir::LogicalResult verify() {
+//      if (!getVarName()) {
+//        return emitOpError("requires a 'var_name' symbol reference attribute");
+//      }
+//      // Optionally: Verify the referenced symbol is a toy.declare
+//      auto* symbol = mlir::SymbolTable::lookupNearestSymbolFrom(getOperation(), getVarName());
+//      if (!symbol || !isa<toy::DeclareOp>(symbol)) {
+//        return emitOpError("symbol '" << getVarName().getValue() << "' must reference a toy.declare operation");
+//      }
+//      return mlir::success();
+//    }
+//  }];
 }
 
 def Toy_LoadOp : Op<Toy_Dialect, "load"> {
-  let summary = "Load a variable’s value by symbol name, returning a value of the given type.";
-  let arguments = (ins StrAttr:$name);
-  let results = (outs AnyType:$value);
-
-  // Example: %x = toy.load "i1" : i1
-  let assemblyFormat = "$name `:` type($value) attr-dict";
+  let summary = "Load a variable by symbol reference.";
+  let arguments = (ins SymbolRefAttr:$var_name);
+  let results = (outs AnyType:$result);
+//  let hasVerifier = 1;
+//  let extraClassDeclaration = [{
+//    mlir::LogicalResult verify() {
+//      if (!getVarName()) {
+//        return emitOpError("requires a 'var_name' symbol reference attribute");
+//      }
+//      // Optionally: Verify the referenced symbol is a toy.declare
+//      auto* symbol = mlir::SymbolTable::lookupNearestSymbolFrom(getOperation(), getVarName());
+//      if (!symbol || !isa<toy::DeclareOp>(symbol)) {
+//        return emitOpError("symbol '" << getVarName().getValue() << "' must reference a toy.declare operation");
+//      }
+//      return mlir::success();
+//    }
+//  }];
 }
 
 def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
@@ -184,3 +267,5 @@ def Toy_XorOp : Op<Toy_Dialect, "xor"> {
   let results = (outs Toy_IntOrFloat:$result);
   //let assemblyFormat = "$lhs `^` $rhs `:` type($result) attr-dict";
 }
+
+// vim: et ts=2 sw=2

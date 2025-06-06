@@ -7,8 +7,18 @@
 b main
 # pick which sample program to use for the compiler debugging.
 #run ../samples/test.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
-run ../samples/stringlit.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+run ../samples/dcl_assign.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 
+b lookupLocalSymbolReference
+b createLocalSymbolReference
+#b lookupDeclareForVar
+#b lookupAllocaForVar
+
+#b driver.cpp:277
+#b mlir::createToyToLLVMLoweringPass
+#b toy::MLIRListener::lookupDeclareForVar
+#b toy::FuncOp::addEntryBlock
+#b MLIRListener::enterStartRule
 b __assert_perror_fail
 #b parser.cpp:597
 #b MLIRListener::enterAssignmentExpression
@@ -37,7 +47,8 @@ b __assert_perror_fail
 #b ProgramOpLowering::matchAndRewrite
 #b ReturnOpLowering::matchAndRewrite
 #b std::stoi
-b toy::AssignOpLowering::matchAndRewrite
+#b toy::AssignOpLowering::matchAndRewrite
+b toy::FuncOpLowering::matchAndRewrite
 #b toy::DeclareOpLowering::matchAndRewrite
 #b toy::ExitOpLowering::matchAndRewrite
 #b toy::LoadOpLowering::matchAndRewrite

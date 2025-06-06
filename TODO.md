@@ -1,13 +1,34 @@
 ## TODO
 
+* Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
+* grok suggests:
+
+class syntax_error_exception : public exception_with_context
+{
+public:
+    syntax_error_exception(const char *file, int line, const char *func, const std::string &msg)
+        : exception_with_context(file, line, func, msg) {}
+};
+
+and return_codes specialization:
+
+enum class return_codes : int
+{
+    success,          // 0
+    cannot_open_file, // 1
+    semantic_error,   // 2
+    syntax_error,     // 3
+    unknown_error     // 4
+};
+
+(vs. unknown_error which is returned for everything now.)
+
 * string literal tests for edge cases: shortstring.toy: two bugs unresolved.
 * array member assignment.
 * debug test cases for non-string array variables.  Need array member assignment first.
-* Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure.
 * NOT operator: add more comprehensive all types testing.
 * tests for all the type conversions (i.e.: binary and unary arith operators)
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
-* unary.toy: if x = -x, is changed to x = 0 - x, the program doesn't compile.
 * EXIT: enforce i8 return type in the MLIR layer (i.e.: actual UNIX shell semantics.) -- currently set to i32 return.
 * Implement IF/WHILE/DO/BREAK/CONTINUE statements.
 * More complicated expressions.

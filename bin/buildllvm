@@ -10,7 +10,7 @@ buildllvm - build llvm/mlir with RTTI
 
 =head1 SYNOPSIS
 
-buildllvm [--help] [--dryrun] [--extra]
+buildllvm [--help] [--dryrun] [--clang] [--flang] [--cir]
 
 =head1 DESCRIPTION
 
@@ -22,9 +22,17 @@ Options:
 
 Don't actually run the commands, just show them.
 
-=item --extra
+=item --clang
 
-Include flang+clang in the build.
+Include clang in the build.
+
+=item --flang
+
+Include flang in the build.
+
+=item --cir
+
+Include cir (clang-ir dialect) in the clang build.
 
 =back
 
@@ -59,7 +67,9 @@ select STDOUT ; $| = 1 ;
 
 my $myName = '' ;
 my $dryrun = 0;
-my $extra = 0;
+my $clang = 0;
+my $flang = 0;
+my $cir = 0;
 
 ($myName = $0) =~ s@.*[/\\]@@ ;
 
@@ -67,7 +77,9 @@ my $extra = 0;
 GetOptions (
    'help'               => sub { pod2usage(-verbose => 2) ; },
    'dryrun!'            => \$dryrun,
-   'extra!'             => \$extra,
+   'clang!'             => \$clang,
+   'flang!'             => \$flang,
+   'cir!'           => \$cir,
 ) or pod2usage(-verbose => 0) ;
 
 # Validate/handle options, and everything else...
@@ -81,6 +93,8 @@ my $version = `git log -n 1 --decorate | head -1` ; chomp $version;
 print "# COMMIT: $version\n";
 $version =~ s/.*tag: llvmorg-// or die;
 $version =~ s/\).*//;
+$version =~ s/,.*//;
+#die "'$version'";
 
 my $builddir = "$HOME/build-llvm";
 mysystem( "(rm -rf $builddir && mkdir $builddir)" );
@@ -98,12 +112,26 @@ if ( $arch eq 'aarch64' )
     $targets = 'ARM';
 }
 
+my %projects = ( 'mlir' => 1 );
 my @projects = (qw(mlir));
-if ( $extra )
+
+if ( $clang or $cir or $flang )
 {
-    push( @projects, (qw(clang flang)) );
+    $projects{'clang'}++;
 }
-my $projects = join( ';', @projects );
+
+if ( $flang )
+{
+    $projects{'flang'}++;
+}
+
+my $cmakeflags = '';
+if ( $cir )
+{
+    $cmakeflags .= '-DCLANG_ENABLE_CIR=ON ';
+}
+
+my $projects = join( ';', sort keys %projects );
 
 # By default need to compile code that uses llvm/mlir with -fno-rtti, or else we get link errors.
 # However, antlr4 uses dynamic-cast, so we have to enable rtti if using that.
@@ -115,13 +143,14 @@ my $buildtype = 'Debug';
 my $parallel = '';
 
 # try to avoid the Linux OOM killer when building clang:
-$parallel = '-j3' if ( $extra );
+$parallel = '-j3' if ( $projects{'clang'} );
 
 my @cmds = ( qq(cmake ) .
              qq(-G ) .
              qq(Ninja ) .
              qq(../llvm-project/llvm ) .
              qq(-DBUILD_SHARED_LIBS=true ) .
+             qq(-DCMAKE_EXPORT_COMPILE_COMMANDS=ON ) .
              qq(-DCMAKE_BUILD_TYPE=${buildtype} ) .
              qq(-DLLVM_ENABLE_ASSERTIONS=TRUE ) .
              qq(-DLLVM_OPTIMIZED_TABLEGEN=ON ) .
@@ -130,7 +159,8 @@ my @cmds = ( qq(cmake ) .
              qq(-DLLVM_TARGETS_TO_BUILD="${targets}" ) .
              qq(-DCMAKE_INSTALL_PREFIX=${instdir} ) .
              qq(-DLLVM_ENABLE_RTTI=ON ) .
-             qq(-DLLVM_ENABLE_PROJECTS='${projects}' ),
+             qq(-DLLVM_ENABLE_PROJECTS='${projects}' ) .
+             $cmakeflags,
 
              qq(ninja ${parallel}),
 
@@ -165,7 +195,11 @@ sub mychdir
 
     print "cd $dir\n";
 
-    unless ( $dryrun )
+    if ( $dryrun )
+    {
+        chdir $dir;
+    }
+    else
     {
         chdir $dir or die;
     }

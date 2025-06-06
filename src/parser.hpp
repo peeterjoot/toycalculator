@@ -1,12 +1,12 @@
 /**
- * @file    parser.h
+ * @file    parser.hpp
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   Antlr4 based Listener, implementing MLIR builder for the toy
  * (calculator) compiler.
  *
  */
-#if !defined __ToyParser_h_is_included
-#define __ToyParser_h_is_included
+#if !defined __ToyParser_hpp_is_included
+#define __ToyParser_hpp_is_included
 
 #pragma once
 
@@ -14,13 +14,16 @@
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/MLIRContext.h>
+#include <mlir/Dialect/Func/IR/FuncOps.h>
 
+#include <format>
 #include <map>
 #include <string>
 #include <unordered_map>
 
 #include "ToyBaseListener.h"
-#include "ToyDialect.h"
+#include "ToyDialect.hpp"
+#include "ToyExceptions.hpp"
 
 namespace toy
 {
@@ -66,6 +69,7 @@ namespace toy
         notAnOp,
         declareOp,
         printOp,
+        ifOp,
         assignmentOp,
         exitOp
     };
@@ -87,22 +91,34 @@ namespace toy
 
     using tNode = antlr4::tree::TerminalNode;
 
-    class MLIRListener : public ToyBaseListener
+    class MLIRListener : public ToyBaseListener, public antlr4::BaseErrorListener
     {
        private:
         std::string filename;
         DialectCtx dialect;
         mlir::OpBuilder builder;
         mlir::Location currentAssignLoc;
+        std::string currentFuncName;
         mlir::FileLineColLoc lastLocation;
         mlir::ModuleOp mod;
-        toy::ProgramOp programOp;
         std::string currentVarName;
         semantic_errors lastSemError{ semantic_errors::not_an_error };
-        std::unordered_map<std::string, variable_state> var_states;
-        std::map<std::string, mlir::Operation *> var_storage;    // Maps declarations for variable names to DeclareOp's
-        bool assignmentTargetValid;
+        std::unordered_map<std::string, variable_state> varStates;
+        std::map<std::string, mlir::Operation*> funcByName;
+        bool assignmentTargetValid{};
+        bool hasErrors{};
         lastOperator lastOp{ lastOperator::notAnOp };
+
+        mlir::IntegerType tyI1;
+        mlir::IntegerType tyI8;
+        mlir::IntegerType tyI16;
+        mlir::IntegerType tyI32;
+        mlir::IntegerType tyI64;
+        mlir::FloatType tyF32;
+        mlir::FloatType tyF64;
+        mlir::LLVM::LLVMPointerType tyPtr;
+
+        inline toy::DeclareOp lookupDeclareForVar( const std::string & varName );
 
         inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx );
 
@@ -110,7 +126,7 @@ namespace toy
 
         inline std::string buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
                                                  tNode *variableNode, tNode *stringNode, mlir::Location loc,
-                                                 mlir::Value &value, theTypes &ty );
+                                                 mlir::Value &value );
 
         // @param asz [in]
         //    Array size or zero for scalar.
@@ -120,14 +136,36 @@ namespace toy
        public:
         MLIRListener( const std::string &_filename );
 
+        // Override syntaxError to handle parsing errors
+
+        void syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
+                          size_t charPositionInLine, const std::string &msg, std::exception_ptr e) override
+        {
+            hasErrors = true;
+            std::string tokenText = offendingSymbol ? offendingSymbol->getText() : "<none>";
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          std::format( "Syntax error in {}:{}:{}: {} (token: {} )", filename, line,
+                                                       charPositionInLine, msg, tokenText ) );
+        }
+
         mlir::ModuleOp &getModule()
         {
+            if ( hasErrors )
+            {
+                throw exception_with_context( __FILE__, __LINE__, __func__,
+                                              std::format( "Cannot emit MLIR due to syntax errors in {}", filename ) );
+            }
+
             return mod;
         }
 
         void enterStartRule( ToyParser::StartRuleContext *ctx ) override;
 
         void exitStartRule( ToyParser::StartRuleContext *ctx ) override;
+
+        void enterIfelifelse( ToyParser::IfelifelseContext *ctx ) override;
+
+        void enterFunction( ToyParser::FunctionContext *ctx ) override;
 
         void enterDeclare( ToyParser::DeclareContext *ctx ) override;
 
