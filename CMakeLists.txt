@@ -127,6 +127,10 @@ add_executable(simplest
   prototypes/simplest.cpp
 )
 
+add_executable(hibye
+  prototypes/hibye.cpp
+)
+
 #------------------------------------------------------------------------------
 # compile options (and target dependencies)
 
@@ -134,7 +138,7 @@ add_executable(simplest
 target_include_directories(toycalculator PRIVATE ${ANTLR_OUTPUT_DIR})
 
 # Ensure the ANTLR and TableGen generation runs before building the project
-add_dependencies(toycalculator simplest mlirtest toy_runtime GenerateANTLR ToyDialectIncGen ToyPassesIncGen)
+add_dependencies(toycalculator hibye simplest mlirtest toy_runtime GenerateANTLR ToyDialectIncGen ToyPassesIncGen)
 
 set(COMMON_COMPILE_OPTIONS
   -fdiagnostics-show-option
