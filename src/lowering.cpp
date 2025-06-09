@@ -489,7 +489,7 @@ namespace toy
         }
 
         mlir::LLVM::GlobalOp lookupOrInsertGlobalOp( ConversionPatternRewriter& rewriter, mlir::StringAttr& stringLit,
-                                                     mlir::Location loc, size_t copySize, size_t strLen )
+                                                     mlir::Location loc, size_t strLen )
         {
             mlir::LLVM::GlobalOp globalOp;
             auto it = pr_stringLiterals.find( stringLit.str() );
@@ -503,15 +503,11 @@ namespace toy
                 auto savedIP = rewriter.saveInsertionPoint();
                 rewriter.setInsertionPointToStart( pr_module.getBody() );
 
-                auto arrayType = mlir::LLVM::LLVMArrayType::get( tyI8, copySize );
+                auto arrayType = mlir::LLVM::LLVMArrayType::get( tyI8, strLen );
 
                 SmallVector<char> stringData( stringLit.begin(), stringLit.end() );
-                if ( copySize > strLen )
-                {
-                    stringData.push_back( '\0' );
-                }
                 auto denseAttr = DenseElementsAttr::get(
-                    RankedTensorType::get( { static_cast<int64_t>( copySize ) }, tyI8 ), ArrayRef<char>( stringData ) );
+                    RankedTensorType::get( { static_cast<int64_t>( strLen ) }, tyI8 ), ArrayRef<char>( stringData ) );
 
                 std::string globalName = "str_" + std::to_string( pr_stringLiterals.size() );
                 globalOp = rewriter.create<LLVM::GlobalOp>( loc, arrayType, true, LLVM::Linkage::Private, globalName,
@@ -751,7 +747,7 @@ namespace toy
             auto strValue = strAttr.getValue().str();
             auto strLen = strValue.size();
 
-            auto globalOp = lState.lookupOrInsertGlobalOp( rewriter, strAttr, loc, strLen, strLen );
+            auto globalOp = lState.lookupOrInsertGlobalOp( rewriter, strAttr, loc, strLen );
             if ( !globalOp )
             {
                 return rewriter.notifyMatchFailure( op, "Failed to create or lookup string literal global" );
