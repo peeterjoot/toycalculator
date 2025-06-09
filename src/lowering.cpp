@@ -898,37 +898,37 @@ namespace toy
             auto lhs = compareOp.getLhs();
             auto rhs = compareOp.getRhs();
 
-            auto lTyI = mlir::dyn_cast<IntegerType>( lhs.getType() );
-            auto rTyI = mlir::dyn_cast<IntegerType>( rhs.getType() );
-            auto lTyF = mlir::dyn_cast<FloatType>( lhs.getType() );
-            auto rTyF = mlir::dyn_cast<FloatType>( rhs.getType() );
+            auto lhsi = mlir::dyn_cast<IntegerType>( lhs.getType() );
+            auto rhsi = mlir::dyn_cast<IntegerType>( rhs.getType() );
+            auto lhsf = mlir::dyn_cast<FloatType>( lhs.getType() );
+            auto rhsf = mlir::dyn_cast<FloatType>( rhs.getType() );
 
-            if ( lTyI && rTyI )
+            if ( lhsi && rhsi )
             {
-                auto lwidth = lTyI.getWidth();
-                auto rwidth = rTyI.getWidth();
+                auto lwidth = lhsi.getWidth();
+                auto rwidth = rhsi.getWidth();
                 auto pred = ICmpPredS;
 
                 if ( rwidth > lwidth )
                 {
                     if ( lwidth == 1 )
                     {
-                        lhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, rTyI, lhs );
+                        lhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, rhsi, lhs );
                     }
                     else
                     {
-                        lhs = rewriter.create<mlir::LLVM::SExtOp>( loc, rTyI, lhs );
+                        lhs = rewriter.create<mlir::LLVM::SExtOp>( loc, rhsi, lhs );
                     }
                 }
                 else if ( rwidth < lwidth )
                 {
                     if ( rwidth == 1 )
                     {
-                        rhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, lTyI, rhs );
+                        rhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, lhsi, rhs );
                     }
                     else
                     {
-                        rhs = rewriter.create<mlir::LLVM::SExtOp>( loc, lTyI, rhs );
+                        rhs = rewriter.create<mlir::LLVM::SExtOp>( loc, lhsi, rhs );
                     }
                 }
                 else if ( ( rwidth == lwidth ) && ( rwidth == 1 ) )
@@ -939,18 +939,18 @@ namespace toy
                 auto cmp = rewriter.create<IOpType>( loc, pred, lhs, rhs );
                 rewriter.replaceOp( op, cmp.getResult() );
             }
-            else if ( lTyF && rTyF )
+            else if ( lhsf && rhsf )
             {
-                auto lwidth = lTyF.getWidth();
-                auto rwidth = rTyF.getWidth();
+                auto lwidth = lhsf.getWidth();
+                auto rwidth = rhsf.getWidth();
 
                 if ( lwidth < rwidth )
                 {
-                    lhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, rTyF, lhs );
+                    lhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, rhsf, lhs );
                 }
                 else if ( rwidth < lwidth )
                 {
-                    rhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, lTyF, rhs );
+                    rhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, lhsf, rhs );
                 }
 
                 auto cmp = rewriter.create<FOpType>( loc, FCmpPred, lhs, rhs );
@@ -959,26 +959,26 @@ namespace toy
             else
             {
                 // convert integer type to float
-                if ( lTyI && rTyF )
+                if ( lhsi && rhsf )
                 {
-                    if ( lTyI == lState.tyI1 )
+                    if ( lhsi.getWidth() == 1 )
                     {
-                        lhs = rewriter.create<mlir::arith::UIToFPOp>( loc, rTyF, lhs );
+                        lhs = rewriter.create<mlir::arith::UIToFPOp>( loc, rhsf, lhs );
                     }
                     else
                     {
-                        lhs = rewriter.create<mlir::arith::SIToFPOp>( loc, rTyF, lhs );
+                        lhs = rewriter.create<mlir::arith::SIToFPOp>( loc, rhsf, lhs );
                     }
                 }
-                else if ( lTyI && lTyF )
+                else if ( rhsi && lhsf )
                 {
-                    if ( rTyI == lState.tyI1 )
+                    if ( rhsi.getWidth() == 1 )
                     {
-                        rhs = rewriter.create<mlir::arith::UIToFPOp>( loc, lTyF, rhs );
+                        rhs = rewriter.create<mlir::arith::UIToFPOp>( loc, lhsf, rhs );
                     }
                     else
                     {
-                        rhs = rewriter.create<mlir::arith::SIToFPOp>( loc, lTyF, rhs );
+                        rhs = rewriter.create<mlir::arith::SIToFPOp>( loc, lhsf, rhs );
                     }
                 }
                 else
