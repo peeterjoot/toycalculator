@@ -961,7 +961,7 @@ namespace toy
                 // convert integer type to float
                 if ( lTyI && rTyF )
                 {
-                    if ( lTyI.getWidth() == 1 )
+                    if ( lTyI == lState.tyI1 )
                     {
                         lhs = rewriter.create<mlir::arith::UIToFPOp>( loc, rTyF, lhs );
                     }
@@ -972,7 +972,7 @@ namespace toy
                 }
                 else if ( rTyI && lTyF )
                 {
-                    if ( rTyI.getWidth() == 1 )
+                    if ( rTyI == lState.tyI1 )
                     {
                         rhs = rewriter.create<mlir::arith::UIToFPOp>( loc, lTyF, rhs );
                     }
