@@ -35,6 +35,7 @@
 
 #include "ToyDialect.h"
 #include "lowering.h"
+#include "ToyExceptions.h"
 
 #define DEBUG_TYPE "toy-lowering"
 
@@ -61,6 +62,7 @@ namespace toy
         // Caching these may not be a good idea, as they are created with a single loc value, but using an existing
         // constant is also allowed, so maybe that's okay?
         mlir::LLVM::ConstantOp pr_zero_I8;
+        mlir::LLVM::ConstantOp pr_zero_I16;
         mlir::LLVM::ConstantOp pr_zero_I32;
         mlir::LLVM::ConstantOp pr_zero_I64;
         mlir::LLVM::ConstantOp pr_one_I64;
@@ -122,6 +124,16 @@ namespace toy
             return pr_zero_I8;
         }
 
+        mlir::LLVM::ConstantOp getI16zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
+        {
+            if ( !pr_zero_I16 )
+            {
+                pr_zero_I16 = rewriter.create<LLVM::ConstantOp>( loc, tyI16, rewriter.getI16IntegerAttr( 0 ) );
+            }
+
+            return pr_zero_I16;
+        }
+
         mlir::LLVM::ConstantOp getI32zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
             if ( !pr_zero_I32 )
@@ -140,6 +152,23 @@ namespace toy
             }
 
             return pr_zero_I64;
+        }
+
+        mlir::LLVM::ConstantOp getIzero( mlir::Location loc, ConversionPatternRewriter& rewriter, unsigned width )
+        {
+            switch ( width )
+            {
+                case 8:
+                    return getI8zero( loc, rewriter );
+                case 16:
+                    return getI16zero( loc, rewriter );
+                case 32:
+                    return getI32zero( loc, rewriter );
+                case 64:
+                    return getI64zero( loc, rewriter );
+            }
+
+            throw exception_with_context( __FILE__, __LINE__, __func__, std::format( "Unexpected integer size {}", width ) );
         }
 
         mlir::LLVM::ConstantOp getI64one( mlir::Location loc, ConversionPatternRewriter& rewriter )
@@ -170,6 +199,19 @@ namespace toy
             }
 
             return pr_zero_F64;
+        }
+
+        mlir::LLVM::ConstantOp getFzero( mlir::Location loc, ConversionPatternRewriter& rewriter, unsigned width )
+        {
+            switch ( width )
+            {
+                case 32:
+                    return getF32zero( loc, rewriter );
+                case 64:
+                    return getF64zero( loc, rewriter );
+            }
+
+            throw exception_with_context( __FILE__, __LINE__, __func__, std::format( "Unexpected float size {}", width ) );
         }
 
         // Set data_layout,ident,target_triple:
@@ -1199,24 +1241,21 @@ namespace toy
 
             if ( auto resulti = mlir::dyn_cast<IntegerType>( result.getType() ) )
             {
-                auto iType = IntegerType::get( rewriter.getContext(), resulti.getWidth() );
-                auto zero = rewriter.create<LLVM::ConstantOp>( loc, iType, rewriter.getIntegerAttr( iType, 0 ) );
-                result = rewriter.create<LLVM::SubOp>( loc, zero, result );
+                result = rewriter.create<LLVM::SubOp>( loc, lState.getIzero( loc, rewriter, resulti.getWidth() ), result );
             }
             else if ( auto resultf = mlir::dyn_cast<FloatType>( result.getType() ) )
             {
+                unsigned w{};
                 if ( resultf == lState.tyF32 )
                 {
-                    result = rewriter.create<LLVM::FSubOp>( loc, lState.getF32zero( loc, rewriter ), result );
+                    w = 32;
                 }
                 else if ( resultf == lState.tyF64 )
                 {
-                    result = rewriter.create<LLVM::FSubOp>( loc, lState.getF64zero( loc, rewriter ), result );
+                    w = 64;
                 }
-                else
-                {
-                    llvm_unreachable( "Unsupported floating point size in NegOp lowering." );
-                }
+
+                result = rewriter.create<LLVM::FSubOp>( loc, lState.getFzero( loc, rewriter, w ), result );
             }
             else
             {
