@@ -34,8 +34,8 @@
 #include <numeric>
 
 #include "ToyDialect.h"
-#include "lowering.h"
 #include "ToyExceptions.h"
+#include "lowering.h"
 
 #define DEBUG_TYPE "toy-lowering"
 
@@ -107,6 +107,16 @@ namespace toy
             tyPtr = LLVM::LLVMPointerType::get( pr_builder.getContext() );
         }
 
+        unsigned preferredTypeAlignment( Operation* op, mlir::Type elemType )
+        {
+            auto module = op->getParentOfType<ModuleOp>();
+            assert( module );
+            mlir::DataLayout dataLayout( module );
+            unsigned alignment = dataLayout.getTypePreferredAlignment( elemType );
+
+            return alignment;
+        }
+
         OpBuilder& getBuilder()
         {
             return pr_builder;
@@ -114,7 +124,7 @@ namespace toy
 
         bool isTypeFloat( mlir::Type ty ) const
         {
-            return ( (ty == tyF32) || (ty == tyF64) );
+            return ( ( ty == tyF32 ) || ( ty == tyF64 ) );
         }
 
         mlir::LLVM::ConstantOp getI8zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
@@ -157,6 +167,8 @@ namespace toy
             return pr_zero_I64;
         }
 
+        /// Returns a cached zero constant for the given integer width (i8, i16, i32, i64).
+        /// Throws an exception for unsupported widths.
         mlir::LLVM::ConstantOp getIzero( mlir::Location loc, ConversionPatternRewriter& rewriter, unsigned width )
         {
             switch ( width )
@@ -171,7 +183,8 @@ namespace toy
                     return getI64zero( loc, rewriter );
             }
 
-            throw exception_with_context( __FILE__, __LINE__, __func__, std::format( "Unexpected integer size {}", width ) );
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          std::format( "Unexpected integer size {}", width ) );
         }
 
         mlir::LLVM::ConstantOp getI64one( mlir::Location loc, ConversionPatternRewriter& rewriter )
@@ -194,6 +207,8 @@ namespace toy
             return pr_zero_F32;
         }
 
+        /// Returns a cached zero constant for the given float width (f32, f64).
+        /// Throws an exception for unsupported widths.
         mlir::LLVM::ConstantOp getF64zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
             if ( !pr_zero_F64 )
@@ -214,7 +229,8 @@ namespace toy
                     return getF64zero( loc, rewriter );
             }
 
-            throw exception_with_context( __FILE__, __LINE__, __func__, std::format( "Unexpected float size {}", width ) );
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          std::format( "Unexpected float size {}", width ) );
         }
 
         // Set data_layout,ident,target_triple:
@@ -267,8 +283,7 @@ namespace toy
                 pr_builder.setInsertionPointToStart( pr_module.getBody() );
 
                 auto ctx = pr_builder.getContext();
-                auto printFuncI64Type =
-                    LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { tyI64 }, false );
+                auto printFuncI64Type = LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { tyI64 }, false );
                 pr_printFuncI64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_i64",
                                                                        printFuncI64Type, LLVM::Linkage::External );
 
@@ -286,8 +301,8 @@ namespace toy
                 pr_builder.setInsertionPointToStart( pr_module.getBody() );
 
                 auto ctx = pr_builder.getContext();
-                auto printFuncStringType = LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ),
-                                                                        { tyI64, tyPtr }, false );
+                auto printFuncStringType =
+                    LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { tyI64, tyPtr }, false );
                 pr_printFuncString = pr_builder.create<LLVM::LLVMFuncOp>(
                     pr_module.getLoc(), "__toy_print_string", printFuncStringType, LLVM::Linkage::External );
 
@@ -540,7 +555,7 @@ namespace toy
                 }
                 else
                 {
-                    assert ( inputType == tyF64 );
+                    assert( inputType == tyF64 );
                 }
                 result = rewriter.create<LLVM::CallOp>( loc, toyPrintF64(), ValueRange{ input } );
             }
@@ -678,14 +693,7 @@ namespace toy
             }
 #endif
 
-            auto module = op->getParentOfType<ModuleOp>();
-            if ( !module )
-            {
-                return rewriter.notifyMatchFailure( declareOp, "declare op must be inside a module" );
-            }
-
-            mlir::DataLayout dataLayout( module );
-            unsigned alignment = dataLayout.getTypePreferredAlignment( elemType );
+            unsigned alignment = lState.preferredTypeAlignment( op, elemType );
 
             rewriter.setInsertionPoint( op );
 
@@ -860,7 +868,8 @@ namespace toy
                     }
                 }
 
-                rewriter.create<LLVM::StoreOp>( loc, value, allocaOp );
+                unsigned alignment = lState.preferredTypeAlignment( op, elemType );
+                rewriter.create<LLVM::StoreOp>( loc, value, allocaOp, alignment );
             }
             else if ( auto stringLitOp = value.getDefiningOp<toy::StringLiteralOp>() )
             {
@@ -902,8 +911,8 @@ namespace toy
                         loc, lState.tyI64, rewriter.getI64IntegerAttr( numElems - literalStrLen ) );
 
                     // Set remaining bytes to zero
-                    rewriter.create<LLVM::MemsetOp>( loc, destPtrOffset, lState.getI8zero( loc, rewriter ), remainingSize,
-                                                     rewriter.getBoolAttr( false ) );
+                    rewriter.create<LLVM::MemsetOp>( loc, destPtrOffset, lState.getI8zero( loc, rewriter ),
+                                                     remainingSize, rewriter.getBoolAttr( false ) );
                 }
             }
             else
@@ -1242,7 +1251,8 @@ namespace toy
 
             if ( auto resulti = mlir::dyn_cast<IntegerType>( result.getType() ) )
             {
-                result = rewriter.create<LLVM::SubOp>( loc, lState.getIzero( loc, rewriter, resulti.getWidth() ), result );
+                result =
+                    rewriter.create<LLVM::SubOp>( loc, lState.getIzero( loc, rewriter, resulti.getWidth() ), result );
             }
             else if ( auto resultf = mlir::dyn_cast<FloatType>( result.getType() ) )
             {
