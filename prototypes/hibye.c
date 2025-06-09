@@ -1,13 +1,8 @@
 #include <stdio.h>
-
-int main( int argc, char** argv )
-{
-    if ( argc )
-    {
+int main( int argc, char** argv ) {
+    if ( argc == 1 ) {
         printf( "hi\n" );
-    }
-    else
-    {
+    } else {
         printf( "bye\n" );
     }
     return 0;

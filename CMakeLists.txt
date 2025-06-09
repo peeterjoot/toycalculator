@@ -206,6 +206,23 @@ target_link_libraries(simplest
   MLIRMemRefToLLVM
 )
 
+target_link_libraries(hibye
+  PRIVATE
+  LLVMSupport
+  LLVMPasses
+  LLVMMC
+  LLVM${LLVM_TARGET_ARCH}AsmParser
+  LLVM${LLVM_TARGET_ARCH}CodeGen
+  LLVM${LLVM_TARGET_ARCH}Desc
+  LLVM${LLVM_TARGET_ARCH}Info
+  MLIRFuncToLLVM
+  MLIRLLVMToLLVMIRTranslation
+  MLIRBuiltinToLLVMIRTranslation
+  MLIRTransforms
+  MLIRPass
+  MLIRMemRefToLLVM
+)
+
 target_link_libraries(toycalculator
   PRIVATE
   antlr4-runtime

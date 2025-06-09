@@ -43,10 +43,12 @@
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/TargetParser/Host.h>
 #include <mlir/Conversion/ArithToLLVM/ArithToLLVM.h>
+#include <mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h>
 #include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/ControlFlow/IR/ControlFlow.h>
+#include <mlir/Dialect/ControlFlow/IR/ControlFlowOps.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
@@ -109,7 +111,7 @@ int main( int argc, char **argv )
 /*
 1: #include <stdio.h>
 2: int main(int argc, char** argv) {
-3:     if (argc) {
+3:     if (argc == 1) {
 4:         printf("hi\n");
 5:     } else {
 6:         printf("bye\n");
@@ -153,10 +155,15 @@ int main( int argc, char **argv )
                                                              mlir::LLVM::Linkage::Private, "str_bye", byeDenseAttr );
     byeGlobalOp->setAttr( "unnamed_addr", builder.getUnitAttr() );
 
-    // Create main function with arguments
-    auto mainLoc = mlir::FileLineColLoc::get( builder.getStringAttr( "hibye.c" ), main_LINE, 1 );
+    // Declare printf function
     auto i32Type = builder.getI32Type();
     auto ptrType = mlir::LLVM::LLVMPointerType::get( &context );
+    auto printfType = builder.getFunctionType( { ptrType }, i32Type );    // printf takes a char* and returns i32
+    auto printfFunc = builder.create<mlir::func::FuncOp>( moduleLoc, "printf", printfType );
+    printfFunc->setAttr( "llvm.linkage", mlir::LLVM::LinkageAttr::get( &context, mlir::LLVM::Linkage::External ) );
+
+    // Create main function with arguments
+    auto mainLoc = mlir::FileLineColLoc::get( builder.getStringAttr( "hibye.c" ), main_LINE, 1 );
     auto funcType = builder.getFunctionType( { i32Type, ptrType }, i32Type );    // int argc, char** argv
     auto func = builder.create<mlir::func::FuncOp>( mainLoc, "main", funcType );
     auto &entryBlock = *func.addEntryBlock();
@@ -185,17 +192,24 @@ int main( int argc, char **argv )
     // Debug info for argc
     auto ifLoc = mlir::FileLineColLoc::get( builder.getStringAttr( "hibye.c" ), if_LINE, THE_COLUMN_START );
     auto argcVal = entryBlock.getArgument( 0 );    // First argument: argc
+    // Allocate stack space for argc
+    auto constOneI32 = builder.create<mlir::arith::ConstantOp>( ifLoc, i32Type, builder.getI32IntegerAttr( 1 ) );
+    auto argcAlloca =
+        builder.create<mlir::LLVM::AllocaOp>( ifLoc, ptrType, i32Type, constOneI32, TARGET_INT_SIZE_IN_BYTES );
+    // Store argc value into the allocated space
+    builder.create<mlir::LLVM::StoreOp>( ifLoc, argcVal, argcAlloca );
+    // Debug info for argc
     auto di_argcType =
         mlir::LLVM::DIBasicTypeAttr::get( &context, llvm::dwarf::DW_TAG_base_type, builder.getStringAttr( "int" ),
                                           TARGET_INT_SIZE_IN_BITS, llvm::dwarf::DW_ATE_signed );
     auto di_argcVar = mlir::LLVM::DILocalVariableAttr::get( &context, subprogramAttr, builder.getStringAttr( "argc" ),
                                                             fileAttr, if_LINE, 0, TARGET_INT_SIZE_IN_BITS, di_argcType,
                                                             mlir::LLVM::DIFlags::Zero );
-    builder.create<mlir::LLVM::DbgDeclareOp>( ifLoc, argcVal, di_argcVar );
+    builder.create<mlir::LLVM::DbgDeclareOp>( ifLoc, argcAlloca, di_argcVar );
 
-    // If condition: check if argc > 0
-    auto zero = builder.create<mlir::arith::ConstantOp>( ifLoc, i32Type, builder.getI32IntegerAttr( 0 ) );
-    auto cond = builder.create<mlir::arith::CmpIOp>( ifLoc, mlir::arith::CmpIPredicate::sgt, argcVal, zero );
+    // If condition: check if argc == 1
+    auto one = builder.create<mlir::arith::ConstantOp>(ifLoc, i32Type, builder.getI32IntegerAttr(1));
+    auto cond = builder.create<mlir::arith::CmpIOp>(ifLoc, mlir::arith::CmpIPredicate::eq, argcVal, one);
 
     // Create blocks for if-then, else, and exit
     auto thenBlock = func.addBlock();
@@ -230,8 +244,9 @@ int main( int argc, char **argv )
 
     // Run passes
     mlir::PassManager pm( &context );
-    pm.addPass( mlir::createConvertArithToLLVMPass() );
     pm.addPass( mlir::createConvertFuncToLLVMPass() );
+    pm.addPass( mlir::createArithToLLVMConversionPass() );
+    pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
     if ( failed( pm.run( module ) ) )
     {
         llvm::errs() << "Failed to run conversion passes\n";
