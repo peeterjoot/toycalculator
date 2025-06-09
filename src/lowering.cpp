@@ -894,7 +894,7 @@ namespace toy
                 rewriter.create<LLVM::MemcpyOp>( loc, destPtr, globalPtr, sizeConst, rewriter.getBoolAttr( false ) );
 
                 // If target array is larger than string literal, zero out the remaining bytes
-                if ( numElems > literalStrLen )
+                if ( numElems > (int64_t)literalStrLen )
                 {
                     // Compute the offset: destPtr + literalStrLen
                     auto offsetConst = rewriter.create<LLVM::ConstantOp>( loc, lState.tyI64,
@@ -1085,7 +1085,7 @@ namespace toy
 
             Type elemType = allocaOp.getElemType();
 
-            if ( loadOp.getResult().getType().isa<mlir::LLVM::LLVMPointerType>() )
+            if ( loadOp.getResult().getType() == lState.tyPtr )
             {
                 // Return the allocated pointer
                 LLVM_DEBUG( llvm::dbgs() << "Loading array address: " << allocaOp.getResult() << '\n' );
