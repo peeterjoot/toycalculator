@@ -90,6 +90,7 @@ namespace toy
         mlir::IntegerType tyI64;
         mlir::FloatType tyF32;
         mlir::FloatType tyF64;
+        mlir::LLVM::LLVMPointerType tyPtr;
 
         loweringContext( ModuleOp& module, const toy::driverState& driverState )
             : pr_driverState{ driverState }, pr_module{ module }, pr_builder{ module.getRegion() }
@@ -102,6 +103,8 @@ namespace toy
 
             tyF32 = pr_builder.getF32Type();
             tyF64 = pr_builder.getF64Type();
+
+            tyPtr = LLVM::LLVMPointerType::get( pr_builder.getContext() );
         }
 
         OpBuilder& getBuilder()
@@ -283,9 +286,8 @@ namespace toy
                 pr_builder.setInsertionPointToStart( pr_module.getBody() );
 
                 auto ctx = pr_builder.getContext();
-                auto ptrType = LLVM::LLVMPointerType::get( ctx );
                 auto printFuncStringType = LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ),
-                                                                        { tyI64, ptrType }, false );
+                                                                        { tyI64, tyPtr }, false );
                 pr_printFuncString = pr_builder.create<LLVM::LLVMFuncOp>(
                     pr_module.getLoc(), "__toy_print_string", printFuncStringType, LLVM::Linkage::External );
 
@@ -676,7 +678,6 @@ namespace toy
             }
 #endif
 
-            auto ptrType = LLVM::LLVMPointerType::get( rewriter.getContext() );
             auto module = op->getParentOfType<ModuleOp>();
             if ( !module )
             {
@@ -706,7 +707,7 @@ namespace toy
                 sizeVal = lState.getI64one( loc, rewriter );
             }
 
-            auto allocaOp = rewriter.create<LLVM::AllocaOp>( loc, ptrType, elemType, sizeVal, alignment );
+            auto allocaOp = rewriter.create<LLVM::AllocaOp>( loc, lState.tyPtr, elemType, sizeVal, alignment );
 
             lState.constructVariableDI( varName, elemType, getLocation( loc ), elemSizeInBits, allocaOp, arraySize );
 
