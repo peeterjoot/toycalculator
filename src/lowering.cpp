@@ -555,7 +555,7 @@ namespace toy
                 }
                 result = rewriter.create<LLVM::CallOp>( loc, toyPrintF64(), ValueRange{ input } );
             }
-            else if ( inputType.isa<mlir::LLVM::LLVMPointerType>() )
+            else if ( inputType == tyPtr )
             {
                 // Find AllocaOp for size and element type
                 int64_t numElems = 0;
