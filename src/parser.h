@@ -66,6 +66,7 @@ namespace toy
         notAnOp,
         declareOp,
         printOp,
+        ifOp,
         assignmentOp,
         exitOp
     };
@@ -126,6 +127,8 @@ namespace toy
         }
 
         void enterStartRule( ToyParser::StartRuleContext *ctx ) override;
+
+        void enterIfelifelse( ToyParser::IfelifelseContext * ctx ) override;
 
         void exitStartRule( ToyParser::StartRuleContext *ctx ) override;
 

@@ -16,6 +16,17 @@ with plain old assign, after first constructing a string literal object:
     %0 = "toy.string_literal"() <{value = "A string literal!"}> : () -> !llvm.ptr loc(#loc)
     "toy.print"(%0) : (!llvm.ptr) -> () loc(#loc)
 ```
+* Standardize Type handling in lowering.  Cache all the supported int/float types so that I can do compares to those.  This meant that a wide variety of operations, for example:
+  - IntegerType::get(...)
+  - builder.getI64Type(), ...
+  - rewriter.getI64Type(), ...
+  - mlir::isa
+  - mlir::dyn_cast
+  could all be eliminated, replaced with the cached type values of interest.
+* Cache constantop values so that they need not be repeated -- that caching should be function specific, and will have to be generalized.
+* Generalize NegOp lowering to support all types, not just f64.
+* Grammar: add ifelifelse rule (samples/if.toy).  No builder nor lowering support yet.
+* lowering: Fix StoreOp alignment (had i64's with align 4 in the generated ll.)
 
 ## tag: V3
 

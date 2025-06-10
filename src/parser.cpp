@@ -364,6 +364,16 @@ namespace toy
         registerDeclaration( loc, varName, builder.getI8Type(), arrayBounds );
     }
 
+    void MLIRListener::enterIfelifelse( ToyParser::IfelifelseContext * ctx )
+    {
+        lastOp = lastOperator::ifOp;
+        auto loc = getLocation( ctx );
+
+        llvm::errs() << std::format( "{}NYI: {}\n", formatLocation( loc ), ctx->getText() );
+
+        assert( 0 );
+    }
+
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
     {
         lastOp = lastOperator::printOp;
