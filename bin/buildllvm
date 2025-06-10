@@ -10,7 +10,7 @@ buildllvm - build llvm/mlir with RTTI
 
 =head1 SYNOPSIS
 
-buildllvm [--help] [--dryrun] [--extra]
+buildllvm [--help] [--dryrun] [--extra] [--clangir]
 
 =head1 DESCRIPTION
 
@@ -25,6 +25,10 @@ Don't actually run the commands, just show them.
 =item --extra
 
 Include flang+clang in the build.
+
+=item --clangir
+
+Attempt to include clangir (cir dialect) in the clang build.
 
 =back
 
@@ -60,6 +64,7 @@ select STDOUT ; $| = 1 ;
 my $myName = '' ;
 my $dryrun = 0;
 my $extra = 0;
+my $clangir = 0;
 
 ($myName = $0) =~ s@.*[/\\]@@ ;
 
@@ -68,6 +73,7 @@ GetOptions (
    'help'               => sub { pod2usage(-verbose => 2) ; },
    'dryrun!'            => \$dryrun,
    'extra!'             => \$extra,
+   'clangir!'           => \$clangir,
 ) or pod2usage(-verbose => 0) ;
 
 # Validate/handle options, and everything else...
@@ -98,12 +104,23 @@ if ( $arch eq 'aarch64' )
     $targets = 'ARM';
 }
 
+my %projects = ( 'mlir' => 1 );
 my @projects = (qw(mlir));
 if ( $extra )
 {
-    push( @projects, (qw(clang flang)) );
+    $projects{'clang'}++;
+    $projects{'flang'}++;
 }
-my $projects = join( ';', @projects );
+
+my $cmakeflags = '';
+
+if ( $clangir )
+{
+    $projects{'clang'}++;
+    $cmakeflags .= '-DCLANG_ENABLE_CIR=ON ';
+}
+
+my $projects = join( ';', sort keys %projects );
 
 # By default need to compile code that uses llvm/mlir with -fno-rtti, or else we get link errors.
 # However, antlr4 uses dynamic-cast, so we have to enable rtti if using that.
@@ -115,7 +132,7 @@ my $buildtype = 'Debug';
 my $parallel = '';
 
 # try to avoid the Linux OOM killer when building clang:
-$parallel = '-j3' if ( $extra );
+$parallel = '-j3' if ( $extra or $clangir );
 
 my @cmds = ( qq(cmake ) .
              qq(-G ) .
@@ -130,7 +147,8 @@ my @cmds = ( qq(cmake ) .
              qq(-DLLVM_TARGETS_TO_BUILD="${targets}" ) .
              qq(-DCMAKE_INSTALL_PREFIX=${instdir} ) .
              qq(-DLLVM_ENABLE_RTTI=ON ) .
-             qq(-DLLVM_ENABLE_PROJECTS='${projects}' ),
+             qq(-DLLVM_ENABLE_PROJECTS='${projects}' ) .
+             $cmakeflags,
 
              qq(ninja ${parallel}),
 
@@ -165,7 +183,11 @@ sub mychdir
 
     print "cd $dir\n";
 
-    unless ( $dryrun )
+    if ( $dryrun )
+    {
+        chdir $dir;
+    }
+    else
     {
         chdir $dir or die;
     }
