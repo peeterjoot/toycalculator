@@ -22,7 +22,17 @@ startRule
 
 // A statement can be a declaration, assignment, print, or comment.
 statement
-  : (declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print) ENDOFSTATEMENT_TOKEN
+  : (ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print) ENDOFSTATEMENT_TOKEN
+  ;
+
+ifelifelse
+  : IF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
+    (ELIF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN)*
+    (ELSE_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN)?
+  ;
+
+booleanValue
+  : booleanElement | (binaryElement predicateOperator binaryElement)
   ;
 
 // A single-line comment
@@ -85,12 +95,21 @@ binaryElement
   | unaryOperator? VARIABLENAME_PATTERN
   ;
 
+booleanElement
+  : booleanLiteral | VARIABLENAME_PATTERN
+  ;
+
 // A binary operator for addition, subtraction, multiplication, or division, ...
 binaryOperator
   : MINUS_TOKEN | PLUSCHAR_TOKEN | TIMES_TOKEN | DIV_TOKEN
   | LESSTHAN_TOKEN | GREATERTHAN_TOKEN | LESSEQUAL_TOKEN | GREATEREQUAL_TOKEN
   | EQUALITY_TOKEN | NOTEQUAL_TOKEN
   | BOOLEANOR_TOKEN | BOOLEANAND_TOKEN | BOOLEANXOR_TOKEN
+  ;
+
+predicateOperator
+  : LESSTHAN_TOKEN | GREATERTHAN_TOKEN | LESSEQUAL_TOKEN | GREATEREQUAL_TOKEN
+  | EQUALITY_TOKEN | NOTEQUAL_TOKEN
   ;
 
 // An optional unary operator for positive or negative (e.g., '+' or '-').
@@ -104,6 +123,10 @@ numericLiteral
 
 literal
   : INTEGER_PATTERN | FLOAT_PATTERN | BOOLEAN_PATTERN | STRING_PATTERN
+  ;
+
+booleanLiteral
+  : INTEGER_PATTERN | BOOLEAN_PATTERN
   ;
 
 // Lexer Rules
@@ -204,6 +227,22 @@ ARRAY_END_TOKEN
   : ']'
   ;
 
+BRACE_START_TOKEN
+  : '('
+  ;
+
+BRACE_END_TOKEN
+  : ')'
+  ;
+
+SCOPE_START_TOKEN
+  : '{'
+  ;
+
+SCOPE_END_TOKEN
+  : '}'
+  ;
+
 // Matches the plus sign for addition or positive (e.g., '+').
 PLUSCHAR_TOKEN
   : '+'
@@ -278,6 +317,18 @@ FLOAT64_TOKEN
 // Boolean tokens:
 BOOL_TOKEN
   : 'BOOL'
+  ;
+
+IF_TOKEN
+  : 'IF'
+  ;
+
+ELSE_TOKEN
+  : 'ELSE'
+  ;
+
+ELIF_TOKEN
+  : 'ELIF'
   ;
 
 TRUE_LITERAL
