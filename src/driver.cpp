@@ -177,6 +177,10 @@ int main( int argc, char** argv )
         antlr4::CommonTokenStream tokens( &lexer );
         ToyParser parser( &tokens );
 
+        // Remove default error listener and add MLIRListener for errors
+        parser.removeErrorListeners();
+        parser.addErrorListener( &listener );
+
         antlr4::tree::ParseTree* tree = parser.startRule();
         antlr4::tree::ParseTreeWalker::DEFAULT.walk( &listener, tree );
 

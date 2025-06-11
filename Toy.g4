@@ -33,7 +33,7 @@ ifelifelse
 
 // For now both return and parameters, can only be scalar types.
 function
-  : FUNCTION_TOKEN VARIABLENAME_PATTERN BRACE_START_TOKEN (parameterTypeAndName (COMMA_TOKEN parameterTypeAndName)*)? BRACE_END_TOKEN (COLON_TOKEN scalarType)? SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
+  : FUNCTION_TOKEN IDENTIFIER BRACE_START_TOKEN (parameterTypeAndName (COMMA_TOKEN parameterTypeAndName)*)? BRACE_END_TOKEN (COLON_TOKEN scalarType)? SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
   ;
 
 booleanValue
@@ -47,16 +47,16 @@ comment
 
 // A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').  These are currently implicitly double.
 declare
-  : (DCL_TOKEN|DECLARE_TOKEN) VARIABLENAME_PATTERN (arrayBoundsExpression)?
+  : (DCL_TOKEN|DECLARE_TOKEN) IDENTIFIER (arrayBoundsExpression)?
   ;
 
 boolDeclare
-  : BOOL_TOKEN VARIABLENAME_PATTERN (arrayBoundsExpression)?
+  : BOOL_TOKEN IDENTIFIER (arrayBoundsExpression)?
   ;
 
 parameterTypeAndName
-  //: VARIABLENAME_PATTERN COLON_TOKEN scalarType
-  : scalarType VARIABLENAME_PATTERN
+  //: IDENTIFIER COLON_TOKEN scalarType
+  : scalarType IDENTIFIER
   ;
 
 scalarType
@@ -64,15 +64,15 @@ scalarType
   ;
 
 intDeclare
-  : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN) VARIABLENAME_PATTERN (arrayBoundsExpression)?
+  : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN) IDENTIFIER (arrayBoundsExpression)?
   ;
 
 floatDeclare
-  : (FLOAT32_TOKEN | FLOAT64_TOKEN) VARIABLENAME_PATTERN (arrayBoundsExpression)?
+  : (FLOAT32_TOKEN | FLOAT64_TOKEN) IDENTIFIER (arrayBoundsExpression)?
   ;
 
 stringDeclare
-  : STRING_TOKEN VARIABLENAME_PATTERN arrayBoundsExpression
+  : STRING_TOKEN IDENTIFIER arrayBoundsExpression
   ;
 
 arrayBoundsExpression
@@ -81,40 +81,40 @@ arrayBoundsExpression
 
 // Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
 exitStatement
-  : EXIT_TOKEN (numericLiteral | VARIABLENAME_PATTERN)?
+  : EXIT_TOKEN (numericLiteral | IDENTIFIER)?
   ;
 
 returnStatement
-  : RETURN_TOKEN (literal | VARIABLENAME_PATTERN)?
+  : RETURN_TOKEN (literal | IDENTIFIER)?
   ;
 
 // A print statement that outputs a variable (e.g., 'PRINT x;').
 print
-  : PRINT_TOKEN (VARIABLENAME_PATTERN | STRING_PATTERN)
+  : PRINT_TOKEN (IDENTIFIER | STRING_PATTERN)
   ;
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
 //assignment
-//  : VARIABLENAME_PATTERN (INDEX_EXPRESSION)? EQUALS_TOKEN assignmentExpression
+//  : IDENTIFIER (INDEX_EXPRESSION)? EQUALS_TOKEN assignmentExpression
 //  ;
 assignment
-  : VARIABLENAME_PATTERN EQUALS_TOKEN assignmentExpression
+  : IDENTIFIER EQUALS_TOKEN assignmentExpression
   ;
 
 // The right-hand side of an assignment, either a binary or unary expression.
 assignmentExpression
   : literal
-  | unaryOperator? VARIABLENAME_PATTERN
+  | unaryOperator? IDENTIFIER
   | binaryElement binaryOperator binaryElement
   ;
 
 binaryElement
   : numericLiteral
-  | unaryOperator? VARIABLENAME_PATTERN
+  | unaryOperator? IDENTIFIER
   ;
 
 booleanElement
-  : booleanLiteral | VARIABLENAME_PATTERN
+  : booleanLiteral | IDENTIFIER
   ;
 
 // A binary operator for addition, subtraction, multiplication, or division, ...
@@ -151,7 +151,7 @@ booleanLiteral
 // ===========
 
 //INDEX_EXPRESSION
-//  : ARRAY_START_TOKEN (VARIABLENAME_PATTERN | INTEGER_PATTERN) ARRAY_END_TOKEN
+//  : ARRAY_START_TOKEN (IDENTIFIER | INTEGER_PATTERN) ARRAY_END_TOKEN
 //  ;
 
 // Matches integer literals, optionally signed (e.g., '42', '-123', '+7').
@@ -392,9 +392,10 @@ FUNCTION_TOKEN
   : 'FUNCTION'
   ;
 
-// Matches variable names (e.g., 'x', 'foo'), consisting of letters (any case) and numbers, but starting with a letter.
-VARIABLENAME_PATTERN
-  : [a-zA-Z][a-zA-Z0-9]*
+// Matches variable names (e.g., 'x', 'foo', 'my_var'), consisting of letters (any case), numbers and underscores, but starting with a letter.
+// This rule must be after the TOKENs above to prohibit variables like 'INT32 INT32;' (error_keyword_declare.toy)
+IDENTIFIER
+  : [a-zA-Z][a-zA-Z0-9_]*
   ;
 
 // Matches whitespace (spaces, tabs, newlines) and skips it.

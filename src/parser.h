@@ -15,12 +15,14 @@
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/MLIRContext.h>
 
+#include <format>
 #include <map>
 #include <string>
 #include <unordered_map>
 
 #include "ToyBaseListener.h"
 #include "ToyDialect.h"
+#include "ToyExceptions.h"
 
 namespace toy
 {
@@ -88,7 +90,7 @@ namespace toy
 
     using tNode = antlr4::tree::TerminalNode;
 
-    class MLIRListener : public ToyBaseListener
+    class MLIRListener : public ToyBaseListener, public antlr4::BaseErrorListener
     {
        private:
         std::string filename;
@@ -101,7 +103,8 @@ namespace toy
         semantic_errors lastSemError{ semantic_errors::not_an_error };
         std::unordered_map<std::string, variable_state> var_states;
         std::map<std::string, mlir::Operation *> var_storage;    // Maps declarations for variable names to DeclareOp's
-        bool assignmentTargetValid;
+        bool assignmentTargetValid{};
+        bool hasErrors{};
         lastOperator lastOp{ lastOperator::notAnOp };
 
         inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx );
@@ -120,8 +123,26 @@ namespace toy
        public:
         MLIRListener( const std::string &_filename );
 
+        // Override syntaxError to handle parsing errors
+
+        void syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
+                          size_t charPositionInLine, const std::string &msg, std::exception_ptr e) override
+        {
+            hasErrors = true;
+            std::string tokenText = offendingSymbol ? offendingSymbol->getText() : "<none>";
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          std::format( "Syntax error in {}:{}:{}: {} (token: {} )", filename, line,
+                                                       charPositionInLine, msg, tokenText ) );
+        }
+
         mlir::ModuleOp &getModule()
         {
+            if ( hasErrors )
+            {
+                throw exception_with_context( __FILE__, __LINE__, __func__,
+                                              std::format( "Cannot emit MLIR due to syntax errors in {}", filename ) );
+            }
+
             return mod;
         }
 
@@ -129,7 +150,7 @@ namespace toy
 
         void exitStartRule( ToyParser::StartRuleContext *ctx ) override;
 
-        void enterIfelifelse( ToyParser::IfelifelseContext * ctx ) override;
+        void enterIfelifelse( ToyParser::IfelifelseContext *ctx ) override;
 
         void enterFunction( ToyParser::FunctionContext *ctx ) override;
 

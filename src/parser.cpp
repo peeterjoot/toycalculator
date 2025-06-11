@@ -18,8 +18,8 @@
 #include <format>
 
 #include "ToyExceptions.h"
-#include "parser.h"
 #include "constants.h"
+#include "parser.h"
 
 #define DEBUG_TYPE "toy-parser"
 
@@ -301,7 +301,7 @@ namespace toy
         assert( 0 );
 #if 0
         auto returnType = parseScalarType( ctx->scalarType() );    // Convert scalarType to MLIR Type
-        std::string funcName = ctx->VARIABLENAME_PATTERN()->getText();
+        std::string funcName = ctx->IDENTIFIER()->getText();
 
         // Collect parameter types and names
         std::vector<mlir::Type> paramTypes;
@@ -309,7 +309,7 @@ namespace toy
         for ( auto *paramCtx : ctx->parameterTypeAndName() )
         {
             auto paramType = parseScalarType( paramCtx->scalarType() );    // Convert to MLIR Type
-            auto paramName = paramCtx->VARIABLENAME_PATTERN()->getText();
+            auto paramName = paramCtx->IDENTIFIER()->getText();
             paramTypes.push_back( paramType );
             paramNames.push_back( paramName );
         }
@@ -333,7 +333,7 @@ namespace toy
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
+        auto varName = ctx->IDENTIFIER()->getText();
 
         registerDeclaration( loc, varName, builder.getF64Type(), ctx->arrayBoundsExpression() );
     }
@@ -342,7 +342,7 @@ namespace toy
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
+        auto varName = ctx->IDENTIFIER()->getText();
         registerDeclaration( loc, varName, builder.getI1Type(), ctx->arrayBoundsExpression() );
     }
 
@@ -350,7 +350,7 @@ namespace toy
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
+        auto varName = ctx->IDENTIFIER()->getText();
 
         if ( ctx->INT8_TOKEN() )
         {
@@ -379,7 +379,7 @@ namespace toy
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
+        auto varName = ctx->IDENTIFIER()->getText();
 
         if ( ctx->FLOAT32_TOKEN() )
         {
@@ -400,7 +400,7 @@ namespace toy
     {
         lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
-        auto varName = ctx->VARIABLENAME_PATTERN()->getText();
+        auto varName = ctx->IDENTIFIER()->getText();
         ToyParser::ArrayBoundsExpressionContext *arrayBounds = ctx->arrayBoundsExpression();
         assert( arrayBounds );
 
@@ -424,7 +424,7 @@ namespace toy
 
         mlir::Type varType;
 
-        auto varNameObject = ctx->VARIABLENAME_PATTERN();
+        auto varNameObject = ctx->IDENTIFIER();
         if ( varNameObject )
         {
             auto varName = varNameObject->getText();
@@ -487,7 +487,7 @@ namespace toy
         auto loc = getLocation( ctx );
 
         auto lit = ctx->numericLiteral();
-        auto var = ctx->VARIABLENAME_PATTERN();
+        auto var = ctx->IDENTIFIER();
 
         if ( ( lit == nullptr ) && ( var == nullptr ) )
         {
@@ -515,7 +515,7 @@ namespace toy
         lastOp = lastOperator::assignmentOp;
         assignmentTargetValid = true;
         auto loc = getLocation( ctx );
-        currentVarName = ctx->VARIABLENAME_PATTERN()->getText();
+        currentVarName = ctx->IDENTIFIER()->getText();
         auto varState = var_states[currentVarName];
         if ( varState == variable_state::declared )
         {
@@ -558,7 +558,7 @@ namespace toy
 
             theTypes ty;
             s = buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                      lit ? lit->FLOAT_PATTERN() : nullptr, ctx->VARIABLENAME_PATTERN(),
+                                      lit ? lit->FLOAT_PATTERN() : nullptr, ctx->IDENTIFIER(),
                                       lit ? lit->STRING_PATTERN() : nullptr, loc, lhsValue, ty );
 
             resultValue = lhsValue;
@@ -592,7 +592,7 @@ namespace toy
             auto llit = lhs->numericLiteral();
             s = buildUnaryExpression( nullptr,    // booleanNode
                                       llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
-                                      lhs->VARIABLENAME_PATTERN(),
+                                      lhs->IDENTIFIER(),
                                       nullptr,    // stringNode
                                       loc, lhsValue, lty );
             assert( s.length() == 0 );
@@ -602,7 +602,7 @@ namespace toy
             auto rlit = rhs->numericLiteral();
             s = buildUnaryExpression( nullptr,    // booleanNode
                                       rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
-                                      rhs->VARIABLENAME_PATTERN(),
+                                      rhs->IDENTIFIER(),
                                       nullptr,    // stringNode
                                       loc, rhsValue, rty );
             assert( s.length() == 0 );

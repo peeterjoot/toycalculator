@@ -7,7 +7,7 @@
 b main
 # pick which sample program to use for the compiler debugging.
 #run ../samples/test.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
-run ../samples/stringlit.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+run ../samples/error_keyword_declare.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 
 b __assert_perror_fail
 #b parser.cpp:597
