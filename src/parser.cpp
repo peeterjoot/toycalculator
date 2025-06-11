@@ -19,8 +19,8 @@
 
 #include "ToyExceptions.h"
 #include "parser.h"
+#include "constants.h"
 
-#define ENTRY_SYMBOL_NAME "main"
 #define DEBUG_TYPE "toy-parser"
 
 namespace toy

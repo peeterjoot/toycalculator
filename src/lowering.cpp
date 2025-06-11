@@ -38,12 +38,9 @@
 #include "ToyDialect.h"
 #include "ToyExceptions.h"
 #include "lowering.h"
+#include "constants.h"
 
 #define DEBUG_TYPE "toy-lowering"
-
-#define ENTRY_SYMBOL_NAME "main"
-#define COMPILER_NAME "toycalculator"
-#define COMPILER_VERSION " V2"
 
 using namespace mlir;
 
