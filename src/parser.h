@@ -127,9 +127,11 @@ namespace toy
 
         void enterStartRule( ToyParser::StartRuleContext *ctx ) override;
 
+        void exitStartRule( ToyParser::StartRuleContext *ctx ) override;
+
         void enterIfelifelse( ToyParser::IfelifelseContext * ctx ) override;
 
-        void exitStartRule( ToyParser::StartRuleContext *ctx ) override;
+        void enterFunction( ToyParser::FunctionContext *ctx ) override;
 
         void enterDeclare( ToyParser::DeclareContext *ctx ) override;
 

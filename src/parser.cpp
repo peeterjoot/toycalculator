@@ -292,6 +292,43 @@ namespace toy
         }
     }
 
+    void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
+    {
+        auto loc = getLocation( ctx );
+
+        llvm::errs() << std::format( "{}NYI: {}\n", formatLocation( loc ), ctx->getText() );
+
+        assert( 0 );
+#if 0
+        auto returnType = parseScalarType( ctx->scalarType() );    // Convert scalarType to MLIR Type
+        std::string funcName = ctx->VARIABLENAME_PATTERN()->getText();
+
+        // Collect parameter types and names
+        std::vector<mlir::Type> paramTypes;
+        std::vector<std::string> paramNames;
+        for ( auto *paramCtx : ctx->parameterTypeAndName() )
+        {
+            auto paramType = parseScalarType( paramCtx->scalarType() );    // Convert to MLIR Type
+            auto paramName = paramCtx->VARIABLENAME_PATTERN()->getText();
+            paramTypes.push_back( paramType );
+            paramNames.push_back( paramName );
+        }
+
+        // Create func::FuncOp
+        auto funcType = builder.getFunctionType( paramTypes, returnType );
+        auto func = builder.create<mlir::func::FuncOp>( loc, funcName, funcType );
+        auto &block = *func.addEntryBlock();
+        builder.setInsertionPointToStart( &block );
+
+        // Map parameter names to block arguments
+        for ( size_t i = 0; i < paramNames.size(); ++i )
+        {
+            // Store paramNames[i] -> block.getArgument(i) in a symbol table or map
+            symbolTable.insert( paramNames[i], block.getArgument( i ) );
+        }
+#endif
+    }
+
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
     {
         lastOp = lastOperator::declareOp;
