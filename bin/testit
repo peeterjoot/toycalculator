@@ -101,6 +101,7 @@ if ( $debug )
 system( qq(rm -rf out) );
 
 my %tests = map { $_ => 1 } (qw(
+0minus
 addi
 andop
 array

@@ -29,6 +29,9 @@ with plain old assign, after first constructing a string literal object:
 * lowering: Fix StoreOp alignment (had i64's with align 4 in the generated ll.)
 * Replace toy::ProgramOp with mlir::func::FuncOp (prep for adding scopes and callable functions.)
 * Grammar now has FUNCTION syntax (assert stub in parser, no builder/lowering yet.)
+* grammar: rename VARIABLENAME_PATTERN -> IDENTIFIER
+* parser: intercept errors instead of letting parse tree walker autocorrect and continue.
+* new error tests: error_keyword_declare.toy error_keyword_declare2.toy
 
 ## tag: V3
 

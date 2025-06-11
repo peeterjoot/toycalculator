@@ -1,0 +1,11 @@
+FLOAT64 x;
+x = 3;
+// this used to generate a parse error.  Fixed it somewhere along the way:
+x = 0 - x;
+PRINT x;
+x = 0-x;
+PRINT x;
+x = 0 -x;
+PRINT x;
+x = 0- x;
+PRINT x;
