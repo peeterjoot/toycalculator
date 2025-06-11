@@ -4,7 +4,9 @@
  * @brief   altlr4 parse tree listener and MLIR builder.
  */
 #include <llvm/Support/Debug.h>
+#include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
+#include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
 #include <mlir/IR/BuiltinAttributes.h>
@@ -18,6 +20,7 @@
 #include "ToyExceptions.h"
 #include "parser.h"
 
+#define ENTRY_SYMBOL_NAME "main"
 #define DEBUG_TYPE "toy-parser"
 
 namespace toy
@@ -25,6 +28,7 @@ namespace toy
     DialectCtx::DialectCtx()
     {
         context.getOrLoadDialect<toy::ToyDialect>();
+        context.getOrLoadDialect<mlir::func::FuncDialect>();
         context.getOrLoadDialect<mlir::arith::ArithDialect>();
         context.getOrLoadDialect<mlir::memref::MemRefDialect>();
         context.getOrLoadDialect<mlir::LLVM::LLVMDialect>();
@@ -263,9 +267,11 @@ namespace toy
     void MLIRListener::enterStartRule( ToyParser::StartRuleContext *ctx )
     {
         auto loc = getLocation( ctx );
-        programOp = builder.create<toy::ProgramOp>( loc );
-        programOp.getBody().push_back( new mlir::Block() );
-        builder.setInsertionPointToStart( &programOp.getBody().front() );
+
+        auto funcType = builder.getFunctionType( {}, builder.getI32Type() );
+        auto func = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
+        auto &block = *func.addEntryBlock();
+        builder.setInsertionPointToStart( &block );
     }
 
     void MLIRListener::exitStartRule( ToyParser::StartRuleContext *ctx )
@@ -364,7 +370,7 @@ namespace toy
         registerDeclaration( loc, varName, builder.getI8Type(), arrayBounds );
     }
 
-    void MLIRListener::enterIfelifelse( ToyParser::IfelifelseContext * ctx )
+    void MLIRListener::enterIfelifelse( ToyParser::IfelifelseContext *ctx )
     {
         lastOp = lastOperator::ifOp;
         auto loc = getLocation( ctx );
@@ -409,7 +415,7 @@ namespace toy
             if ( declareOp.getSizeAttr() )    // Check if size attribute exists
             {
                 // Array: load a generic pointer
-                varType = mlir::LLVM::LLVMPointerType::get(builder.getContext(), /*addressSpace=*/0);
+                varType = mlir::LLVM::LLVMPointerType::get( builder.getContext(), /*addressSpace=*/0 );
             }
             else
             {
@@ -432,8 +438,9 @@ namespace toy
         }
         else
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__,
-                                          std::format( "{}error: unexpected print context {}\n", formatLocation( loc ), ctx->getText() ) );
+            throw exception_with_context(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}error: unexpected print context {}\n", formatLocation( loc ), ctx->getText() ) );
         }
     }
 

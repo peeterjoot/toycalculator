@@ -97,7 +97,6 @@ namespace toy
         mlir::Location currentAssignLoc;
         mlir::FileLineColLoc lastLocation;
         mlir::ModuleOp mod;
-        toy::ProgramOp programOp;
         std::string currentVarName;
         semantic_errors lastSemError{ semantic_errors::not_an_error };
         std::unordered_map<std::string, variable_state> var_states;

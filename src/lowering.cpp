@@ -29,6 +29,8 @@
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/Pass/Pass.h>
 #include <mlir/Transforms/DialectConversion.h>
+#include <mlir/Dialect/Func/IR/FuncOps.h>
+#include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 
 #include <format>
 #include <numeric>
@@ -72,7 +74,6 @@ namespace toy
         mlir::LLVM::DIFileAttr pr_fileAttr;
         mlir::LLVM::DISubprogramAttr pr_subprogramAttr;
         std::unordered_map<std::string, mlir::LLVM::GlobalOp> pr_stringLiterals;
-        mlir::LLVM::LLVMFuncOp pr_mainFunc;
         mlir::LLVM::LLVMFuncOp pr_printFuncF64;
         mlir::LLVM::LLVMFuncOp pr_printFuncI64;
         mlir::LLVM::LLVMFuncOp pr_printFuncString;
@@ -312,20 +313,18 @@ namespace toy
             return pr_printFuncString;
         }
 
-        // Create an entry block in the "main" function
-        Block* addEntryBlock( ConversionPatternRewriter& rewriter )
-        {
-            Block* entryBlock = pr_mainFunc.addEntryBlock( rewriter );
-            rewriter.setInsertionPointToStart( entryBlock );
-            return entryBlock;
-        }
-
         void createMain()
         {
             auto ctx = pr_builder.getContext();
-            auto mainFuncType = LLVM::LLVMFunctionType::get( tyI32, {}, false );
-            pr_mainFunc = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), ENTRY_SYMBOL_NAME, mainFuncType,
-                                                               LLVM::Linkage::External );
+            mlir::SymbolTable symbolTable( pr_module );
+
+            // Look up the func::FuncOp named "main"
+            auto mainFunc = symbolTable.lookup<mlir::LLVM::LLVMFuncOp>( "main" );
+            if ( !mainFunc )
+            {
+                pr_module.emitError() << "No 'main' function found in module";
+                return;
+            }
 
             if ( pr_driverState.wantDebug )
             {
@@ -346,11 +345,11 @@ namespace toy
                     pr_builder.getStringAttr( ENTRY_SYMBOL_NAME ), pr_builder.getStringAttr( ENTRY_SYMBOL_NAME ),
                     pr_fileAttr, 1, 1, mlir::LLVM::DISubprogramFlags::Definition, subprogramType,
                     llvm::ArrayRef<mlir::LLVM::DINodeAttr>{}, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
-                pr_mainFunc->setAttr( "llvm.debug.subprogram", pr_subprogramAttr );
+                mainFunc->setAttr( "llvm.debug.subprogram", pr_subprogramAttr );
 
                 // This is the key to ensure that translateModuleToLLVMIR does not strip the location info (instead
                 // converts loc's into !dbg's)
-                pr_mainFunc->setLoc( pr_builder.getFusedLoc( { pr_module.getLoc() }, pr_subprogramAttr ) );
+                mainFunc->setLoc( pr_builder.getFusedLoc( { pr_module.getLoc() }, pr_subprogramAttr ) );
             }
         }
 
@@ -602,51 +601,6 @@ namespace toy
             }
 
             return result;
-        }
-    };
-
-    // Lower toy.program to an LLVM function.
-    class ProgramOpLowering : public ConversionPattern
-    {
-       private:
-        loweringContext& lState;
-
-       public:
-        ProgramOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( toy::ProgramOp::getOperationName(), 1, context ), lState{ lState_ }
-        {
-        }
-
-        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
-                                       ConversionPatternRewriter& rewriter ) const override
-        {
-            auto programOp = cast<toy::ProgramOp>( op );
-            auto loc = programOp.getLoc();
-
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.program: " << *op << '\n' << loc << '\n' );
-
-            Block* entryBlock = lState.addEntryBlock( rewriter );
-
-            // Inline the toy.program's region into the function's entry block
-            Region& programRegion = programOp.getRegion();
-            if ( !programRegion.hasOneBlock() )
-            {
-                return rewriter.notifyMatchFailure( programOp, "toy.program must have exactly one block" );
-            }
-
-            // Move the block's operations (e.g., toy.return) into the entry
-            // block
-            Block& programBlock = programRegion.front();
-            rewriter.inlineRegionBefore( programRegion, entryBlock );
-            rewriter.mergeBlocks( &programBlock, entryBlock,
-                                  /* argValues */ {} );
-
-            // Erase the original program op
-            rewriter.eraseOp( op );
-            // LLVM_DEBUG(llvm::dbgs() << "IR after erasing toy.program:\n" << *op->getParentOp() << "\n");
-
-            // Recursively convert the inlined operations (e.g., toy.return)
-            return success();
         }
     };
 
@@ -1492,7 +1446,7 @@ namespace toy
             RewritePatternSet patterns1( ctx );
 
             // The operator ordering here doesn't matter, as there appears to be a graph walk to find all the operator
-            // nodes, and the order is based on that walk (i.e.: ProgramOpLowering happens first.)
+            // nodes, and the order is based on that walk
             patterns1.insert<DeclareOpLowering>( lState, ctx );
             patterns1.insert<LoadOpLowering>( lState, ctx );
             patterns1.insert<AddOpLowering>( lState, ctx );
@@ -1512,7 +1466,6 @@ namespace toy
             patterns1.insert<AssignOpLowering>( lState, ctx );
             patterns1.insert<StringLiteralOpLowering>( lState, ctx );
             patterns1.insert<ExitOpLowering>( lState, ctx );
-            patterns1.insert<ProgramOpLowering>( lState, ctx );
 
             arith::populateArithToLLVMConversionPatterns( typeConverter, patterns1 );
 

@@ -27,6 +27,7 @@ with plain old assign, after first constructing a string literal object:
 * Generalize NegOp lowering to support all types, not just f64.
 * Grammar: add ifelifelse rule (samples/if.toy).  No builder nor lowering support yet.
 * lowering: Fix StoreOp alignment (had i64's with align 4 in the generated ll.)
+* Replace toy::ProgramOp with mlir::func::FuncOp (prep for adding scopes and callable functions.)
 
 ## tag: V3
 

@@ -24,18 +24,6 @@ def Toy_Dialect : Dialect {
   let cppNamespace = "toy";
 }
 
-// eliminate this and use FuncOp instead:
-def Toy_ProgramOp : Op<Toy_Dialect, "program"> {
-  let summary = "Program operation";
-  let arguments = (ins);
-  let results = (outs);
-  let regions = (region AnyRegion:$body);
-  let traits = [AutomaticAllocationScope];
-
-  // Only print the region, omit types since they are always unit.
-  let assemblyFormat = "$body attr-dict";
-}
-
 def Toy_BlockOp : Op<Toy_Dialect, "block"> {
   let summary = "Block operation for scoping statements";
   let arguments = (ins);

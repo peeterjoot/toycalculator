@@ -263,6 +263,7 @@ int main( int argc, char** argv )
         st.wantDebug = debugInfo;
         st.filename = filename;
 
+        pm.addPass( mlir::createConvertFuncToLLVMPass() );
         pm.addPass( mlir::createToyToLLVMLoweringPass( &st ) );
         pm.addPass( mlir::createConvertSCFToCFPass() );
         pm.addPass( mlir::createConvertFuncToLLVMPass() );

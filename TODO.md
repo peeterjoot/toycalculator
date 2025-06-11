@@ -3,7 +3,7 @@
 * string literal tests for edge cases: shortstring.toy: two bugs unresolved.
 * array member assignment.
 * debug test cases for non-string array variables.  Need array member assignment first.
-* Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure.
+* Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
 * NOT operator: add more comprehensive all types testing.
 * tests for all the type conversions (i.e.: binary and unary arith operators)
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.

@@ -13,9 +13,6 @@
 #include <mlir/Bytecode/BytecodeOpInterface.h>
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/Support/TypeID.h>
-//#include <mlir/IR/SymbolTable.h> // this was for the experiment to add SymbolTable to ProgramOp.
-// Trying to put a SymbolTable in ProgramOp was misguided, as ModuleOp already has one (as adding global string literals shows, because
-// those need a SymbolTable -- you can see this by trying to add globalops without save/restore insertion point to the moduleop.)
 
 // Include generated dialect declarations (includes getDialectNamespace)
 #include "ToyDialectDecls.h.inc"
