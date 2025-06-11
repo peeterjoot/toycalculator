@@ -22,13 +22,18 @@ startRule
 
 // A statement can be a declaration, assignment, print, or comment.
 statement
-  : (ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print) ENDOFSTATEMENT_TOKEN
+  : (returnStatement | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print) ENDOFSTATEMENT_TOKEN
   ;
 
 ifelifelse
   : IF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
     (ELIF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN)*
     (ELSE_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN)?
+  ;
+
+// For now both return and parameters, can only be scalar types.
+function
+  : FUNCTION_TOKEN VARIABLENAME_PATTERN BRACE_START_TOKEN (parameterTypeAndName (COMMA_TOKEN parameterTypeAndName)*)? BRACE_END_TOKEN (COLON_TOKEN scalarType)? SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
   ;
 
 booleanValue
@@ -47,6 +52,15 @@ declare
 
 boolDeclare
   : BOOL_TOKEN VARIABLENAME_PATTERN (arrayBoundsExpression)?
+  ;
+
+parameterTypeAndName
+  //: VARIABLENAME_PATTERN COLON_TOKEN scalarType
+  : scalarType VARIABLENAME_PATTERN
+  ;
+
+scalarType
+  : INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN | FLOAT32_TOKEN | FLOAT64_TOKEN | BOOL_TOKEN
   ;
 
 intDeclare
@@ -68,6 +82,10 @@ arrayBoundsExpression
 // Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
 exitStatement
   : EXIT_TOKEN (numericLiteral | VARIABLENAME_PATTERN)?
+  ;
+
+returnStatement
+  : RETURN_TOKEN (literal | VARIABLENAME_PATTERN)?
   ;
 
 // A print statement that outputs a variable (e.g., 'PRINT x;').
@@ -219,6 +237,10 @@ DIV_TOKEN
   : '/'
   ;
 
+COMMA_TOKEN
+  : ','
+  ;
+
 ARRAY_START_TOKEN
   : '['
   ;
@@ -241,6 +263,10 @@ SCOPE_START_TOKEN
 
 SCOPE_END_TOKEN
   : '}'
+  ;
+
+COLON_TOKEN
+  : ':'
   ;
 
 // Matches the plus sign for addition or positive (e.g., '+').
@@ -354,8 +380,16 @@ EXIT_TOKEN
   : 'EXIT'
   ;
 
+RETURN_TOKEN
+  : 'RETURN'
+  ;
+
 STRING_TOKEN
   : 'STRING'
+  ;
+
+FUNCTION_TOKEN
+  : 'FUNCTION'
   ;
 
 // Matches variable names (e.g., 'x', 'foo'), consisting of letters (any case) and numbers, but starting with a letter.
