@@ -193,6 +193,7 @@ namespace toy
                     std::format( "{}error: Variable {} not assigned in expr\n", formatLocation( loc ), varName ) );
             }
 
+            assert( 0 );
             auto dcl = var_storage[varName];
             auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
 
@@ -240,15 +241,15 @@ namespace toy
         if ( arraySize )
         {
             auto sizeAttr = builder.getI64IntegerAttr( arraySize );
-            auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), mlir::TypeAttr::get( ty ),
-                                                       sizeAttr );
-            var_storage[varName] = dcl;
+            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), sizeAttr );
+            dcl->setAttr( "sym_name", builder.getStringAttr( varName ) );
+            // var_storage[varName] = dcl;
         }
         else
         {
-            auto dcl = builder.create<toy::DeclareOp>( loc, builder.getStringAttr( varName ), mlir::TypeAttr::get( ty ),
-                                                       nullptr );
-            var_storage[varName] = dcl;
+            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr );
+            dcl->setAttr( "sym_name", builder.getStringAttr( varName ) );
+            // var_storage[varName] = dcl;
         }
 
         return false;
@@ -444,6 +445,7 @@ namespace toy
                 return;
             }
 
+            assert( 0 );
             auto dcl = var_storage[varName];
             auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
 
@@ -540,6 +542,7 @@ namespace toy
         auto loc = getLocation( ctx );
         mlir::Value resultValue;
 
+        assert( 0 );
         auto dcl = var_storage[currentVarName];
         auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
         mlir::TypeAttr typeAttr = declareOp.getTypeAttr();

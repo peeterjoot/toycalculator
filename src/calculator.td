@@ -33,16 +33,21 @@ def Toy_BlockOp : Op<Toy_Dialect, "block"> {
 }
 
 def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
-  let summary = "Declare a variable or array, specifying its name, type (integer or float), and optional size.";
-  let arguments = (ins StrAttr:$name, TypeAttr:$type, OptionalAttr<I64Attr>:$size);
+  let summary = "Declare a variable or array, type (integer or float), and optional size.";
+  let arguments = (ins TypeAttr:$type, OptionalAttr<I64Attr>:$size);
   let results = (outs);
+  let traits = [Symbol];
 
-  // Default assemblyFormat gives:
-  //   "toy.declare"() {name = "x", type = i32} : () -> ()
-  // whereas with this, I'll get a more compact representation like:
-  //   toy.declare "x" : i32
-  //
-  //let assemblyFormat = "$name `:` $type attr-dict"; // FIXME: add $size
+  let extraClassDeclaration = [{
+    mlir::StringAttr getSymNameAttr() { return mlir::dyn_cast<mlir::StringAttr>( getOperation()->getAttr("sym_name") ); }
+
+    mlir::LogicalResult verify() {
+      if (!getSymNameAttr()) {
+        return emitOpError("requires a 'sym_name' attribute of type StringAttr");
+      }
+      return mlir::success();
+    }
+  }];
 }
 
 def Toy_IntOrFloat : TypeConstraint<
