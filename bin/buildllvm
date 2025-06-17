@@ -10,7 +10,7 @@ buildllvm - build llvm/mlir with RTTI
 
 =head1 SYNOPSIS
 
-buildllvm [--help] [--dryrun] [--extra] [--clangir]
+buildllvm [--help] [--dryrun] [--clang] [--flang] [--cir]
 
 =head1 DESCRIPTION
 
@@ -22,13 +22,17 @@ Options:
 
 Don't actually run the commands, just show them.
 
-=item --extra
+=item --clang
 
-Include flang+clang in the build.
+Include clang in the build.
 
-=item --clangir
+=item --flang
 
-Attempt to include clangir (cir dialect) in the clang build.
+Include flang in the build.
+
+=item --cir
+
+Include cir (clang-ir dialect) in the clang build.
 
 =back
 
@@ -63,8 +67,9 @@ select STDOUT ; $| = 1 ;
 
 my $myName = '' ;
 my $dryrun = 0;
-my $extra = 0;
-my $clangir = 0;
+my $clang = 0;
+my $flang = 0;
+my $cir = 0;
 
 ($myName = $0) =~ s@.*[/\\]@@ ;
 
@@ -72,8 +77,9 @@ my $clangir = 0;
 GetOptions (
    'help'               => sub { pod2usage(-verbose => 2) ; },
    'dryrun!'            => \$dryrun,
-   'extra!'             => \$extra,
-   'clangir!'           => \$clangir,
+   'clang!'             => \$clang,
+   'flang!'             => \$flang,
+   'cir!'           => \$cir,
 ) or pod2usage(-verbose => 0) ;
 
 # Validate/handle options, and everything else...
@@ -87,6 +93,8 @@ my $version = `git log -n 1 --decorate | head -1` ; chomp $version;
 print "# COMMIT: $version\n";
 $version =~ s/.*tag: llvmorg-// or die;
 $version =~ s/\).*//;
+$version =~ s/,.*//;
+#die "'$version'";
 
 my $builddir = "$HOME/build-llvm";
 mysystem( "(rm -rf $builddir && mkdir $builddir)" );
@@ -106,17 +114,20 @@ if ( $arch eq 'aarch64' )
 
 my %projects = ( 'mlir' => 1 );
 my @projects = (qw(mlir));
-if ( $extra )
+
+if ( $clang or $cir or $flang )
 {
     $projects{'clang'}++;
+}
+
+if ( $flang )
+{
     $projects{'flang'}++;
 }
 
 my $cmakeflags = '';
-
-if ( $clangir )
+if ( $cir )
 {
-    $projects{'clang'}++;
     $cmakeflags .= '-DCLANG_ENABLE_CIR=ON ';
 }
 
@@ -132,7 +143,7 @@ my $buildtype = 'Debug';
 my $parallel = '';
 
 # try to avoid the Linux OOM killer when building clang:
-$parallel = '-j3' if ( $extra or $clangir );
+$parallel = '-j3' if ( $projects{'clang'} );
 
 my @cmds = ( qq(cmake ) .
              qq(-G ) .
