@@ -267,6 +267,8 @@ int main( int argc, char** argv )
         st.wantDebug = debugInfo;
         st.filename = filename;
 
+        LLVM_DEBUG( { llvm::errs() << "IR before stage I lowering:\n"; module->dump(); } );
+
         pm.addPass( mlir::createToyToLLVMLoweringPass( &st ) );
         pm.addPass( mlir::createConvertSCFToCFPass() );
         pm.addPass( mlir::createFinalizeMemRefToLLVMConversionPass() );
@@ -274,6 +276,8 @@ int main( int argc, char** argv )
 
         if ( llvm::failed( pm.run( module ) ) )
         {
+            llvm::errs() << "IR after stage I lowering failure:\n";
+            module->dump();
             throw exception_with_context( __FILE__, __LINE__, __func__, "Stage I LLVM lowering failed" );
         }
 
@@ -287,6 +291,8 @@ int main( int argc, char** argv )
 
         if ( llvm::failed( pm2.run( module ) ) )
         {
+            llvm::errs() << "IR after stage II lowering failure:\n";
+            module->dump();
             throw exception_with_context( __FILE__, __LINE__, __func__, "Stage II LLVM lowering failed" );
         }
 
