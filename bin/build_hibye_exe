@@ -1,5 +1,5 @@
 
-# build an executable corresponding to the fake source file: prototypes/test.c 
+# build an executable corresponding to the fake source file: prototypes/test.c
 
 set -x
 ../build/hibye  > output.ll
