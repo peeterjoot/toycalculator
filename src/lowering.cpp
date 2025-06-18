@@ -14,11 +14,12 @@
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/TargetParser/Host.h>
 #include <mlir/Conversion/ArithToLLVM/ArithToLLVM.h>
+#include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Conversion/LLVMCommon/Pattern.h>
 #include <mlir/Conversion/LLVMCommon/TypeConverter.h>
 #include <mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
-#include <mlir/Dialect/Func/IR/FuncOps.h>    // For future multi-function support.
+#include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/Dialect/LLVMIR/LLVMAttrs.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
@@ -29,16 +30,14 @@
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/Pass/Pass.h>
 #include <mlir/Transforms/DialectConversion.h>
-#include <mlir/Dialect/Func/IR/FuncOps.h>
-#include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 
 #include <format>
 #include <numeric>
 
 #include "ToyDialect.h"
 #include "ToyExceptions.h"
-#include "lowering.h"
 #include "constants.h"
+#include "lowering.h"
 
 #define DEBUG_TYPE "toy-lowering"
 
@@ -315,8 +314,9 @@ namespace toy
             auto ctx = pr_builder.getContext();
             mlir::SymbolTable symbolTable( pr_module );
 
-            // Look up the func::FuncOp named "main"
-            auto mainFunc = symbolTable.lookup<mlir::LLVM::LLVMFuncOp>( "main" );
+            // Look up the "main" symbol
+            //auto mainFunc = symbolTable.lookup<mlir::LLVM::LLVMFuncOp>( "main" );
+            auto mainFunc = symbolTable.lookup<mlir::func::FuncOp>( "main" );
             if ( !mainFunc )
             {
                 pr_module.emitError() << "No 'main' function found in module";
@@ -1430,13 +1430,14 @@ namespace toy
             // Initialize the type converter
             LLVMTypeConverter typeConverter( ctx );
 
-            // Conversion target: only LLVM dialect is legal
+            // Conversion target: only LLVM dialect is legal, except for mlir::func::FuncOp and mlir::ModuleOp
             ConversionTarget target1( getContext() );
             target1.addLegalDialect<LLVM::LLVMDialect>();
             target1.addIllegalOp<arith::ConstantOp>();
             target1.addIllegalOp<toy::DeclareOp, toy::AssignOp, toy::PrintOp, toy::AddOp, toy::SubOp, toy::MulOp,
                                  toy::DivOp, toy::NegOp, toy::ExitOp>();
             target1.addLegalOp<mlir::ModuleOp>();
+            target1.addLegalOp<mlir::func::FuncOp>();
             target1.addIllegalDialect<toy::ToyDialect>();
 
             // Patterns for toy dialect and standard ops

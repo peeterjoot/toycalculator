@@ -267,16 +267,27 @@ int main( int argc, char** argv )
         st.wantDebug = debugInfo;
         st.filename = filename;
 
-        pm.addPass( mlir::createConvertFuncToLLVMPass() );
         pm.addPass( mlir::createToyToLLVMLoweringPass( &st ) );
         pm.addPass( mlir::createConvertSCFToCFPass() );
-        pm.addPass( mlir::createConvertFuncToLLVMPass() );
         pm.addPass( mlir::createFinalizeMemRefToLLVMConversionPass() );
         pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
 
         if ( llvm::failed( pm.run( module ) ) )
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__, "LLVM lowering failed" );
+            throw exception_with_context( __FILE__, __LINE__, __func__, "Stage I LLVM lowering failed" );
+        }
+
+        mlir::PassManager pm2( context );
+        if ( llvmDEBUG )
+        {
+            pm2.enableIRPrinting();
+        }
+
+        pm2.addPass( mlir::createConvertFuncToLLVMPass() );
+
+        if ( llvm::failed( pm2.run( module ) ) )
+        {
+            throw exception_with_context( __FILE__, __LINE__, __func__, "Stage II LLVM lowering failed" );
         }
 
         if ( toStdout )
