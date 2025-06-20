@@ -128,7 +128,7 @@ namespace toy
     // \retval true if error
     inline std::string MLIRListener::buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
                                                            tNode *variableNode, tNode *stringNode, mlir::Location loc,
-                                                           mlir::Value &value, theTypes &ty )
+                                                           mlir::Value &value )
     {
         if ( booleanNode )
         {
@@ -151,13 +151,11 @@ namespace toy
             }
 
             value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 1 );
-            ty = theTypes::boolean;
         }
         else if ( integerNode )
         {
             int64_t val = std::stoll( integerNode->getText() );
             value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
-            ty = theTypes::integer64;
         }
         else if ( floatNode )
         {
@@ -169,7 +167,6 @@ namespace toy
             // the max sized type. Would need a grammar change to have a
             // specific type (i.e.: size) associated with literals.
             value = builder.create<mlir::arith::ConstantFloatOp>( loc, apVal, builder.getF64Type() );
-            ty = theTypes::float64;
         }
         else if ( variableNode )
         {
@@ -198,14 +195,11 @@ namespace toy
             auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
 
             mlir::Type varType = declareOp.getTypeAttr().getValue();
-            value = builder.create<toy::LoadOp>( loc, varType, builder.getStringAttr( varName ) );
-
-            ty = getCompilerType( varType );
+            auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+            value = builder.create<toy::LoadOp>( loc, varType, symRef );
         }
         else if ( stringNode )
         {
-            ty = theTypes::string;
-
             return stripQuotes( stringNode->getText() );
         }
         else
@@ -454,7 +448,7 @@ namespace toy
             if ( declareOp.getSizeAttr() )    // Check if size attribute exists
             {
                 // Array: load a generic pointer
-                varType = mlir::LLVM::LLVMPointerType::get( builder.getContext(), /*addressSpace=*/0 );
+                varType = mlir::LLVM::LLVMPointerType::get( &dialect.context, /*addressSpace=*/0 );
             }
             else
             {
@@ -462,7 +456,8 @@ namespace toy
                 varType = elemType;
             }
 
-            auto value = builder.create<toy::LoadOp>( loc, varType, builder.getStringAttr( varName ) );
+            auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+            auto value = builder.create<toy::LoadOp>( loc, varType, symRef );
             builder.create<toy::PrintOp>( loc, value );
         }
         else if ( auto theString = ctx->STRING_PATTERN() )
@@ -500,12 +495,11 @@ namespace toy
         {
             mlir::Value value;
 
-            theTypes ty;
             auto s =
                 buildUnaryExpression( nullptr,    // booleanNode
                                       lit ? lit->INTEGER_PATTERN() : nullptr, lit ? lit->FLOAT_PATTERN() : nullptr, var,
                                       nullptr,    // stringNode
-                                      loc, value, ty );
+                                      loc, value );
             assert( s.length() == 0 );
 
             builder.create<toy::ExitOp>( loc, mlir::ValueRange{ value } );
@@ -549,7 +543,6 @@ namespace toy
         mlir::Type opType = typeAttr.getValue();
 
         mlir::Value lhsValue;
-        theTypes lty;
         auto bsz = ctx->binaryElement().size();
         std::string s;
 
@@ -559,10 +552,9 @@ namespace toy
 
             auto lit = ctx->literal();
 
-            theTypes ty;
             s = buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
                                       lit ? lit->FLOAT_PATTERN() : nullptr, ctx->IDENTIFIER(),
-                                      lit ? lit->STRING_PATTERN() : nullptr, loc, lhsValue, ty );
+                                      lit ? lit->STRING_PATTERN() : nullptr, loc, lhsValue );
 
             resultValue = lhsValue;
             if ( auto unaryOp = ctx->unaryOperator() )
@@ -597,17 +589,16 @@ namespace toy
                                       llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
                                       lhs->IDENTIFIER(),
                                       nullptr,    // stringNode
-                                      loc, lhsValue, lty );
+                                      loc, lhsValue );
             assert( s.length() == 0 );
 
             mlir::Value rhsValue;
-            theTypes rty;
             auto rlit = rhs->numericLiteral();
             s = buildUnaryExpression( nullptr,    // booleanNode
                                       rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
                                       rhs->IDENTIFIER(),
                                       nullptr,    // stringNode
-                                      loc, rhsValue, rty );
+                                      loc, rhsValue );
             assert( s.length() == 0 );
 
             // Create the binary operator (supports +, -, *, /)
@@ -685,6 +676,7 @@ namespace toy
 
         assert( !currentVarName.empty() );
 
+        auto symRef = mlir::SymbolRefAttr::get( &dialect.context, currentVarName );
         if ( s.length() )
         {
             auto strAttr = builder.getStringAttr( s );
@@ -692,11 +684,11 @@ namespace toy
             auto ptrType = mlir::LLVM::LLVMPointerType::get( &dialect.context );
             auto stringLiteral = builder.create<toy::StringLiteralOp>( loc, ptrType, strAttr );
 
-            builder.create<toy::AssignOp>( loc, builder.getStringAttr( currentVarName ), stringLiteral );
+            builder.create<toy::AssignOp>( loc, symRef, stringLiteral );
         }
         else
         {
-            builder.create<toy::AssignOp>( loc, builder.getStringAttr( currentVarName ), resultValue );
+            builder.create<toy::AssignOp>( loc, symRef, resultValue );
         }
 
         var_states[currentVarName] = variable_state::assigned;

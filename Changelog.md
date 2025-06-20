@@ -32,6 +32,8 @@ with plain old assign, after first constructing a string literal object:
 * grammar: rename VARIABLENAME_PATTERN -> IDENTIFIER
 * parser: intercept errors instead of letting parse tree walker autocorrect and continue.
 * new error tests: error_keyword_declare.toy error_keyword_declare2.toy
+* split lowering into two passes, with separate pass for FuncOp, so that we have option of keeping function symbol tables through (dcl/assign/load) op lowering.
+* WIP: introduce symbol table anchored to FuncOps, replacing hashes.
 
 ## tag: V3
 

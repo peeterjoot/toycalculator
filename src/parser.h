@@ -113,7 +113,7 @@ namespace toy
 
         inline std::string buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
                                                  tNode *variableNode, tNode *stringNode, mlir::Location loc,
-                                                 mlir::Value &value, theTypes &ty );
+                                                 mlir::Value &value );
 
         // @param asz [in]
         //    Array size or zero for scalar.

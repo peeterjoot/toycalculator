@@ -55,21 +55,49 @@ def Toy_IntOrFloat : TypeConstraint<
   "integer or float type">;
 
 def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
-  let summary = "Assign a value or string literal to a variable";
-  let arguments = (ins StrAttr:$name, AnyType:$value);
+  let summary = "Assign a value to a variable by symbol reference.";
+  let arguments = (ins SymbolRefAttr:$var_name, AnyType:$value);
   let results = (outs);
-
-  // toy.assign "x", %0 : i32
-  let assemblyFormat = "$name `,` $value `:` type($value) attr-dict";
+//  let hasVerifier = 1;
+//  let extraClassDeclaration = [{
+//    mlir::SymbolRefAttr getVarName() {
+//      return getVarNameAttr();
+//    }
+//    mlir::LogicalResult verify() {
+//      if (!getVarName()) {
+//        return emitOpError("requires a 'var_name' symbol reference attribute");
+//      }
+//      // Optionally: Verify the referenced symbol is a toy.declare
+//      auto* symbol = mlir::SymbolTable::lookupNearestSymbolFrom(getOperation(), getVarName());
+//      if (!symbol || !isa<toy::DeclareOp>(symbol)) {
+//        return emitOpError("symbol '" << getVarName().getValue() << "' must reference a toy.declare operation");
+//      }
+//      return mlir::success();
+//    }
+//  }];
 }
 
 def Toy_LoadOp : Op<Toy_Dialect, "load"> {
-  let summary = "Load a variable’s value by symbol name, returning a value of the given type.";
-  let arguments = (ins StrAttr:$name);
-  let results = (outs AnyType:$value);
-
-  // Example: %x = toy.load "i1" : i1
-  let assemblyFormat = "$name `:` type($value) attr-dict";
+  let summary = "Load a variable by symbol reference.";
+  let arguments = (ins SymbolRefAttr:$var_name);
+  let results = (outs AnyType:$result);
+//  let hasVerifier = 1;
+//  let extraClassDeclaration = [{
+//    mlir::SymbolRefAttr getVarName() {
+//      return getVarNameAttr();
+//    }
+//    mlir::LogicalResult verify() {
+//      if (!getVarName()) {
+//        return emitOpError("requires a 'var_name' symbol reference attribute");
+//      }
+//      // Optionally: Verify the referenced symbol is a toy.declare
+//      auto* symbol = mlir::SymbolTable::lookupNearestSymbolFrom(getOperation(), getVarName());
+//      if (!symbol || !isa<toy::DeclareOp>(symbol)) {
+//        return emitOpError("symbol '" << getVarName().getValue() << "' must reference a toy.declare operation");
+//      }
+//      return mlir::success();
+//    }
+//  }];
 }
 
 def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
