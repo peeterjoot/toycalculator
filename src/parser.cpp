@@ -266,7 +266,8 @@ namespace toy
             dcl->setAttr( "sym_name", strAttr );
         }
 
-        auto ddcl = lookupDeclareForVar( varName );
+        // For test purposes to verify that symbol lookup for varName worked right after the DeclareOp build call:
+        //auto ddcl = lookupDeclareForVar( varName );
 
         return false;
     }
