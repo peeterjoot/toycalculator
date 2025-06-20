@@ -557,6 +557,8 @@ namespace toy
                 int64_t numElems = 0;
                 if ( auto loadOp = input.getDefiningOp<toy::LoadOp>() )
                 {
+                    assert( 0 );
+#if 0
                     auto varName = loadOp.getName();
                     auto allocaOp = symbolToAlloca[varName];
                     assert( allocaOp );
@@ -571,6 +573,7 @@ namespace toy
                         auto intAttr = mlir::dyn_cast<mlir::IntegerAttr>( constOp.getValue() );
                         numElems = intAttr.getInt();
                     }
+#endif
                 }
                 else if ( auto stringLitOp = input.getDefiningOp<toy::StringLiteralOp>() )
                 {
@@ -727,6 +730,8 @@ namespace toy
         LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
                                        ConversionPatternRewriter& rewriter ) const override
         {
+            assert( 0 );
+#if 0
             auto assignOp = cast<toy::AssignOp>( op );
             auto loc = assignOp.getLoc();
 
@@ -868,6 +873,7 @@ namespace toy
             }
 
             rewriter.eraseOp( op );
+#endif
             return success();
         }
     };
@@ -1023,6 +1029,8 @@ namespace toy
         LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
                                        ConversionPatternRewriter& rewriter ) const override
         {
+            assert( 0 );
+#if 0
             auto loadOp = cast<toy::LoadOp>( op );
             auto loc = loadOp.getLoc();
 
@@ -1049,7 +1057,7 @@ namespace toy
                 LLVM_DEBUG( llvm::dbgs() << "new load op: " << load << '\n' );
                 rewriter.replaceOp( op, load.getResult() );
             }
-
+#endif
             return success();
         }
     };

@@ -6,7 +6,6 @@
 #include <llvm/Support/Debug.h>
 #include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
-#include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
 #include <mlir/IR/BuiltinAttributes.h>
@@ -32,6 +31,23 @@ namespace toy
         context.getOrLoadDialect<mlir::arith::ArithDialect>();
         context.getOrLoadDialect<mlir::memref::MemRefDialect>();
         context.getOrLoadDialect<mlir::LLVM::LLVMDialect>();
+    }
+
+    toy::DeclareOp MLIRListener::lookupDeclareForVar( const std::string & varName )
+    {
+        auto parentFunc = funcByName[ currentFuncName ];
+        //auto func = mlir::dyn_cast<mlir::func::FuncOp>( parentFunc );
+
+        mlir::SymbolTable symbolTable( parentFunc );
+
+        auto declareOp = symbolTable.lookup<toy::DeclareOp>( varName );
+        if ( !declareOp )
+        {
+            llvm::errs() << "Error: Variable '" << varName << "' not declared\n";
+            throw exception_with_context( __FILE__, __LINE__, __func__, "Undeclared variable" );
+        }
+
+        return declareOp;
     }
 
     inline mlir::Location MLIRListener::getLocation( antlr4::ParserRuleContext *ctx )
@@ -190,9 +206,7 @@ namespace toy
                     std::format( "{}error: Variable {} not assigned in expr\n", formatLocation( loc ), varName ) );
             }
 
-            assert( 0 );
-            auto dcl = var_storage[varName];
-            auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
+            auto declareOp = lookupDeclareForVar( varName );
 
             mlir::Type varType = declareOp.getTypeAttr().getValue();
             auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
@@ -265,6 +279,8 @@ namespace toy
 
         auto funcType = builder.getFunctionType( {}, builder.getI32Type() );
         auto func = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
+        currentFuncName = ENTRY_SYMBOL_NAME;
+        funcByName[currentFuncName] = func;
         auto &block = *func.addEntryBlock();
         builder.setInsertionPointToStart( &block );
     }
@@ -314,6 +330,9 @@ namespace toy
         auto func = builder.create<mlir::func::FuncOp>( loc, funcName, funcType );
         auto &block = *func.addEntryBlock();
         builder.setInsertionPointToStart( &block );
+
+        currentFuncName = funcName;
+        funcByName[currentFuncName] = func;
 
         // Map parameter names to block arguments
         for ( size_t i = 0; i < paramNames.size(); ++i )
@@ -439,9 +458,7 @@ namespace toy
                 return;
             }
 
-            assert( 0 );
-            auto dcl = var_storage[varName];
-            auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
+            auto declareOp = lookupDeclareForVar( varName );
 
             mlir::Type elemType = declareOp.getTypeAttr().getValue();
 
@@ -536,9 +553,7 @@ namespace toy
         auto loc = getLocation( ctx );
         mlir::Value resultValue;
 
-        assert( 0 );
-        auto dcl = var_storage[currentVarName];
-        auto declareOp = mlir::dyn_cast<toy::DeclareOp>( dcl );
+        auto declareOp = lookupDeclareForVar( currentVarName );
         mlir::TypeAttr typeAttr = declareOp.getTypeAttr();
         mlir::Type opType = typeAttr.getValue();
 

@@ -14,6 +14,7 @@
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/MLIRContext.h>
+#include <mlir/Dialect/Func/IR/FuncOps.h>
 
 #include <format>
 #include <map>
@@ -97,15 +98,18 @@ namespace toy
         DialectCtx dialect;
         mlir::OpBuilder builder;
         mlir::Location currentAssignLoc;
+        std::string currentFuncName;
         mlir::FileLineColLoc lastLocation;
         mlir::ModuleOp mod;
         std::string currentVarName;
         semantic_errors lastSemError{ semantic_errors::not_an_error };
         std::unordered_map<std::string, variable_state> var_states;
-        std::map<std::string, mlir::Operation *> var_storage;    // Maps declarations for variable names to DeclareOp's
+        std::map<std::string, mlir::func::FuncOp> funcByName;
         bool assignmentTargetValid{};
         bool hasErrors{};
         lastOperator lastOp{ lastOperator::notAnOp };
+
+        inline toy::DeclareOp lookupDeclareForVar( const std::string & varName );
 
         inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx );
 
