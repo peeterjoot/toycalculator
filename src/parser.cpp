@@ -37,10 +37,17 @@ namespace toy
     {
         auto parentFunc = funcByName[ currentFuncName ];
         auto func = mlir::dyn_cast<mlir::func::FuncOp>( parentFunc );
+        func->dump();
 
-        mlir::SymbolTable symbolTable( func );
+        auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( func, varName );
+        if( !symbolOp )
+        {
+            llvm::errs() << "Error: Variable '" << varName << "' not declared\n";
+            throw exception_with_context( __FILE__, __LINE__, __func__, "Undeclared variable" );
+        }
 
-        auto declareOp = symbolTable.lookup<toy::DeclareOp>( varName );
+        auto declareOp = mlir::dyn_cast<toy::DeclareOp>( symbolOp );
+
         if ( !declareOp )
         {
             llvm::errs() << "Error: Variable '" << varName << "' not declared\n";
