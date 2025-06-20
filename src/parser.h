@@ -103,11 +103,20 @@ namespace toy
         mlir::ModuleOp mod;
         std::string currentVarName;
         semantic_errors lastSemError{ semantic_errors::not_an_error };
-        std::unordered_map<std::string, variable_state> var_states;
-        std::map<std::string, mlir::func::FuncOp> funcByName;
+        std::unordered_map<std::string, variable_state> varStates;
+        std::map<std::string, mlir::Operation*> funcByName;
         bool assignmentTargetValid{};
         bool hasErrors{};
         lastOperator lastOp{ lastOperator::notAnOp };
+
+        mlir::IntegerType tyI1;
+        mlir::IntegerType tyI8;
+        mlir::IntegerType tyI16;
+        mlir::IntegerType tyI32;
+        mlir::IntegerType tyI64;
+        mlir::FloatType tyF32;
+        mlir::FloatType tyF64;
+        mlir::LLVM::LLVMPointerType tyPtr;
 
         inline toy::DeclareOp lookupDeclareForVar( const std::string & varName );
 
