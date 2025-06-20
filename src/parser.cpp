@@ -35,11 +35,11 @@ namespace toy
 
     toy::DeclareOp MLIRListener::lookupDeclareForVar( const std::string & varName )
     {
-        auto parentFunc = funcByName[ currentFuncName ];
-        auto func = mlir::dyn_cast<mlir::func::FuncOp>( parentFunc );
-        func->dump();
+        auto parentScope = funcByName[ currentFuncName ];
+        auto scope = mlir::dyn_cast<toy::FuncOp>( parentScope );
+        scope->dump();
 
-        auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( func, varName );
+        auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( scope, varName );
         if( !symbolOp )
         {
             llvm::errs() << "Error: Variable '" << varName << "' not declared\n";
@@ -297,7 +297,8 @@ namespace toy
         auto loc = getLocation( ctx );
 
         auto funcType = builder.getFunctionType( {}, tyI32 );
-        auto func = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
+        auto func = builder.create<toy::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
+
         currentFuncName = ENTRY_SYMBOL_NAME;
         funcByName[currentFuncName] = func;
         auto &block = *func.addEntryBlock();
@@ -346,7 +347,7 @@ namespace toy
 
         // Create func::FuncOp
         auto funcType = builder.getFunctionType( paramTypes, returnType );
-        auto func = builder.create<mlir::func::FuncOp>( loc, funcName, funcType );
+        auto func = builder.create<toy::FuncOp>( loc, funcName, funcType );
         auto &block = *func.addEntryBlock();
         builder.setInsertionPointToStart( &block );
 

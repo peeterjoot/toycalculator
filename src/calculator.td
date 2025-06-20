@@ -24,12 +24,20 @@ def Toy_Dialect : Dialect {
   let cppNamespace = "toy";
 }
 
-def Toy_BlockOp : Op<Toy_Dialect, "block"> {
-  let summary = "Block operation for scoping statements";
-  let arguments = (ins);
+def Toy_FuncOp : Op<Toy_Dialect, "func"> {
+  let summary = "Function operation";
+  let arguments = (ins StrAttr:$name, TypeAttr:$type);
   let results = (outs);
   let regions = (region AnyRegion:$body);
-  let assemblyFormat = "$body attr-dict";
+  //let assemblyFormat = "$body attr-dict";
+
+  let traits = [SymbolTable, AutomaticAllocationScope];
+
+//  let extraClassDeclaration = [{
+//    static void build(::mlir::OpBuilder &builder, ::mlir::OperationState &state) {
+//      state.addRegion()->emplaceBlock();
+//    }
+//  }];
 }
 
 def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
