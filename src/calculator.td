@@ -6,17 +6,19 @@
 // @description
 //
 // This dialect implements:
-// - a couple simple numeric operators (unary negation, binary +-*/),
-// - an exit operation,
-// - a declare operation,
-// - an assignment operation, and
-// - a print operation.
+// - A couple of simple numeric operators (unary negation, binary +-*/),
+// - An exit operation,
+// - A declare operation,
+// - An assignment operation, and
+// - A print operation.
+// - A Function operation (for the implicit main, and any user defined functions.)
 //
 include "mlir/IR/DialectBase.td"
 include "mlir/IR/OpBase.td"
 include "mlir/IR/BuiltinTypes.td"
 include "mlir/IR/SymbolInterfaces.td"
 include "mlir/IR/BuiltinAttributes.td"
+include "mlir/Interfaces/FunctionInterfaces.td"
 
 def Toy_Dialect : Dialect {
   let name = "toy";
@@ -24,20 +26,65 @@ def Toy_Dialect : Dialect {
   let cppNamespace = "toy";
 }
 
-def Toy_FuncOp : Op<Toy_Dialect, "func"> {
+def Toy_FuncOp : Op<Toy_Dialect, "func", [FunctionOpInterface]> {
   let summary = "Function operation";
-  let arguments = (ins StrAttr:$name, TypeAttr:$type);
+  let description = "A function operation.  Designed to mimic mlir::func::FuncOp, but with a symbol table for local variables.";
+  let arguments = (ins StrAttr:$sym_name, TypeAttr:$function_type, OptionalAttr<StrAttr>:$sym_visibility);
   let results = (outs);
   let regions = (region AnyRegion:$body);
-  //let assemblyFormat = "$body attr-dict";
+  let traits = [SymbolTable, AutomaticAllocationScope,
+                //IsIsolatedFromAbove,
+                OpAsmOpInterface, Symbol];
+  let extraClassDeclaration = [{
+    mlir::Block *addEntryBlock() {
+      assert(getBody().empty() && "Function already has an entry block!");
+      mlir::Block & entry = getBody().emplaceBlock();
+      auto type = dyn_cast<mlir::FunctionType>(getFunctionTypeAttr().getValue());
+      auto locs = llvm::SmallVector<mlir::Location>(type.getInputs().size(), getLoc());
+      entry.addArguments(type.getInputs(), locs);
+      return &entry;
+    }
 
-  let traits = [SymbolTable, AutomaticAllocationScope];
+    // these three are for mlir::func::FuncOp compatibility -- but may not be needed:
+    mlir::FunctionType getFunctionTypeAttrValue() {
+      return dyn_cast<mlir::FunctionType>(getFunctionTypeAttr().getValue());
+    }
 
-//  let extraClassDeclaration = [{
-//    static void build(::mlir::OpBuilder &builder, ::mlir::OperationState &state) {
-//      state.addRegion()->emplaceBlock();
-//    }
-//  }];
+    mlir::StringAttr getSymNameAttribute() {
+      return mlir::StringAttr::get(getContext(), getSymName());
+    }
+
+    mlir::StringAttr getSymVisibilityAttribute() {
+      if (auto vis = getSymVisibility()) {
+        return mlir::StringAttr::get(getContext(), *vis);
+      }
+      return nullptr;
+    }
+
+    static void build(::mlir::OpBuilder &builder, ::mlir::OperationState &state,
+                     ::llvm::StringRef symName, ::mlir::FunctionType funcType,
+                     ::mlir::StringAttr symVisibility = nullptr) {
+      state.addAttribute("sym_name", ::mlir::StringAttr::get(state.getContext(), symName));
+      state.addAttribute("function_type", ::mlir::TypeAttr::get(funcType));
+      if (symVisibility) {
+        state.addAttribute("sym_visibility", symVisibility);
+      }
+      state.addRegion();
+    }
+
+    mlir::LogicalResult verify() {
+      if (!getSymNameAttr()) {
+        return emitOpError("requires a 'sym_name' attribute");
+      }
+      if (!getFunctionTypeAttr()) {
+        return emitOpError("requires a 'function_type' attribute");
+      }
+      if (!getBody().empty() && getBody().getBlocks().size() != 1) {
+        return emitOpError("expects exactly one block in the body region");
+      }
+      return mlir::success();
+    }
+  }];
 }
 
 def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
@@ -222,3 +269,5 @@ def Toy_XorOp : Op<Toy_Dialect, "xor"> {
   let results = (outs Toy_IntOrFloat:$result);
   //let assemblyFormat = "$lhs `^` $rhs `:` type($result) attr-dict";
 }
+
+// vim: et ts=2 sw=2

@@ -33,25 +33,25 @@ namespace toy
         context.getOrLoadDialect<mlir::LLVM::LLVMDialect>();
     }
 
-    toy::DeclareOp MLIRListener::lookupDeclareForVar( const std::string & varName )
+    toy::DeclareOp MLIRListener::lookupDeclareForVar( const std::string &varName )
     {
-        auto parentScope = funcByName[ currentFuncName ];
-        auto scope = mlir::dyn_cast<toy::FuncOp>( parentScope );
-        scope->dump();
+        auto parentFunc = funcByName[currentFuncName];
+        auto func = mlir::dyn_cast<toy::FuncOp>( parentFunc );
+        LLVM_DEBUG( {
+            llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
+            func->dump();
+        } );
 
-        auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( scope, varName );
-        if( !symbolOp )
+        auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( func, varName );
+        if ( !symbolOp )
         {
-            llvm::errs() << "Error: Variable '" << varName << "' not declared\n";
-            throw exception_with_context( __FILE__, __LINE__, __func__, "Undeclared variable" );
+            throw exception_with_context( __FILE__, __LINE__, __func__, std::format( "Undeclared variable {}", varName ) );
         }
 
         auto declareOp = mlir::dyn_cast<toy::DeclareOp>( symbolOp );
-
         if ( !declareOp )
         {
-            llvm::errs() << "Error: Variable '" << varName << "' not declared\n";
-            throw exception_with_context( __FILE__, __LINE__, __func__, "Undeclared variable" );
+            throw exception_with_context( __FILE__, __LINE__, __func__, std::format( "Undeclared variable {}", varName ) );
         }
 
         return declareOp;
@@ -347,6 +347,7 @@ namespace toy
 
         // Create func::FuncOp
         auto funcType = builder.getFunctionType( paramTypes, returnType );
+        // FIXME: this one should use visibility private
         auto func = builder.create<toy::FuncOp>( loc, funcName, funcType );
         auto &block = *func.addEntryBlock();
         builder.setInsertionPointToStart( &block );
