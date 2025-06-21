@@ -86,6 +86,12 @@ GetOptions (
 
 # Validate/handle options, and everything else...
 
+# normalize input:
+if ( defined $just )
+{
+    $just =~ s/\.toy$//;
+}
+
 my $flags = '';
 
 if ( $optimize )

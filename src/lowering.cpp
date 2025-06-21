@@ -104,6 +104,13 @@ namespace toy
             tyPtr = LLVM::LLVMPointerType::get( pr_builder.getContext() );
         }
 
+#if 0
+        OpBuilder& builder()
+        {
+            return pr_builder;
+        }
+#endif
+
         unsigned preferredTypeAlignment( Operation* op, mlir::Type elemType )
         {
             auto module = op->getParentOfType<ModuleOp>();
@@ -309,17 +316,15 @@ namespace toy
             return pr_printFuncString;
         }
 
-        void createMain()
+        void createFuncDebug( const std::string& funcName )
         {
             auto ctx = pr_builder.getContext();
             mlir::SymbolTable symbolTable( pr_module );
 
-            // Look up the "main" symbol
-            //auto mainFunc = symbolTable.lookup<mlir::LLVM::LLVMFuncOp>( "main" );
-            auto mainFunc = symbolTable.lookup<mlir::func::FuncOp>( "main" );
-            if ( !mainFunc )
+            auto func = symbolTable.lookup<toy::FuncOp>( funcName );
+            if ( !func )
             {
-                pr_module.emitError() << "No 'main' function found in module";
+                pr_module.emitError() << std::format( "No '{}' function found in module\n", funcName );
                 return;
             }
 
@@ -331,22 +336,30 @@ namespace toy
                 auto compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
                     ctx, distinctAttr, llvm::dwarf::DW_LANG_C, pr_fileAttr, pr_builder.getStringAttr( COMPILER_NAME ),
                     false, mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
-                auto ta = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
-                                                            pr_builder.getStringAttr( "int" ), 32,
-                                                            (unsigned)llvm::dwarf::DW_ATE_signed );
+                // FIXME: this will be wrong for anything but "main":
+                assert( funcName == ENTRY_SYMBOL_NAME );
+                auto funcReturnTypeAttr = mlir::LLVM::DIBasicTypeAttr::get(
+                    ctx, (unsigned)llvm::dwarf::DW_TAG_base_type, pr_builder.getStringAttr( "int" ), 32,
+                    (unsigned)llvm::dwarf::DW_ATE_signed );
                 llvm::SmallVector<mlir::LLVM::DITypeAttr, 1> typeArray;
-                typeArray.push_back( ta );
+                typeArray.push_back( funcReturnTypeAttr );
+
+                assert( funcName == ENTRY_SYMBOL_NAME );
                 auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get( ctx, 0, typeArray );
+
+                assert(
+                    funcName ==
+                    ENTRY_SYMBOL_NAME );    // This saved var is also wrong for anything but a single function program:
                 pr_subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
                     ctx, mlir::DistinctAttr::create( pr_builder.getUnitAttr() ), compileUnitAttr, pr_fileAttr,
-                    pr_builder.getStringAttr( ENTRY_SYMBOL_NAME ), pr_builder.getStringAttr( ENTRY_SYMBOL_NAME ),
-                    pr_fileAttr, 1, 1, mlir::LLVM::DISubprogramFlags::Definition, subprogramType,
-                    llvm::ArrayRef<mlir::LLVM::DINodeAttr>{}, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
-                mainFunc->setAttr( "llvm.debug.subprogram", pr_subprogramAttr );
+                    pr_builder.getStringAttr( funcName ), pr_builder.getStringAttr( funcName ), pr_fileAttr, 1, 1,
+                    mlir::LLVM::DISubprogramFlags::Definition, subprogramType, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{},
+                    llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
+                func->setAttr( "llvm.debug.subprogram", pr_subprogramAttr );
 
                 // This is the key to ensure that translateModuleToLLVMIR does not strip the location info (instead
                 // converts loc's into !dbg's)
-                mainFunc->setLoc( pr_builder.getFusedLoc( { pr_module.getLoc() }, pr_subprogramAttr ) );
+                func->setLoc( pr_builder.getFusedLoc( { pr_module.getLoc() }, pr_subprogramAttr ) );
             }
         }
 
@@ -601,6 +614,65 @@ namespace toy
             }
 
             return result;
+        }
+    };
+
+    // Lower toy.program to an LLVM function.
+    class FuncOpLowering : public mlir::ConversionPattern
+    {
+       private:
+        loweringContext& lState;
+
+       public:
+#if 1
+        explicit FuncOpLowering( loweringContext& lState_, mlir::TypeConverter& typeConverter,
+                                 mlir::MLIRContext* context )
+            : mlir::ConversionPattern( typeConverter, toy::FuncOp::getOperationName(), 1, context ), lState( lState_ )
+        {
+        }
+#else
+        FuncOpLowering( loweringContext& lState_, MLIRContext* context )
+            : ConversionPattern( toy::FuncOp::getOperationName(), 1, context ), lState{ lState_ }
+        {
+        }
+#endif
+
+        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
+                                             mlir::ConversionPatternRewriter& rewriter ) const override
+        {
+            toy::FuncOp funcOp = mlir::cast<toy::FuncOp>( op );
+            auto loc = funcOp.getLoc();
+
+            mlir::StringAttr funcName = funcOp.getSymNameAttribute();
+            LLVM_DEBUG( {
+                llvm::dbgs() << std::format( "Lowering toy.func: funcName: {}\n", funcName.str() ) << *op << '\n'
+                             << loc << '\n';
+            } );
+
+            auto mlirFuncType = funcOp.getFunctionTypeAttrValue();
+            auto llvmResultType = typeConverter->convertType( mlirFuncType.getResults()[0] );
+            SmallVector<Type> llvmArgTypes;
+            for ( auto argType : mlirFuncType.getInputs() )
+            {
+                llvmArgTypes.push_back( typeConverter->convertType( argType ) );
+            }
+            auto funcType = LLVM::LLVMFunctionType::get( llvmResultType, llvmArgTypes, false /* isVarArg */ );
+            auto func = rewriter.create<LLVM::LLVMFuncOp>( loc, funcName, funcType, LLVM::Linkage::External );
+
+            Region& programRegion = funcOp.getRegion();
+            rewriter.inlineRegionBefore( programRegion, func.getRegion(), func.getRegion().end() );
+
+            if ( auto debugAttr = funcOp->getAttr( "llvm.debug.subprogram" ) )
+            {
+                func->setAttr( "llvm.debug.subprogram", debugAttr );
+            }
+
+            // Erase the original program op
+            rewriter.eraseOp( op );
+            // LLVM_DEBUG(llvm::dbgs() << "IR after erasing toy.func:\n" << *op->getParentOp() << "\n");
+
+            // Recursively convert the inlined operations (e.g., toy.return)
+            return success();
         }
     };
 
@@ -1433,7 +1505,7 @@ namespace toy
             lState.setModuleAttrs();
 
             auto ctx = lState.getBuilder().getContext();
-            lState.createMain();
+            lState.createFuncDebug( ENTRY_SYMBOL_NAME );
 
             // Initialize the type converter
             LLVMTypeConverter typeConverter( ctx );
@@ -1445,8 +1517,8 @@ namespace toy
             target1.addIllegalOp<toy::DeclareOp, toy::AssignOp, toy::PrintOp, toy::AddOp, toy::SubOp, toy::MulOp,
                                  toy::DivOp, toy::NegOp, toy::ExitOp>();
             target1.addLegalOp<mlir::ModuleOp>();
-            target1.addLegalOp<mlir::func::FuncOp>();
-            target1.addIllegalDialect<toy::ToyDialect>();
+            target1.addLegalOp<toy::FuncOp>();
+            // target1.addIllegalDialect<toy::ToyDialect>();
 
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns1( ctx );
@@ -1475,15 +1547,46 @@ namespace toy
 
             arith::populateArithToLLVMConversionPatterns( typeConverter, patterns1 );
 
-            if ( failed( applyFullConversion( module, target1, std::move( patterns1 ) ) ) )
+            if ( failed( applyPartialConversion( module, target1, std::move( patterns1 ) ) ) )
             {
-                LLVM_DEBUG( llvm::dbgs() << "Conversion failed\n" );
+                LLVM_DEBUG( llvm::dbgs() << "Toy Lowering: Stage I Conversion failed\n" );
+                signalPassFailure();
+                return;
+            }
+
+            ConversionTarget target2( getContext() );
+            target2.addLegalDialect<LLVM::LLVMDialect>();
+            target2.addLegalOp<mlir::ModuleOp>();
+            target2.addIllegalDialect<toy::ToyDialect>();
+
+            // Patterns for the final FuncOp removal:
+            RewritePatternSet patterns2( ctx );
+
+            // Map MLIR types to LLVM types
+#if 0
+            typeConverter.addConversion([](mlir::IntegerType type) -> mlir::Type {
+              return mlir::LLVM::IntegerType::get(type.getContext(), type.getWidth());
+            });
+            typeConverter.addConversion([](mlir::Float64Type type) -> mlir::Type {
+              return mlir::LLVM::DoubleType::get(type.getContext());
+            });
+            typeConverter.addConversion([](mlir::Float32Type type) -> mlir::Type {
+              return mlir::LLVM::FloatType::get(type.getContext());
+            });
+#endif
+
+            patterns2.insert<FuncOpLowering>( lState, typeConverter, ctx );
+            //patterns2.insert<FuncOpLowering>( lState, ctx );
+
+            if ( failed( applyFullConversion( module, target2, std::move( patterns2 ) ) ) )
+            {
+                LLVM_DEBUG( llvm::dbgs() << "Toy Lowering: Stage II Conversion failed\n" );
                 signalPassFailure();
                 return;
             }
 
             LLVM_DEBUG( {
-                llvm::dbgs() << "After ToyToLLVMLoweringPass:\n";
+                llvm::dbgs() << "After successfull ToyToLLVMLoweringPass:\n";
                 for ( Operation& op : module->getRegion( 0 ).front() )
                 {
                     op.dump();

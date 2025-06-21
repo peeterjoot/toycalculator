@@ -145,6 +145,8 @@ set(COMMON_COMPILE_OPTIONS
   -fdiagnostics-all-candidates
   -Wall
   -Wextra
+  -Werror
+  -Wno-error=unused-but-set-variable
   -Wno-comment
   -Wno-overloaded-virtual
   -Wno-unused-parameter
