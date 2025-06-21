@@ -88,9 +88,11 @@ namespace toy
         mlir::FloatType tyF32;
         mlir::FloatType tyF64;
         mlir::LLVM::LLVMPointerType tyPtr;
+        LLVMTypeConverter typeConverter;
 
         loweringContext( ModuleOp& module, const toy::driverState& driverState )
-            : pr_driverState{ driverState }, pr_module{ module }, pr_builder{ module.getRegion() }
+            : pr_driverState{ driverState }, pr_module{ module }, pr_builder{ module.getRegion() },
+              typeConverter{ pr_builder.getContext() }
         {
             tyI1 = pr_builder.getI1Type();
             tyI8 = pr_builder.getI8Type();
@@ -104,13 +106,6 @@ namespace toy
             tyPtr = LLVM::LLVMPointerType::get( pr_builder.getContext() );
         }
 
-#if 0
-        OpBuilder& builder()
-        {
-            return pr_builder;
-        }
-#endif
-
         unsigned preferredTypeAlignment( Operation* op, mlir::Type elemType )
         {
             auto module = op->getParentOfType<ModuleOp>();
@@ -121,9 +116,10 @@ namespace toy
             return alignment;
         }
 
-        OpBuilder& getBuilder()
+        // Note for future: c++-14 now allows auto-return for a simple function like this.
+        mlir::MLIRContext* getContext()
         {
-            return pr_builder;
+            return pr_builder.getContext();
         }
 
         bool isTypeFloat( mlir::Type ty ) const
@@ -624,18 +620,10 @@ namespace toy
         loweringContext& lState;
 
        public:
-#if 1
-        explicit FuncOpLowering( loweringContext& lState_, mlir::TypeConverter& typeConverter,
-                                 mlir::MLIRContext* context )
-            : mlir::ConversionPattern( typeConverter, toy::FuncOp::getOperationName(), 1, context ), lState( lState_ )
-        {
-        }
-#else
         FuncOpLowering( loweringContext& lState_, MLIRContext* context )
             : ConversionPattern( toy::FuncOp::getOperationName(), 1, context ), lState{ lState_ }
         {
         }
-#endif
 
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
@@ -650,11 +638,11 @@ namespace toy
             } );
 
             auto mlirFuncType = funcOp.getFunctionTypeAttrValue();
-            auto llvmResultType = typeConverter->convertType( mlirFuncType.getResults()[0] );
+            auto llvmResultType = lState.typeConverter.convertType( mlirFuncType.getResults()[0] );
             SmallVector<Type> llvmArgTypes;
             for ( auto argType : mlirFuncType.getInputs() )
             {
-                llvmArgTypes.push_back( typeConverter->convertType( argType ) );
+                llvmArgTypes.push_back( lState.typeConverter.convertType( argType ) );
             }
             auto funcType = LLVM::LLVMFunctionType::get( llvmResultType, llvmArgTypes, false /* isVarArg */ );
             auto func = rewriter.create<LLVM::LLVMFuncOp>( loc, funcName, funcType, LLVM::Linkage::External );
@@ -1504,11 +1492,8 @@ namespace toy
 
             lState.setModuleAttrs();
 
-            auto ctx = lState.getBuilder().getContext();
+            auto ctx = lState.getContext();
             lState.createFuncDebug( ENTRY_SYMBOL_NAME );
-
-            // Initialize the type converter
-            LLVMTypeConverter typeConverter( ctx );
 
             // Conversion target: only LLVM dialect is legal, except for mlir::func::FuncOp and mlir::ModuleOp
             ConversionTarget target1( getContext() );
@@ -1545,7 +1530,7 @@ namespace toy
             patterns1.insert<StringLiteralOpLowering>( lState, ctx );
             patterns1.insert<ExitOpLowering>( lState, ctx );
 
-            arith::populateArithToLLVMConversionPatterns( typeConverter, patterns1 );
+            arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns1 );
 
             if ( failed( applyPartialConversion( module, target1, std::move( patterns1 ) ) ) )
             {
@@ -1561,22 +1546,7 @@ namespace toy
 
             // Patterns for the final FuncOp removal:
             RewritePatternSet patterns2( ctx );
-
-            // Map MLIR types to LLVM types
-#if 0
-            typeConverter.addConversion([](mlir::IntegerType type) -> mlir::Type {
-              return mlir::LLVM::IntegerType::get(type.getContext(), type.getWidth());
-            });
-            typeConverter.addConversion([](mlir::Float64Type type) -> mlir::Type {
-              return mlir::LLVM::DoubleType::get(type.getContext());
-            });
-            typeConverter.addConversion([](mlir::Float32Type type) -> mlir::Type {
-              return mlir::LLVM::FloatType::get(type.getContext());
-            });
-#endif
-
-            patterns2.insert<FuncOpLowering>( lState, typeConverter, ctx );
-            //patterns2.insert<FuncOpLowering>( lState, ctx );
+            patterns2.insert<FuncOpLowering>( lState, ctx );
 
             if ( failed( applyFullConversion( module, target2, std::move( patterns2 ) ) ) )
             {
