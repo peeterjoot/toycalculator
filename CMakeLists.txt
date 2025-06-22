@@ -21,7 +21,7 @@ include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_SOURCE_DIR}/ToyParser)
+#include_directories(${CMAKE_BINARY_DIR}/ToyParser) # seems to be implied.
 
 #------------------------------------------------------------------------------
 # antlr4 related rules:
@@ -141,8 +141,6 @@ target_include_directories(toycalculator PRIVATE ${ANTLR_OUTPUT_DIR})
 add_dependencies(toycalculator hibye simplest mlirtest toy_runtime GenerateANTLR ToyDialectIncGen ToyPassesIncGen)
 
 set(COMMON_COMPILE_OPTIONS
-  -fdiagnostics-show-option
-  -fdiagnostics-all-candidates
   -Wall
   -Wextra
   -Werror
@@ -152,6 +150,24 @@ set(COMMON_COMPILE_OPTIONS
   -Wno-unused-parameter
   -g
 )
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    message("Compiler is g++")
+    list(APPEND COMMON_COMPILE_OPTIONS
+      -fdiagnostics-show-option
+      -fdiagnostics-all-candidates
+    )
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    message("Compiler is clang++")
+    list(APPEND COMMON_COMPILE_OPTIONS
+      -Wno-error=unused-private-field
+      -Wno-error=dangling-assignment-gsl
+      -Wno-dangling-assignment-gsl
+    )
+else()
+    message("Compiler is neither g++ nor clang++: ${CMAKE_CXX_COMPILER_ID}")
+endif()
+
 # -O2
 # an attempt to suppress all the rhs == lhs ambiguous messages from the mlir headers:
 #  -Wno-c++20-compat

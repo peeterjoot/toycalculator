@@ -150,6 +150,7 @@ my @cmds = ( qq(cmake ) .
              qq(Ninja ) .
              qq(../llvm-project/llvm ) .
              qq(-DBUILD_SHARED_LIBS=true ) .
+             qq(-DCMAKE_EXPORT_COMPILE_COMMANDS=ON ) .
              qq(-DCMAKE_BUILD_TYPE=${buildtype} ) .
              qq(-DLLVM_ENABLE_ASSERTIONS=TRUE ) .
              qq(-DLLVM_OPTIMIZED_TABLEGEN=ON ) .
