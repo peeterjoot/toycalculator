@@ -161,6 +161,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message("Compiler is clang++")
     list(APPEND COMMON_COMPILE_OPTIONS
       -Wno-error=unused-private-field
+      -Wno-unused-private-field
       -Wno-error=dangling-assignment-gsl
       -Wno-dangling-assignment-gsl
     )

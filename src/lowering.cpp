@@ -79,7 +79,7 @@ namespace toy
         OpBuilder pr_builder;
 
        public:
-        DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> symbolToAlloca;
+        // DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> symbolToAlloca;
         mlir::IntegerType tyI1;
         mlir::IntegerType tyI8;
         mlir::IntegerType tyI16;
@@ -91,7 +91,9 @@ namespace toy
         LLVMTypeConverter typeConverter;
 
         loweringContext( ModuleOp& module, const toy::driverState& driverState )
-            : pr_driverState{ driverState }, pr_module{ module }, pr_builder{ module.getRegion() },
+            : pr_driverState{ driverState },
+              pr_module{ module },
+              pr_builder{ module.getRegion() },
               typeConverter{ pr_builder.getContext() }
         {
             tyI1 = pr_builder.getI1Type();
@@ -475,8 +477,7 @@ namespace toy
                 pr_builder.setInsertionPointAfter( allocaOp );
                 pr_builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
             }
-
-            symbolToAlloca[varName] = allocaOp;
+            // symbolToAlloca[varName] = allocaOp;
         }
 
         mlir::LLVM::GlobalOp lookupGlobalOp( mlir::StringAttr& stringLit )
@@ -491,6 +492,43 @@ namespace toy
             }
 
             return globalOp;
+        }
+
+        toy::FuncOp getEnclosingFuncOp( mlir::Operation* op )
+        {
+            while ( op )
+            {
+                if ( auto funcOp = dyn_cast<toy::FuncOp>( op ) )
+                {
+                    return funcOp;
+                }
+                op = op->getParentOp();
+            }
+            return nullptr;
+        }
+
+        toy::DeclareOp lookupDeclareForVar( toy::FuncOp parentFunc, const std::string& varName )
+        {
+            LLVM_DEBUG( {
+                llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
+                parentFunc->dump();
+            } );
+
+            auto* symbolOp = mlir::SymbolTable::lookupSymbolIn( parentFunc, varName );
+            if ( !symbolOp )
+            {
+                throw exception_with_context( __FILE__, __LINE__, __func__,
+                                              std::format( "Undeclared variable {}", varName ) );
+            }
+
+            auto declareOp = mlir::dyn_cast<toy::DeclareOp>( symbolOp );
+            if ( !declareOp )
+            {
+                throw exception_with_context( __FILE__, __LINE__, __func__,
+                                              std::format( "Undeclared variable {}", varName ) );
+            }
+
+            return declareOp;
         }
 
         mlir::LLVM::GlobalOp lookupOrInsertGlobalOp( ConversionPatternRewriter& rewriter, mlir::StringAttr& stringLit,
@@ -566,21 +604,26 @@ namespace toy
                 int64_t numElems = 0;
                 if ( auto loadOp = input.getDefiningOp<toy::LoadOp>() )
                 {
+                    auto varNameAttr = loadOp.getVarName();
+                    assert( varNameAttr );
+
+                    // Get string (e.g., "x")
+                    auto varName = varNameAttr.getLeafReference().str();
+                    LLVM_DEBUG( { llvm::dbgs() << "LoadOp variable name: " << varName << "\n"; } );
+
                     assert( 0 );
 #if 0
-                    auto varName = loadOp.getName();
-                    auto allocaOp = symbolToAlloca[varName];
-                    assert( allocaOp );
+                    auto func = getEnclosingFuncOp( loadOp );
+                    auto declareOp = lookupDeclareForVar( func, varName );
 
                     // Validate element type is i8
-                    auto elemType = allocaOp.getElemType();
+                    auto elemType = declareOp.getType();
                     assert( elemType == tyI8 );
 
-                    // Get array size
-                    if ( auto constOp = allocaOp.getArraySize().getDefiningOp<mlir::LLVM::ConstantOp>() )
+                    auto & szOpt = declareOp.getSize();
+                    if ( szOpt.has_value() )
                     {
-                        auto intAttr = mlir::dyn_cast<mlir::IntegerAttr>( constOp.getValue() );
-                        numElems = intAttr.getInt();
+                        numElems = szOpt.value();
                     }
 #endif
                 }
@@ -802,7 +845,7 @@ namespace toy
             auto name = assignOp.getName();
             auto value = assignOp.getValue();
             auto valType = value.getType();
-            auto allocaOp = lState.symbolToAlloca[name];
+            auto allocaOp = 0; // lState.symbolToAlloca[name];
 
             // name: i1v
             // value: %true = arith.constant true
@@ -1098,7 +1141,7 @@ namespace toy
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.load: " << *op << '\n' );
 
             auto name = loadOp.getName();
-            auto allocaOp = lState.symbolToAlloca[name];
+            auto allocaOp = 0; // lState.symbolToAlloca[name];
 
             LLVM_DEBUG( llvm::dbgs() << "name: " << name << '\n' );
 

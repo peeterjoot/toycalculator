@@ -7,7 +7,7 @@
 b main
 # pick which sample program to use for the compiler debugging.
 #run ../samples/test.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
-run ../samples/dcl.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+run ../samples/dcl_assign.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 
 #b driver.cpp:277
 #b mlir::createToyToLLVMLoweringPass
