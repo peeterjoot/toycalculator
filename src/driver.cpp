@@ -39,13 +39,13 @@
 #include <format>
 #include <fstream>
 
-#include "ToyDialect.h"
-#include "ToyExceptions.h"
+#include "ToyDialect.hpp"
+#include "ToyExceptions.hpp"
 #include "ToyLexer.h"
-#include "ToyPasses.h"
-#include "driver.h"
-#include "lowering.h"
-#include "parser.h"
+#include "ToyPasses.hpp"
+#include "driver.hpp"
+#include "lowering.hpp"
+#include "parser.hpp"
 
 #define DEBUG_TYPE "toy-driver"
 

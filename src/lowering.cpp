@@ -34,10 +34,10 @@
 #include <format>
 #include <numeric>
 
-#include "ToyDialect.h"
-#include "ToyExceptions.h"
-#include "constants.h"
-#include "lowering.h"
+#include "ToyDialect.hpp"
+#include "ToyExceptions.hpp"
+#include "constants.hpp"
+#include "lowering.hpp"
 
 #define DEBUG_TYPE "toy-lowering"
 

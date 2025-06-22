@@ -1,10 +1,10 @@
 /**
- * @file    driver.h
+ * @file    driver.hpp
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   State to pass between driver and lowering pass.
  */
-#if !defined __Toy_driver_h_is_included
-#define __Toy_driver_h_is_included
+#if !defined __Toy_driver_hpp_is_included
+#define __Toy_driver_hpp_is_included
 
 #include <string>
 

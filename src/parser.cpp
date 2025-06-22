@@ -16,9 +16,9 @@
 
 #include <format>
 
-#include "ToyExceptions.h"
-#include "constants.h"
-#include "parser.h"
+#include "ToyExceptions.hpp"
+#include "constants.hpp"
+#include "parser.hpp"
 
 #define DEBUG_TYPE "toy-parser"
 

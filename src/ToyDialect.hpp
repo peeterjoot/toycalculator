@@ -1,5 +1,5 @@
 /**
- * @file    ToyDialect.h
+ * @file    ToyDialect.hpp
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   Include the ToyDialect.md generated include files and their MLIR dependencies.
  */
@@ -16,11 +16,11 @@
 #include <mlir/IR/SymbolTable.h>
 
 // Include generated dialect declarations (includes getDialectNamespace)
-#include "ToyDialectDecls.h.inc"
+#include "ToyDialectDecls.hpp.inc"
 
 // Include generated operation declarations
 #define GET_OP_CLASSES
-#include "ToyDialect.h.inc"
+#include "ToyDialect.hpp.inc"
 
 #endif // TOYDIALECT_H
 

@@ -1,12 +1,12 @@
 /**
- * @file    parser.h
+ * @file    parser.hpp
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   Antlr4 based Listener, implementing MLIR builder for the toy
  * (calculator) compiler.
  *
  */
-#if !defined __ToyParser_h_is_included
-#define __ToyParser_h_is_included
+#if !defined __ToyParser_hpp_is_included
+#define __ToyParser_hpp_is_included
 
 #pragma once
 
@@ -22,8 +22,8 @@
 #include <unordered_map>
 
 #include "ToyBaseListener.h"
-#include "ToyDialect.h"
-#include "ToyExceptions.h"
+#include "ToyDialect.hpp"
+#include "ToyExceptions.hpp"
 
 namespace toy
 {

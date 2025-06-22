@@ -71,13 +71,13 @@ add_definitions(${LLVM_DEFINITIONS})
 set(LLVM_TARGET_DEFINITIONS src/calculator.td)
 
 # Generate dialect declarations
-mlir_tablegen(ToyDialectDecls.h.inc -gen-dialect-decls -dialect toy)
+mlir_tablegen(ToyDialectDecls.hpp.inc -gen-dialect-decls -dialect toy)
 
 # Generate dialect definitions
 mlir_tablegen(ToyDialectDefs.cpp.inc -gen-dialect-defs -dialect toy)
 
 # Generate operation declarations
-mlir_tablegen(ToyDialect.h.inc -gen-op-decls -dialect toy)
+mlir_tablegen(ToyDialect.hpp.inc -gen-op-decls -dialect toy)
 
 # Generate operation definitions
 mlir_tablegen(ToyDialect.cpp.inc -gen-op-defs -dialect toy)
@@ -85,19 +85,19 @@ mlir_tablegen(ToyDialect.cpp.inc -gen-op-defs -dialect toy)
 # Create a single TableGen target for all generated files
 add_public_tablegen_target(ToyDialectIncGen
   DEPENDS
-    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialectDecls.h.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialectDecls.hpp.inc
     ${CMAKE_CURRENT_BINARY_DIR}/ToyDialectDefs.cpp.inc
-    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialect.h.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialect.hpp.inc
     ${CMAKE_CURRENT_BINARY_DIR}/ToyDialect.cpp.inc
 )
 
 # TableGen for passes
 set(LLVM_TARGET_DEFINITIONS src/ToyPasses.td)
-mlir_tablegen(ToyPasses.h.inc --gen-pass-decls -name Toy -I ${CMAKE_SOURCE_DIR}/src -I ${MLIR_INCLUDE_DIRS})
+mlir_tablegen(ToyPasses.hpp.inc --gen-pass-decls -name Toy -I ${CMAKE_SOURCE_DIR}/src -I ${MLIR_INCLUDE_DIRS})
 
 add_public_tablegen_target(ToyPassesIncGen
   DEPENDS
-    ${CMAKE_CURRENT_BINARY_DIR}/ToyPasses.h.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/ToyPasses.hpp.inc
 )
 #------------------------------------------------------------------------------
 # Targets:

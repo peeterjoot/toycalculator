@@ -1,5 +1,5 @@
 /**
- * @file    lowering.h
+ * @file    lowering.hpp
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   Glue code for MLIR lowering to LLVM-IR.
  */
@@ -7,7 +7,7 @@
 #define TOY_TO_LLVM_LOWERING_H
 
 #include <mlir/Pass/Pass.h>
-#include "driver.h"
+#include "driver.hpp"
 
 namespace mlir
 {
