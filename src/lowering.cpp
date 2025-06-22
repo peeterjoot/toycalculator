@@ -507,28 +507,24 @@ namespace toy
             return nullptr;
         }
 
-        toy::DeclareOp lookupDeclareForVar( toy::FuncOp parentFunc, const std::string& varName )
+        mlir::LLVM::AllocaOp lookupDeclareForVar( toy::FuncOp parentFunc, const std::string& varName )
         {
             LLVM_DEBUG( {
                 llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
                 parentFunc->dump();
             } );
 
-            auto* symbolOp = mlir::SymbolTable::lookupSymbolIn( parentFunc, varName );
-            if ( !symbolOp )
+            auto op = mlir::SymbolTable::lookupSymbolIn( parentFunc, varName );
+            if ( auto declareOp = mlir::cast<toy::DeclareOp>( op ) )
             {
-                throw exception_with_context( __FILE__, __LINE__, __func__,
-                                              std::format( "Undeclared variable {}", varName ) );
+                declareOp->dump();
+                return mlir::cast<mlir::LLVM::AllocaOp>( declareOp.getValue() );
             }
-
-            auto declareOp = mlir::dyn_cast<toy::DeclareOp>( symbolOp );
-            if ( !declareOp )
+            else
             {
-                throw exception_with_context( __FILE__, __LINE__, __func__,
-                                              std::format( "Undeclared variable {}", varName ) );
+                assert( 0 );
+                return nullptr;
             }
-
-            return declareOp;
         }
 
         mlir::LLVM::GlobalOp lookupOrInsertGlobalOp( ConversionPatternRewriter& rewriter, mlir::StringAttr& stringLit,
@@ -611,21 +607,18 @@ namespace toy
                     auto varName = varNameAttr.getLeafReference().str();
                     LLVM_DEBUG( { llvm::dbgs() << "LoadOp variable name: " << varName << "\n"; } );
 
-                    assert( 0 );
-#if 0
                     auto func = getEnclosingFuncOp( loadOp );
-                    auto declareOp = lookupDeclareForVar( func, varName );
+                    auto allocaOp = lookupDeclareForVar( func, varName );
 
                     // Validate element type is i8
-                    auto elemType = declareOp.getType();
+                    auto elemType = allocaOp.getElemType();
                     assert( elemType == tyI8 );
 
-                    auto & szOpt = declareOp.getSize();
-                    if ( szOpt.has_value() )
+                    if ( auto constOp = allocaOp.getArraySize().getDefiningOp<mlir::LLVM::ConstantOp>() )
                     {
-                        numElems = szOpt.value();
+                        auto intAttr = mlir::dyn_cast<mlir::IntegerAttr>( constOp.getValue() );
+                        numElems = intAttr.getInt();
                     }
-#endif
                 }
                 else if ( auto stringLitOp = input.getDefiningOp<toy::StringLiteralOp>() )
                 {
@@ -833,8 +826,6 @@ namespace toy
         LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
                                        ConversionPatternRewriter& rewriter ) const override
         {
-            assert( 0 );
-#if 0
             auto assignOp = cast<toy::AssignOp>( op );
             auto loc = assignOp.getLoc();
 
@@ -842,18 +833,25 @@ namespace toy
             // toy.assign "x", %0 : i32
             LLVM_DEBUG( llvm::dbgs() << "Lowering AssignOp: " << *op << '\n' );
 
-            auto name = assignOp.getName();
+            auto varNameAttr = assignOp.getVarName();
+            assert( varNameAttr );
+
+            // Get string (e.g., "x")
+            auto varName = varNameAttr.getLeafReference().str();
+            LLVM_DEBUG( { llvm::dbgs() << "LoadOp variable name: " << varName << "\n"; } );
+
+            auto func = lState.getEnclosingFuncOp( assignOp );
+            auto allocaOp = lState.lookupDeclareForVar( func, varName );
+
             auto value = assignOp.getValue();
             auto valType = value.getType();
-            auto allocaOp = 0; // lState.symbolToAlloca[name];
 
-            // name: i1v
+            // varName: i1v
             // value: %true = arith.constant true
             // valType: i1
-            LLVM_DEBUG( llvm::dbgs() << "name: " << name << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "varName: " << varName << '\n' );
             LLVM_DEBUG( llvm::dbgs() << "value: " << value << '\n' );
             LLVM_DEBUG( llvm::dbgs() << "valType: " << valType << '\n' );
-            // allocaOp.dump(); // %1 = llvm.alloca %0 x i1 {alignment = 1 : i64} : (i64) -> !llvm.ptr
 
             // extract parameters from the allocaOp so we know what to do here:
             Type elemType = allocaOp.getElemType();
@@ -976,7 +974,6 @@ namespace toy
             }
 
             rewriter.eraseOp( op );
-#endif
             return success();
         }
     };

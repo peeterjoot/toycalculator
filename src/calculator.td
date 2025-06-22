@@ -19,6 +19,7 @@ include "mlir/IR/BuiltinTypes.td"
 include "mlir/IR/SymbolInterfaces.td"
 include "mlir/IR/BuiltinAttributes.td"
 include "mlir/Interfaces/FunctionInterfaces.td"
+include "mlir/Dialect/LLVMIR/LLVMTypes.td"
 
 def Toy_Dialect : Dialect {
   let name = "toy";
@@ -92,6 +93,36 @@ def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
   let arguments = (ins TypeAttr:$type, OptionalAttr<I64Attr>:$size);
   let results = (outs);
   let traits = [Symbol];
+
+  let extraClassDeclaration = [{
+    mlir::StringAttr getSymNameAttr() { return mlir::dyn_cast<mlir::StringAttr>( getOperation()->getAttr("sym_name") ); }
+
+    mlir::LogicalResult verify() {
+      if (!getSymNameAttr()) {
+        return emitOpError("requires a 'sym_name' attribute of type StringAttr");
+      }
+      return mlir::success();
+    }
+  }];
+}
+
+def Toy_LocalOp : Op<Toy_Dialect, "local"> {
+  let summary = "Intermediate lowering state for a declared local variable.";
+  let arguments = (ins LLVMPointerType:$alloca);
+  let results = (outs);
+  let traits = [Symbol];
+  let description = [{
+Intermediate lowering state for a declared local variable.
+
+Stage I lowering leaves removes all ToyDialect artifacts other than toy::FuncOp (which holds a symbol table, the region, ...)
+and toy::LocalOp (this type.)  This type is not emitted by the original parser/builder pass, which generates DeclareOp for each declare.
+
+The type and size info contained in an original DeclareOp is lowered to AllocaOp, but the sym_name of that DeclareOp is reregistered
+with the FuncOp, so that we can do a symbol name -> alloca lookup in LoadOp and AssignOp lowering.
+
+Stage II lowering converts toy::FuncOp to mlir::func::FuncOp, transferring the region from the original, and throwing away the symbol table.
+It also lowers toy::LocalOp to the contained AllocA, throwing away any symbol table references.
+}];
 
   let extraClassDeclaration = [{
     mlir::StringAttr getSymNameAttr() { return mlir::dyn_cast<mlir::StringAttr>( getOperation()->getAttr("sym_name") ); }

@@ -14,6 +14,7 @@
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/Support/TypeID.h>
 #include <mlir/IR/SymbolTable.h>
+#include <mlir/Dialect/LLVMIR/LLVMTypes.h>
 
 // Include generated dialect declarations (includes getDialectNamespace)
 #include "ToyDialectDecls.hpp.inc"
