@@ -79,7 +79,7 @@ namespace toy
         OpBuilder pr_builder;
 
        public:
-        // DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> symbolToAlloca;
+        DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> symbolToAlloca;
         mlir::IntegerType tyI1;
         mlir::IntegerType tyI8;
         mlir::IntegerType tyI16;
@@ -477,7 +477,8 @@ namespace toy
                 pr_builder.setInsertionPointAfter( allocaOp );
                 pr_builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
             }
-            // symbolToAlloca[varName] = allocaOp;
+
+            symbolToAlloca[funcNameAndVarName] = allocaOp;
         }
 
         mlir::LLVM::GlobalOp lookupGlobalOp( mlir::StringAttr& stringLit )
@@ -723,7 +724,6 @@ namespace toy
 
             auto varName = declareOp.getName();
             auto elemType = declareOp.getType();
-            // int64_t numElements = 1;    // scalar only for now.
 
             if ( !elemType.isIntOrFloat() )
             {
@@ -761,11 +761,7 @@ namespace toy
             auto allocaOp = rewriter.create<LLVM::AllocaOp>( loc, lState.tyPtr, elemType, sizeVal, alignment );
             lState.constructVariableDI( varName, elemType, getLocation( loc ), elemSizeInBits, allocaOp, arraySize );
 
-            //declareOp->removeAttr( "sym_name" );
-            auto localOp = rewriter.create<toy::AllocaOp>( loc, allocaOp.getResult() );
-
             rewriter.eraseOp( op );
-            localOp->setAttr( "sym_name", rewriter.getStringAttr( varName ) );
 
             return success();
         }
@@ -1124,18 +1120,16 @@ namespace toy
         LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
                                        ConversionPatternRewriter& rewriter ) const override
         {
-            assert( 0 );
-#if 0
             auto loadOp = cast<toy::LoadOp>( op );
             auto loc = loadOp.getLoc();
 
             // %0 = toy.load "i1v" : i1
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.load: " << *op << '\n' );
 
-            auto name = loadOp.getName();
-            auto allocaOp = 0; // lState.symbolToAlloca[name];
+            auto varName = loadOp.getName();
+            auto allocaOp = lState.symbolToAlloca[funcNameAndVarName];
 
-            LLVM_DEBUG( llvm::dbgs() << "name: " << name << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "varName: " << varName << '\n' );
 
             Type elemType = allocaOp.getElemType();
 
@@ -1152,7 +1146,7 @@ namespace toy
                 LLVM_DEBUG( llvm::dbgs() << "new load op: " << load << '\n' );
                 rewriter.replaceOp( op, load.getResult() );
             }
-#endif
+
             return success();
         }
     };
