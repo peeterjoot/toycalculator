@@ -9,6 +9,9 @@ b main
 #run ../samples/test.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 run ../samples/dcl_assign.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 
+#b lookupDeclareForVar
+#b lookupAllocaForVar
+
 #b driver.cpp:277
 #b mlir::createToyToLLVMLoweringPass
 #b toy::MLIRListener::lookupDeclareForVar

@@ -164,6 +164,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
       -Wno-unused-private-field
       -Wno-error=dangling-assignment-gsl
       -Wno-dangling-assignment-gsl
+      -Wno-error=unused-variable
     )
 else()
     message("Compiler is neither g++ nor clang++: ${CMAKE_CXX_COMPILER_ID}")
