@@ -9,6 +9,8 @@ b main
 #run ../samples/test.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 run ../samples/dcl_assign.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 
+b lookupLocalSymbolReference
+b createLocalSymbolReference
 #b lookupDeclareForVar
 #b lookupAllocaForVar
 

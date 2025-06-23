@@ -139,9 +139,6 @@ def Toy_LoadOp : Op<Toy_Dialect, "load"> {
   let results = (outs AnyType:$result);
 //  let hasVerifier = 1;
 //  let extraClassDeclaration = [{
-//    mlir::SymbolRefAttr getVarName() {
-//      return getVarNameAttr();
-//    }
 //    mlir::LogicalResult verify() {
 //      if (!getVarName()) {
 //        return emitOpError("requires a 'var_name' symbol reference attribute");
