@@ -77,9 +77,9 @@ namespace toy
         const toy::driverState& pr_driverState;
         ModuleOp& pr_module;
         OpBuilder pr_builder;
+        DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> pr_symbolToAlloca;
 
        public:
-        DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> symbolToAlloca;
         mlir::IntegerType tyI1;
         mlir::IntegerType tyI8;
         mlir::IntegerType tyI16;
@@ -361,6 +361,38 @@ namespace toy
             }
         }
 
+        toy::FuncOp getEnclosingFuncOp( mlir::Operation* op )
+        {
+            while ( op )
+            {
+                if ( auto funcOp = dyn_cast<toy::FuncOp>( op ) )
+                {
+                    return funcOp;
+                }
+                op = op->getParentOp();
+            }
+            return nullptr;
+        }
+
+        toy::AllocaOp lookupLocalSymbolReference( toy::FuncOp parentFunc, const std::string& varName )
+        {
+            LLVM_DEBUG( {
+                llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
+                parentFunc->dump();
+            } );
+
+            std::string funcNameAndVarName = varName; // FIXME
+
+            return pr_symbolToAlloca[funcNameAndVarName];
+        }
+
+        void createLocalSymbolReference( toy::FuncOp parentFunc, const std::string& varName )
+        {
+            std::string funcNameAndVarName = varName; // FIXME
+
+            pr_symbolToAlloca[funcNameAndVarName] = allocaOp;
+        }
+
         void constructVariableDI( llvm::StringRef varName, mlir::Type& elemType, mlir::FileLineColLoc loc,
                                   unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp, int64_t arraySize = 1 )
         {
@@ -478,7 +510,8 @@ namespace toy
                 pr_builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
             }
 
-            symbolToAlloca[funcNameAndVarName] = allocaOp;
+            auto parentFunc = getEnclosingFuncOp( allocaOp );
+            createLocalSymbolReference( parentFunc, varName );
         }
 
         mlir::LLVM::GlobalOp lookupGlobalOp( mlir::StringAttr& stringLit )
@@ -493,38 +526,6 @@ namespace toy
             }
 
             return globalOp;
-        }
-
-        toy::FuncOp getEnclosingFuncOp( mlir::Operation* op )
-        {
-            while ( op )
-            {
-                if ( auto funcOp = dyn_cast<toy::FuncOp>( op ) )
-                {
-                    return funcOp;
-                }
-                op = op->getParentOp();
-            }
-            return nullptr;
-        }
-
-        toy::AllocaOp lookupAllocaOpForVar( toy::FuncOp parentFunc, const std::string& varName )
-        {
-            LLVM_DEBUG( {
-                llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
-                parentFunc->dump();
-            } );
-
-            auto op = mlir::SymbolTable::lookupSymbolIn( parentFunc, varName );
-            if ( auto localOp = mlir::cast<toy::AllocaOp>( op ) )
-            {
-                return localOp;
-            }
-            else
-            {
-                assert( 0 );
-                return nullptr;
-            }
         }
 
         mlir::LLVM::GlobalOp lookupOrInsertGlobalOp( ConversionPatternRewriter& rewriter, mlir::StringAttr& stringLit,
@@ -608,7 +609,7 @@ namespace toy
                     LLVM_DEBUG( { llvm::dbgs() << "LoadOp variable name: " << varName << "\n"; } );
 
                     auto func = getEnclosingFuncOp( loadOp );
-                    auto allocaOp = lookupAllocaOpForVar( func, varName );
+                    auto allocaOp = lookupLocalSymbolReference( func, varName );
 
                     // Validate element type is i8
                     auto elemType = allocaOp.getElemType();
@@ -832,7 +833,7 @@ namespace toy
             LLVM_DEBUG( { llvm::dbgs() << "LoadOp variable name: " << varName << "\n"; } );
 
             auto func = lState.getEnclosingFuncOp( assignOp );
-            auto allocaOp = lState.lookupAllocaOpForVar( func, varName );
+            auto allocaOp = lState.lookupLocalSymbolReference( func, varName );
 
             auto value = assignOp.getValue();
             auto valType = value.getType();
@@ -1127,7 +1128,8 @@ namespace toy
             LLVM_DEBUG( llvm::dbgs() << "Lowering toy.load: " << *op << '\n' );
 
             auto varName = loadOp.getName();
-            auto allocaOp = lState.symbolToAlloca[funcNameAndVarName];
+            auto parentFunc = lState.getEnclosingFuncOp( loadOp );
+            auto allocaOp = lState.lookupLocalSymbolReference( parentFunc, varName );
 
             LLVM_DEBUG( llvm::dbgs() << "varName: " << varName << '\n' );
 
