@@ -507,7 +507,7 @@ namespace toy
             return nullptr;
         }
 
-        toy::LocalOp lookupLocalOpForVar( toy::FuncOp parentFunc, const std::string& varName )
+        toy::AllocaOp lookupAllocaOpForVar( toy::FuncOp parentFunc, const std::string& varName )
         {
             LLVM_DEBUG( {
                 llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
@@ -515,7 +515,7 @@ namespace toy
             } );
 
             auto op = mlir::SymbolTable::lookupSymbolIn( parentFunc, varName );
-            if ( auto localOp = mlir::cast<toy::LocalOp>( op ) )
+            if ( auto localOp = mlir::cast<toy::AllocaOp>( op ) )
             {
                 return localOp;
             }
@@ -607,9 +607,8 @@ namespace toy
                     LLVM_DEBUG( { llvm::dbgs() << "LoadOp variable name: " << varName << "\n"; } );
 
                     auto func = getEnclosingFuncOp( loadOp );
-                    auto allocaOp = lookupLocalOpForVar( func, varName ).getAlloca();
+                    auto allocaOp = lookupAllocaOpForVar( func, varName );
 
-#if 0
                     // Validate element type is i8
                     auto elemType = allocaOp.getElemType();
                     assert( elemType == tyI8 );
@@ -619,8 +618,6 @@ namespace toy
                         auto intAttr = mlir::dyn_cast<mlir::IntegerAttr>( constOp.getValue() );
                         numElems = intAttr.getInt();
                     }
-#endif
-                    assert( 0 );
                 }
                 else if ( auto stringLitOp = input.getDefiningOp<toy::StringLiteralOp>() )
                 {
@@ -765,35 +762,10 @@ namespace toy
             lState.constructVariableDI( varName, elemType, getLocation( loc ), elemSizeInBits, allocaOp, arraySize );
 
             //declareOp->removeAttr( "sym_name" );
-            auto localOp = rewriter.create<toy::LocalOp>( loc, allocaOp.getResult() );
+            auto localOp = rewriter.create<toy::AllocaOp>( loc, allocaOp.getResult() );
 
             rewriter.eraseOp( op );
             localOp->setAttr( "sym_name", rewriter.getStringAttr( varName ) );
-
-            return success();
-        }
-    };
-
-    class LocalOpLowering : public ConversionPattern
-    {
-       private:
-        loweringContext& lState;
-
-       public:
-        LocalOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( toy::LocalOp::getOperationName(), 1, context ), lState{ lState_ }
-        {
-        }
-
-        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
-                                       ConversionPatternRewriter& rewriter ) const override
-        {
-            auto localOp = cast<toy::LocalOp>( op );
-
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.local: " << localOp << '\n' );
-
-            rewriter.eraseOp( op );
-            //rewriter.replaceOp( op, localOp.getAlloca() );
 
             return success();
         }
@@ -864,7 +836,7 @@ namespace toy
             LLVM_DEBUG( { llvm::dbgs() << "LoadOp variable name: " << varName << "\n"; } );
 
             auto func = lState.getEnclosingFuncOp( assignOp );
-            auto allocaOp = lState.lookupLocalOpForVar( func, varName ).getAlloca();
+            auto allocaOp = lState.lookupAllocaOpForVar( func, varName );
 
             auto value = assignOp.getValue();
             auto valType = value.getType();
@@ -877,7 +849,6 @@ namespace toy
             LLVM_DEBUG( llvm::dbgs() << "valType: " << valType << '\n' );
 
             // extract parameters from the allocaOp so we know what to do here:
-#if 0
             Type elemType = allocaOp.getElemType();
             int64_t numElems = 0;
             if ( auto constOp = allocaOp.getArraySize().getDefiningOp<LLVM::ConstantOp>() )
@@ -996,8 +967,6 @@ namespace toy
             {
                 llvm_unreachable( "AssignOp lowering: expect only fixed size floating or integer types." );
             }
-#endif
-            assert( 0 );
 
             rewriter.eraseOp( op );
             return success();
@@ -1561,14 +1530,14 @@ namespace toy
             auto ctx = lState.getContext();
             lState.createFuncDebug( ENTRY_SYMBOL_NAME );
 
-            // Conversion target: only LLVM dialect is legal, except for toy::FuncOp,LocalOp and mlir::ModuleOp
+            // Conversion target: only LLVM dialect is legal, except for toy::FuncOp and mlir::ModuleOp
             ConversionTarget target1( getContext() );
             target1.addLegalDialect<LLVM::LLVMDialect>();
             target1.addIllegalOp<arith::ConstantOp>();
             target1.addIllegalOp<toy::DeclareOp, toy::AssignOp, toy::PrintOp, toy::AddOp, toy::SubOp, toy::MulOp,
                                  toy::DivOp, toy::NegOp, toy::ExitOp>();
             target1.addLegalOp<mlir::ModuleOp>();
-            target1.addLegalOp<toy::FuncOp, toy::LocalOp>();
+            target1.addLegalOp<toy::FuncOp>();
 
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns1( ctx );
@@ -1604,7 +1573,7 @@ namespace toy
                 return;
             }
 
-            LLVM_DEBUG( { llvm::dbgs() << "Toy Lowering: Stage I Conversion succesful.  Stage II:\n"; /*module->dump();*/ } );
+            LLVM_DEBUG( { llvm::dbgs() << "Toy Lowering: Stage I Conversion succesful.  Stage II:\n"; } );
 
             ConversionTarget target2( getContext() );
             target2.addLegalDialect<LLVM::LLVMDialect>();
@@ -1613,7 +1582,6 @@ namespace toy
 
             // Patterns for the final FuncOp removal:
             RewritePatternSet patterns2( ctx );
-            patterns2.insert<LocalOpLowering>( lState, ctx );
             patterns2.insert<FuncOpLowering>( lState, ctx );
 
             if ( failed( applyFullConversion( module, target2, std::move( patterns2 ) ) ) )
