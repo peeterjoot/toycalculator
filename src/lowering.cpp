@@ -90,7 +90,7 @@ namespace toy
         const toy::driverState& pr_driverState;
         ModuleOp& pr_module;
         OpBuilder pr_builder;
-        DenseMap<llvm::StringRef, mlir::LLVM::AllocaOp> pr_symbolToAlloca;
+        std::unordered_map<std::string, mlir::Operation *> pr_symbolToAlloca;
 
        public:
         mlir::IntegerType tyI1;
@@ -387,7 +387,8 @@ namespace toy
 
             std::string funcNameAndVarName = funcName + "::" + varName;
 
-            return pr_symbolToAlloca[funcNameAndVarName];
+            auto alloca = pr_symbolToAlloca[funcNameAndVarName];
+            return mlir::dyn_cast<mlir::LLVM::AllocaOp>( alloca );
         }
 
         void createLocalSymbolReference( mlir::LLVM::AllocaOp allocaOp, const std::string& varName )
