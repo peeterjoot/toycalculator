@@ -81,7 +81,7 @@ namespace toy
         mlir::LLVM::ConstantOp pr_zero_F64;
 
         mlir::LLVM::DIFileAttr pr_fileAttr;
-        mlir::LLVM::DISubprogramAttr pr_subprogramAttr;
+        std::unordered_map<std::string, mlir::LLVM::DISubprogramAttr> pr_subprogramAttr;
         std::unordered_map<std::string, mlir::LLVM::GlobalOp> pr_stringLiterals;
         mlir::LLVM::LLVMFuncOp pr_printFuncF64;
         mlir::LLVM::LLVMFuncOp pr_printFuncI64;
@@ -90,7 +90,17 @@ namespace toy
         const toy::driverState& pr_driverState;
         ModuleOp& pr_module;
         OpBuilder pr_builder;
-        std::unordered_map<std::string, mlir::Operation *> pr_symbolToAlloca;
+        std::unordered_map<std::string, mlir::Operation*> pr_symbolToAlloca;
+
+        mlir::LLVM::DICompileUnitAttr pr_compileUnitAttr;
+        mlir::LLVM::DITypeAttr pr_diI8;
+        mlir::LLVM::DITypeAttr pr_diI16;
+        mlir::LLVM::DITypeAttr pr_diI32;
+        mlir::LLVM::DITypeAttr pr_diI64;
+        mlir::LLVM::DITypeAttr pr_diF32;
+        mlir::LLVM::DITypeAttr pr_diF64;
+        mlir::LLVM::DITypeAttr pr_diVOID;
+        mlir::LLVM::DITypeAttr pr_diUNKNOWN;
 
        public:
         mlir::IntegerType tyI1;
@@ -248,9 +258,120 @@ namespace toy
                                           std::format( "Unexpected float size {}", width ) );
         }
 
-        // Set data_layout,ident,target_triple:
-        void setModuleAttrs()
+        class useModuleInsertionPoint
         {
+            OpBuilder& builder;
+            mlir::OpBuilder::InsertPoint oldIP;
+
+           public:
+            useModuleInsertionPoint( ModuleOp& module, OpBuilder& builder_ )
+                : builder{ builder_ }, oldIP{ builder.saveInsertionPoint() }
+            {
+                builder.setInsertionPointToStart( module.getBody() );
+            }
+
+            ~useModuleInsertionPoint()
+            {
+                builder.restoreInsertionPoint( oldIP );
+            }
+        };
+
+        mlir::LLVM::LLVMFuncOp toyPrintF64()
+        {
+            if ( !pr_printFuncF64 )
+            {
+                useModuleInsertionPoint ip( pr_module, pr_builder );
+
+                auto ctx = pr_builder.getContext();
+                auto pr_printFuncF64Type =
+                    LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { tyF64 }, false );
+                pr_printFuncF64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_f64",
+                                                                       pr_printFuncF64Type, LLVM::Linkage::External );
+            }
+
+            return pr_printFuncF64;
+        }
+
+        mlir::LLVM::LLVMFuncOp toyPrintI64()
+        {
+            if ( !pr_printFuncI64 )
+            {
+                useModuleInsertionPoint ip( pr_module, pr_builder );
+
+                auto ctx = pr_builder.getContext();
+                auto printFuncI64Type = LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { tyI64 }, false );
+                pr_printFuncI64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_i64",
+                                                                       printFuncI64Type, LLVM::Linkage::External );
+            }
+
+            return pr_printFuncI64;
+        }
+
+        mlir::LLVM::LLVMFuncOp toyPrintString()
+        {
+            if ( !pr_printFuncString )
+            {
+                useModuleInsertionPoint ip( pr_module, pr_builder );
+
+                auto ctx = pr_builder.getContext();
+                auto printFuncStringType =
+                    LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { tyI64, tyPtr }, false );
+                pr_printFuncString = pr_builder.create<LLVM::LLVMFuncOp>(
+                    pr_module.getLoc(), "__toy_print_string", printFuncStringType, LLVM::Linkage::External );
+            }
+
+            return pr_printFuncString;
+        }
+
+        void createDICompileUnit()
+        {
+            if ( pr_driverState.wantDebug )
+            {
+                useModuleInsertionPoint ip( pr_module, pr_builder );
+
+                auto ctx = pr_builder.getContext();
+
+
+                pr_diVOID = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                                                              pr_builder.getStringAttr( "void" ), 0, 0 );
+
+                pr_diF32 = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                                                             pr_builder.getStringAttr( "float" ), 32,
+                                                             llvm::dwarf::DW_ATE_float );
+
+                pr_diF64 = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                                                             pr_builder.getStringAttr( "double" ), 64,
+                                                             llvm::dwarf::DW_ATE_float );
+
+                pr_diUNKNOWN = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                                                                 pr_builder.getStringAttr( "unknown" ), 0, 0 );
+
+
+                pr_diI8 = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                            pr_builder.getStringAttr( "char" ), 8,
+                                                            (unsigned)llvm::dwarf::DW_ATE_signed );
+
+                pr_diI16 = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                             pr_builder.getStringAttr( "short" ), 16,
+                                                             (unsigned)llvm::dwarf::DW_ATE_signed );
+
+                pr_diI32 = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                             pr_builder.getStringAttr( "int" ), 32,
+                                                             (unsigned)llvm::dwarf::DW_ATE_signed );
+
+                pr_diI64 = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                             pr_builder.getStringAttr( "long" ), 64,
+                                                             (unsigned)llvm::dwarf::DW_ATE_signed );
+
+                // Construct pr_module level DI state:
+                pr_fileAttr = mlir::LLVM::DIFileAttr::get( ctx, pr_driverState.filename, "." );
+                auto distinctAttr = mlir::DistinctAttr::create( pr_builder.getUnitAttr() );
+                pr_compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
+                    ctx, distinctAttr, llvm::dwarf::DW_LANG_C, pr_fileAttr, pr_builder.getStringAttr( COMPILER_NAME ),
+                    false, mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
+            }
+
+        // Set data_layout,ident,target_triple:
 #if 0    // Oops: don't really need these.  Already doing this in driver.cpp for the assembly printer (at the LLVM level
          // after all lowering and translation)
             std::string targetTriple = llvm::sys::getDefaultTargetTriple();
@@ -272,106 +393,98 @@ namespace toy
             pr_module->setAttr( "llvm.ident", pr_builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
         }
 
-        mlir::LLVM::LLVMFuncOp toyPrintF64()
+        mlir::LLVM::DITypeAttr getDIType( mlir::Type type )
         {
-            if ( !pr_printFuncF64 )
+            if ( !type )
             {
-                auto oldIP = pr_builder.saveInsertionPoint();
-                pr_builder.setInsertionPointToStart( pr_module.getBody() );
-
-                auto ctx = pr_builder.getContext();
-                auto pr_printFuncF64Type =
-                    LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { tyF64 }, false );
-                pr_printFuncF64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_f64",
-                                                                       pr_printFuncF64Type, LLVM::Linkage::External );
-                pr_builder.restoreInsertionPoint( oldIP );
+                return pr_diVOID;
             }
-
-            return pr_printFuncF64;
+            else if ( type.isF32() )
+            {
+                return pr_diF32;
+            }
+            else if ( type.isF64() )
+            {
+                return pr_diF64;
+            }
+            else if ( type.isInteger( 8 ) || type.isInteger( 1 ) )
+            {
+                return pr_diI8;
+            }
+            else if ( type.isInteger( 16 ) )
+            {
+                return pr_diI16;
+            }
+            else if ( type.isInteger( 32 ) )
+            {
+                return pr_diI32;
+            }
+            else if ( type.isInteger( 64 ) )
+            {
+                return pr_diI64;
+            }
+            else
+            {
+                return pr_diUNKNOWN;
+            }
         }
 
-        mlir::LLVM::LLVMFuncOp toyPrintI64()
+        mlir::LLVM::DISubroutineTypeAttr createDISubroutineType( toy::FuncOp funcOp )
         {
-            if ( !pr_printFuncI64 )
+            auto funcType = funcOp.getFunctionTypeAttrValue();
+
+            mlir::SmallVector<mlir::LLVM::DITypeAttr> paramTypes;
+
+            auto returnType = getDIType( funcType.getResults().empty() ? mlir::Type() : funcType.getResults()[0] );
+            paramTypes.push_back( returnType );
+
+            for ( auto argType : funcType.getInputs() )
             {
-                auto oldIP = pr_builder.saveInsertionPoint();
-                pr_builder.setInsertionPointToStart( pr_module.getBody() );
-
-                auto ctx = pr_builder.getContext();
-                auto printFuncI64Type = LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { tyI64 }, false );
-                pr_printFuncI64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_i64",
-                                                                       printFuncI64Type, LLVM::Linkage::External );
-
-                pr_builder.restoreInsertionPoint( oldIP );
+                paramTypes.push_back( getDIType( argType ) );
             }
 
-            return pr_printFuncI64;
-        }
-
-        mlir::LLVM::LLVMFuncOp toyPrintString()
-        {
-            if ( !pr_printFuncString )
-            {
-                auto oldIP = pr_builder.saveInsertionPoint();
-                pr_builder.setInsertionPointToStart( pr_module.getBody() );
-
-                auto ctx = pr_builder.getContext();
-                auto printFuncStringType =
-                    LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { tyI64, tyPtr }, false );
-                pr_printFuncString = pr_builder.create<LLVM::LLVMFuncOp>(
-                    pr_module.getLoc(), "__toy_print_string", printFuncStringType, LLVM::Linkage::External );
-
-                pr_builder.restoreInsertionPoint( oldIP );
-            }
-
-            return pr_printFuncString;
-        }
-
-        void createFuncDebug( const std::string& funcName )
-        {
             auto ctx = pr_builder.getContext();
-            mlir::SymbolTable symbolTable( pr_module );
 
-            auto func = symbolTable.lookup<toy::FuncOp>( funcName );
-            if ( !func )
-            {
-                pr_module.emitError() << std::format( "No '{}' function found in module\n", funcName );
-                return;
-            }
+            return mlir::LLVM::DISubroutineTypeAttr::get( ctx, llvm::DINode::FlagZero, paramTypes );
+        }
 
+        void createFuncDebug( toy::FuncOp funcOp )
+        {
             if ( pr_driverState.wantDebug )
             {
-                // Construct pr_module level DI state:
-                pr_fileAttr = mlir::LLVM::DIFileAttr::get( ctx, pr_driverState.filename, "." );
-                auto distinctAttr = mlir::DistinctAttr::create( pr_builder.getUnitAttr() );
-                auto compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
-                    ctx, distinctAttr, llvm::dwarf::DW_LANG_C, pr_fileAttr, pr_builder.getStringAttr( COMPILER_NAME ),
-                    false, mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
-                // FIXME: this will be wrong for anything but "main":
-                assert( funcName == ENTRY_SYMBOL_NAME );
-                auto funcReturnTypeAttr = mlir::LLVM::DIBasicTypeAttr::get(
-                    ctx, (unsigned)llvm::dwarf::DW_TAG_base_type, pr_builder.getStringAttr( "int" ), 32,
-                    (unsigned)llvm::dwarf::DW_ATE_signed );
-                llvm::SmallVector<mlir::LLVM::DITypeAttr, 1> typeArray;
-                typeArray.push_back( funcReturnTypeAttr );
+                useModuleInsertionPoint ip( pr_module, pr_builder );
 
-                assert( funcName == ENTRY_SYMBOL_NAME );
-                auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get( ctx, 0, typeArray );
+                auto ctx = pr_builder.getContext();
+                auto funcName = funcOp.getSymName().str();
 
-                assert(
-                    funcName ==
-                    ENTRY_SYMBOL_NAME );    // This saved var is also wrong for anything but a single function program:
-                pr_subprogramAttr = mlir::LLVM::DISubprogramAttr::get(
-                    ctx, mlir::DistinctAttr::create( pr_builder.getUnitAttr() ), compileUnitAttr, pr_fileAttr,
+                auto subprogramType = createDISubroutineType( funcOp );
+
+                auto sub = mlir::LLVM::DISubprogramAttr::get(
+                    ctx, mlir::DistinctAttr::create( pr_builder.getUnitAttr() ), pr_compileUnitAttr, pr_fileAttr,
                     pr_builder.getStringAttr( funcName ), pr_builder.getStringAttr( funcName ), pr_fileAttr, 1, 1,
                     mlir::LLVM::DISubprogramFlags::Definition, subprogramType, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{},
                     llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
-                func->setAttr( "llvm.debug.subprogram", pr_subprogramAttr );
 
-                // This is the key to ensure that translateModuleToLLVMIR does not strip the location info (instead
-                // converts loc's into !dbg's)
-                func->setLoc( pr_builder.getFusedLoc( { pr_module.getLoc() }, pr_subprogramAttr ) );
+                funcOp->setAttr( "llvm.debug.subprogram", sub );
+
+                if ( funcName == ENTRY_SYMBOL_NAME )
+                {
+                    // This is the key to ensure that translateModuleToLLVMIR does not strip the location info (instead
+                    // converts loc's into !dbg's)
+                    //
+                    // Is it enought to do this only for the "main"?
+                    funcOp->setLoc( pr_builder.getFusedLoc( { pr_module.getLoc() }, sub ) );
+                }
+
+                pr_subprogramAttr[funcName] = sub;
             }
+        }
+
+        std::string lookupFuncNameForOp( mlir::Operation* op )
+        {
+            toy::FuncOp parentFunc = getEnclosingFuncOp( op );
+
+            return parentFunc.getSymName().str();
         }
 
         mlir::LLVM::AllocaOp lookupLocalSymbolReference( mlir::Operation* op, const std::string& varName )
@@ -404,9 +517,10 @@ namespace toy
         void constructVariableDI( llvm::StringRef varName, mlir::Type& elemType, mlir::FileLineColLoc loc,
                                   unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp, int64_t arraySize = 1 )
         {
-            auto ctx = pr_builder.getContext();
             if ( pr_driverState.wantDebug )
             {
+                auto ctx = pr_builder.getContext();
+
                 allocaOp->setAttr( "bindc_name", pr_builder.getStringAttr( varName ) );
 
                 mlir::LLVM::DILocalVariableAttr diVar;
@@ -480,6 +594,10 @@ namespace toy
                     llvm_unreachable( "Unsupported type for debug info" );
                 }
 
+                std::string funcName = lookupFuncNameForOp( allocaOp );
+                auto sub = pr_subprogramAttr[funcName];
+                assert( sub );
+
                 unsigned totalSizeInBits = elemStorageSizeInBits * arraySize;
                 if ( arraySize > 1 )
                 {
@@ -498,8 +616,8 @@ namespace toy
                     auto alignInBits = elemStorageSizeInBits;    // Alignment matches element size
                     diType = mlir::LLVM::DICompositeTypeAttr::get(
                         ctx, llvm::dwarf::DW_TAG_array_type, pr_builder.getStringAttr( "" ), pr_fileAttr,
-                        /*line=*/0, pr_subprogramAttr, baseType, mlir::LLVM::DIFlags::Zero, totalSizeInBits,
-                        alignInBits, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{ subrange },
+                        /*line=*/0, sub, baseType, mlir::LLVM::DIFlags::Zero, totalSizeInBits, alignInBits,
+                        llvm::ArrayRef<mlir::LLVM::DINodeAttr>{ subrange },
                         /*dataLocation=*/nullptr, /*rank=*/nullptr, /*allocated=*/nullptr, /*associated=*/nullptr );
                 }
                 else
@@ -511,7 +629,7 @@ namespace toy
                 }
 
                 diVar = mlir::LLVM::DILocalVariableAttr::get(
-                    ctx, pr_subprogramAttr, pr_builder.getStringAttr( varName ), pr_fileAttr, loc.getLine(),
+                    ctx, sub, pr_builder.getStringAttr( varName ), pr_fileAttr, loc.getLine(),
                     /*argNo=*/0, totalSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
 
                 pr_builder.setInsertionPointAfter( allocaOp );
@@ -1524,11 +1642,16 @@ namespace toy
             } );
 
             loweringContext lState( module, *pDriverState );
-
-            lState.setModuleAttrs();
+            lState.createDICompileUnit();
 
             auto ctx = lState.getContext();
-            lState.createFuncDebug( ENTRY_SYMBOL_NAME );
+            for ( auto funcOp : module.getBodyRegion().getOps<toy::FuncOp>() )
+            {
+                LLVM_DEBUG( {
+                    llvm::dbgs() << "Generating !DISubroutineType() for toy::FuncOp: " << funcOp.getSymName() << "\n";
+                } );
+                lState.createFuncDebug( funcOp );
+            }
 
             // Conversion target: only LLVM dialect is legal, except for toy::FuncOp and mlir::ModuleOp
             ConversionTarget target1( getContext() );

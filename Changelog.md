@@ -34,6 +34,9 @@ with plain old assign, after first constructing a string literal object:
 * new error tests: error_keyword_declare.toy error_keyword_declare2.toy
 * split lowering into two passes, with separate pass for FuncOp, so that we have option of keeping function symbol tables through (dcl/assign/load) op lowering.
 * parser now using symbol table anchored to toy::FuncOp, replacing hashes.  lowering still uses a hash, but it's function:: qualified.
+* constants.hpp: ENTRY_SYMBOL_NAME, ... (avoiding hardcoded duplication.)
+* Refactor "main" DI instrumentation for generic function support, and generalize the !DISubroutineType creation logic for user defined functions.
+* Introduce useModuleInsertionPoint to save and restore the insertion point to the module body.
 
 ## tag: V3
 
