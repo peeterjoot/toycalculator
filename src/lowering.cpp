@@ -93,10 +93,14 @@ namespace toy
         std::unordered_map<std::string, mlir::Operation*> pr_symbolToAlloca;
 
         mlir::LLVM::DICompileUnitAttr pr_compileUnitAttr;
-        mlir::LLVM::DIBasicTypeAttr pr_diI8;
-        mlir::LLVM::DIBasicTypeAttr pr_diI16;
-        mlir::LLVM::DIBasicTypeAttr pr_diI32;
-        mlir::LLVM::DIBasicTypeAttr pr_diI64;
+        mlir::LLVM::DITypeAttr pr_diI8;
+        mlir::LLVM::DITypeAttr pr_diI16;
+        mlir::LLVM::DITypeAttr pr_diI32;
+        mlir::LLVM::DITypeAttr pr_diI64;
+        mlir::LLVM::DITypeAttr pr_diF32;
+        mlir::LLVM::DITypeAttr pr_diF64;
+        mlir::LLVM::DITypeAttr pr_diVOID;
+        mlir::LLVM::DITypeAttr pr_diUNKNOWN;
 
        public:
         mlir::IntegerType tyI1;
@@ -256,19 +260,20 @@ namespace toy
 
         class useModuleInsertionPoint
         {
-            OpBuilder & builder;
+            OpBuilder& builder;
             mlir::OpBuilder::InsertPoint oldIP;
 
-            public:
-                useModuleInsertionPoint( ModuleOp& module, OpBuilder & builder_ ) : builder{builder_}, oldIP{ builder.saveInsertionPoint() }
-                {
-                    builder.setInsertionPointToStart( module.getBody() );
-                }
+           public:
+            useModuleInsertionPoint( ModuleOp& module, OpBuilder& builder_ )
+                : builder{ builder_ }, oldIP{ builder.saveInsertionPoint() }
+            {
+                builder.setInsertionPointToStart( module.getBody() );
+            }
 
-                ~useModuleInsertionPoint()
-                {
-                    builder.restoreInsertionPoint( oldIP );
-                }
+            ~useModuleInsertionPoint()
+            {
+                builder.restoreInsertionPoint( oldIP );
+            }
         };
 
         mlir::LLVM::LLVMFuncOp toyPrintF64()
@@ -318,7 +323,6 @@ namespace toy
             return pr_printFuncString;
         }
 
-        // Set data_layout,ident,target_triple:
         void createDICompileUnit()
         {
             if ( pr_driverState.wantDebug )
@@ -327,21 +331,37 @@ namespace toy
 
                 auto ctx = pr_builder.getContext();
 
-                pr_diI8 = mlir::LLVM::DIBasicTypeAttr::get(
-                    ctx, (unsigned)llvm::dwarf::DW_TAG_base_type, pr_builder.getStringAttr( "INT8" ), 8,
-                    (unsigned)llvm::dwarf::DW_ATE_signed );
 
-                pr_diI16 = mlir::LLVM::DIBasicTypeAttr::get(
-                    ctx, (unsigned)llvm::dwarf::DW_TAG_base_type, pr_builder.getStringAttr( "INT16" ), 16,
-                    (unsigned)llvm::dwarf::DW_ATE_signed );
+                pr_diVOID = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                                                              pr_builder.getStringAttr( "void" ), 0, 0 );
 
-                pr_diI32 = mlir::LLVM::DIBasicTypeAttr::get(
-                    ctx, (unsigned)llvm::dwarf::DW_TAG_base_type, pr_builder.getStringAttr( "INT32" ), 32,
-                    (unsigned)llvm::dwarf::DW_ATE_signed );
+                pr_diF32 = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                                                             pr_builder.getStringAttr( "float" ), 32,
+                                                             llvm::dwarf::DW_ATE_float );
 
-                pr_diI64 = mlir::LLVM::DIBasicTypeAttr::get(
-                    ctx, (unsigned)llvm::dwarf::DW_TAG_base_type, pr_builder.getStringAttr( "INT64" ), 64,
-                    (unsigned)llvm::dwarf::DW_ATE_signed );
+                pr_diF64 = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                                                             pr_builder.getStringAttr( "double" ), 64,
+                                                             llvm::dwarf::DW_ATE_float );
+
+                pr_diUNKNOWN = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                                                                 pr_builder.getStringAttr( "unknown" ), 0, 0 );
+
+
+                pr_diI8 = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                            pr_builder.getStringAttr( "char" ), 8,
+                                                            (unsigned)llvm::dwarf::DW_ATE_signed );
+
+                pr_diI16 = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                             pr_builder.getStringAttr( "short" ), 16,
+                                                             (unsigned)llvm::dwarf::DW_ATE_signed );
+
+                pr_diI32 = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                             pr_builder.getStringAttr( "int" ), 32,
+                                                             (unsigned)llvm::dwarf::DW_ATE_signed );
+
+                pr_diI64 = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                             pr_builder.getStringAttr( "long" ), 64,
+                                                             (unsigned)llvm::dwarf::DW_ATE_signed );
 
                 // Construct pr_module level DI state:
                 pr_fileAttr = mlir::LLVM::DIFileAttr::get( ctx, pr_driverState.filename, "." );
@@ -351,6 +371,7 @@ namespace toy
                     false, mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
             }
 
+        // Set data_layout,ident,target_triple:
 #if 0    // Oops: don't really need these.  Already doing this in driver.cpp for the assembly printer (at the LLVM level
          // after all lowering and translation)
             std::string targetTriple = llvm::sys::getDefaultTargetTriple();
@@ -372,6 +393,61 @@ namespace toy
             pr_module->setAttr( "llvm.ident", pr_builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
         }
 
+        mlir::LLVM::DITypeAttr getDIType( mlir::Type type )
+        {
+            if ( !type )
+            {
+                return pr_diVOID;
+            }
+            else if ( type.isF32() )
+            {
+                return pr_diF32;
+            }
+            else if ( type.isF64() )
+            {
+                return pr_diF64;
+            }
+            else if ( type.isInteger( 8 ) || type.isInteger( 1 ) )
+            {
+                return pr_diI8;
+            }
+            else if ( type.isInteger( 16 ) )
+            {
+                return pr_diI16;
+            }
+            else if ( type.isInteger( 32 ) )
+            {
+                return pr_diI32;
+            }
+            else if ( type.isInteger( 64 ) )
+            {
+                return pr_diI64;
+            }
+            else
+            {
+                return pr_diUNKNOWN;
+            }
+        }
+
+        mlir::LLVM::DISubroutineTypeAttr createDISubroutineType( toy::FuncOp funcOp )
+        {
+            auto funcType = funcOp.getFunctionTypeAttrValue();
+
+            mlir::SmallVector<mlir::LLVM::DITypeAttr> paramTypes;
+
+            auto returnType = getDIType( funcType.getResults().empty() ? mlir::Type() : funcType.getResults()[0] );
+            paramTypes.push_back( returnType );
+
+            for ( auto argType : funcType.getInputs() )
+            {
+                paramTypes.push_back( getDIType( argType ) );
+            }
+
+            auto ctx = pr_builder.getContext();
+
+            return mlir::LLVM::DISubroutineTypeAttr::get( ctx, llvm::DINode::FlagZero, paramTypes );
+        }
+
         void createFuncDebug( toy::FuncOp funcOp )
         {
             if ( pr_driverState.wantDebug )
@@ -381,9 +457,7 @@ namespace toy
                 auto ctx = pr_builder.getContext();
                 auto funcName = funcOp.getSymName().str();
 
-                llvm::SmallVector<mlir::LLVM::DITypeAttr, 1> typeArray;
-                typeArray.push_back( pr_diI32 );
-                auto subprogramType = mlir::LLVM::DISubroutineTypeAttr::get( ctx, 0, typeArray );
+                auto subprogramType = createDISubroutineType( funcOp );
 
                 auto sub = mlir::LLVM::DISubprogramAttr::get(
                     ctx, mlir::DistinctAttr::create( pr_builder.getUnitAttr() ), pr_compileUnitAttr, pr_fileAttr,
@@ -521,7 +595,6 @@ namespace toy
                 }
 
                 std::string funcName = lookupFuncNameForOp( allocaOp );
-                //assert( funcName == "main" );
                 auto sub = pr_subprogramAttr[funcName];
                 assert( sub );
 
@@ -543,8 +616,8 @@ namespace toy
                     auto alignInBits = elemStorageSizeInBits;    // Alignment matches element size
                     diType = mlir::LLVM::DICompositeTypeAttr::get(
                         ctx, llvm::dwarf::DW_TAG_array_type, pr_builder.getStringAttr( "" ), pr_fileAttr,
-                        /*line=*/0, sub, baseType, mlir::LLVM::DIFlags::Zero, totalSizeInBits,
-                        alignInBits, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{ subrange },
+                        /*line=*/0, sub, baseType, mlir::LLVM::DIFlags::Zero, totalSizeInBits, alignInBits,
+                        llvm::ArrayRef<mlir::LLVM::DINodeAttr>{ subrange },
                         /*dataLocation=*/nullptr, /*rank=*/nullptr, /*allocated=*/nullptr, /*associated=*/nullptr );
                 }
                 else
@@ -1574,7 +1647,9 @@ namespace toy
             auto ctx = lState.getContext();
             for ( auto funcOp : module.getBodyRegion().getOps<toy::FuncOp>() )
             {
-                LLVM_DEBUG( { llvm::dbgs() << "Generating !DISubroutineType() for toy::FuncOp: " << funcOp.getSymName() << "\n"; } );
+                LLVM_DEBUG( {
+                    llvm::dbgs() << "Generating !DISubroutineType() for toy::FuncOp: " << funcOp.getSymName() << "\n";
+                } );
                 lState.createFuncDebug( funcOp );
             }
 
