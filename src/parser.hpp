@@ -67,11 +67,12 @@ namespace toy
     enum class lastOperator : int
     {
         notAnOp,
-        declareOp,
-        printOp,
-        ifOp,
         assignmentOp,
-        exitOp
+        declareOp,
+        exitOp,
+        ifOp,
+        printOp,
+        returnOp,
     };
 
     enum class variable_state : int
@@ -178,6 +179,8 @@ namespace toy
         void enterIfelifelse( ToyParser::IfelifelseContext *ctx ) override;
 
         void enterFunction( ToyParser::FunctionContext *ctx ) override;
+
+        void exitFunction( ToyParser::FunctionContext *ctx ) override;
 
         void enterDeclare( ToyParser::DeclareContext *ctx ) override;
 

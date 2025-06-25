@@ -1,0 +1,4 @@
+FUNCTION bar0 ( )
+{
+    RETURN;
+};

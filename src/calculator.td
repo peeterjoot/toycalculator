@@ -30,7 +30,14 @@ def Toy_Dialect : Dialect {
 def Toy_FuncOp : Op<Toy_Dialect, "func", [FunctionOpInterface]> {
   let summary = "Function operation";
   let description = "A function operation.  Designed to mimic mlir::func::FuncOp, but with a symbol table for local variables.";
-  let arguments = (ins StrAttr:$sym_name, TypeAttr:$function_type, OptionalAttr<StrAttr>:$sym_visibility);
+
+  let arguments = (ins
+    StrAttr:$sym_name,
+    TypeAttr:$function_type,
+    OptionalAttr<ArrayAttr>:$argAttrs,
+    OptionalAttr<StrAttr>:$sym_visibility
+  );
+
   let results = (outs);
   let regions = (region AnyRegion:$body);
   let traits = [SymbolTable, AutomaticAllocationScope,
@@ -39,7 +46,7 @@ def Toy_FuncOp : Op<Toy_Dialect, "func", [FunctionOpInterface]> {
   let extraClassDeclaration = [{
     mlir::Block *addEntryBlock() {
       assert(getBody().empty() && "Function already has an entry block!");
-      mlir::Block & entry = getBody().emplaceBlock();
+      mlir::Block &entry = getBody().emplaceBlock();
       auto type = dyn_cast<mlir::FunctionType>(getFunctionTypeAttr().getValue());
       auto locs = llvm::SmallVector<mlir::Location>(type.getInputs().size(), getLoc());
       entry.addArguments(type.getInputs(), locs);
@@ -64,9 +71,13 @@ def Toy_FuncOp : Op<Toy_Dialect, "func", [FunctionOpInterface]> {
 
     static void build(::mlir::OpBuilder &builder, ::mlir::OperationState &state,
                      ::llvm::StringRef symName, ::mlir::FunctionType funcType,
+                     ::mlir::ArrayRef<mlir::Attribute> argAttrs = {},
                      ::mlir::StringAttr symVisibility = nullptr) {
       state.addAttribute("sym_name", ::mlir::StringAttr::get(state.getContext(), symName));
       state.addAttribute("function_type", ::mlir::TypeAttr::get(funcType));
+      if (!argAttrs.empty()) {
+        state.addAttribute("argAttrs", builder.getArrayAttr(argAttrs));
+      }
       if (symVisibility) {
         state.addAttribute("sym_visibility", symVisibility);
       }
@@ -77,12 +88,22 @@ def Toy_FuncOp : Op<Toy_Dialect, "func", [FunctionOpInterface]> {
       if (!getSymNameAttr()) {
         return emitOpError("requires a 'sym_name' attribute");
       }
+
       if (!getFunctionTypeAttr()) {
         return emitOpError("requires a 'function_type' attribute");
       }
+
       if (!getBody().empty() && getBody().getBlocks().size() != 1) {
         return emitOpError("expects exactly one block in the body region");
       }
+
+      if (getArgAttrsAttr()) {
+        auto funcType = dyn_cast<mlir::FunctionType>(getFunctionTypeAttr().getValue()); // Updated to use TypeAttr
+        if (getArgAttrsAttr().size() != funcType.getInputs().size()) {
+          return emitOpError("number of argument attributes must match number of input types");
+        }
+      }
+
       return mlir::success();
     }
   }];

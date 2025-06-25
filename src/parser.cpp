@@ -24,7 +24,7 @@
 
 namespace toy
 {
-    mlir::Type parseScalarType( const std::string & ty )
+    mlir::Type parseScalarType( const std::string &ty )
     {
         return nullptr;
     }
@@ -50,13 +50,15 @@ namespace toy
         auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( func, varName );
         if ( !symbolOp )
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__, std::format( "Undeclared variable {}", varName ) );
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          std::format( "Undeclared variable {}", varName ) );
         }
 
         auto declareOp = mlir::dyn_cast<toy::DeclareOp>( symbolOp );
         if ( !declareOp )
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__, std::format( "Undeclared variable {}", varName ) );
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          std::format( "Undeclared variable {}", varName ) );
         }
 
         return declareOp;
@@ -272,7 +274,7 @@ namespace toy
         }
 
         // For test purposes to verify that symbol lookup for varName worked right after the DeclareOp build call:
-        //auto ddcl = lookupDeclareForVar( varName );
+        // auto ddcl = lookupDeclareForVar( varName );
 
         return false;
     }
@@ -333,39 +335,44 @@ namespace toy
     {
         auto loc = getLocation( ctx );
 
-        auto returnType = parseScalarType( ctx->scalarType()->getText() );
+        std::vector<mlir::Type> returns;
+        if ( auto rt = ctx->scalarType() )
+        {
+            auto returnType = parseScalarType( rt->getText() );
+            returns.push_back( returnType );
+        }
+
         std::string funcName = ctx->IDENTIFIER()->getText();
 
         // Collect parameter types and names
         std::vector<mlir::Type> paramTypes;
-        std::vector<std::string> paramNames;
+        std::vector<mlir::Attribute> paramAttrs;
         for ( auto *paramCtx : ctx->parameterTypeAndName() )
         {
             auto paramType = parseScalarType( paramCtx->scalarType()->getText() );
             auto paramName = paramCtx->IDENTIFIER()->getText();
             paramTypes.push_back( paramType );
-            paramNames.push_back( paramName );
+            paramAttrs.push_back( mlir::DictionaryAttr::get( builder.getContext(),
+                                                             { { "sym_name", builder.getStringAttr( paramName ) } } ) );
         }
 
-        // Create func::FuncOp
-        auto funcType = builder.getFunctionType( paramTypes, returnType );
-        // FIXME: this one should use visibility private
-        auto func = builder.create<toy::FuncOp>( loc, funcName, funcType );
+        auto funcType = builder.getFunctionType( paramTypes, returns );
+        auto func = builder.create<toy::FuncOp>( loc, funcName, funcType, builder.getArrayAttr( paramAttrs ),
+                                                 builder.getStringAttr( "private" ) );
         auto &block = *func.addEntryBlock();
         builder.setInsertionPointToStart( &block );
 
         currentFuncName = funcName;
         funcByName[currentFuncName] = func;
+    }
 
-        assert( 0 ); // WIP.
-#if 0
-        // Map parameter names to block arguments
-        for ( size_t i = 0; i < paramNames.size(); ++i )
-        {
-            // Store paramNames[i] -> block.getArgument(i) in a symbol table or map
-            symbolTable.insert( paramNames[i], block.getArgument( i ) );
-        }
-#endif
+    void MLIRListener::exitFunction( ToyParser::FunctionContext *ctx )
+    {
+        // Also, add the return if it wasn't done.
+        //
+        // FIXME: enforce RETURN as the last statement in the grammar, until ready to support premature return
+        // (and that only makes sense when we have control flow possibilities.)
+        currentFuncName = ENTRY_SYMBOL_NAME;
     }
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
