@@ -24,6 +24,11 @@
 
 namespace toy
 {
+    mlir::Type parseScalarType( const std::string & ty )
+    {
+        return nullptr;
+    }
+
     DialectCtx::DialectCtx()
     {
         context.getOrLoadDialect<toy::ToyDialect>();
@@ -195,7 +200,7 @@ namespace toy
         {
             auto varName = variableNode->getText();
 
-            auto varState = varStates[varName];
+            auto varState = getVarState( currentFuncName, varName );
 
             if ( varState == variable_state::undeclared )
             {
@@ -236,7 +241,7 @@ namespace toy
     inline bool MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                                    ToyParser::ArrayBoundsExpressionContext *arrayBounds )
     {
-        auto varState = varStates[varName];
+        auto varState = getVarState( currentFuncName, varName );
         if ( varState != variable_state::undeclared )
         {
             lastSemError = semantic_errors::variable_already_declared;
@@ -244,7 +249,7 @@ namespace toy
             return true;
         }
 
-        varStates[varName] = variable_state::declared;
+        setVarState( currentFuncName, varName, variable_state::declared );
 
         size_t arraySize{};
         if ( arrayBounds )
@@ -328,11 +333,7 @@ namespace toy
     {
         auto loc = getLocation( ctx );
 
-        llvm::errs() << std::format( "{}NYI: {}\n", formatLocation( loc ), ctx->getText() );
-
-        assert( 0 );
-#if 0
-        auto returnType = parseScalarType( ctx->scalarType() );    // Convert scalarType to MLIR Type
+        auto returnType = parseScalarType( ctx->scalarType()->getText() );
         std::string funcName = ctx->IDENTIFIER()->getText();
 
         // Collect parameter types and names
@@ -340,7 +341,7 @@ namespace toy
         std::vector<std::string> paramNames;
         for ( auto *paramCtx : ctx->parameterTypeAndName() )
         {
-            auto paramType = parseScalarType( paramCtx->scalarType() );    // Convert to MLIR Type
+            auto paramType = parseScalarType( paramCtx->scalarType()->getText() );
             auto paramName = paramCtx->IDENTIFIER()->getText();
             paramTypes.push_back( paramType );
             paramNames.push_back( paramName );
@@ -356,6 +357,8 @@ namespace toy
         currentFuncName = funcName;
         funcByName[currentFuncName] = func;
 
+        assert( 0 ); // WIP.
+#if 0
         // Map parameter names to block arguments
         for ( size_t i = 0; i < paramNames.size(); ++i )
         {
@@ -464,7 +467,7 @@ namespace toy
         if ( varNameObject )
         {
             auto varName = varNameObject->getText();
-            auto varState = varStates[varName];
+            auto varState = getVarState( currentFuncName, varName );
             if ( varState == variable_state::undeclared )
             {
                 lastSemError = semantic_errors::variable_not_declared;
@@ -550,10 +553,10 @@ namespace toy
         assignmentTargetValid = true;
         auto loc = getLocation( ctx );
         currentVarName = ctx->IDENTIFIER()->getText();
-        auto varState = varStates[currentVarName];
+        auto varState = getVarState( currentFuncName, currentVarName );
         if ( varState == variable_state::declared )
         {
-            varStates[currentVarName] = variable_state::assigned;
+            setVarState( currentFuncName, currentVarName, variable_state::assigned );
         }
         else if ( varState == variable_state::undeclared )
         {
@@ -726,7 +729,7 @@ namespace toy
             builder.create<toy::AssignOp>( loc, symRef, resultValue );
         }
 
-        varStates[currentVarName] = variable_state::assigned;
+        setVarState( currentFuncName, currentVarName, variable_state::assigned );
         currentVarName.clear();
     }
 }    // namespace toy
