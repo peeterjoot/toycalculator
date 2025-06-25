@@ -1,0 +1,4 @@
+FUNCTION zero( ) : INT32
+{
+    RETURN 0;
+};

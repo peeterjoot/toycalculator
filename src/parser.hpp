@@ -67,11 +67,12 @@ namespace toy
     enum class lastOperator : int
     {
         notAnOp,
-        declareOp,
-        printOp,
-        ifOp,
         assignmentOp,
-        exitOp
+        declareOp,
+        exitOp,
+        ifOp,
+        printOp,
+        returnOp,
     };
 
     enum class variable_state : int
@@ -103,7 +104,7 @@ namespace toy
         mlir::ModuleOp mod;
         std::string currentVarName;
         semantic_errors lastSemError{ semantic_errors::not_an_error };
-        std::unordered_map<std::string, variable_state> varStates;
+        std::unordered_map<std::string, variable_state> pr_varStates;
         std::map<std::string, mlir::Operation*> funcByName;
         bool assignmentTargetValid{};
         bool hasErrors{};
@@ -117,6 +118,8 @@ namespace toy
         mlir::FloatType tyF32;
         mlir::FloatType tyF64;
         mlir::LLVM::LLVMPointerType tyPtr;
+
+        mlir::OpBuilder::InsertPoint mainIP;
 
         inline toy::DeclareOp lookupDeclareForVar( const std::string & varName );
 
@@ -132,6 +135,18 @@ namespace toy
         //    Array size or zero for scalar.
         inline bool registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                          ToyParser::ArrayBoundsExpressionContext *arrayBounds );
+
+        void setVarState( const std::string & funcName, const std::string & varName, variable_state st )
+        {
+            auto k = funcName + "::" + varName;
+            pr_varStates[ k ] = st;
+        }
+
+        variable_state getVarState( const std::string & funcName, const std::string & varName )
+        {
+            auto k = funcName + "::" + varName;
+            return pr_varStates[ k ];
+        }
 
        public:
         MLIRListener( const std::string &_filename );
@@ -159,6 +174,9 @@ namespace toy
             return mod;
         }
 
+        template <class Literal>
+        void processReturnLike( mlir::Location loc, Literal *lit, tNode *var, tNode *boolNode );
+
         void enterStartRule( ToyParser::StartRuleContext *ctx ) override;
 
         void exitStartRule( ToyParser::StartRuleContext *ctx ) override;
@@ -166,6 +184,10 @@ namespace toy
         void enterIfelifelse( ToyParser::IfelifelseContext *ctx ) override;
 
         void enterFunction( ToyParser::FunctionContext *ctx ) override;
+
+        void exitFunction( ToyParser::FunctionContext *ctx ) override;
+
+        void enterReturnStatement( ToyParser::ReturnStatementContext *ctx ) override;
 
         void enterDeclare( ToyParser::DeclareContext *ctx ) override;
 

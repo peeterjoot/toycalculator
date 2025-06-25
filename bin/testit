@@ -136,6 +136,7 @@ test
 types
 unary
 xorop
+function_void_void
 ));
 #shortstring
 

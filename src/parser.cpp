@@ -24,6 +24,11 @@
 
 namespace toy
 {
+    mlir::Type parseScalarType( const std::string &ty )
+    {
+        return nullptr;
+    }
+
     DialectCtx::DialectCtx()
     {
         context.getOrLoadDialect<toy::ToyDialect>();
@@ -45,13 +50,15 @@ namespace toy
         auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( func, varName );
         if ( !symbolOp )
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__, std::format( "Undeclared variable {}", varName ) );
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          std::format( "Undeclared variable {}", varName ) );
         }
 
         auto declareOp = mlir::dyn_cast<toy::DeclareOp>( symbolOp );
         if ( !declareOp )
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__, std::format( "Undeclared variable {}", varName ) );
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          std::format( "Undeclared variable {}", varName ) );
         }
 
         return declareOp;
@@ -195,7 +202,7 @@ namespace toy
         {
             auto varName = variableNode->getText();
 
-            auto varState = varStates[varName];
+            auto varState = getVarState( currentFuncName, varName );
 
             if ( varState == variable_state::undeclared )
             {
@@ -236,7 +243,7 @@ namespace toy
     inline bool MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                                    ToyParser::ArrayBoundsExpressionContext *arrayBounds )
     {
-        auto varState = varStates[varName];
+        auto varState = getVarState( currentFuncName, varName );
         if ( varState != variable_state::undeclared )
         {
             lastSemError = semantic_errors::variable_already_declared;
@@ -244,7 +251,7 @@ namespace toy
             return true;
         }
 
-        varStates[varName] = variable_state::declared;
+        setVarState( currentFuncName, varName, variable_state::declared );
 
         size_t arraySize{};
         if ( arrayBounds )
@@ -267,7 +274,7 @@ namespace toy
         }
 
         // For test purposes to verify that symbol lookup for varName worked right after the DeclareOp build call:
-        //auto ddcl = lookupDeclareForVar( varName );
+        // auto ddcl = lookupDeclareForVar( varName );
 
         return false;
     }
@@ -298,7 +305,10 @@ namespace toy
         auto loc = getLocation( ctx );
 
         auto funcType = builder.getFunctionType( {}, tyI32 );
-        auto func = builder.create<toy::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
+        std::vector<mlir::Attribute> paramAttrs;
+        auto func =
+            builder.create<toy::FuncOp>( loc, std::string( ENTRY_SYMBOL_NAME ), funcType,
+                                         builder.getArrayAttr( paramAttrs ), builder.getStringAttr( "public" ) );
 
         currentFuncName = ENTRY_SYMBOL_NAME;
         funcByName[currentFuncName] = func;
@@ -328,41 +338,49 @@ namespace toy
     {
         auto loc = getLocation( ctx );
 
-        llvm::errs() << std::format( "{}NYI: {}\n", formatLocation( loc ), ctx->getText() );
+        mainIP = builder.saveInsertionPoint();
 
-        assert( 0 );
-#if 0
-        auto returnType = parseScalarType( ctx->scalarType() );    // Convert scalarType to MLIR Type
+        builder.setInsertionPointToStart( mod.getBody() );
+
+        std::vector<mlir::Type> returns;
+        if ( auto rt = ctx->scalarType() )
+        {
+            auto returnType = parseScalarType( rt->getText() );
+            returns.push_back( returnType );
+        }
+
         std::string funcName = ctx->IDENTIFIER()->getText();
 
         // Collect parameter types and names
         std::vector<mlir::Type> paramTypes;
-        std::vector<std::string> paramNames;
+        std::vector<mlir::Attribute> paramAttrs;
         for ( auto *paramCtx : ctx->parameterTypeAndName() )
         {
-            auto paramType = parseScalarType( paramCtx->scalarType() );    // Convert to MLIR Type
+            auto paramType = parseScalarType( paramCtx->scalarType()->getText() );
             auto paramName = paramCtx->IDENTIFIER()->getText();
             paramTypes.push_back( paramType );
-            paramNames.push_back( paramName );
+            paramAttrs.push_back( mlir::DictionaryAttr::get( builder.getContext(),
+                                                             { { "sym_name", builder.getStringAttr( paramName ) } } ) );
         }
 
-        // Create func::FuncOp
-        auto funcType = builder.getFunctionType( paramTypes, returnType );
-        // FIXME: this one should use visibility private
-        auto func = builder.create<toy::FuncOp>( loc, funcName, funcType );
+        auto funcType = builder.getFunctionType( paramTypes, returns );
+        auto func = builder.create<toy::FuncOp>( loc, funcName, funcType, builder.getArrayAttr( paramAttrs ),
+                                                 builder.getStringAttr( "private" ) );
         auto &block = *func.addEntryBlock();
         builder.setInsertionPointToStart( &block );
 
         currentFuncName = funcName;
         funcByName[currentFuncName] = func;
+    }
 
-        // Map parameter names to block arguments
-        for ( size_t i = 0; i < paramNames.size(); ++i )
-        {
-            // Store paramNames[i] -> block.getArgument(i) in a symbol table or map
-            symbolTable.insert( paramNames[i], block.getArgument( i ) );
-        }
-#endif
+    void MLIRListener::exitFunction( ToyParser::FunctionContext *ctx )
+    {
+        // Could add the return if it wasn't done, as done for exit.  Instead, perhaps temporarily (at
+        // least until ready to support premature return, when control flow possibilities are allowed),
+        // have enforced mandatory RETURN at function end in the grammar.
+        currentFuncName = ENTRY_SYMBOL_NAME;
+
+        builder.restoreInsertionPoint( mainIP );
     }
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
@@ -464,7 +482,7 @@ namespace toy
         if ( varNameObject )
         {
             auto varName = varNameObject->getText();
-            auto varState = varStates[varName];
+            auto varState = getVarState( currentFuncName, varName );
             if ( varState == variable_state::undeclared )
             {
                 lastSemError = semantic_errors::variable_not_declared;
@@ -516,14 +534,9 @@ namespace toy
         }
     }
 
-    void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )
+    template <class Literal>
+    void MLIRListener::processReturnLike( mlir::Location loc, Literal *lit, tNode *var, tNode *boolNode )
     {
-        lastOp = lastOperator::exitOp;
-        auto loc = getLocation( ctx );
-
-        auto lit = ctx->numericLiteral();
-        auto var = ctx->IDENTIFIER();
-
         if ( ( lit == nullptr ) && ( var == nullptr ) )
         {
             //  Create toy.return with no operands (empty ValueRange)
@@ -533,15 +546,36 @@ namespace toy
         {
             mlir::Value value;
 
-            auto s =
-                buildUnaryExpression( nullptr,    // booleanNode
-                                      lit ? lit->INTEGER_PATTERN() : nullptr, lit ? lit->FLOAT_PATTERN() : nullptr, var,
-                                      nullptr,    // stringNode
-                                      loc, value );
+            auto s = buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                           lit ? lit->FLOAT_PATTERN() : nullptr, var,
+                                           nullptr,    // stringNode
+                                           loc, value );
             assert( s.length() == 0 );
 
             builder.create<toy::ExitOp>( loc, mlir::ValueRange{ value } );
         }
+    }
+
+    void MLIRListener::enterReturnStatement( ToyParser::ReturnStatementContext *ctx )
+    {
+        lastOp = lastOperator::returnOp;
+        auto loc = getLocation( ctx );
+
+        auto lit = ctx->literal();
+        auto var = ctx->IDENTIFIER();
+
+        processReturnLike<ToyParser::LiteralContext>( loc, lit, var, lit ? lit->BOOLEAN_PATTERN() : nullptr );
+    }
+
+    void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )
+    {
+        lastOp = lastOperator::exitOp;
+        auto loc = getLocation( ctx );
+
+        auto lit = ctx->numericLiteral();
+        auto var = ctx->IDENTIFIER();
+
+        processReturnLike<ToyParser::NumericLiteralContext>( loc, lit, var, nullptr );
     }
 
     void MLIRListener::enterAssignment( ToyParser::AssignmentContext *ctx )
@@ -550,10 +584,10 @@ namespace toy
         assignmentTargetValid = true;
         auto loc = getLocation( ctx );
         currentVarName = ctx->IDENTIFIER()->getText();
-        auto varState = varStates[currentVarName];
+        auto varState = getVarState( currentFuncName, currentVarName );
         if ( varState == variable_state::declared )
         {
-            varStates[currentVarName] = variable_state::assigned;
+            setVarState( currentFuncName, currentVarName, variable_state::assigned );
         }
         else if ( varState == variable_state::undeclared )
         {
@@ -726,7 +760,7 @@ namespace toy
             builder.create<toy::AssignOp>( loc, symRef, resultValue );
         }
 
-        varStates[currentVarName] = variable_state::assigned;
+        setVarState( currentFuncName, currentVarName, variable_state::assigned );
         currentVarName.clear();
     }
 }    // namespace toy

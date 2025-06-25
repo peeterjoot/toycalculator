@@ -1,5 +1,17 @@
 ## TODO
 
+* Function support: WIP:
+    - These ones are all broken:
+        function_intret_intparam.toy
+        function_intret_void.toy
+        function.toy
+        function_void_intparm.toy
+        (some of these because I didn't get to implementing parseScalarType yet!)
+    - Haven't tested functions with any statements in them.
+    - ExitOp lowering probably wrong in a bunch of cases.  Split into ReturnOp, or parameterize return vs. exit.
+    - Implement CALL of functions (grammar, builder, lowering.)
+
+* Switch to CamelCase uniformly.
 * Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
 * grok suggests:
 

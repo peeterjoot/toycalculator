@@ -1,0 +1,4 @@
+FUNCTION plus3( INT32 v )
+{
+    RETURN;
+};

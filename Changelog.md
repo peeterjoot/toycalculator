@@ -26,17 +26,23 @@ with plain old assign, after first constructing a string literal object:
 * Cache constantop values so that they need not be repeated -- that caching should be function specific, and will have to be generalized.
 * Generalize NegOp lowering to support all types, not just f64.
 * Grammar: add ifelifelse rule (samples/if.toy).  No builder nor lowering support yet.
-* lowering: Fix StoreOp alignment (had i64's with align 4 in the generated ll.)
+* Lowering: Fix StoreOp alignment (had i64's with align 4 in the generated ll.)
 * Replace toy::ProgramOp with mlir::func::FuncOp (prep for adding scopes and callable functions.)
 * Grammar now has FUNCTION syntax (assert stub in parser, no builder/lowering yet.)
-* grammar: rename VARIABLENAME_PATTERN -> IDENTIFIER
-* parser: intercept errors instead of letting parse tree walker autocorrect and continue.
-* new error tests: error_keyword_declare.toy error_keyword_declare2.toy
-* split lowering into two passes, with separate pass for FuncOp, so that we have option of keeping function symbol tables through (dcl/assign/load) op lowering.
-* parser now using symbol table anchored to toy::FuncOp, replacing hashes.  lowering still uses a hash, but it's function:: qualified.
+* Grammar: rename VARIABLENAME_PATTERN -> IDENTIFIER
+* Parser: intercept errors instead of letting parse tree walker autocorrect and continue.
+* New error tests: error_keyword_declare.toy error_keyword_declare2.toy
+* Split lowering into two passes, with separate pass for FuncOp, so that we have option of keeping function symbol tables through (dcl/assign/load) op lowering.
+* Parser now using symbol table anchored to toy::FuncOp, replacing hashes.  lowering still uses a hash, but it's function:: qualified.
 * constants.hpp: ENTRY_SYMBOL_NAME, ... (avoiding hardcoded duplication.)
 * Refactor "main" DI instrumentation for generic function support, and generalize the !DISubroutineType creation logic for user defined functions.
-* Introduce useModuleInsertionPoint to save and restore the insertion point to the module body.
+* Introduce useModuleInsertionPoint to save and restore the insertion point to the module body (lowering)
+* Until ready to support premature return (when control flow possibilities are allowed), have enforced mandatory RETURN at function end in the grammar.
+* Add parser support for variable declarations in different functions.
+* Implement enterFunction, exitFunction, enterReturnStatement
+* Fix statement/returnStatement parse ambiguity.  statement was too greedy, including returnStatement
+* Handle save/restore insertion point for user defined functions
+* Lowering for void return (hack: may split EXIT/RETURN lowering.)
 
 ## tag: V3
 
