@@ -37,6 +37,8 @@ with plain old assign, after first constructing a string literal object:
 * constants.hpp: ENTRY_SYMBOL_NAME, ... (avoiding hardcoded duplication.)
 * Refactor "main" DI instrumentation for generic function support, and generalize the !DISubroutineType creation logic for user defined functions.
 * Introduce useModuleInsertionPoint to save and restore the insertion point to the module body.
+* Function support in the builder
+* Until ready to support premature return (when control flow possibilities are allowed), have enforced mandatory RETURN at function end in the grammar.
 
 ## tag: V3
 
