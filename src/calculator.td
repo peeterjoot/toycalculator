@@ -69,21 +69,6 @@ def Toy_FuncOp : Op<Toy_Dialect, "func", [FunctionOpInterface]> {
       return nullptr;
     }
 
-    static void build(::mlir::OpBuilder &builder, ::mlir::OperationState &state,
-                     ::llvm::StringRef symName, ::mlir::FunctionType funcType,
-                     ::mlir::ArrayRef<mlir::Attribute> argAttrs = {},
-                     ::mlir::StringAttr symVisibility = nullptr) {
-      state.addAttribute("sym_name", ::mlir::StringAttr::get(state.getContext(), symName));
-      state.addAttribute("function_type", ::mlir::TypeAttr::get(funcType));
-      if (!argAttrs.empty()) {
-        state.addAttribute("argAttrs", builder.getArrayAttr(argAttrs));
-      }
-      if (symVisibility) {
-        state.addAttribute("sym_visibility", symVisibility);
-      }
-      state.addRegion();
-    }
-
     mlir::LogicalResult verify() {
       if (!getSymNameAttr()) {
         return emitOpError("requires a 'sym_name' attribute");
