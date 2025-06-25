@@ -305,7 +305,9 @@ namespace toy
         auto loc = getLocation( ctx );
 
         auto funcType = builder.getFunctionType( {}, tyI32 );
-        auto func = builder.create<toy::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
+        std::vector<mlir::Attribute> paramAttrs;
+        auto func = builder.create<toy::FuncOp>( loc, std::string( ENTRY_SYMBOL_NAME ), funcType, builder.getArrayAttr( paramAttrs ),
+                                                 builder.getStringAttr( "private" ) );
 
         currentFuncName = ENTRY_SYMBOL_NAME;
         funcByName[currentFuncName] = func;
@@ -368,11 +370,15 @@ namespace toy
 
     void MLIRListener::exitFunction( ToyParser::FunctionContext *ctx )
     {
-        // Also, add the return if it wasn't done.
-        //
-        // FIXME: enforce RETURN as the last statement in the grammar, until ready to support premature return
-        // (and that only makes sense when we have control flow possibilities.)
+        // Could add the return if it wasn't done, as done for exit.  Instead, perhaps temporarily (at
+        // least until ready to support premature return, when control flow possibilities are allowed),
+        // have enforced mandatory RETURN at function end in the grammar.
         currentFuncName = ENTRY_SYMBOL_NAME;
+    }
+
+    void MLIRListener::enterReturnStatement( ToyParser::ReturnStatementContext *ctx )
+    {
+        assert( 0 ); // TODO.
     }
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )

@@ -33,7 +33,7 @@ ifelifelse
 
 // For now both return and parameters, can only be scalar types.
 function
-  : FUNCTION_TOKEN IDENTIFIER BRACE_START_TOKEN (parameterTypeAndName (COMMA_TOKEN parameterTypeAndName)*)? BRACE_END_TOKEN (COLON_TOKEN scalarType)? SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
+  : FUNCTION_TOKEN IDENTIFIER BRACE_START_TOKEN (parameterTypeAndName (COMMA_TOKEN parameterTypeAndName)*)? BRACE_END_TOKEN (COLON_TOKEN scalarType)? SCOPE_START_TOKEN statement* returnStatement SCOPE_END_TOKEN
   ;
 
 booleanValue

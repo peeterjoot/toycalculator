@@ -182,6 +182,8 @@ namespace toy
 
         void exitFunction( ToyParser::FunctionContext *ctx ) override;
 
+        void enterReturnStatement( ToyParser::ReturnStatementContext *ctx ) override;
+
         void enterDeclare( ToyParser::DeclareContext *ctx ) override;
 
         void enterBoolDeclare( ToyParser::BoolDeclareContext *ctx ) override;
