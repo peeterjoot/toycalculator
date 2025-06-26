@@ -308,7 +308,7 @@ namespace toy
         std::vector<mlir::Attribute> paramAttrs;
         auto func =
             builder.create<toy::FuncOp>( loc, std::string( ENTRY_SYMBOL_NAME ), funcType,
-                                         builder.getArrayAttr( paramAttrs ), builder.getStringAttr( "private" ) );
+                                         builder.getArrayAttr( paramAttrs ), builder.getStringAttr( "public" ) );
 
         currentFuncName = ENTRY_SYMBOL_NAME;
         funcByName[currentFuncName] = func;
