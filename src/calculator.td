@@ -160,7 +160,7 @@ def Toy_LoadOp : Op<Toy_Dialect, "load"> {
 }
 
 def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
-  let summary = "Exit from a program";
+  let summary = "Exit from a program or return from a function";
   let arguments = (ins Variadic<AnyType>:$rc);
   let results = (outs);
   let traits = [Terminator];

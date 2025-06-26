@@ -12,7 +12,7 @@ b main
 run ../samples/function_void_void.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 
 b __assert_perror_fail
-b toy::MLIRListener::enterFunction
+#b toy::MLIRListener::enterFunction
 
 #b buildUnaryExpression
 #b createDICompileUnit

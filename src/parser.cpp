@@ -306,8 +306,9 @@ namespace toy
 
         auto funcType = builder.getFunctionType( {}, tyI32 );
         std::vector<mlir::Attribute> paramAttrs;
-        auto func = builder.create<toy::FuncOp>( loc, std::string( ENTRY_SYMBOL_NAME ), funcType, builder.getArrayAttr( paramAttrs ),
-                                                 builder.getStringAttr( "private" ) );
+        auto func =
+            builder.create<toy::FuncOp>( loc, std::string( ENTRY_SYMBOL_NAME ), funcType,
+                                         builder.getArrayAttr( paramAttrs ), builder.getStringAttr( "private" ) );
 
         currentFuncName = ENTRY_SYMBOL_NAME;
         funcByName[currentFuncName] = func;
@@ -374,11 +375,6 @@ namespace toy
         // least until ready to support premature return, when control flow possibilities are allowed),
         // have enforced mandatory RETURN at function end in the grammar.
         currentFuncName = ENTRY_SYMBOL_NAME;
-    }
-
-    void MLIRListener::enterReturnStatement( ToyParser::ReturnStatementContext *ctx )
-    {
-        assert( 0 ); // TODO.
     }
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
@@ -532,14 +528,9 @@ namespace toy
         }
     }
 
-    void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )
+    template <class Literal>
+    void MLIRListener::processReturnLike( mlir::Location loc, Literal *lit, tNode *var, tNode *boolNode )
     {
-        lastOp = lastOperator::exitOp;
-        auto loc = getLocation( ctx );
-
-        auto lit = ctx->numericLiteral();
-        auto var = ctx->IDENTIFIER();
-
         if ( ( lit == nullptr ) && ( var == nullptr ) )
         {
             //  Create toy.return with no operands (empty ValueRange)
@@ -549,15 +540,36 @@ namespace toy
         {
             mlir::Value value;
 
-            auto s =
-                buildUnaryExpression( nullptr,    // booleanNode
-                                      lit ? lit->INTEGER_PATTERN() : nullptr, lit ? lit->FLOAT_PATTERN() : nullptr, var,
-                                      nullptr,    // stringNode
-                                      loc, value );
+            auto s = buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                           lit ? lit->FLOAT_PATTERN() : nullptr, var,
+                                           nullptr,    // stringNode
+                                           loc, value );
             assert( s.length() == 0 );
 
             builder.create<toy::ExitOp>( loc, mlir::ValueRange{ value } );
         }
+    }
+
+    void MLIRListener::enterReturnStatement( ToyParser::ReturnStatementContext *ctx )
+    {
+        lastOp = lastOperator::returnOp;
+        auto loc = getLocation( ctx );
+
+        auto lit = ctx->literal();
+        auto var = ctx->IDENTIFIER();
+
+        processReturnLike<ToyParser::LiteralContext>( loc, lit, var, lit ? lit->BOOLEAN_PATTERN() : nullptr );
+    }
+
+    void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )
+    {
+        lastOp = lastOperator::exitOp;
+        auto loc = getLocation( ctx );
+
+        auto lit = ctx->numericLiteral();
+        auto var = ctx->IDENTIFIER();
+
+        processReturnLike<ToyParser::NumericLiteralContext>( loc, lit, var, nullptr );
     }
 
     void MLIRListener::enterAssignment( ToyParser::AssignmentContext *ctx )

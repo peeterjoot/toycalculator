@@ -111,6 +111,7 @@ namespace toy
         mlir::FloatType tyF32;
         mlir::FloatType tyF64;
         mlir::LLVM::LLVMPointerType tyPtr;
+        mlir::LLVM::LLVMVoidType tyVoid;
         LLVMTypeConverter typeConverter;
 
         loweringContext( ModuleOp& module, const toy::driverState& driverState )
@@ -128,7 +129,10 @@ namespace toy
             tyF32 = pr_builder.getF32Type();
             tyF64 = pr_builder.getF64Type();
 
-            tyPtr = LLVM::LLVMPointerType::get( pr_builder.getContext() );
+            auto ctx = pr_builder.getContext();
+            tyPtr = LLVM::LLVMPointerType::get( ctx );
+
+            tyVoid = LLVM::LLVMVoidType::get( ctx );
         }
 
         unsigned preferredTypeAlignment( Operation* op, mlir::Type elemType )
@@ -284,7 +288,7 @@ namespace toy
 
                 auto ctx = pr_builder.getContext();
                 auto pr_printFuncF64Type =
-                    LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { tyF64 }, false );
+                    LLVM::LLVMFunctionType::get( tyVoid, { tyF64 }, false );
                 pr_printFuncF64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_f64",
                                                                        pr_printFuncF64Type, LLVM::Linkage::External );
             }
@@ -299,7 +303,7 @@ namespace toy
                 useModuleInsertionPoint ip( pr_module, pr_builder );
 
                 auto ctx = pr_builder.getContext();
-                auto printFuncI64Type = LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { tyI64 }, false );
+                auto printFuncI64Type = LLVM::LLVMFunctionType::get( tyVoid, { tyI64 }, false );
                 pr_printFuncI64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_i64",
                                                                        printFuncI64Type, LLVM::Linkage::External );
             }
@@ -315,7 +319,7 @@ namespace toy
 
                 auto ctx = pr_builder.getContext();
                 auto printFuncStringType =
-                    LLVM::LLVMFunctionType::get( LLVM::LLVMVoidType::get( ctx ), { tyI64, tyPtr }, false );
+                    LLVM::LLVMFunctionType::get( tyVoid, { tyI64, tyPtr }, false );
                 pr_printFuncString = pr_builder.create<LLVM::LLVMFuncOp>(
                     pr_module.getLoc(), "__toy_print_string", printFuncStringType, LLVM::Linkage::External );
             }
@@ -371,7 +375,7 @@ namespace toy
                     false, mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
             }
 
-        // Set data_layout,ident,target_triple:
+            // Set data_layout,ident,target_triple:
 #if 0    // Oops: don't really need these.  Already doing this in driver.cpp for the assembly printer (at the LLVM level
          // after all lowering and translation)
             std::string targetTriple = llvm::sys::getDefaultTargetTriple();
@@ -799,13 +803,16 @@ namespace toy
             } );
 
             auto mlirFuncType = funcOp.getFunctionTypeAttrValue();
-            auto llvmResultType = lState.typeConverter.convertType( mlirFuncType.getResults()[0] );
             SmallVector<Type> llvmArgTypes;
             for ( auto argType : mlirFuncType.getInputs() )
             {
                 llvmArgTypes.push_back( lState.typeConverter.convertType( argType ) );
             }
-            auto funcType = LLVM::LLVMFunctionType::get( llvmResultType, llvmArgTypes, false /* isVarArg */ );
+            LLVM::LLVMFunctionType funcType;
+            auto llvmResultType = mlirFuncType.getNumResults()
+                                      ? lState.typeConverter.convertType( mlirFuncType.getResults()[0] )
+                                      : lState.tyVoid;
+            funcType = LLVM::LLVMFunctionType::get( llvmResultType, llvmArgTypes, false /* isVarArg */ );
             auto func = rewriter.create<LLVM::LLVMFuncOp>( loc, funcName, funcType, LLVM::Linkage::External );
 
             Region& programRegion = funcOp.getRegion();

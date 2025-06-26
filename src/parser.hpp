@@ -172,6 +172,9 @@ namespace toy
             return mod;
         }
 
+        template <class Literal>
+        void processReturnLike( mlir::Location loc, Literal *lit, tNode *var, tNode *boolNode );
+
         void enterStartRule( ToyParser::StartRuleContext *ctx ) override;
 
         void exitStartRule( ToyParser::StartRuleContext *ctx ) override;
