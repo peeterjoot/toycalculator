@@ -119,6 +119,8 @@ namespace toy
         mlir::FloatType tyF64;
         mlir::LLVM::LLVMPointerType tyPtr;
 
+        mlir::OpBuilder::InsertPoint mainIP;
+
         inline toy::DeclareOp lookupDeclareForVar( const std::string & varName );
 
         inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx );

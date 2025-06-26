@@ -286,7 +286,6 @@ namespace toy
             {
                 useModuleInsertionPoint ip( pr_module, pr_builder );
 
-                auto ctx = pr_builder.getContext();
                 auto pr_printFuncF64Type =
                     LLVM::LLVMFunctionType::get( tyVoid, { tyF64 }, false );
                 pr_printFuncF64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_f64",
@@ -302,7 +301,6 @@ namespace toy
             {
                 useModuleInsertionPoint ip( pr_module, pr_builder );
 
-                auto ctx = pr_builder.getContext();
                 auto printFuncI64Type = LLVM::LLVMFunctionType::get( tyVoid, { tyI64 }, false );
                 pr_printFuncI64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_i64",
                                                                        printFuncI64Type, LLVM::Linkage::External );
@@ -317,7 +315,6 @@ namespace toy
             {
                 useModuleInsertionPoint ip( pr_module, pr_builder );
 
-                auto ctx = pr_builder.getContext();
                 auto printFuncStringType =
                     LLVM::LLVMFunctionType::get( tyVoid, { tyI64, tyPtr }, false );
                 pr_printFuncString = pr_builder.create<LLVM::LLVMFuncOp>(
@@ -1297,15 +1294,26 @@ namespace toy
         LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
                                        ConversionPatternRewriter& rewriter ) const override
         {
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.return: " << *op << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.exit: " << *op << '\n' );
 
             mlir::Location loc = op->getLoc();
 
             if ( op->getNumOperands() == 0 )
             {
-                // RETURN; or default -> return 0
-                auto zero = lState.getI32zero( loc, rewriter );
-                rewriter.create<LLVM::ReturnOp>( loc, zero );
+                auto func = getEnclosingFuncOp( op );
+                auto funcType = func.getFunctionTypeAttrValue();
+
+                if ( funcType.getNumResults() )
+                {
+                    // FIXME: this is for the EXIT codepath, and not appropriate for RETURN:
+                    // EXIT; or default -> return 0
+                    auto zero = lState.getI32zero( loc, rewriter );
+                    rewriter.create<LLVM::ReturnOp>( loc, zero );
+                }
+                else
+                {
+                    rewriter.create<LLVM::ReturnOp>( loc, ArrayRef<Value>{});
+                }
             }
             else if ( op->getNumOperands() == 1 )
             {

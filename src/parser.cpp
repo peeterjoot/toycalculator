@@ -338,6 +338,10 @@ namespace toy
     {
         auto loc = getLocation( ctx );
 
+        mainIP = builder.saveInsertionPoint();
+
+        builder.setInsertionPointToStart( mod.getBody() );
+
         std::vector<mlir::Type> returns;
         if ( auto rt = ctx->scalarType() )
         {
@@ -375,6 +379,8 @@ namespace toy
         // least until ready to support premature return, when control flow possibilities are allowed),
         // have enforced mandatory RETURN at function end in the grammar.
         currentFuncName = ENTRY_SYMBOL_NAME;
+
+        builder.restoreInsertionPoint( mainIP );
     }
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
