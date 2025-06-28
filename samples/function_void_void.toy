@@ -2,3 +2,6 @@ FUNCTION bar0 ( )
 {
     RETURN;
 };
+
+PRINT "In main";
+//CALL bar0();

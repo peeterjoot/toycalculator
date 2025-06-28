@@ -44,7 +44,8 @@ with plain old assign, after first constructing a string literal object:
 * Handle save/restore insertion point for user defined functions
 * Lowering for void return (hack: may split EXIT/RETURN lowering.)
 * Parser support for functions with non-void return/params.
-* Grammar support for CALL(...) and assignment 'x = FUNCTION FOO(...)'
+* Grammar support for CALL(...) and assignment 'x = CALL FOO(...)'
+* Initial builder support for CALL (fails in lowering.)  Tried using mlir::func::CallOp, but that doesn't like my use of Toy::FuncOp instead of mlir::func::FuncOp.  I did that so that my function object had a symbol table for local variables, but it looks like a better approach would be to implement a ScopeOp that has the symbol table, and to then embed ScopeOp in a mlir::func::FuncOp region.
 
 ## tag: V3
 

@@ -1671,6 +1671,8 @@ namespace toy
                                  toy::DivOp, toy::NegOp, toy::ExitOp>();
             target1.addLegalOp<mlir::ModuleOp>();
             target1.addLegalOp<toy::FuncOp>();
+            target1.addLegalOp<mlir::func::CallOp>();
+            //target1.addLegalDialect<mlir::func>();
 
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns1( ctx );
@@ -1710,8 +1712,10 @@ namespace toy
 
             ConversionTarget target2( getContext() );
             target2.addLegalDialect<LLVM::LLVMDialect>();
+            target2.addLegalDialect<mlir::func>();
             target2.addLegalOp<mlir::ModuleOp>();
-            target2.addIllegalDialect<toy::ToyDialect>();
+            target2.addLegalOp<mlir::func::CallOp>();
+            //target2.addIllegalDialect<toy::ToyDialect>();
 
             // Patterns for the final FuncOp removal:
             RewritePatternSet patterns2( ctx );

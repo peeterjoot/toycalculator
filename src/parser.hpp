@@ -69,6 +69,7 @@ namespace toy
         notAnOp,
         assignmentOp,
         declareOp,
+        callOp,
         exitOp,
         ifOp,
         printOp,
@@ -118,6 +119,7 @@ namespace toy
         mlir::FloatType tyF32;
         mlir::FloatType tyF64;
         mlir::LLVM::LLVMPointerType tyPtr;
+        mlir::LLVM::LLVMVoidType tyVoid;
 
         mlir::OpBuilder::InsertPoint mainIP;
 
@@ -186,6 +188,8 @@ namespace toy
         void enterIfelifelse( ToyParser::IfelifelseContext *ctx ) override;
 
         void enterFunction( ToyParser::FunctionContext *ctx ) override;
+
+        void enterCall( ToyParser::CallContext *ctx) override;
 
         void exitFunction( ToyParser::FunctionContext *ctx ) override;
 

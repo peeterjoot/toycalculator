@@ -36,13 +36,13 @@ namespace toy
     toy::DeclareOp MLIRListener::lookupDeclareForVar( const std::string &varName )
     {
         auto parentFunc = funcByName[currentFuncName];
-        auto func = mlir::dyn_cast<toy::FuncOp>( parentFunc );
+        auto funcOp = mlir::dyn_cast<toy::FuncOp>( parentFunc );
         LLVM_DEBUG( {
             llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
-            func->dump();
+            funcOp->dump();
         } );
 
-        auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( func, varName );
+        auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( funcOp, varName );
         if ( !symbolOp )
         {
             throw exception_with_context( __FILE__, __LINE__, __func__,
@@ -325,7 +325,9 @@ namespace toy
         tyF32 = builder.getF32Type();
         tyF64 = builder.getF64Type();
 
-        tyPtr = mlir::LLVM::LLVMPointerType::get( builder.getContext() );
+        auto ctx = builder.getContext();
+        tyVoid = mlir::LLVM::LLVMVoidType::get( ctx );
+        tyPtr = mlir::LLVM::LLVMPointerType::get( ctx );
     }
 
     void MLIRListener::enterStartRule( ToyParser::StartRuleContext *ctx )
@@ -409,6 +411,32 @@ namespace toy
         currentFuncName = ENTRY_SYMBOL_NAME;
 
         builder.restoreInsertionPoint( mainIP );
+    }
+
+    void MLIRListener::enterCall( ToyParser::CallContext *ctx)
+    {
+        //std::cout << ctx->getText() << '\n';
+        lastOp = lastOperator::callOp;
+        auto loc = getLocation( ctx );
+
+        auto function = ctx->IDENTIFIER()->getText();
+        std::vector<mlir::Operation*> parameters;
+        if ( auto params = ctx->parameterList() )
+        {
+            for ( ToyParser::ParameterContext * p : params->parameter() )
+            {
+                std::cout << std::format( "param: {}\n", p->getText() );
+                assert( 0 );
+            }
+        }
+
+        auto op = funcByName[function];
+        auto funcOp = mlir::dyn_cast<toy::FuncOp>( op );
+        auto funcType = funcOp.getFunctionTypeAttrValue();
+        auto resultType = funcType.getNumResults() ? funcType.getResults()[0] : tyVoid;
+
+        builder.create<mlir::func::CallOp>( loc, function, mlir::TypeRange{ resultType }, mlir::ValueRange{} );
+    //builder.create<mlir::func::CallOp>( printLoc, "__toy_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val } );
     }
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )

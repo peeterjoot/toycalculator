@@ -1,5 +1,6 @@
 ## TODO
 
+* Get rid of lastOp in parser.cpp and handle more elegantly.
 * Function support: WIP:
     - ExitOp lowering probably wrong in a bunch of cases.  Split into ReturnOp, or parameterize return vs. exit.
     - Builder: implement CALL builder.
