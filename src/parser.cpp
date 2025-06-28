@@ -24,11 +24,6 @@
 
 namespace toy
 {
-    mlir::Type parseScalarType( const std::string &ty )
-    {
-        return nullptr;
-    }
-
     DialectCtx::DialectCtx()
     {
         context.getOrLoadDialect<toy::ToyDialect>();
@@ -153,6 +148,39 @@ namespace toy
         assert( input.back() == '"' );
 
         return input.substr( 1, input.size() - 2 );
+    }
+
+    mlir::Type MLIRListener::parseScalarType( const std::string &ty )
+    {
+        if ( ty == "BOOL" )
+        {
+            return tyI1;
+        }
+        if ( ty == "INT8" )
+        {
+            return tyI8;
+        }
+        if ( ty == "INT16" )
+        {
+            return tyI16;
+        }
+        if ( ty == "INT32" )
+        {
+            return tyI32;
+        }
+        if ( ty == "INT64" )
+        {
+            return tyI64;
+        }
+        if ( ty == "FLOAT32" )
+        {
+            return tyF32;
+        }
+        if ( ty == "FLOAT64" )
+        {
+            return tyF64;
+        }
+        return nullptr;
     }
 
     // \retval true if error

@@ -148,6 +148,8 @@ namespace toy
             return pr_varStates[ k ];
         }
 
+        mlir::Type parseScalarType( const std::string &ty );
+
        public:
         MLIRListener( const std::string &_filename );
 

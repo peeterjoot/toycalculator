@@ -136,7 +136,11 @@ test
 types
 unary
 xorop
+function_intret_intparam
+function_intret_void
+function_void_intparm
 function_void_void
+function
 ));
 #shortstring
 

@@ -2,7 +2,8 @@ FUNCTION plus3( INT32 v ) : INT32
 {
     //INT32 r;
     //r = 3 + v;
-    RETURN r;
+    //RETURN r;
+    RETURN 0;
 };
 
 FUNCTION zero( ) : INT32
@@ -14,16 +15,20 @@ FUNCTION add( INT32 v, INT32 w ) : INT32
 {
     //INT32 r;
     //r = v + w;
-    RETURN r;
+    //RETURN r;
+    RETURN 0;
 };
 
 FUNCTION bar0 ( )
 {
-    PRINT "bar0";
+    //PRINT "bar0";
     RETURN;
 };
 
 FUNCTION bar1 ( )
 {
-    PRINT "bar0";
+    //PRINT "bar0";
+    RETURN;
 };
+
+PRINT "Hello function codegen, but no calls.";
