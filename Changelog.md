@@ -43,6 +43,8 @@ with plain old assign, after first constructing a string literal object:
 * Fix statement/returnStatement parse ambiguity.  statement was too greedy, including returnStatement
 * Handle save/restore insertion point for user defined functions
 * Lowering for void return (hack: may split EXIT/RETURN lowering.)
+* Parser support for functions with non-void return/params.
+* Grammar support for CALL(...) and assignment 'x = FUNCTION FOO(...)'
 
 ## tag: V3
 

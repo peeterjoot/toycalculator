@@ -2,7 +2,9 @@
 
 * Function support: WIP:
     - ExitOp lowering probably wrong in a bunch of cases.  Split into ReturnOp, or parameterize return vs. exit.
-    - Implement CALL of functions (grammar, builder, lowering.)
+    - Builder: implement CALL builder.
+    - Builder: implement FUNCTION builder (i.e.: within assignment.)
+    - Lowering?: implement function call lowering if required.
     - Haven't tested functions with any statements in them.
         - param lookup doesn't work:
             - Enabling stuff in function.toy:plus3: results in error: v not found.

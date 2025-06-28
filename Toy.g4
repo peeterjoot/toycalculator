@@ -22,13 +22,17 @@ startRule
 
 // A statement can be a declaration, assignment, print, or comment.
 statement
-  : (function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print) ENDOFSTATEMENT_TOKEN
+  : (call | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print) ENDOFSTATEMENT_TOKEN
   ;
 
 ifelifelse
   : IF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
     (ELIF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN)*
     (ELSE_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN)?
+  ;
+
+call
+  : CALL_TOKEN IDENTIFIER parameterList
   ;
 
 // For now both return and parameters, can only be scalar types.
@@ -106,6 +110,15 @@ assignmentExpression
   : literal
   | unaryOperator? IDENTIFIER
   | binaryElement binaryOperator binaryElement
+  | FUNCTION_TOKEN IDENTIFIER parameterList
+  ;
+
+parameterList
+  : BRACE_START_TOKEN (parameter (COMMA_TOKEN parameter)*)? BRACE_END_TOKEN
+  ;
+
+parameter
+  : literal | IDENTIFIER
   ;
 
 binaryElement
@@ -390,6 +403,10 @@ STRING_TOKEN
 
 FUNCTION_TOKEN
   : 'FUNCTION'
+  ;
+
+CALL_TOKEN
+  : 'CALL'
   ;
 
 // Matches variable names (e.g., 'x', 'foo', 'my_var'), consisting of letters (any case), numbers and underscores, but starting with a letter.
