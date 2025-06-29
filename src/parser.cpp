@@ -338,23 +338,22 @@ namespace toy
         // Create Toy::ScopeOp with empty operands and results
         auto scopeOp = builder.create<toy::ScopeOp>( loc, mlir::TypeRange{}, mlir::ValueRange{} );
 
-        // Add a block to the ScopeOp's region
-        auto &scopeBlock = scopeOp.getBody().emplaceBlock();
-
         // Insert a default Toy::ExitOp terminator (with no operands, or default zero return for main).
         // This will be replaced later with an ExitOp with the actual return code if desired.
-        builder.setInsertionPointToStart( &scopeBlock );
         auto returnType = func.getFunctionType().getResults();
         if ( !returnType.empty() )
         {
             auto zero = builder.create<mlir::arith::ConstantOp>( loc, returnType[0],
                                                                  builder.getIntegerAttr( returnType[0], 0 ) );
-            builder.create<toy::ExitOp>( loc, mlir::ValueRange{ zero } );
+            builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{ zero } );
         }
         else
         {
-            builder.create<toy::ExitOp>( loc, mlir::ValueRange{} );
+            builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{} );
         }
+
+        // Add a block to the ScopeOp's region
+        auto &scopeBlock = scopeOp.getBody().emplaceBlock();
 
         // Reset insertion point for subsequent operations
         builder.setInsertionPointToStart( &scopeBlock );
@@ -368,9 +367,9 @@ namespace toy
         auto loc = getLocation( ctx );
 
         auto funcType = builder.getFunctionType( {}, tyI32 );
-        auto func = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
+        auto funcOp = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
 
-        createScope( loc, func, ENTRY_SYMBOL_NAME );
+        createScope( loc, funcOp, ENTRY_SYMBOL_NAME );
     }
 
     void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
@@ -407,8 +406,8 @@ namespace toy
             mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
 
         auto funcType = builder.getFunctionType( paramTypes, returns );
-        auto func = builder.create<mlir::func::FuncOp>( loc, funcName, funcType, attrs, paramAttrs );
-        createScope( loc, func, funcName );
+        auto funcOp = builder.create<mlir::func::FuncOp>( loc, funcName, funcType, attrs, paramAttrs );
+        createScope( loc, funcOp, funcName );
     }
 
     void MLIRListener::exitFunction( ToyParser::FunctionContext *ctx )
@@ -606,23 +605,20 @@ namespace toy
                                        loc, value );
         assert( s.length() == 0 );
 
-        // Handle the dummy ExitOp originally inserted in the ScopeOp
+        // Handle the dummy ReturnOp originally inserted in the FuncOp's block
         auto *currentBlock = builder.getInsertionBlock();
-        auto *parentOp = currentBlock->getParentOp();
-        if ( !isa<toy::ScopeOp>( parentOp ) )
-        {
-            throw exception_with_context(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}error: RETURN statement must be inside a toy.scope\n", formatLocation( loc ) ) );
-        }
+        auto *scopeOp = currentBlock->getParentOp();
+        assert( isa<toy::ScopeOp>( scopeOp ) );
 
-        auto func = parentOp->getParentOfType<mlir::func::FuncOp>();
-        auto returnType = func.getFunctionType().getResults();
+        auto *funcOp = currentBlock->getParentOp();
+        assert( isa<mlir::func::FuncOp>( funcOp ) );
 
-        // Erase existing toy::ExitOp and its constant
-        if ( !currentBlock->empty() && isa<toy::ExitOp>( currentBlock->getTerminator() ) )
+        auto *funcBlock = builder.getInsertionBlock();
+
+        // Erase existing mlir::func::ReturnOp and its constant
+        if ( !funcBlock->empty() && isa<mlir::func::ReturnOp>( funcBlock->getTerminator() ) )
         {
-            mlir::Operation *existingExit = currentBlock->getTerminator();
+            mlir::Operation *existingExit = funcBlock->getTerminator();
             if ( existingExit->getNumOperands() > 0 )
             {
                 if ( auto *constantOp = existingExit->getOperand( 0 ).getDefiningOp() )
@@ -635,9 +631,9 @@ namespace toy
             }
             existingExit->erase();
 
-            // Create new toy::ExitOp
+            // Create new mlir::func::ReturnOp
             builder.setInsertionPointToEnd( currentBlock );
-            builder.create<toy::ExitOp>( loc, mlir::ValueRange{ value } );
+            builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{ value } );
         }
         else
         {

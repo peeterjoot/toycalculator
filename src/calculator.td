@@ -53,61 +53,12 @@ def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
   let summary = "Assign a value to a variable by symbol reference.";
   let arguments = (ins SymbolRefAttr:$var_name, AnyType:$value);
   let results = (outs);
-//  let hasVerifier = 1;
-//  let extraClassDeclaration = [{
-//    mlir::SymbolRefAttr getVarName() {
-//      return getVarNameAttr();
-//    }
-//    mlir::LogicalResult verify() {
-//      if (!getVarName()) {
-//        return emitOpError("requires a 'var_name' symbol reference attribute");
-//      }
-//      // Optionally: Verify the referenced symbol is a toy.declare
-//      auto* symbol = mlir::SymbolTable::lookupNearestSymbolFrom(getOperation(), getVarName());
-//      if (!symbol || !isa<toy::DeclareOp>(symbol)) {
-//        return emitOpError("symbol '" << getVarName().getValue() << "' must reference a toy.declare operation");
-//      }
-//      return mlir::success();
-//    }
-//  }];
 }
 
 def Toy_LoadOp : Op<Toy_Dialect, "load"> {
   let summary = "Load a variable by symbol reference.";
   let arguments = (ins SymbolRefAttr:$var_name);
   let results = (outs AnyType:$result);
-//  let hasVerifier = 1;
-//  let extraClassDeclaration = [{
-//    mlir::LogicalResult verify() {
-//      if (!getVarName()) {
-//        return emitOpError("requires a 'var_name' symbol reference attribute");
-//      }
-//      // Optionally: Verify the referenced symbol is a toy.declare
-//      auto* symbol = mlir::SymbolTable::lookupNearestSymbolFrom(getOperation(), getVarName());
-//      if (!symbol || !isa<toy::DeclareOp>(symbol)) {
-//        return emitOpError("symbol '" << getVarName().getValue() << "' must reference a toy.declare operation");
-//      }
-//      return mlir::success();
-//    }
-//  }];
-}
-
-def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
-  let summary = "Exit from a program or return from a function";
-  let arguments = (ins Variadic<AnyType>:$rc);
-  let results = (outs);
-  let traits = [Terminator];
-
-  // $rc is optional, and defaults to 0.
-  let assemblyFormat = "($rc^ `:` type($rc))? attr-dict";
-
-  let extraClassDeclaration = [{
-    llvm::LogicalResult verify() {
-      if (getNumOperands() > 1)
-        return emitOpError("expects 0 or 1 operands");
-      return llvm::success();
-      }
-  }];
 }
 
 def Toy_ScopeOp : Op<Toy_Dialect, "scope"> {
@@ -122,10 +73,6 @@ def Toy_ScopeOp : Op<Toy_Dialect, "scope"> {
       if (!getBody().empty()) {
         if (getBody().getBlocks().size() != 1) {
           return emitOpError("expects exactly one block in the body region");
-        }
-        mlir::Operation *terminator = getBody().front().getTerminator();
-        if (!terminator || !isa<toy::ExitOp>(terminator)) {
-          return emitOpError("expects toy.exit terminator");
         }
       }
       return mlir::success();

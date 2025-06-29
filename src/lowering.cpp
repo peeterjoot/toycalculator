@@ -477,21 +477,21 @@ namespace toy
 
         std::string lookupFuncNameForOp( mlir::Operation* op )
         {
-            mlir::func::FuncOp parentFunc = getEnclosingFuncOp( op );
+            mlir::func::FuncOp funcOp = getEnclosingFuncOp( op );
 
-            return parentFunc.getSymName().str();
+            return funcOp.getSymName().str();
         }
 
         mlir::LLVM::AllocaOp lookupLocalSymbolReference( mlir::Operation* op, const std::string& varName )
         {
-            mlir::func::FuncOp parentFunc = getEnclosingFuncOp( op );
+            mlir::func::FuncOp funcOp = getEnclosingFuncOp( op );
 
             LLVM_DEBUG( {
                 llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
-                parentFunc->dump();
+                funcOp->dump();
             } );
 
-            auto funcName = parentFunc->getName().getStringRef().str();
+            auto funcName = funcOp->getName().getStringRef().str();
 
             std::string funcNameAndVarName = funcName + "::" + varName;
 
@@ -501,8 +501,8 @@ namespace toy
 
         void createLocalSymbolReference( mlir::LLVM::AllocaOp allocaOp, const std::string& varName )
         {
-            auto parentFunc = getEnclosingFuncOp( allocaOp );
-            auto funcName = parentFunc->getName().getStringRef().str();
+            auto funcOp = getEnclosingFuncOp( allocaOp );
+            auto funcName = funcOp->getName().getStringRef().str();
 
             std::string funcNameAndVarName = funcName + "::" + varName;
 
@@ -768,62 +768,6 @@ namespace toy
             return result;
         }
     };
-
-#if 0
-    // Lower toy.program to an LLVM function.
-    class FuncOpLowering : public mlir::ConversionPattern
-    {
-       private:
-        loweringContext& lState;
-
-       public:
-        FuncOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( mlir::func::FuncOp::getOperationName(), 1, context ), lState{ lState_ }
-        {
-        }
-
-        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
-                                             mlir::ConversionPatternRewriter& rewriter ) const override
-        {
-            mlir::func::FuncOp funcOp = mlir::cast<mlir::func::FuncOp>( op );
-            auto loc = funcOp.getLoc();
-
-            mlir::StringAttr funcName = funcOp.getSymNameAttribute();
-            LLVM_DEBUG( {
-                llvm::dbgs() << std::format( "Lowering toy.func: funcName: {}\n", funcName.str() ) << *op << '\n'
-                             << loc << '\n';
-            } );
-
-            auto mlirFuncType = funcOp.getFunctionType();
-            SmallVector<Type> llvmArgTypes;
-            for ( auto argType : mlirFuncType.getInputs() )
-            {
-                llvmArgTypes.push_back( lState.typeConverter.convertType( argType ) );
-            }
-            LLVM::LLVMFunctionType funcType;
-            auto llvmResultType = mlirFuncType.getNumResults()
-                                      ? lState.typeConverter.convertType( mlirFuncType.getResults()[0] )
-                                      : lState.tyVoid;
-            funcType = LLVM::LLVMFunctionType::get( llvmResultType, llvmArgTypes, false /* isVarArg */ );
-            auto func = rewriter.create<LLVM::LLVMFuncOp>( loc, funcName, funcType, LLVM::Linkage::External );
-
-            Region& programRegion = funcOp.getRegion();
-            rewriter.inlineRegionBefore( programRegion, func.getRegion(), func.getRegion().end() );
-
-            if ( auto debugAttr = funcOp->getAttr( "llvm.debug.subprogram" ) )
-            {
-                func->setAttr( "llvm.debug.subprogram", debugAttr );
-            }
-
-            // Erase the original program op
-            rewriter.eraseOp( op );
-            // LLVM_DEBUG(llvm::dbgs() << "IR after erasing toy.func:\n" << *op->getParentOp() << "\n");
-
-            // Recursively convert the inlined operations (e.g., toy.return)
-            return success();
-        }
-    };
-#endif
 
     class DeclareOpLowering : public ConversionPattern
     {
@@ -1275,89 +1219,6 @@ namespace toy
         }
     };
 
-    // Lower toy.return to nothing (erase).
-    class ExitOpLowering : public ConversionPattern
-    {
-       private:
-        loweringContext& lState;
-
-       public:
-        ExitOpLowering( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
-            : ConversionPattern( toy::ExitOp::getOperationName(), benefit, context ), lState{ lState_ }
-        {
-        }
-
-        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
-                                       ConversionPatternRewriter& rewriter ) const override
-        {
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.exit: " << *op << '\n' );
-
-            mlir::Location loc = op->getLoc();
-
-            if ( op->getNumOperands() == 0 )
-            {
-                auto func = getEnclosingFuncOp( op );
-                auto funcType = func.getFunctionType();
-
-                if ( funcType.getNumResults() )
-                {
-                    // FIXME: this is for the EXIT codepath, and not appropriate for RETURN:
-                    // EXIT; or default -> return 0
-                    auto zero = lState.getI32zero( loc, rewriter );
-                    rewriter.create<LLVM::ReturnOp>( loc, zero );
-                }
-                else
-                {
-                    rewriter.create<LLVM::ReturnOp>( loc, ArrayRef<Value>{} );
-                }
-            }
-            else if ( op->getNumOperands() == 1 )
-            {
-                toy::ExitOp returnOp = cast<toy::ExitOp>( op );
-
-                // RETURN 3; or RETURN x;
-                auto operand = returnOp.getRc()[0];
-
-                LLVM_DEBUG( {
-                    llvm::dbgs() << "Operand before type conversions:\n";
-                    operand.dump();
-                } );
-
-                auto ty = operand.getType();
-                if ( lState.isTypeFloat( ty ) )
-                {
-                    operand = rewriter.create<LLVM::FPToSIOp>( loc, lState.tyI32, operand );
-                }
-
-                auto intType = mlir::cast<mlir::IntegerType>( operand.getType() );
-                auto width = intType.getWidth();
-                if ( width > 32 )
-                {
-                    operand = rewriter.create<mlir::LLVM::TruncOp>( loc, lState.tyI32, operand );
-                }
-                else if ( width != 32 )
-                {
-                    // SExtOp for sign extend.
-                    operand = rewriter.create<mlir::LLVM::ZExtOp>( loc, lState.tyI32, operand );
-                }
-
-                LLVM_DEBUG( {
-                    llvm::dbgs() << "Final return operand:\n";
-                    operand.dump();
-                } );
-
-                rewriter.create<LLVM::ReturnOp>( loc, operand );
-            }
-            else
-            {
-                llvm_unreachable( "toy.return expects 0 or 1 operands" );
-            }
-
-            rewriter.eraseOp( op );
-            return success();
-        }
-    };
-
     class ScopeOpLowering : public ConversionPattern
     {
        private:
@@ -1676,8 +1537,8 @@ namespace toy
             target1.addLegalDialect<LLVM::LLVMDialect>();
             target1.addIllegalOp<arith::ConstantOp>();
             target1.addIllegalOp<toy::DeclareOp, toy::AssignOp, toy::PrintOp, toy::AddOp, toy::SubOp, toy::MulOp,
-                                 toy::DivOp, toy::NegOp, toy::ExitOp, toy::ScopeOp>();
-            target1.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp>();
+                                 toy::DivOp, toy::NegOp, toy::ScopeOp>();
+            target1.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
 
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns1( context );
@@ -1687,7 +1548,6 @@ namespace toy
                           AndOpLowering, OrOpLowering, LessEqualOpLowering, PrintOpLowering, ConstantOpLowering,
                           AssignOpLowering, StringLiteralOpLowering>( lState, context, 2 );
             patterns1.add<ScopeOpLowering>( lState, context, 1 );
-            patterns1.add<ExitOpLowering>( lState, context, 0 );
 
             arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns1 );
 
