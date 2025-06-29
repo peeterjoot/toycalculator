@@ -344,17 +344,17 @@ namespace toy
         // Insert a default Toy::ExitOp terminator (with no operands, or default zero return for main).
         // This will be replaced later with an ExitOp with the actual return code if desired.
         builder.setInsertionPointToStart( &scopeBlock );
-//        auto returnType = func.getFunctionType().getResults();
-//        if ( !returnType.empty() )
-//        {
-//            auto zero =
-//                builder.create<mlir::arith::ConstantOp>( loc, returnType[0], builder.getIntegerAttr( returnType[0], 0 ) );
-//            builder.create<toy::ExitOp>( loc, mlir::ValueRange{ zero } );
-//        }
-//        else
-        //{
+        auto returnType = func.getFunctionType().getResults();
+        if ( !returnType.empty() )
+        {
+            auto zero = builder.create<mlir::arith::ConstantOp>( loc, returnType[0],
+                                                                 builder.getIntegerAttr( returnType[0], 0 ) );
+            builder.create<toy::ExitOp>( loc, mlir::ValueRange{ zero } );
+        }
+        else
+        {
             builder.create<toy::ExitOp>( loc, mlir::ValueRange{} );
-        //}
+        }
 
         // Reset insertion point for subsequent operations
         builder.setInsertionPointToStart( &scopeBlock );
@@ -593,7 +593,7 @@ namespace toy
     template <class Literal>
     void MLIRListener::processReturnLike( mlir::Location loc, Literal *lit, tNode *var, tNode *boolNode )
     {
-        if ( !lit && !var )
+        if ( !lit && !var && !boolNode )
         {
             return;
         }
@@ -606,7 +606,7 @@ namespace toy
                                        loc, value );
         assert( s.length() == 0 );
 
-
+        // Handle the dummy ExitOp originally inserted in the ScopeOp
         auto *currentBlock = builder.getInsertionBlock();
         auto *parentOp = currentBlock->getParentOp();
         if ( !isa<toy::ScopeOp>( parentOp ) )
@@ -616,9 +616,26 @@ namespace toy
                 std::format( "{}error: RETURN statement must be inside a toy.scope\n", formatLocation( loc ) ) );
         }
 
+        auto func = parentOp->getParentOfType<mlir::func::FuncOp>();
+        auto returnType = func.getFunctionType().getResults();
+
+        // Erase existing toy::ExitOp and its constant
         if ( !currentBlock->empty() && isa<toy::ExitOp>( currentBlock->getTerminator() ) )
         {
-            currentBlock->getTerminator()->erase();
+            mlir::Operation *existingExit = currentBlock->getTerminator();
+            if ( existingExit->getNumOperands() > 0 )
+            {
+                if ( auto *constantOp = existingExit->getOperand( 0 ).getDefiningOp() )
+                {
+                    if ( mlir::isa<mlir::arith::ConstantOp>( constantOp ) )
+                    {
+                        constantOp->erase();
+                    }
+                }
+            }
+            existingExit->erase();
+
+            // Create new toy::ExitOp
             builder.setInsertionPointToEnd( currentBlock );
             builder.create<toy::ExitOp>( loc, mlir::ValueRange{ value } );
         }
