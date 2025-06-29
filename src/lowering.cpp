@@ -54,11 +54,11 @@ namespace toy
         return fileLineLoc;
     }
 
-    toy::FuncOp getEnclosingFuncOp( mlir::Operation* op )
+    mlir::func::FuncOp getEnclosingFuncOp( mlir::Operation* op )
     {
         while ( op )
         {
-            if ( auto funcOp = dyn_cast<toy::FuncOp>( op ) )
+            if ( auto funcOp = dyn_cast<mlir::func::FuncOp>( op ) )
             {
                 return funcOp;
             }
@@ -430,9 +430,9 @@ namespace toy
             }
         }
 
-        mlir::LLVM::DISubroutineTypeAttr createDISubroutineType( toy::FuncOp funcOp )
+        mlir::LLVM::DISubroutineTypeAttr createDISubroutineType( mlir::func::FuncOp funcOp )
         {
-            auto funcType = funcOp.getFunctionTypeAttrValue();
+            auto funcType = funcOp.getFunctionType();
 
             mlir::SmallVector<mlir::LLVM::DITypeAttr> paramTypes;
 
@@ -449,7 +449,7 @@ namespace toy
             return mlir::LLVM::DISubroutineTypeAttr::get( ctx, llvm::DINode::FlagZero, paramTypes );
         }
 
-        void createFuncDebug( toy::FuncOp funcOp )
+        void createFuncDebug( mlir::func::FuncOp funcOp )
         {
             if ( pr_driverState.wantDebug )
             {
@@ -478,14 +478,14 @@ namespace toy
 
         std::string lookupFuncNameForOp( mlir::Operation* op )
         {
-            toy::FuncOp parentFunc = getEnclosingFuncOp( op );
+            mlir::func::FuncOp parentFunc = getEnclosingFuncOp( op );
 
             return parentFunc.getSymName().str();
         }
 
         mlir::LLVM::AllocaOp lookupLocalSymbolReference( mlir::Operation* op, const std::string& varName )
         {
-            toy::FuncOp parentFunc = getEnclosingFuncOp( op );
+            mlir::func::FuncOp parentFunc = getEnclosingFuncOp( op );
 
             LLVM_DEBUG( {
                 llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
@@ -770,6 +770,7 @@ namespace toy
         }
     };
 
+#if 0
     // Lower toy.program to an LLVM function.
     class FuncOpLowering : public mlir::ConversionPattern
     {
@@ -778,14 +779,14 @@ namespace toy
 
        public:
         FuncOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( toy::FuncOp::getOperationName(), 1, context ), lState{ lState_ }
+            : ConversionPattern( mlir::func::FuncOp::getOperationName(), 1, context ), lState{ lState_ }
         {
         }
 
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            toy::FuncOp funcOp = mlir::cast<toy::FuncOp>( op );
+            mlir::func::FuncOp funcOp = mlir::cast<mlir::func::FuncOp>( op );
             auto loc = funcOp.getLoc();
 
             mlir::StringAttr funcName = funcOp.getSymNameAttribute();
@@ -794,7 +795,7 @@ namespace toy
                              << loc << '\n';
             } );
 
-            auto mlirFuncType = funcOp.getFunctionTypeAttrValue();
+            auto mlirFuncType = funcOp.getFunctionType();
             SmallVector<Type> llvmArgTypes;
             for ( auto argType : mlirFuncType.getInputs() )
             {
@@ -823,6 +824,7 @@ namespace toy
             return success();
         }
     };
+#endif
 
     class DeclareOpLowering : public ConversionPattern
     {
@@ -1296,7 +1298,7 @@ namespace toy
             if ( op->getNumOperands() == 0 )
             {
                 auto func = getEnclosingFuncOp( op );
-                auto funcType = func.getFunctionTypeAttrValue();
+                auto funcType = func.getFunctionType();
 
                 if ( funcType.getNumResults() )
                 {
@@ -1655,24 +1657,23 @@ namespace toy
             lState.createDICompileUnit();
 
             auto ctx = lState.getContext();
-            for ( auto funcOp : module.getBodyRegion().getOps<toy::FuncOp>() )
+            for ( auto funcOp : module.getBodyRegion().getOps<mlir::func::FuncOp>() )
             {
                 LLVM_DEBUG( {
-                    llvm::dbgs() << "Generating !DISubroutineType() for toy::FuncOp: " << funcOp.getSymName() << "\n";
+                    llvm::dbgs() << "Generating !DISubroutineType() for mlir::func::FuncOp: " << funcOp.getSymName() << "\n";
                 } );
                 lState.createFuncDebug( funcOp );
             }
 
-            // Conversion target: only LLVM dialect is legal, except for toy::FuncOp and mlir::ModuleOp
+            // Conversion target: only LLVM dialect is legal, except for mlir::func::FuncOp and mlir::ModuleOp
             ConversionTarget target1( getContext() );
             target1.addLegalDialect<LLVM::LLVMDialect>();
             target1.addIllegalOp<arith::ConstantOp>();
             target1.addIllegalOp<toy::DeclareOp, toy::AssignOp, toy::PrintOp, toy::AddOp, toy::SubOp, toy::MulOp,
                                  toy::DivOp, toy::NegOp, toy::ExitOp>();
             target1.addLegalOp<mlir::ModuleOp>();
-            target1.addLegalOp<toy::FuncOp>();
-            //target1.addLegalOp<mlir::func::CallOp>();
-            //target1.addLegalDialect<mlir::func>();
+            target1.addLegalOp<mlir::func::FuncOp>();
+            target1.addLegalOp<mlir::func::CallOp>();
 
             // Patterns for toy dialect and standard ops
             RewritePatternSet patterns1( ctx );
@@ -1712,14 +1713,14 @@ namespace toy
 
             ConversionTarget target2( getContext() );
             target2.addLegalDialect<LLVM::LLVMDialect>();
-            //target2.addLegalDialect<mlir::func>();
             target2.addLegalOp<mlir::ModuleOp>();
-            //target2.addLegalOp<mlir::func::CallOp>();
-            //target2.addIllegalDialect<toy::ToyDialect>();
+            target2.addLegalOp<mlir::func::FuncOp>();
+            target2.addLegalOp<mlir::func::CallOp>();
+            target1.addIllegalOp<toy::ScopeOp>();
 
-            // Patterns for the final FuncOp removal:
+            // Patterns for the final ScopeOp removal:
             RewritePatternSet patterns2( ctx );
-            patterns2.insert<FuncOpLowering>( lState, ctx );
+            //patterns2.insert<ScopeOpLowering>( lState, ctx );
 
             if ( failed( applyFullConversion( module, target2, std::move( patterns2 ) ) ) )
             {

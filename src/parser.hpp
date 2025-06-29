@@ -127,6 +127,8 @@ namespace toy
 
         inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx );
 
+        void createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string & funcName );
+
         inline std::string formatLocation( mlir::Location loc );
 
         inline std::string buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,

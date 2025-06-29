@@ -36,13 +36,13 @@ namespace toy
     toy::DeclareOp MLIRListener::lookupDeclareForVar( const std::string &varName )
     {
         auto parentFunc = funcByName[currentFuncName];
-        auto funcOp = mlir::dyn_cast<toy::FuncOp>( parentFunc );
+        auto scopeOp = mlir::dyn_cast<toy::ScopeOp>( parentFunc );
         LLVM_DEBUG( {
             llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
-            funcOp->dump();
+            scopeOp->dump();
         } );
 
-        auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( funcOp, varName );
+        auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
         if ( !symbolOp )
         {
             throw exception_with_context( __FILE__, __LINE__, __func__,
@@ -330,20 +330,31 @@ namespace toy
         tyPtr = mlir::LLVM::LLVMPointerType::get( ctx );
     }
 
+    void MLIRListener::createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName )
+    {
+        auto &block = *func.addEntryBlock();
+        builder.setInsertionPointToStart( &block );
+
+        // Create Toy::ScopeOp with empty operands and results
+        auto scopeOp = builder.create<toy::ScopeOp>( loc, mlir::TypeRange{}, mlir::ValueRange{} );
+
+        // Add a block to the ScopeOp's region
+        auto &scopeBlock = scopeOp.getBody().emplaceBlock();
+
+        builder.setInsertionPointToStart( &scopeBlock );
+
+        currentFuncName = funcName;
+        funcByName[currentFuncName] = func;
+    }
+
     void MLIRListener::enterStartRule( ToyParser::StartRuleContext *ctx )
     {
         auto loc = getLocation( ctx );
 
         auto funcType = builder.getFunctionType( {}, tyI32 );
-        std::vector<mlir::Attribute> paramAttrs;
-        auto func =
-            builder.create<toy::FuncOp>( loc, std::string( ENTRY_SYMBOL_NAME ), funcType,
-                                         builder.getArrayAttr( paramAttrs ), builder.getStringAttr( "public" ) );
+        auto func = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
 
-        currentFuncName = ENTRY_SYMBOL_NAME;
-        funcByName[currentFuncName] = func;
-        auto &block = *func.addEntryBlock();
-        builder.setInsertionPointToStart( &block );
+        createScope( loc, func, ENTRY_SYMBOL_NAME );
     }
 
     void MLIRListener::exitStartRule( ToyParser::StartRuleContext *ctx )
@@ -372,6 +383,8 @@ namespace toy
 
         builder.setInsertionPointToStart( mod.getBody() );
 
+        std::string funcName = ctx->IDENTIFIER()->getText();
+
         std::vector<mlir::Type> returns;
         if ( auto rt = ctx->scalarType() )
         {
@@ -379,28 +392,25 @@ namespace toy
             returns.push_back( returnType );
         }
 
-        std::string funcName = ctx->IDENTIFIER()->getText();
-
-        // Collect parameter types and names
         std::vector<mlir::Type> paramTypes;
-        std::vector<mlir::Attribute> paramAttrs;
+        std::vector<mlir::DictionaryAttr> paramAttrs;
         for ( auto *paramCtx : ctx->parameterTypeAndName() )
         {
             auto paramType = parseScalarType( paramCtx->scalarType()->getText() );
             auto paramName = paramCtx->IDENTIFIER()->getText();
             paramTypes.push_back( paramType );
-            paramAttrs.push_back( mlir::DictionaryAttr::get( builder.getContext(),
-                                                             { { "sym_name", builder.getStringAttr( paramName ) } } ) );
+            paramAttrs.push_back( mlir::DictionaryAttr::get(
+                builder.getContext(),
+                { { builder.getStringAttr( "sym_name" ), builder.getStringAttr( paramName ) } } ) );
         }
 
-        auto funcType = builder.getFunctionType( paramTypes, returns );
-        auto func = builder.create<toy::FuncOp>( loc, funcName, funcType, builder.getArrayAttr( paramAttrs ),
-                                                 builder.getStringAttr( "private" ) );
-        auto &block = *func.addEntryBlock();
-        builder.setInsertionPointToStart( &block );
+        std::vector<mlir::NamedAttribute> attrs;
+        attrs.push_back(
+            mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
 
-        currentFuncName = funcName;
-        funcByName[currentFuncName] = func;
+        auto funcType = builder.getFunctionType( paramTypes, returns );
+        auto func = builder.create<mlir::func::FuncOp>( loc, funcName, funcType, attrs, paramAttrs );
+        createScope( loc, func, funcName );
     }
 
     void MLIRListener::exitFunction( ToyParser::FunctionContext *ctx )
@@ -413,17 +423,17 @@ namespace toy
         builder.restoreInsertionPoint( mainIP );
     }
 
-    void MLIRListener::enterCall( ToyParser::CallContext *ctx)
+    void MLIRListener::enterCall( ToyParser::CallContext *ctx )
     {
-        //std::cout << ctx->getText() << '\n';
+        // std::cout << ctx->getText() << '\n';
         lastOp = lastOperator::callOp;
         auto loc = getLocation( ctx );
 
         auto function = ctx->IDENTIFIER()->getText();
-        std::vector<mlir::Operation*> parameters;
+        std::vector<mlir::Operation *> parameters;
         if ( auto params = ctx->parameterList() )
         {
-            for ( ToyParser::ParameterContext * p : params->parameter() )
+            for ( ToyParser::ParameterContext *p : params->parameter() )
             {
                 std::cout << std::format( "param: {}\n", p->getText() );
                 assert( 0 );
@@ -431,12 +441,13 @@ namespace toy
         }
 
         auto op = funcByName[function];
-        auto funcOp = mlir::dyn_cast<toy::FuncOp>( op );
-        auto funcType = funcOp.getFunctionTypeAttrValue();
+        auto funcOp = mlir::dyn_cast<mlir::func::FuncOp>( op );
+        auto funcType = funcOp.getFunctionType();
         auto resultType = funcType.getNumResults() ? funcType.getResults()[0] : tyVoid;
 
         builder.create<mlir::func::CallOp>( loc, function, mlir::TypeRange{ resultType }, mlir::ValueRange{} );
-    //builder.create<mlir::func::CallOp>( printLoc, "__toy_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val } );
+        // builder.create<mlir::func::CallOp>( printLoc, "__toy_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val }
+        // );
     }
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )

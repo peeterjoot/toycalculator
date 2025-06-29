@@ -27,73 +27,6 @@ def Toy_Dialect : Dialect {
   let cppNamespace = "toy";
 }
 
-def Toy_FuncOp : Op<Toy_Dialect, "func", [FunctionOpInterface]> {
-  let summary = "Function operation";
-  let description = "A function operation.  Designed to mimic mlir::func::FuncOp, but with a symbol table for local variables.";
-
-  let arguments = (ins
-    StrAttr:$sym_name,
-    TypeAttr:$function_type,
-    OptionalAttr<ArrayAttr>:$argAttrs,
-    OptionalAttr<StrAttr>:$sym_visibility
-  );
-
-  let results = (outs);
-  let regions = (region AnyRegion:$body);
-  let traits = [SymbolTable, AutomaticAllocationScope,
-                //IsIsolatedFromAbove,
-                OpAsmOpInterface, Symbol];
-  let extraClassDeclaration = [{
-    mlir::Block *addEntryBlock() {
-      assert(getBody().empty() && "Function already has an entry block!");
-      mlir::Block &entry = getBody().emplaceBlock();
-      auto type = dyn_cast<mlir::FunctionType>(getFunctionTypeAttr().getValue());
-      auto locs = llvm::SmallVector<mlir::Location>(type.getInputs().size(), getLoc());
-      entry.addArguments(type.getInputs(), locs);
-      return &entry;
-    }
-
-    // these three are for mlir::func::FuncOp compatibility -- but may not be needed:
-    mlir::FunctionType getFunctionTypeAttrValue() {
-      return dyn_cast<mlir::FunctionType>(getFunctionTypeAttr().getValue());
-    }
-
-    mlir::StringAttr getSymNameAttribute() {
-      return mlir::StringAttr::get(getContext(), getSymName());
-    }
-
-    mlir::StringAttr getSymVisibilityAttribute() {
-      if (auto vis = getSymVisibility()) {
-        return mlir::StringAttr::get(getContext(), *vis);
-      }
-      return nullptr;
-    }
-
-    mlir::LogicalResult verify() {
-      if (!getSymNameAttr()) {
-        return emitOpError("requires a 'sym_name' attribute");
-      }
-
-      if (!getFunctionTypeAttr()) {
-        return emitOpError("requires a 'function_type' attribute");
-      }
-
-      if (!getBody().empty() && getBody().getBlocks().size() != 1) {
-        return emitOpError("expects exactly one block in the body region");
-      }
-
-      if (getArgAttrsAttr()) {
-        auto funcType = dyn_cast<mlir::FunctionType>(getFunctionTypeAttr().getValue()); // Updated to use TypeAttr
-        if (getArgAttrsAttr().size() != funcType.getInputs().size()) {
-          return emitOpError("number of argument attributes must match number of input types");
-        }
-      }
-
-      return mlir::success();
-    }
-  }];
-}
-
 def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
   let summary = "Declare a variable or array, type (integer or float), and optional size.";
   let arguments = (ins TypeAttr:$type, OptionalAttr<I64Attr>:$size);
@@ -174,6 +107,29 @@ def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
         return emitOpError("expects 0 or 1 operands");
       return llvm::success();
       }
+  }];
+}
+
+def Toy_ScopeOp : Op<Toy_Dialect, "scope"> {
+  let summary = "A scoping construct for local variables in the Toy dialect";
+  let description = "A scope operation that defines a region with a symbol table for local variables, nested within a function.";
+  let arguments = (ins Variadic<AnyType>:$operands);
+  let results = (outs Variadic<AnyType>:$results);
+  let regions = (region AnyRegion:$body);
+  let traits = [SymbolTable, AutomaticAllocationScope, OpAsmOpInterface];
+  let extraClassDeclaration = [{
+    mlir::LogicalResult verify() {
+      if (!getBody().empty()) {
+        if (getBody().getBlocks().size() != 1) {
+          return emitOpError("expects exactly one block in the body region");
+        }
+        mlir::Operation *terminator = getBody().front().getTerminator();
+        if (!terminator || !isa<toy::ExitOp>(terminator)) {
+          return emitOpError("expects toy.exit terminator");
+        }
+      }
+      return mlir::success();
+    }
   }];
 }
 
