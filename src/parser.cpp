@@ -441,8 +441,9 @@ namespace toy
         auto resultType = funcType.getNumResults() ? funcType.getResults()[0] : tyVoid;
 
         builder.create<mlir::func::CallOp>( loc, function, mlir::TypeRange{ resultType }, mlir::ValueRange{} );
-        // builder.create<mlir::func::CallOp>( printLoc, "__toy_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val }
-        // );
+
+        // example call w/ params: TODO (see assert(0) above.)
+        // builder.create<mlir::func::CallOp>( printLoc, "__toy_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val } );
     }
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
