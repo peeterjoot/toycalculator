@@ -341,9 +341,20 @@ namespace toy
         // Add a block to the ScopeOp's region
         auto &scopeBlock = scopeOp.getBody().emplaceBlock();
 
-        // Insert a default Toy::ExitOp terminator (with no operands), to be replaced later with an ExitOp that has operands if desired.
+        // Insert a default Toy::ExitOp terminator (with no operands, or default zero return for main).
+        // This will be replaced later with an ExitOp with the actual return code if desired.
         builder.setInsertionPointToStart( &scopeBlock );
-        builder.create<toy::ExitOp>( loc, mlir::ValueRange{} );
+//        auto returnType = func.getFunctionType().getResults();
+//        if ( !returnType.empty() )
+//        {
+//            auto zero =
+//                builder.create<mlir::arith::ConstantOp>( loc, returnType[0], builder.getIntegerAttr( returnType[0], 0 ) );
+//            builder.create<toy::ExitOp>( loc, mlir::ValueRange{ zero } );
+//        }
+//        else
+        //{
+            builder.create<toy::ExitOp>( loc, mlir::ValueRange{} );
+        //}
 
         // Reset insertion point for subsequent operations
         builder.setInsertionPointToStart( &scopeBlock );

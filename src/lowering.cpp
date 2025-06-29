@@ -129,10 +129,10 @@ namespace toy
             tyF32 = pr_builder.getF32Type();
             tyF64 = pr_builder.getF64Type();
 
-            auto ctx = pr_builder.getContext();
-            tyPtr = LLVM::LLVMPointerType::get( ctx );
+            auto context = pr_builder.getContext();
+            tyPtr = LLVM::LLVMPointerType::get( context );
 
-            tyVoid = LLVM::LLVMVoidType::get( ctx );
+            tyVoid = LLVM::LLVMVoidType::get( context );
         }
 
         unsigned preferredTypeAlignment( Operation* op, mlir::Type elemType )
@@ -286,8 +286,7 @@ namespace toy
             {
                 useModuleInsertionPoint ip( pr_module, pr_builder );
 
-                auto pr_printFuncF64Type =
-                    LLVM::LLVMFunctionType::get( tyVoid, { tyF64 }, false );
+                auto pr_printFuncF64Type = LLVM::LLVMFunctionType::get( tyVoid, { tyF64 }, false );
                 pr_printFuncF64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_f64",
                                                                        pr_printFuncF64Type, LLVM::Linkage::External );
             }
@@ -315,8 +314,7 @@ namespace toy
             {
                 useModuleInsertionPoint ip( pr_module, pr_builder );
 
-                auto printFuncStringType =
-                    LLVM::LLVMFunctionType::get( tyVoid, { tyI64, tyPtr }, false );
+                auto printFuncStringType = LLVM::LLVMFunctionType::get( tyVoid, { tyI64, tyPtr }, false );
                 pr_printFuncString = pr_builder.create<LLVM::LLVMFuncOp>(
                     pr_module.getLoc(), "__toy_print_string", printFuncStringType, LLVM::Linkage::External );
             }
@@ -330,46 +328,47 @@ namespace toy
             {
                 useModuleInsertionPoint ip( pr_module, pr_builder );
 
-                auto ctx = pr_builder.getContext();
+                auto context = pr_builder.getContext();
 
 
-                pr_diVOID = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                pr_diVOID = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
                                                               pr_builder.getStringAttr( "void" ), 0, 0 );
 
-                pr_diF32 = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                pr_diF32 = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
                                                              pr_builder.getStringAttr( "float" ), 32,
                                                              llvm::dwarf::DW_ATE_float );
 
-                pr_diF64 = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                pr_diF64 = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
                                                              pr_builder.getStringAttr( "double" ), 64,
                                                              llvm::dwarf::DW_ATE_float );
 
-                pr_diUNKNOWN = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                pr_diUNKNOWN = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
                                                                  pr_builder.getStringAttr( "unknown" ), 0, 0 );
 
 
-                pr_diI8 = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                pr_diI8 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
                                                             pr_builder.getStringAttr( "char" ), 8,
                                                             (unsigned)llvm::dwarf::DW_ATE_signed );
 
-                pr_diI16 = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                pr_diI16 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
                                                              pr_builder.getStringAttr( "short" ), 16,
                                                              (unsigned)llvm::dwarf::DW_ATE_signed );
 
-                pr_diI32 = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                pr_diI32 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
                                                              pr_builder.getStringAttr( "int" ), 32,
                                                              (unsigned)llvm::dwarf::DW_ATE_signed );
 
-                pr_diI64 = mlir::LLVM::DIBasicTypeAttr::get( ctx, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                pr_diI64 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
                                                              pr_builder.getStringAttr( "long" ), 64,
                                                              (unsigned)llvm::dwarf::DW_ATE_signed );
 
                 // Construct pr_module level DI state:
-                pr_fileAttr = mlir::LLVM::DIFileAttr::get( ctx, pr_driverState.filename, "." );
+                pr_fileAttr = mlir::LLVM::DIFileAttr::get( context, pr_driverState.filename, "." );
                 auto distinctAttr = mlir::DistinctAttr::create( pr_builder.getUnitAttr() );
                 pr_compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
-                    ctx, distinctAttr, llvm::dwarf::DW_LANG_C, pr_fileAttr, pr_builder.getStringAttr( COMPILER_NAME ),
-                    false, mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
+                    context, distinctAttr, llvm::dwarf::DW_LANG_C, pr_fileAttr,
+                    pr_builder.getStringAttr( COMPILER_NAME ), false, mlir::LLVM::DIEmissionKind::Full,
+                    mlir::LLVM::DINameTableKind::Default );
             }
 
             // Set data_layout,ident,target_triple:
@@ -444,9 +443,9 @@ namespace toy
                 paramTypes.push_back( getDIType( argType ) );
             }
 
-            auto ctx = pr_builder.getContext();
+            auto context = pr_builder.getContext();
 
-            return mlir::LLVM::DISubroutineTypeAttr::get( ctx, llvm::DINode::FlagZero, paramTypes );
+            return mlir::LLVM::DISubroutineTypeAttr::get( context, llvm::DINode::FlagZero, paramTypes );
         }
 
         void createFuncDebug( mlir::func::FuncOp funcOp )
@@ -455,13 +454,13 @@ namespace toy
             {
                 useModuleInsertionPoint ip( pr_module, pr_builder );
 
-                auto ctx = pr_builder.getContext();
+                auto context = pr_builder.getContext();
                 auto funcName = funcOp.getSymName().str();
 
                 auto subprogramType = createDISubroutineType( funcOp );
 
                 auto sub = mlir::LLVM::DISubprogramAttr::get(
-                    ctx, mlir::DistinctAttr::create( pr_builder.getUnitAttr() ), pr_compileUnitAttr, pr_fileAttr,
+                    context, mlir::DistinctAttr::create( pr_builder.getUnitAttr() ), pr_compileUnitAttr, pr_fileAttr,
                     pr_builder.getStringAttr( funcName ), pr_builder.getStringAttr( funcName ), pr_fileAttr, 1, 1,
                     mlir::LLVM::DISubprogramFlags::Definition, subprogramType, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{},
                     llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
@@ -515,7 +514,7 @@ namespace toy
         {
             if ( pr_driverState.wantDebug )
             {
-                auto ctx = pr_builder.getContext();
+                auto context = pr_builder.getContext();
 
                 allocaOp->setAttr( "bindc_name", pr_builder.getStringAttr( varName ) );
 
@@ -598,20 +597,20 @@ namespace toy
                 if ( arraySize > 1 )
                 {
                     // Create base type for array elements
-                    auto baseType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                    auto baseType = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
                                                                       pr_builder.getStringAttr( typeName ),
                                                                       elemStorageSizeInBits, dwType );
 
                     // Create subrange for array (count = arraySize, lowerBound = 0)
                     auto countAttr = mlir::IntegerAttr::get( tyI64, arraySize );
                     auto lowerBoundAttr = mlir::IntegerAttr::get( tyI64, 0 );
-                    auto subrange = mlir::LLVM::DISubrangeAttr::get( ctx, countAttr, lowerBoundAttr,
+                    auto subrange = mlir::LLVM::DISubrangeAttr::get( context, countAttr, lowerBoundAttr,
                                                                      /*upperBound=*/nullptr, /*stride=*/nullptr );
 
                     // Create array type
                     auto alignInBits = elemStorageSizeInBits;    // Alignment matches element size
                     diType = mlir::LLVM::DICompositeTypeAttr::get(
-                        ctx, llvm::dwarf::DW_TAG_array_type, pr_builder.getStringAttr( "" ), pr_fileAttr,
+                        context, llvm::dwarf::DW_TAG_array_type, pr_builder.getStringAttr( "" ), pr_fileAttr,
                         /*line=*/0, sub, baseType, mlir::LLVM::DIFlags::Zero, totalSizeInBits, alignInBits,
                         llvm::ArrayRef<mlir::LLVM::DINodeAttr>{ subrange },
                         /*dataLocation=*/nullptr, /*rank=*/nullptr, /*allocated=*/nullptr, /*associated=*/nullptr );
@@ -619,13 +618,13 @@ namespace toy
                 else
                 {
                     // Scalar type
-                    diType = mlir::LLVM::DIBasicTypeAttr::get( ctx, llvm::dwarf::DW_TAG_base_type,
+                    diType = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
                                                                pr_builder.getStringAttr( typeName ),
                                                                elemStorageSizeInBits, dwType );
                 }
 
                 diVar = mlir::LLVM::DILocalVariableAttr::get(
-                    ctx, sub, pr_builder.getStringAttr( varName ), pr_fileAttr, loc.getLine(),
+                    context, sub, pr_builder.getStringAttr( varName ), pr_fileAttr, loc.getLine(),
                     /*argNo=*/0, totalSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
 
                 pr_builder.setInsertionPointAfter( allocaOp );
@@ -832,8 +831,8 @@ namespace toy
         loweringContext& lState;
 
        public:
-        DeclareOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( toy::DeclareOp::getOperationName(), 1, context ), lState{ lState_ }
+        DeclareOpLowering( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
+            : ConversionPattern( toy::DeclareOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
@@ -899,8 +898,8 @@ namespace toy
         loweringContext& lState;
 
        public:
-        StringLiteralOpLowering( loweringContext& lState_, MLIRContext* ctx )
-            : ConversionPattern( toy::StringLiteralOp::getOperationName(), 1, ctx ), lState( lState_ )
+        StringLiteralOpLowering( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
+            : ConversionPattern( toy::StringLiteralOp::getOperationName(), benefit, context ), lState( lState_ )
         {
         }
 
@@ -935,8 +934,8 @@ namespace toy
         loweringContext& lState;
 
        public:
-        AssignOpLowering( loweringContext& lState_, MLIRContext* ctx )
-            : ConversionPattern( toy::AssignOp::getOperationName(), 1, ctx ), lState{ lState_ }
+        AssignOpLowering( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
+            : ConversionPattern( toy::AssignOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
@@ -1103,8 +1102,8 @@ namespace toy
         loweringContext& lState;
 
        public:
-        ComparisonOpLowering( loweringContext& lState_, MLIRContext* ctx )
-            : ConversionPattern( ToyOp::getOperationName(), 1, ctx ), lState{ lState_ }
+        ComparisonOpLowering( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
+            : ConversionPattern( ToyOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
@@ -1237,8 +1236,8 @@ namespace toy
         loweringContext& lState;
 
        public:
-        LoadOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( toy::LoadOp::getOperationName(), 1, context ), lState{ lState_ }
+        LoadOpLowering( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
+            : ConversionPattern( toy::LoadOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
@@ -1283,8 +1282,8 @@ namespace toy
         loweringContext& lState;
 
        public:
-        ExitOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( toy::ExitOp::getOperationName(), 1, context ), lState{ lState_ }
+        ExitOpLowering( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
+            : ConversionPattern( toy::ExitOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
@@ -1309,7 +1308,7 @@ namespace toy
                 }
                 else
                 {
-                    rewriter.create<LLVM::ReturnOp>( loc, ArrayRef<Value>{});
+                    rewriter.create<LLVM::ReturnOp>( loc, ArrayRef<Value>{} );
                 }
             }
             else if ( op->getNumOperands() == 1 )
@@ -1359,24 +1358,30 @@ namespace toy
         }
     };
 
-#if 0    // Now unused.
-    template <class toyOpType>
-    class LowerByDeletion : public ConversionPattern
+    class ScopeOpLowering : public ConversionPattern
     {
+       private:
+        loweringContext& lState;
+
        public:
-        LowerByDeletion( MLIRContext* context ) : ConversionPattern( toyOpType::getOperationName(), 1, context )
+        ScopeOpLowering( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
+            : ConversionPattern( toy::ScopeOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
         LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
                                        ConversionPatternRewriter& rewriter ) const override
         {
-            LLVM_DEBUG( llvm::dbgs() << "Lowering (by erase): " << *op << '\n' );
+            auto scopeOp = cast<toy::ScopeOp>( op );
+
+            // Inline the ScopeOp's region into the parent (mlir::func::FuncOp) region
+            mlir::Region* funcRegion = scopeOp->getParentRegion();
+            rewriter.inlineRegionBefore( scopeOp.getBody(), *funcRegion, funcRegion->end() );
+
             rewriter.eraseOp( op );
             return success();
         }
     };
-#endif
 
     // Lower toy.print to a call to __toy_print.
     class PrintOpLowering : public ConversionPattern
@@ -1385,8 +1390,8 @@ namespace toy
         loweringContext& lState;
 
        public:
-        PrintOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( toy::PrintOp::getOperationName(), 1, context ), lState{ lState_ }
+        PrintOpLowering( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
+            : ConversionPattern( toy::PrintOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
@@ -1415,8 +1420,8 @@ namespace toy
         loweringContext& lState;
 
        public:
-        NegOpLowering( loweringContext& lState_, MLIRContext* context )
-            : ConversionPattern( toy::NegOp::getOperationName(), 1, context ), lState{ lState_ }
+        NegOpLowering( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
+            : ConversionPattern( toy::NegOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
@@ -1466,8 +1471,8 @@ namespace toy
         loweringContext& lState;
 
        public:
-        BinaryOpLowering( loweringContext& lState_, MLIRContext* ctx )
-            : ConversionPattern( ToyBinaryOpType::getOperationName(), 1, ctx ), lState{ lState_ }
+        BinaryOpLowering( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
+            : ConversionPattern( ToyBinaryOpType::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
@@ -1598,8 +1603,8 @@ namespace toy
         loweringContext& lState;
 
        public:
-        ConstantOpLowering( loweringContext& lState_, MLIRContext* ctx )
-            : ConversionPattern( arith::ConstantOp::getOperationName(), 1, ctx ), lState{ lState_ }
+        ConstantOpLowering( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
+            : ConversionPattern( arith::ConstantOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
@@ -1656,11 +1661,12 @@ namespace toy
             loweringContext lState( module, *pDriverState );
             lState.createDICompileUnit();
 
-            auto ctx = lState.getContext();
+            auto context = lState.getContext();
             for ( auto funcOp : module.getBodyRegion().getOps<mlir::func::FuncOp>() )
             {
                 LLVM_DEBUG( {
-                    llvm::dbgs() << "Generating !DISubroutineType() for mlir::func::FuncOp: " << funcOp.getSymName() << "\n";
+                    llvm::dbgs() << "Generating !DISubroutineType() for mlir::func::FuncOp: " << funcOp.getSymName()
+                                 << "\n";
                 } );
                 lState.createFuncDebug( funcOp );
             }
@@ -1670,61 +1676,24 @@ namespace toy
             target1.addLegalDialect<LLVM::LLVMDialect>();
             target1.addIllegalOp<arith::ConstantOp>();
             target1.addIllegalOp<toy::DeclareOp, toy::AssignOp, toy::PrintOp, toy::AddOp, toy::SubOp, toy::MulOp,
-                                 toy::DivOp, toy::NegOp, toy::ExitOp>();
-            target1.addLegalOp<mlir::ModuleOp>();
-            target1.addLegalOp<mlir::func::FuncOp>();
-            target1.addLegalOp<mlir::func::CallOp>();
+                                 toy::DivOp, toy::NegOp, toy::ExitOp, toy::ScopeOp>();
+            target1.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp>();
 
             // Patterns for toy dialect and standard ops
-            RewritePatternSet patterns1( ctx );
+            RewritePatternSet patterns1( context );
 
-            // The operator ordering here doesn't matter, as there appears to be a graph walk to find all the operator
-            // nodes, and the order is based on that walk
-            patterns1.insert<DeclareOpLowering>( lState, ctx );
-            patterns1.insert<LoadOpLowering>( lState, ctx );
-            patterns1.insert<AddOpLowering>( lState, ctx );
-            patterns1.insert<SubOpLowering>( lState, ctx );
-            patterns1.insert<MulOpLowering>( lState, ctx );
-            patterns1.insert<DivOpLowering>( lState, ctx );
-            patterns1.insert<NegOpLowering>( lState, ctx );
-            patterns1.insert<LessOpLowering>( lState, ctx );
-            patterns1.insert<EqualOpLowering>( lState, ctx );
-            patterns1.insert<NotEqualOpLowering>( lState, ctx );
-            patterns1.insert<XorOpLowering>( lState, ctx );
-            patterns1.insert<AndOpLowering>( lState, ctx );
-            patterns1.insert<OrOpLowering>( lState, ctx );
-            patterns1.insert<LessEqualOpLowering>( lState, ctx );
-            patterns1.insert<PrintOpLowering>( lState, ctx );
-            patterns1.insert<ConstantOpLowering>( lState, ctx );
-            patterns1.insert<AssignOpLowering>( lState, ctx );
-            patterns1.insert<StringLiteralOpLowering>( lState, ctx );
-            patterns1.insert<ExitOpLowering>( lState, ctx );
+            patterns1.add<DeclareOpLowering, LoadOpLowering, AddOpLowering, SubOpLowering, MulOpLowering, DivOpLowering,
+                          NegOpLowering, LessOpLowering, EqualOpLowering, NotEqualOpLowering, XorOpLowering,
+                          AndOpLowering, OrOpLowering, LessEqualOpLowering, PrintOpLowering, ConstantOpLowering,
+                          AssignOpLowering, StringLiteralOpLowering>( lState, context, 2 );
+            patterns1.add<ScopeOpLowering>( lState, context, 1 );
+            patterns1.add<ExitOpLowering>( lState, context, 0 );
 
             arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns1 );
 
-            if ( failed( applyPartialConversion( module, target1, std::move( patterns1 ) ) ) )
+            if ( failed( applyFullConversion( module, target1, std::move( patterns1 ) ) ) )
             {
-                LLVM_DEBUG( llvm::dbgs() << "Toy Lowering: Stage I Conversion failed\n" );
-                signalPassFailure();
-                return;
-            }
-
-            LLVM_DEBUG( { llvm::dbgs() << "Toy Lowering: Stage I Conversion succesful.  Stage II:\n"; } );
-
-            ConversionTarget target2( getContext() );
-            target2.addLegalDialect<LLVM::LLVMDialect>();
-            target2.addLegalOp<mlir::ModuleOp>();
-            target2.addLegalOp<mlir::func::FuncOp>();
-            target2.addLegalOp<mlir::func::CallOp>();
-            target1.addIllegalOp<toy::ScopeOp>();
-
-            // Patterns for the final ScopeOp removal:
-            RewritePatternSet patterns2( ctx );
-            //patterns2.insert<ScopeOpLowering>( lState, ctx );
-
-            if ( failed( applyFullConversion( module, target2, std::move( patterns2 ) ) ) )
-            {
-                LLVM_DEBUG( llvm::dbgs() << "Toy Lowering: Stage II Conversion failed\n" );
+                LLVM_DEBUG( llvm::dbgs() << "Toy Lowering: Toy Op Conversion failed\n" );
                 signalPassFailure();
                 return;
             }
