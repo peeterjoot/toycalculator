@@ -46,6 +46,7 @@ with plain old assign, after first constructing a string literal object:
 * Parser support for functions with non-void return/params.
 * Grammar support for CALL(...) and assignment 'x = CALL FOO(...)'
 * Initial builder support for CALL (fails in lowering.)  Tried using mlir::func::CallOp, but that doesn't like my use of Toy::FuncOp instead of mlir::func::FuncOp.  I did that so that my function object had a symbol table for local variables, but it looks like a better approach would be to implement a ScopeOp that has the symbol table, and to then embed ScopeOp in a mlir::func::FuncOp region.
+* parser: Remove: lastOperator lastOp, and exitStartRule.  Instead put in a dummy exit when the scope is created and replace it later with one that has values if required.
 
 ## tag: V3
 

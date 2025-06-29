@@ -341,6 +341,11 @@ namespace toy
         // Add a block to the ScopeOp's region
         auto &scopeBlock = scopeOp.getBody().emplaceBlock();
 
+        // Insert a default Toy::ExitOp terminator (with no operands), to be replaced later with an ExitOp that has operands if desired.
+        builder.setInsertionPointToStart( &scopeBlock );
+        builder.create<toy::ExitOp>( loc, mlir::ValueRange{} );
+
+        // Reset insertion point for subsequent operations
         builder.setInsertionPointToStart( &scopeBlock );
 
         currentFuncName = funcName;
@@ -355,24 +360,6 @@ namespace toy
         auto func = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
 
         createScope( loc, func, ENTRY_SYMBOL_NAME );
-    }
-
-    void MLIRListener::exitStartRule( ToyParser::StartRuleContext *ctx )
-    {
-        if ( lastOp != lastOperator::exitOp )
-        {
-            // Empty ValueRange means we are building a toy.return with no
-            // operands:
-            builder.create<toy::ExitOp>( lastLocation, mlir::ValueRange{} );
-        }
-
-        builder.setInsertionPointToEnd( mod.getBody() );
-        if ( lastSemError != semantic_errors::not_an_error )
-        {
-            // don't care what the error was, since we already logged it to the
-            // console.  Just throw, avoiding future LLVM IR lowering:
-            throw exception_with_context( __FILE__, __LINE__, __func__, "semantic exception" );
-        }
     }
 
     void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
@@ -425,8 +412,6 @@ namespace toy
 
     void MLIRListener::enterCall( ToyParser::CallContext *ctx )
     {
-        // std::cout << ctx->getText() << '\n';
-        lastOp = lastOperator::callOp;
         auto loc = getLocation( ctx );
 
         auto function = ctx->IDENTIFIER()->getText();
@@ -452,7 +437,6 @@ namespace toy
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
     {
-        lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->IDENTIFIER()->getText();
 
@@ -461,7 +445,6 @@ namespace toy
 
     void MLIRListener::enterBoolDeclare( ToyParser::BoolDeclareContext *ctx )
     {
-        lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->IDENTIFIER()->getText();
         registerDeclaration( loc, varName, tyI1, ctx->arrayBoundsExpression() );
@@ -469,7 +452,6 @@ namespace toy
 
     void MLIRListener::enterIntDeclare( ToyParser::IntDeclareContext *ctx )
     {
-        lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->IDENTIFIER()->getText();
 
@@ -498,7 +480,6 @@ namespace toy
 
     void MLIRListener::enterFloatDeclare( ToyParser::FloatDeclareContext *ctx )
     {
-        lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->IDENTIFIER()->getText();
 
@@ -519,7 +500,6 @@ namespace toy
 
     void MLIRListener::enterStringDeclare( ToyParser::StringDeclareContext *ctx )
     {
-        lastOp = lastOperator::declareOp;
         auto loc = getLocation( ctx );
         auto varName = ctx->IDENTIFIER()->getText();
         ToyParser::ArrayBoundsExpressionContext *arrayBounds = ctx->arrayBoundsExpression();
@@ -530,7 +510,6 @@ namespace toy
 
     void MLIRListener::enterIfelifelse( ToyParser::IfelifelseContext *ctx )
     {
-        lastOp = lastOperator::ifOp;
         auto loc = getLocation( ctx );
 
         llvm::errs() << std::format( "{}NYI: {}\n", formatLocation( loc ), ctx->getText() );
@@ -540,7 +519,6 @@ namespace toy
 
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
     {
-        lastOp = lastOperator::printOp;
         auto loc = getLocation( ctx );
 
         mlir::Type varType;
@@ -604,28 +582,45 @@ namespace toy
     template <class Literal>
     void MLIRListener::processReturnLike( mlir::Location loc, Literal *lit, tNode *var, tNode *boolNode )
     {
-        if ( ( lit == nullptr ) && ( var == nullptr ) )
+        if ( !lit && !var )
         {
-            //  Create toy.return with no operands (empty ValueRange)
-            builder.create<toy::ExitOp>( loc, mlir::ValueRange{} );
+            return;
+        }
+
+        mlir::Value value;
+
+        auto s = buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                       lit ? lit->FLOAT_PATTERN() : nullptr, var,
+                                       nullptr,    // stringNode
+                                       loc, value );
+        assert( s.length() == 0 );
+
+
+        auto *currentBlock = builder.getInsertionBlock();
+        auto *parentOp = currentBlock->getParentOp();
+        if ( !isa<toy::ScopeOp>( parentOp ) )
+        {
+            throw exception_with_context(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}error: RETURN statement must be inside a toy.scope\n", formatLocation( loc ) ) );
+        }
+
+        if ( !currentBlock->empty() && isa<toy::ExitOp>( currentBlock->getTerminator() ) )
+        {
+            currentBlock->getTerminator()->erase();
+            builder.setInsertionPointToEnd( currentBlock );
+            builder.create<toy::ExitOp>( loc, mlir::ValueRange{ value } );
         }
         else
         {
-            mlir::Value value;
-
-            auto s = buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                           lit ? lit->FLOAT_PATTERN() : nullptr, var,
-                                           nullptr,    // stringNode
-                                           loc, value );
-            assert( s.length() == 0 );
-
-            builder.create<toy::ExitOp>( loc, mlir::ValueRange{ value } );
+            throw exception_with_context(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}error: Expected a dummy ExitOp to replace\n", formatLocation( loc ) ) );
         }
     }
 
     void MLIRListener::enterReturnStatement( ToyParser::ReturnStatementContext *ctx )
     {
-        lastOp = lastOperator::returnOp;
         auto loc = getLocation( ctx );
 
         auto lit = ctx->literal();
@@ -636,7 +631,6 @@ namespace toy
 
     void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )
     {
-        lastOp = lastOperator::exitOp;
         auto loc = getLocation( ctx );
 
         auto lit = ctx->numericLiteral();
@@ -647,7 +641,6 @@ namespace toy
 
     void MLIRListener::enterAssignment( ToyParser::AssignmentContext *ctx )
     {
-        lastOp = lastOperator::assignmentOp;
         assignmentTargetValid = true;
         auto loc = getLocation( ctx );
         currentVarName = ctx->IDENTIFIER()->getText();

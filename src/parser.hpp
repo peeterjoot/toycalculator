@@ -64,18 +64,6 @@ namespace toy
         unknown_error
     };
 
-    enum class lastOperator : int
-    {
-        notAnOp,
-        assignmentOp,
-        declareOp,
-        callOp,
-        exitOp,
-        ifOp,
-        printOp,
-        returnOp,
-    };
-
     enum class variable_state : int
     {
         undeclared,
@@ -109,7 +97,6 @@ namespace toy
         std::map<std::string, mlir::Operation*> funcByName;
         bool assignmentTargetValid{};
         bool hasErrors{};
-        lastOperator lastOp{ lastOperator::notAnOp };
 
         mlir::IntegerType tyI1;
         mlir::IntegerType tyI8;
@@ -184,8 +171,6 @@ namespace toy
         void processReturnLike( mlir::Location loc, Literal *lit, tNode *var, tNode *boolNode );
 
         void enterStartRule( ToyParser::StartRuleContext *ctx ) override;
-
-        void exitStartRule( ToyParser::StartRuleContext *ctx ) override;
 
         void enterIfelifelse( ToyParser::IfelifelseContext *ctx ) override;
 
