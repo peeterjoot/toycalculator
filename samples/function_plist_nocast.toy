@@ -1,4 +1,4 @@
-FUNCTION bar ( )
+FUNCTION bar ( INT64 w )
 {
     PRINT "In bar";
     RETURN;
@@ -6,8 +6,10 @@ FUNCTION bar ( )
 
 FUNCTION foo ( )
 {
+    INT64 v;
+    v = 3;
     PRINT "In foo";
-    CALL bar();
+    CALL bar( v );
     PRINT "Called bar";
     RETURN;
 };

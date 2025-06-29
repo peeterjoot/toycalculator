@@ -1,1 +1,7 @@
-Hello function codegen, but no calls.
+Hello functions.
+bar0
+bar1
+42
+0
+42
+Goodbye functions.

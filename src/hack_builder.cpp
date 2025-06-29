@@ -1,7 +1,7 @@
 /**
- * @file    parser.cpp
+ * @file    hack_builder.cpp
  * @author  Peeter Joot <peeterjoot@pm.me>
- * @brief   altlr4 parse tree listener and MLIR builder.
+ * @brief   Fake parser-listener/builder for simpler experiments.
  */
 #include <llvm/Support/Debug.h>
 #include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
@@ -18,7 +18,7 @@
 
 #include "ToyExceptions.hpp"
 #include "constants.hpp"
-#include "parser.hpp"
+#include "hack_builder.hpp"
 
 #define DEBUG_TYPE "toy-parser"
 
@@ -43,11 +43,9 @@ namespace toy
         auto &funcBlock = funcOp.getBody().front();
 
         toy::ScopeOp scopeOp{};
-        for ( auto &op : funcBlock )
-        {
-            if ( mlir::isa<toy::ScopeOp>( &op ) )
-            {
-                scopeOp = mlir::dyn_cast<toy::ScopeOp>( &op );
+        for (auto &op : funcBlock) {
+            if (mlir::isa<toy::ScopeOp>(&op)) {
+                scopeOp = mlir::dyn_cast<toy::ScopeOp>(&op);
 #if 0
                 LLVM_DEBUG({
                     llvm::errs() << std::format("Found toy::ScopeOp while looking for symbol {}\n", varName);
@@ -59,7 +57,7 @@ namespace toy
         }
 
         assert( scopeOp );
-#if 1
+#if 0
         LLVM_DEBUG( {
             llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
             scopeOp->dump();
@@ -83,15 +81,10 @@ namespace toy
         return declareOp;
     }
 
-    inline mlir::Location MLIRListener::getLocation( antlr4::ParserRuleContext *ctx )
+    inline mlir::Location MLIRListener::getLocation( void *ctx )
     {
         size_t line = 1;
         size_t col = 0;
-        if ( ctx )
-        {
-            line = ctx->getStart()->getLine();
-            col = ctx->getStart()->getCharPositionInLine();
-        }
 
         auto loc = mlir::FileLineColLoc::get( builder.getStringAttr( filename ), line, col + 1 );
         lastLocation = loc;
@@ -208,10 +201,11 @@ namespace toy
     }
 
     // \retval true if error
-    inline void MLIRListener::buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
-                                                    tNode *variableNode, tNode *stringNode, mlir::Location loc,
-                                                    mlir::Value &value, std::string &s )
+    inline std::string MLIRListener::buildUnaryExpression( tNode *booleanNode, std::string integerNode, tNode *floatNode,
+                                                           tNode *variableNode, tNode *stringNode, mlir::Location loc,
+                                                           mlir::Value &value )
     {
+#if 0
         if ( booleanNode )
         {
             int val;
@@ -234,11 +228,14 @@ namespace toy
 
             value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 1 );
         }
-        else if ( integerNode )
+        else
+#endif
+            if ( integerNode != "" )
         {
-            int64_t val = std::stoll( integerNode->getText() );
+            int64_t val = std::stoll( integerNode );
             value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
         }
+#if 0
         else if ( floatNode )
         {
             double val = std::stod( floatNode->getText() );
@@ -280,15 +277,19 @@ namespace toy
         }
         else if ( stringNode )
         {
-            s = stripQuotes( stringNode->getText() );
+            return stripQuotes( stringNode->getText() );
         }
         else
         {
             throw exception_with_context( __FILE__, __LINE__, __func__,
                                           std::format( "{}error: Invalid operand\n", formatLocation( loc ) ) );
         }
+#endif
+
+        return std::string();
     }
 
+#if 0
     // \retval true if error
     inline bool MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                                    ToyParser::ArrayBoundsExpressionContext *arrayBounds )
@@ -314,14 +315,12 @@ namespace toy
         if ( arraySize )
         {
             auto sizeAttr = builder.getI64IntegerAttr( arraySize );
-            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), sizeAttr, /*parameter=*/nullptr,
-                                                       nullptr );
+            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), sizeAttr );
             dcl->setAttr( "sym_name", strAttr );
         }
         else
         {
-            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr, /*parameter=*/nullptr,
-                                                       nullptr );
+            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr );
             dcl->setAttr( "sym_name", strAttr );
         }
 
@@ -330,6 +329,7 @@ namespace toy
 
         return false;
     }
+#endif
 
     MLIRListener::MLIRListener( const std::string &_filename )
         : filename( _filename ),
@@ -352,8 +352,196 @@ namespace toy
         auto ctx = builder.getContext();
         tyVoid = mlir::LLVM::LLVMVoidType::get( ctx );
         tyPtr = mlir::LLVM::LLVMPointerType::get( ctx );
+
+        enterStartRule();
     }
 
+    // call_with_param_referenced
+    void MLIRListener::enterStartRule()
+    {
+        auto loc = getLocation();
+
+        auto funcType = builder.getFunctionType( {}, tyI32 );
+        auto funcOp = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
+
+        std::vector<std::string> paramNames;
+        createScope( loc, funcOp, ENTRY_SYMBOL_NAME, paramNames );
+
+#if 0
+        FUNCTION bar ( INT16 w )
+        {
+            PRINT w;
+            RETURN;
+        };
+
+        CALL bar( 3 );
+
+
+        "builtin.module"() ({
+          "func.func"() <{function_type = (i16) -> (), sym_name = "bar", sym_visibility = "private"}> ({
+          ^bb0(%arg0: i16):
+            "toy.scope"() ({
+              "toy.declare"() <{param_number = 0 : i64, parameter, type = i16}> {sym_name = "w"} : () -> ()
+              %3 = "toy.load"() <{var_name = @w}> : () -> i16
+              "toy.print"(%3) : (i16) -> ()
+              "toy.return"() : () -> ()
+            }) : () -> ()
+            "toy.yield"() : () -> ()
+          }) : () -> ()
+          "func.func"() <{function_type = () -> i32, sym_name = "main"}> ({
+            "toy.scope"() ({
+              %0 = "arith.constant"() <{value = 0 : i32}> : () -> i32
+              %1 = "arith.constant"() <{value = 3 : i64}> : () -> i64
+              %2 = "arith.trunci"(%1) : (i64) -> i16
+              "func.call"(%2) <{callee = @bar}> : (i16) -> ()
+              "toy.return"(%0) : (i32) -> ()
+            }) : () -> ()
+            "toy.yield"() : () -> ()
+          }) : () -> ()
+        }) : () -> ()
+
+#endif
+
+        // void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
+        {
+            mainIP = builder.saveInsertionPoint();
+
+            builder.setInsertionPointToStart( mod.getBody() );
+
+            std::string funcName = "bar";
+
+            std::vector<mlir::Type> returns;
+
+            std::vector<mlir::Type> paramTypes;
+            std::vector<std::string> paramNames;
+
+            {
+                auto paramType = parseScalarType( "INT16" );
+                auto paramName = "w";
+                paramTypes.push_back( paramType );
+                paramNames.push_back( paramName );
+
+                setVarState( funcName, paramName, variable_state::assigned );
+            }
+
+            std::vector<mlir::NamedAttribute> attrs;
+            attrs.push_back(
+                mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
+
+            auto funcType = builder.getFunctionType( paramTypes, returns );
+            auto funcOp = builder.create<mlir::func::FuncOp>( loc, funcName, funcType, attrs );
+            createScope( loc, funcOp, funcName, paramNames );
+
+
+            std::string varName = "w";
+            auto declareOp = lookupDeclareForVar( varName );
+
+            mlir::Type elemType = declareOp.getTypeAttr().getValue();
+
+            mlir::Type varType = elemType;
+
+            auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+            auto value = builder.create<toy::LoadOp>( loc, varType, symRef );
+            builder.create<toy::PrintOp>( loc, value );
+
+            builder.restoreInsertionPoint( mainIP );
+        }
+
+        //void MLIRListener::enterCall( ToyParser::CallContext *ctx )
+        {
+            auto funcName = "bar";
+            auto op = funcByName[funcName];
+            auto funcOp = mlir::dyn_cast<mlir::func::FuncOp>( op );
+            auto funcType = funcOp.getFunctionType();
+            std::vector<mlir::Value> parameters;
+
+            {
+                int i = 0;
+
+                {
+                    mlir::Value value;
+
+                    buildUnaryExpression( nullptr, "3", nullptr, nullptr, nullptr, loc, value );
+
+                    value = castOpIfRequired( loc, value, funcType.getInputs()[i] );
+                    parameters.push_back( value );
+                    i++;
+                }
+            }
+
+            mlir::TypeRange resultTypes = funcType.getResults();
+
+            builder.create<mlir::func::CallOp>( loc, funcName, resultTypes, parameters );
+        }
+    }
+
+    // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
+    // uses arith dialect operations instead of LLVM dialect
+    mlir::Value MLIRListener::castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType )
+    {
+        if ( value.getType() != desiredType )
+        {
+            auto valType = value.getType();
+
+            if ( valType.isF64() )
+            {
+                if ( mlir::isa<mlir::IntegerType>( desiredType ) )
+                {
+                    value = builder.create<mlir::arith::FPToSIOp>( loc, desiredType, value );
+                }
+                else if ( desiredType.isF32() )
+                {
+                    value = builder.create<mlir::LLVM::FPExtOp>( loc, desiredType, value );
+                }
+            }
+            else if ( valType.isF32() )
+            {
+                if ( mlir::isa<mlir::IntegerType>( desiredType ) )
+                {
+                    value = builder.create<mlir::arith::FPToSIOp>( loc, desiredType, value );
+                }
+                else if ( desiredType.isF64() )
+                {
+                    value = builder.create<mlir::LLVM::FPExtOp>( loc, desiredType, value );
+                }
+            }
+            else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
+            {
+                auto vwidth = viType.getWidth();
+                if ( mlir::isa<mlir::FloatType>( desiredType ) )
+                {
+                    if ( vwidth == 1 )
+                    {
+                        value = builder.create<mlir::arith::UIToFPOp>( loc, desiredType, value );
+                    }
+                    else
+                    {
+                        value = builder.create<mlir::arith::SIToFPOp>( loc, desiredType, value );
+                    }
+                }
+                else if ( auto miType = mlir::cast<mlir::IntegerType>( desiredType ) )
+                {
+                    // boolr: mwidth == 32, vwidth == 1
+                    auto mwidth = miType.getWidth();
+                    if ( ( vwidth == 1 ) && ( mwidth != 1 ) )
+                    {
+                        // widen bool to integer using unsigned extension:
+                        value = builder.create<mlir::arith::ExtUIOp>( loc, desiredType, value );
+                    }
+                    else if ( vwidth > mwidth )
+                    {
+                        value = builder.create<mlir::arith::TruncIOp>( loc, desiredType, value );
+                    }
+                    else if ( vwidth < mwidth )
+                    {
+                        value = builder.create<mlir::arith::ExtSIOp>( loc, desiredType, value );
+                    }
+                }
+            }
+        }
+
+        return value;
+    }
     void MLIRListener::createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName,
                                     const std::vector<std::string> &paramNames )
     {
@@ -450,18 +638,7 @@ namespace toy
         currentFuncName = funcName;
         funcByName[currentFuncName] = func;
     }
-
-    void MLIRListener::enterStartRule( ToyParser::StartRuleContext *ctx )
-    {
-        auto loc = getLocation( nullptr );
-
-        auto funcType = builder.getFunctionType( {}, tyI32 );
-        auto funcOp = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
-
-        std::vector<std::string> paramNames;
-        createScope( loc, funcOp, ENTRY_SYMBOL_NAME, paramNames );
-    }
-
+#if 0
     void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
     {
         auto loc = getLocation( ctx );
@@ -480,15 +657,15 @@ namespace toy
         }
 
         std::vector<mlir::Type> paramTypes;
-        std::vector<std::string> paramNames;
+        std::vector<mlir::DictionaryAttr> paramAttrs;
         for ( auto *paramCtx : ctx->parameterTypeAndName() )
         {
             auto paramType = parseScalarType( paramCtx->scalarType()->getText() );
             auto paramName = paramCtx->IDENTIFIER()->getText();
             paramTypes.push_back( paramType );
-            paramNames.push_back( paramName );
-
-            setVarState( funcName, paramName, variable_state::assigned );
+            paramAttrs.push_back( mlir::DictionaryAttr::get(
+                builder.getContext(),
+                { { builder.getStringAttr( "sym_name" ), builder.getStringAttr( paramName ) } } ) );
         }
 
         std::vector<mlir::NamedAttribute> attrs;
@@ -496,8 +673,8 @@ namespace toy
             mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
 
         auto funcType = builder.getFunctionType( paramTypes, returns );
-        auto funcOp = builder.create<mlir::func::FuncOp>( loc, funcName, funcType, attrs );
-        createScope( loc, funcOp, funcName, paramNames );
+        auto funcOp = builder.create<mlir::func::FuncOp>( loc, funcName, funcType, attrs, paramAttrs );
+        createScope( loc, funcOp, funcName );
     }
 
     void MLIRListener::exitFunction( ToyParser::FunctionContext *ctx )
@@ -510,58 +687,31 @@ namespace toy
         builder.restoreInsertionPoint( mainIP );
     }
 
-    mlir::Value MLIRListener::handleCall( ToyParser::CallContext *ctx )
+    void MLIRListener::enterCall( ToyParser::CallContext *ctx )
     {
         auto loc = getLocation( ctx );
-        auto funcName = ctx->IDENTIFIER()->getText();
-        auto op = funcByName[funcName];
-        auto funcOp = mlir::dyn_cast<mlir::func::FuncOp>( op );
-        auto funcType = funcOp.getFunctionType();
-        std::vector<mlir::Value> parameters;
+
+        auto function = ctx->IDENTIFIER()->getText();
+        std::vector<mlir::Operation *> parameters;
         if ( auto params = ctx->parameterList() )
         {
-            int i = 0;
-
-            auto psz = params->parameter().size();
-            auto fsz = funcType.getInputs().size();
-            assert( psz == fsz );
-
             for ( ToyParser::ParameterContext *p : params->parameter() )
             {
-                std::string paramText = p->getText();
-                std::cout << std::format( "CALL function {}: param: {}\n", funcName, paramText );
-
-                mlir::Value value;
-                auto lit = p->literal();
-
-                std::string s;
-                buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                      lit ? lit->FLOAT_PATTERN() : nullptr, p->IDENTIFIER(),
-                                      lit ? lit->STRING_PATTERN() : nullptr, loc, value, s );
-
-                assert( s.length() == 0 );    // for StringNode.  Want to support passing string literals (not just to
-                                              // PRINT builtin), but not now.
-
-                value = castOpIfRequired( loc, value, funcType.getInputs()[i] );
-                parameters.push_back( value );
-                i++;
+                std::cout << std::format( "param: {}\n", p->getText() );
+                assert( 0 );
             }
         }
 
-        mlir::TypeRange resultTypes = funcType.getResults();
+        auto op = funcByName[function];
+        auto funcOp = mlir::dyn_cast<mlir::func::FuncOp>( op );
+        auto funcType = funcOp.getFunctionType();
+        auto resultType = funcType.getNumResults() ? funcType.getResults()[0] : tyVoid;
 
-        auto callOp = builder.create<toy::CallOp>( loc, resultTypes, funcName, parameters );
+        builder.create<mlir::func::CallOp>( loc, function, mlir::TypeRange{ resultType }, mlir::ValueRange{} );
 
-        // Return the first result (or null for void calls)
-        return resultTypes.empty() ? mlir::Value{} : callOp.getResults()[0];
-    }
-
-    void MLIRListener::enterCall( ToyParser::CallContext *ctx )
-    {
-        if ( callIsHandled )
-            return;
-
-        handleCall( ctx );
+        // example call w/ params: TODO (see assert(0) above.)
+        // builder.create<mlir::func::CallOp>( printLoc, "__toy_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val }
+        // );
     }
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
@@ -652,27 +802,6 @@ namespace toy
 
         mlir::Type varType;
 
-#if 0
-        LLVM_DEBUG( {
-            llvm::errs() << "Scope IR before toy::PrintOp creation:\n";
-            builder.getInsertionBlock()->getParentOp()->dump();
-
-            llvm::errs() << "Current insertion block:\n";
-            builder.getInsertionBlock()->dump();
-
-            auto insertionPoint = builder.getInsertionPoint();
-            if ( insertionPoint != builder.getInsertionBlock()->end() )
-            {
-                llvm::errs() << "Insertion point is after operation:\n";
-                ( *insertionPoint ).dump();    // Dereference the iterator to get the Operation*
-            }
-            else
-            {
-                llvm::errs() << "Insertion point is at the end of the block\n";
-            }
-        } );
-#endif
-
         auto varNameObject = ctx->IDENTIFIER();
         if ( varNameObject )
         {
@@ -729,74 +858,6 @@ namespace toy
         }
     }
 
-    // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
-    // uses arith dialect operations instead of LLVM dialect
-    mlir::Value MLIRListener::castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType )
-    {
-        if ( value.getType() != desiredType )
-        {
-            auto valType = value.getType();
-
-            if ( valType.isF64() )
-            {
-                if ( mlir::isa<mlir::IntegerType>( desiredType ) )
-                {
-                    value = builder.create<mlir::arith::FPToSIOp>( loc, desiredType, value );
-                }
-                else if ( desiredType.isF32() )
-                {
-                    value = builder.create<mlir::LLVM::FPExtOp>( loc, desiredType, value );
-                }
-            }
-            else if ( valType.isF32() )
-            {
-                if ( mlir::isa<mlir::IntegerType>( desiredType ) )
-                {
-                    value = builder.create<mlir::arith::FPToSIOp>( loc, desiredType, value );
-                }
-                else if ( desiredType.isF64() )
-                {
-                    value = builder.create<mlir::LLVM::FPExtOp>( loc, desiredType, value );
-                }
-            }
-            else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
-            {
-                auto vwidth = viType.getWidth();
-                if ( mlir::isa<mlir::FloatType>( desiredType ) )
-                {
-                    if ( vwidth == 1 )
-                    {
-                        value = builder.create<mlir::arith::UIToFPOp>( loc, desiredType, value );
-                    }
-                    else
-                    {
-                        value = builder.create<mlir::arith::SIToFPOp>( loc, desiredType, value );
-                    }
-                }
-                else if ( auto miType = mlir::cast<mlir::IntegerType>( desiredType ) )
-                {
-                    // boolr: mwidth == 32, vwidth == 1
-                    auto mwidth = miType.getWidth();
-                    if ( ( vwidth == 1 ) && ( mwidth != 1 ) )
-                    {
-                        // widen bool to integer using unsigned extension:
-                        value = builder.create<mlir::arith::ExtUIOp>( loc, desiredType, value );
-                    }
-                    else if ( vwidth > mwidth )
-                    {
-                        value = builder.create<mlir::arith::TruncIOp>( loc, desiredType, value );
-                    }
-                    else if ( vwidth < mwidth )
-                    {
-                        value = builder.create<mlir::arith::ExtSIOp>( loc, desiredType, value );
-                    }
-                }
-            }
-        }
-
-        return value;
-    }
-
     template <class Literal>
     void MLIRListener::processReturnLike( mlir::Location loc, Literal *lit, tNode *var, tNode *boolNode )
     {
@@ -805,9 +866,16 @@ namespace toy
             return;
         }
 
+        mlir::Value value;
+
+        auto s = buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                       lit ? lit->FLOAT_PATTERN() : nullptr, var,
+                                       nullptr,    // stringNode
+                                       loc, value );
+        assert( s.length() == 0 );
+
         // Handle the dummy ReturnOp originally inserted in the FuncOp's block
         auto *currentBlock = builder.getInsertionBlock();
-        assert( !currentBlock->empty() );
         auto *parentOp = currentBlock->getParentOp();
         if ( !isa<toy::ScopeOp>( parentOp ) )
         {
@@ -817,45 +885,122 @@ namespace toy
         }
 
         auto func = parentOp->getParentOfType<mlir::func::FuncOp>();
+        auto *funcBlock = &*func.getBody().begin();
         auto returnType = func.getFunctionType().getResults();
 
-        assert( isa<toy::ReturnOp>( currentBlock->getTerminator() ) );
-
-        // Erase existing toy::ReturnOp and its constant
-        mlir::Operation *existingExit = currentBlock->getTerminator();
-        mlir::Operation *constantOp{};
-        if ( existingExit->getNumOperands() > 0 )
+        // Erase existing mlir::func::ReturnOp and its constant
+        if ( !funcBlock->empty() && isa<mlir::func::ReturnOp>( funcBlock->getTerminator() ) )
         {
-            constantOp = existingExit->getOperand( 0 ).getDefiningOp();
-        }
-        existingExit->erase();
+            mlir::Operation *existingExit = funcBlock->getTerminator();
+            mlir::Operation *constantOp{};
+            if ( existingExit->getNumOperands() > 0 )
+            {
+                constantOp = existingExit->getOperand( 0 ).getDefiningOp();
+            }
+            existingExit->erase();
+            if ( constantOp && mlir::isa<mlir::arith::ConstantOp>( constantOp ) )
+            {
+                constantOp->erase();
+            }
 
-        if ( constantOp && mlir::isa<mlir::arith::ConstantOp>( constantOp ) )
+            // Set insertion point to func::FuncOp block
+            builder.setInsertionPointToEnd( funcBlock );
+
+            // Handle empty RETURN statement
+            if ( !lit && !var && !boolNode )
+            {
+                if ( !returnType.empty() )
+                {
+                    auto zero = builder.create<mlir::arith::ConstantOp>( loc, returnType[0],
+                                                                         builder.getIntegerAttr( returnType[0], 0 ) );
+                    builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{ zero } );
+                }
+                else
+                {
+                    builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{} );
+                }
+                return;
+            }
+
+            // Build return expression
+            mlir::Value value;
+            auto s = buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                           lit ? lit->FLOAT_PATTERN() : nullptr, var, nullptr, loc, value );
+            assert( s.length() == 0 );
+
+            // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
+            // uses arith dialect operations instead of LLVM dialect
+            if ( !returnType.empty() && value.getType() != returnType[0] )
+            {
+                auto valType = value.getType();
+                auto elemReturnType = returnType[0];
+
+                if ( valType.isF64() )
+                {
+                    if ( mlir::isa<mlir::IntegerType>( elemReturnType ) )
+                    {
+                        value = builder.create<mlir::arith::FPToSIOp>( loc, elemReturnType, value );
+                    }
+                    else if ( elemReturnType.isF32() )
+                    {
+                        value = builder.create<mlir::LLVM::FPExtOp>( loc, elemReturnType, value );
+                    }
+                }
+                else if ( valType.isF32() )
+                {
+                    if ( mlir::isa<mlir::IntegerType>( elemReturnType ) )
+                    {
+                        value = builder.create<mlir::arith::FPToSIOp>( loc, elemReturnType, value );
+                    }
+                    else if ( elemReturnType.isF64() )
+                    {
+                        value = builder.create<mlir::LLVM::FPExtOp>( loc, elemReturnType, value );
+                    }
+                }
+                else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
+                {
+                    auto vwidth = viType.getWidth();
+                    if ( mlir::isa<mlir::FloatType>( elemReturnType ) )
+                    {
+                        if ( vwidth == 1 )
+                        {
+                            value = builder.create<mlir::arith::UIToFPOp>( loc, elemReturnType, value );
+                        }
+                        else
+                        {
+                            value = builder.create<mlir::arith::SIToFPOp>( loc, elemReturnType, value );
+                        }
+                    }
+                    else if ( auto miType = mlir::cast<mlir::IntegerType>( elemReturnType ) )
+                    {
+                        // boolr: mwidth == 32, vwidth == 1
+                        auto mwidth = miType.getWidth();
+                        if ( (vwidth == 1) && (mwidth != 1) )
+                        {
+                            // widen bool to integer using unsigned extension:
+                            value = builder.create<mlir::arith::ExtUIOp>( loc, elemReturnType, value );
+                        }
+                        else if ( vwidth > mwidth )
+                        {
+                            value = builder.create<mlir::arith::TruncIOp>( loc, elemReturnType, value );
+                        }
+                        else if ( vwidth < mwidth )
+                        {
+                            value = builder.create<mlir::arith::ExtSIOp>( loc, elemReturnType, value );
+                        }
+                    }
+                }
+            }
+
+            // Create new func::ReturnOp
+            builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{ value } );
+        }
+        else
         {
-            constantOp->erase();
+            throw exception_with_context(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}error: Expected a dummy mlir::func::ReturnOp to replace\n", formatLocation( loc ) ) );
         }
-
-        // Set insertion point to func::FuncOp block
-        builder.setInsertionPointToEnd( currentBlock );
-
-        mlir::Value value;
-
-        std::string s;
-        buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr, lit ? lit->FLOAT_PATTERN() : nullptr,
-                              var,
-                              nullptr,    // stringNode
-                              loc, value, s );
-        assert( s.length() == 0 );
-
-        // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
-        // uses arith dialect operations instead of LLVM dialect
-        if ( !returnType.empty() )
-        {
-            value = castOpIfRequired( loc, value, returnType[0] );
-        }
-
-        // Create new ReturnOp with user specified value:
-        builder.create<toy::ReturnOp>( loc, mlir::ValueRange{ value } );
     }
 
     void MLIRListener::enterReturnStatement( ToyParser::ReturnStatementContext *ctx )
@@ -896,12 +1041,6 @@ namespace toy
             assignmentTargetValid = false;
         }
         currentAssignLoc = loc;
-        callIsHandled = false;
-    }
-
-    void MLIRListener::exitAssignment( ToyParser::AssignmentContext *ctx )
-    {
-        callIsHandled = false;
     }
 
     void MLIRListener::enterAssignmentExpression( ToyParser::AssignmentExpressionContext *ctx )
@@ -927,17 +1066,9 @@ namespace toy
 
             auto lit = ctx->literal();
 
-            if ( auto call = ctx->call() )
-            {
-                callIsHandled = true;
-                lhsValue = handleCall( call );
-            }
-            else
-            {
-                buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+            s = buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
                                       lit ? lit->FLOAT_PATTERN() : nullptr, ctx->IDENTIFIER(),
-                                      lit ? lit->STRING_PATTERN() : nullptr, loc, lhsValue, s );
-            }
+                                      lit ? lit->STRING_PATTERN() : nullptr, loc, lhsValue );
 
             resultValue = lhsValue;
             if ( auto unaryOp = ctx->unaryOperator() )
@@ -968,20 +1099,20 @@ namespace toy
             auto opText = ctx->binaryOperator()->getText();
 
             auto llit = lhs->numericLiteral();
-            buildUnaryExpression( nullptr,    // booleanNode
-                                  llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
-                                  lhs->IDENTIFIER(),
-                                  nullptr,    // stringNode
-                                  loc, lhsValue, s );
+            s = buildUnaryExpression( nullptr,    // booleanNode
+                                      llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
+                                      lhs->IDENTIFIER(),
+                                      nullptr,    // stringNode
+                                      loc, lhsValue );
             assert( s.length() == 0 );
 
             mlir::Value rhsValue;
             auto rlit = rhs->numericLiteral();
-            buildUnaryExpression( nullptr,    // booleanNode
-                                  rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
-                                  rhs->IDENTIFIER(),
-                                  nullptr,    // stringNode
-                                  loc, rhsValue, s );
+            s = buildUnaryExpression( nullptr,    // booleanNode
+                                      rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
+                                      rhs->IDENTIFIER(),
+                                      nullptr,    // stringNode
+                                      loc, rhsValue );
             assert( s.length() == 0 );
 
             // Create the binary operator (supports +, -, *, /)
@@ -1076,6 +1207,7 @@ namespace toy
         setVarState( currentFuncName, currentVarName, variable_state::assigned );
         currentVarName.clear();
     }
+#endif
 }    // namespace toy
 
 // vim: et ts=4 sw=4

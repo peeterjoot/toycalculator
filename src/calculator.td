@@ -27,85 +27,30 @@ def Toy_Dialect : Dialect {
   let cppNamespace = "toy";
 }
 
-def Toy_FuncOp : Op<Toy_Dialect, "func", [FunctionOpInterface]> {
-  let summary = "Function operation";
-  let description = "A function operation.  Designed to mimic mlir::func::FuncOp, but with a symbol table for local variables.";
-
-  let arguments = (ins
-    StrAttr:$sym_name,
-    TypeAttr:$function_type,
-    OptionalAttr<ArrayAttr>:$argAttrs,
-    OptionalAttr<StrAttr>:$sym_visibility
-  );
-
-  let results = (outs);
-  let regions = (region AnyRegion:$body);
-  let traits = [SymbolTable, AutomaticAllocationScope,
-                //IsIsolatedFromAbove,
-                OpAsmOpInterface, Symbol];
-  let extraClassDeclaration = [{
-    mlir::Block *addEntryBlock() {
-      assert(getBody().empty() && "Function already has an entry block!");
-      mlir::Block &entry = getBody().emplaceBlock();
-      auto type = dyn_cast<mlir::FunctionType>(getFunctionTypeAttr().getValue());
-      auto locs = llvm::SmallVector<mlir::Location>(type.getInputs().size(), getLoc());
-      entry.addArguments(type.getInputs(), locs);
-      return &entry;
-    }
-
-    // these three are for mlir::func::FuncOp compatibility -- but may not be needed:
-    mlir::FunctionType getFunctionTypeAttrValue() {
-      return dyn_cast<mlir::FunctionType>(getFunctionTypeAttr().getValue());
-    }
-
-    mlir::StringAttr getSymNameAttribute() {
-      return mlir::StringAttr::get(getContext(), getSymName());
-    }
-
-    mlir::StringAttr getSymVisibilityAttribute() {
-      if (auto vis = getSymVisibility()) {
-        return mlir::StringAttr::get(getContext(), *vis);
-      }
-      return nullptr;
-    }
-
-    mlir::LogicalResult verify() {
-      if (!getSymNameAttr()) {
-        return emitOpError("requires a 'sym_name' attribute");
-      }
-
-      if (!getFunctionTypeAttr()) {
-        return emitOpError("requires a 'function_type' attribute");
-      }
-
-      if (!getBody().empty() && getBody().getBlocks().size() != 1) {
-        return emitOpError("expects exactly one block in the body region");
-      }
-
-      if (getArgAttrsAttr()) {
-        auto funcType = dyn_cast<mlir::FunctionType>(getFunctionTypeAttr().getValue()); // Updated to use TypeAttr
-        if (getArgAttrsAttr().size() != funcType.getInputs().size()) {
-          return emitOpError("number of argument attributes must match number of input types");
-        }
-      }
-
-      return mlir::success();
-    }
-  }];
-}
-
 def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
-  let summary = "Declare a variable or array, type (integer or float), and optional size.";
-  let arguments = (ins TypeAttr:$type, OptionalAttr<I64Attr>:$size);
+  let summary = "Declare a parameter, variable or array, type (integer or float), and optional size.";
+  let description = [{
+    Declares a variable (scalar or array) or function parameter with a name and type.
+    For parameters, the `parameter` attribute is set, and `param_number` indicates the parameter index.
+  }];
+  let arguments = (ins TypeAttr:$type, OptionalAttr<I64Attr>:$size, OptionalAttr<UnitAttr>:$parameter, OptionalAttr<I64Attr>:$param_number);
   let results = (outs);
   let traits = [Symbol];
 
   let extraClassDeclaration = [{
     mlir::StringAttr getSymNameAttr() { return mlir::dyn_cast<mlir::StringAttr>( getOperation()->getAttr("sym_name") ); }
 
+    bool isParameter() { return getOperation()->hasAttr("parameter"); }
+
     mlir::LogicalResult verify() {
       if (!getSymNameAttr()) {
-        return emitOpError("requires a 'sym_name' attribute of type StringAttr");
+        return emitOpError("requires a 'sym_name' attribute of type StringAttr.");
+      }
+      if (isParameter() && !getParamNumberAttr()) {
+        return emitOpError("parameter declarations require a 'param_number' attribute.");
+      }
+      if (!isParameter() && getParamNumberAttr()) {
+        return emitOpError("non-parameter declarations cannot have a 'param_number' attribute.");
       }
       return mlir::success();
     }
@@ -120,61 +65,71 @@ def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
   let summary = "Assign a value to a variable by symbol reference.";
   let arguments = (ins SymbolRefAttr:$var_name, AnyType:$value);
   let results = (outs);
-//  let hasVerifier = 1;
-//  let extraClassDeclaration = [{
-//    mlir::SymbolRefAttr getVarName() {
-//      return getVarNameAttr();
-//    }
-//    mlir::LogicalResult verify() {
-//      if (!getVarName()) {
-//        return emitOpError("requires a 'var_name' symbol reference attribute");
-//      }
-//      // Optionally: Verify the referenced symbol is a toy.declare
-//      auto* symbol = mlir::SymbolTable::lookupNearestSymbolFrom(getOperation(), getVarName());
-//      if (!symbol || !isa<toy::DeclareOp>(symbol)) {
-//        return emitOpError("symbol '" << getVarName().getValue() << "' must reference a toy.declare operation");
-//      }
-//      return mlir::success();
-//    }
-//  }];
 }
 
 def Toy_LoadOp : Op<Toy_Dialect, "load"> {
   let summary = "Load a variable by symbol reference.";
   let arguments = (ins SymbolRefAttr:$var_name);
   let results = (outs AnyType:$result);
-//  let hasVerifier = 1;
-//  let extraClassDeclaration = [{
-//    mlir::LogicalResult verify() {
-//      if (!getVarName()) {
-//        return emitOpError("requires a 'var_name' symbol reference attribute");
-//      }
-//      // Optionally: Verify the referenced symbol is a toy.declare
-//      auto* symbol = mlir::SymbolTable::lookupNearestSymbolFrom(getOperation(), getVarName());
-//      if (!symbol || !isa<toy::DeclareOp>(symbol)) {
-//        return emitOpError("symbol '" << getVarName().getValue() << "' must reference a toy.declare operation");
-//      }
-//      return mlir::success();
-//    }
-//  }];
 }
 
-def Toy_ExitOp : Op<Toy_Dialect, "exit"> {
-  let summary = "Exit from a program or return from a function";
-  let arguments = (ins Variadic<AnyType>:$rc);
+def Toy_YieldOp : Op<Toy_Dialect, "yield"> {
+  let summary = "Terminator for toy.scope blocks";
+  let description = [{
+    A no-op terminator operation for `toy.scope` blocks to satisfy MLIR's block
+    termination requirement. It carries no semantic meaning and is removed during
+    lowering.
+  }];
+  let arguments = (ins);
   let results = (outs);
   let traits = [Terminator];
+}
 
-  // $rc is optional, and defaults to 0.
-  let assemblyFormat = "($rc^ `:` type($rc))? attr-dict";
-
+def Toy_ScopeOp : Op<Toy_Dialect, "scope"> {
+  let summary = "A scoping construct for local variables in the Toy dialect";
+  let description = "A scope operation that defines a region with a symbol table for local variables, nested within a function.";
+  let arguments = (ins Variadic<AnyType>:$operands);
+  let results = (outs Variadic<AnyType>:$results);
+  let regions = (region AnyRegion:$body);
+  let traits = [SymbolTable, AutomaticAllocationScope, OpAsmOpInterface];
   let extraClassDeclaration = [{
-    llvm::LogicalResult verify() {
-      if (getNumOperands() > 1)
-        return emitOpError("expects 0 or 1 operands");
-      return llvm::success();
+    mlir::LogicalResult verify() {
+      if (!getBody().empty()) {
+        if (getBody().getBlocks().size() != 1) {
+          return emitOpError("expects exactly one block in the body region");
+        }
       }
+      return mlir::success();
+    }
   }];
+}
+
+def Toy_CallOp : Op<Toy_Dialect, "call"> {
+  let summary = "A call operation in the Toy dialect to invoke runtime functions.";
+  let description = [{
+    The `toy.call` operation represents a call to a runtime function, such as `__toy_print_string`.
+    It is used as an intermediate operation during lowering from `toy.print` to `func.call`.
+    The operation takes a callee name as a `FlatSymbolRefAttr` and a variadic list of operands.
+  }];
+
+  let arguments = (ins
+    FlatSymbolRefAttr:$callee,
+    Variadic<AnyType>:$operands
+  );
+  let results = (outs Variadic<AnyType>:$result);
+
+  //let assemblyFormat = "$callee `(` type($operands) $operands `)` attr-dict";
+}
+
+def Toy_ReturnOp : Op<Toy_Dialect, "return"> {
+  let summary = "Return operation for toy.scope blocks";
+  let description = [{
+    A return operation within a `toy.scope` that returns a value to the parent function.
+    It is lowered to a `func.return` during `ScopeOp` lowering.
+  }];
+  let arguments = (ins Variadic<AnyType>:$operands);
+  let results = (outs);
+  let traits = [Terminator];
 }
 
 def Toy_StringLiteralOp : Op<Toy_Dialect, "string_literal"> {

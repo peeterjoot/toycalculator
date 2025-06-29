@@ -1,14 +1,9 @@
-FUNCTION bar ( )
-{
-    PRINT "In bar";
-    RETURN;
-};
-
 FUNCTION foo ( )
 {
+    INT16 v;
+    v = 3;
     PRINT "In foo";
-    CALL bar();
-    PRINT "Called bar";
+    PRINT v;
     RETURN;
 };
 

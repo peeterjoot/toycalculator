@@ -1,2 +1,4 @@
 export PATH=~/toycalculator/bin:$PATH
 #:/usr/local/llvm-20.1.7/bin:$PATH
+
+export LLVM_SYMBOLIZER_PATH=/usr/local/llvm-20.1.7/bin/llvm-symbolizer

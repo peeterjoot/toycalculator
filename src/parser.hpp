@@ -5,9 +5,6 @@
  * (calculator) compiler.
  *
  */
-#if !defined __ToyParser_hpp_is_included
-#define __ToyParser_hpp_is_included
-
 #pragma once
 
 #include <antlr4-runtime.h>
@@ -64,18 +61,6 @@ namespace toy
         unknown_error
     };
 
-    enum class lastOperator : int
-    {
-        notAnOp,
-        assignmentOp,
-        declareOp,
-        callOp,
-        exitOp,
-        ifOp,
-        printOp,
-        returnOp,
-    };
-
     enum class variable_state : int
     {
         undeclared,
@@ -109,7 +94,6 @@ namespace toy
         std::map<std::string, mlir::Operation*> funcByName;
         bool assignmentTargetValid{};
         bool hasErrors{};
-        lastOperator lastOp{ lastOperator::notAnOp };
 
         mlir::IntegerType tyI1;
         mlir::IntegerType tyI8;
@@ -123,15 +107,21 @@ namespace toy
 
         mlir::OpBuilder::InsertPoint mainIP;
 
+        bool callIsHandled{};
+
         inline toy::DeclareOp lookupDeclareForVar( const std::string & varName );
 
         inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx );
 
+        void createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string & funcName, const std::vector<std::string> & paramNames );
+
         inline std::string formatLocation( mlir::Location loc );
 
-        inline std::string buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
-                                                 tNode *variableNode, tNode *stringNode, mlir::Location loc,
-                                                 mlir::Value &value );
+        inline void buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
+                                          tNode *variableNode, tNode *stringNode, mlir::Location loc,
+                                          mlir::Value &value, std::string & s );
+
+        mlir::Value handleCall( ToyParser::CallContext *ctx );
 
         // @param asz [in]
         //    Array size or zero for scalar.
@@ -151,6 +141,8 @@ namespace toy
         }
 
         mlir::Type parseScalarType( const std::string &ty );
+
+        mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType );
 
        public:
         MLIRListener( const std::string &_filename );
@@ -183,8 +175,6 @@ namespace toy
 
         void enterStartRule( ToyParser::StartRuleContext *ctx ) override;
 
-        void exitStartRule( ToyParser::StartRuleContext *ctx ) override;
-
         void enterIfelifelse( ToyParser::IfelifelseContext *ctx ) override;
 
         void enterFunction( ToyParser::FunctionContext *ctx ) override;
@@ -209,12 +199,12 @@ namespace toy
 
         void enterAssignment( ToyParser::AssignmentContext *ctx ) override;
 
+        void exitAssignment( ToyParser::AssignmentContext *ctx ) override;
+
         void enterExitStatement( ToyParser::ExitStatementContext *ctx ) override;
 
         void enterAssignmentExpression( ToyParser::AssignmentExpressionContext *ctx ) override;
     };
 }    // namespace toy
-
-#endif
 
 // vim: et ts=4 sw=4

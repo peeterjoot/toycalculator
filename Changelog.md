@@ -46,8 +46,12 @@ with plain old assign, after first constructing a string literal object:
 * Parser support for functions with non-void return/params.
 * Grammar support for CALL(...) and assignment 'x = CALL FOO(...)'
 * Initial builder support for CALL (fails in lowering.)  Tried using mlir::func::CallOp, but that doesn't like my use of Toy::FuncOp instead of mlir::func::FuncOp.  I did that so that my function object had a symbol table for local variables, but it looks like a better approach would be to implement a ScopeOp that has the symbol table, and to then embed ScopeOp in a mlir::func::FuncOp region.
+* parser: Remove: lastOperator lastOp, and exitStartRule.  Instead put in a dummy exit when the scope is created and replace it later with one that has values if required.
+* Replace FuncOp/ExitOp with mlir::func::FuncOp/ReturnOp.
+* Add parameter and param_number attrs to DeclareOp, and lower DeclareOp w/ parameter to parameter specific dwarf DI instrumentation.  Lower parameter dcl to alloca+store+dbg.declare
+* Purge the 0/1 constantop caching.  That only worked for a single (main) function.  Would have to be more clever to make that work in the general case (recording the function associated with the caching or something like that.)
 
-## tag: V3
+## tag: V3 (Jun 2, 2025)
 
 LANGUAGE ELEMENTS:
 * comparison operators (<, <=, EQ, NE) yielding BOOL values.  These work for any combinations of floating and integer types (including BOOL.)
@@ -72,14 +76,14 @@ INTERNALS:
 * simplest.cpp: This MWE is updated to include a global variable and global variable access.
 * parser: implicit exit: use the last saved location, instead of the module start.  This means the line numbers don't jump around at the very end of the program anymore (i.e.: implicit return/exit)
 
-## tag: V2
+## tag: V2 (May 25, 2025)
 
 This release:
 
 * Adds DWARF debug instrumentation.  Yay!
 * Builds a link step into the compiler driver.  To avoid that, compile with -c.
 
-## tag: V1
+## tag: V1 (May 17, 2025)
 
 * Declare variables with BOOL, INT8, INT16, INT32, INT64, FLOAT32, FLOAT64 types:
 ```

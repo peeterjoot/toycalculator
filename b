@@ -6,13 +6,38 @@
 
 b main
 # pick which sample program to use for the compiler debugging.
-#run ../samples/test.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
-#run ../samples/dcl.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
-#run ../samples/dcl_assign.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
-run ../samples/function_void_void.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+#run ../samples/function_plist.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+#run ../samples/stringlit.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+run ../samples/function_return.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 
 b __assert_perror_fail
-b toy::MLIRListener::enterCall
+#b createPrintCall
+#b lookupLocalSymbolReference
+#b createLocalSymbolReference
+#b lookupDeclareForVar
+#b MLIRListener::enterDeclare
+#b MLIRListener::enterBoolDeclare
+#b MLIRListener::enterIntDeclare
+#b MLIRListener::enterFunction
+#b MLIRListener::exitFunction
+#b MLIRListener::enterFloatDeclare
+#b MLIRListener::enterStringDeclare
+#b MLIRListener::enterIfelifelse
+#b MLIRListener::enterPrint
+#b MLIRListener::enterReturnStatement
+#b MLIRListener::enterExitStatement
+#b MLIRListener::enterAssignment
+#b MLIRListener::enterAssignmentExpression
+
+#b MLIRListener::processReturnLike
+#b createPrintCall
+#b enterPrint
+
+#b toy::DeclareOpLowering::matchAndRewrite
+#b MLIRListener::createScope
+#b ScopeOpLowering::matchAndRewrite
+
+#b toy::MLIRListener::enterCall
 #b toy::MLIRListener::enterFunction
 
 #b buildUnaryExpression

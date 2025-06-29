@@ -107,9 +107,8 @@ add_library(toy_runtime SHARED runtime/Toy_runtime.cpp)
 set_target_properties(toy_runtime PROPERTIES OUTPUT_NAME "toy_runtime")
 target_link_options(toy_runtime PRIVATE -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/runtime/version_script.map)
 
-add_executable(toycalculator
+set(DRIVER_SOURCE_FILES
   src/driver.cpp
-  src/parser.cpp
   src/ToyDialect.cpp
   src/ToyPasses.cpp
   src/lowering.cpp
@@ -117,6 +116,17 @@ add_executable(toycalculator
   ${ANTLR_OUTPUT_DIR}/ToyListener.cpp
   ${ANTLR_OUTPUT_DIR}/ToyParser.cpp
   ${ANTLR_OUTPUT_DIR}/ToyLexer.cpp
+)
+
+# Conditionally append the appropriate source file
+if(HACK_BUILDER)
+  list(APPEND DRIVER_SOURCE_FILES src/hack_builder.cpp)
+else()
+  list(APPEND DRIVER_SOURCE_FILES src/parser.cpp)
+endif()
+
+add_executable(toycalculator
+  ${DRIVER_SOURCE_FILES}
 )
 
 add_executable(mlirtest
@@ -176,6 +186,10 @@ endif()
 
 target_compile_options(toy_runtime PRIVATE ${COMMON_COMPILE_OPTIONS})
 target_compile_options(toycalculator PRIVATE ${COMMON_COMPILE_OPTIONS})
+
+if(HACK_BUILDER)
+    target_compile_definitions(toycalculator PRIVATE HACK_BUILDER)
+endif()
 
 #------------------------------------------------------------------------------
 # Link rules for the toycalculator target:
