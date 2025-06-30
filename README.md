@@ -83,7 +83,7 @@ wget https://www.antlr.org/download/antlr-4.10-complete.jar
 ### Installation dependencies (Fedora)
 
 ```
-sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-devel cmake clang-tools-extra g++ ninja cscope
+sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-devel cmake clang-tools-extra g++ ninja cscope clang++
 ```
 
 ### Building MLIR

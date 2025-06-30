@@ -102,7 +102,7 @@ mychdir( $builddir );
 
 if ( !(-d "$HOME/llvm-project") )
 {
-    mysystem( "(cd && git clone https://github.com/llvm/llvm-project.git && git checkout llvmorg-20.1.5)" );
+    mysystem( "(cd && git clone https://github.com/llvm/llvm-project.git && git checkout llvmorg-20.1.7)" );
 }
 
 my $arch = `uname -m` ; chomp $arch;
@@ -113,7 +113,7 @@ if ( $arch eq 'aarch64' )
 }
 
 my %projects = ( 'mlir' => 1 );
-my @projects = (qw(mlir));
+my @projects = ( qw(mlir) );
 
 if ( $clang or $cir or $flang )
 {
