@@ -183,7 +183,7 @@ target_compile_options(toycalculator PRIVATE ${COMMON_COMPILE_OPTIONS})
 # Check the target architecture
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
     set(IS_AARCH64 TRUE)
-    set(LLVM_TARGET_ARCH "ARM")
+    set(LLVM_TARGET_ARCH "AArch64")
 else()
     set(IS_AARCH64 FALSE)
     set(LLVM_TARGET_ARCH "X86")

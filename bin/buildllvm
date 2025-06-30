@@ -105,11 +105,15 @@ if ( !(-d "$HOME/llvm-project") )
     mysystem( "(cd && git clone https://github.com/llvm/llvm-project.git && git checkout llvmorg-20.1.7)" );
 }
 
+my $cmakeflags = '';
+
 my $arch = `uname -m` ; chomp $arch;
 my $targets = 'X86';
 if ( $arch eq 'aarch64' )
 {
     $targets = 'ARM';
+    # see if host in the targets helps, if not, try this:
+    #$cmakeflags .= qq(-DLLVM_DEFAULT_TARGET_TRIPLE=aarch64-unknown-linux-gnu );
 }
 
 my %projects = ( 'mlir' => 1 );
@@ -125,7 +129,6 @@ if ( $flang )
     $projects{'flang'}++;
 }
 
-my $cmakeflags = '';
 if ( $cir )
 {
     $cmakeflags .= '-DCLANG_ENABLE_CIR=ON ';
@@ -156,7 +159,8 @@ my @cmds = ( qq(cmake ) .
              qq(-DLLVM_OPTIMIZED_TABLEGEN=ON ) .
              qq(-DLLVM_LIBDIR_SUFFIX=64 ) .
              qq(-DCMAKE_INSTALL_RPATH=${instdir}/lib64 ) .
-             qq(-DLLVM_TARGETS_TO_BUILD="${targets}" ) .
+             #qq(-DLLVM_TARGETS_TO_BUILD="host;${targets}" ) .
+             qq(-DLLVM_TARGETS_TO_BUILD="host" ) .
              qq(-DCMAKE_INSTALL_PREFIX=${instdir} ) .
              qq(-DLLVM_ENABLE_RTTI=ON ) .
              qq(-DLLVM_ENABLE_PROJECTS='${projects}' ) .

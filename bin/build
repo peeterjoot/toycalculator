@@ -6,11 +6,11 @@
 
 =head1 NAME
 
-build.sh - delete and recreate the build directory, run the cmake ninja generator and ninja.
+build - delete and recreate the build directory, run the cmake ninja generator and ninja.
 
 =head1 SYNOPSIS
 
-build.sh [--help] [--serial] [--[no-]cscope] [--[no-]build]
+build [--help] [--serial] [--[no-]cscope] [--[no-]build]
 
 =head1 DESCRIPTION
 
@@ -92,6 +92,7 @@ else
 
 # for a compilation database:
 $flags .= '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON ';
+$flags .= '-DCMAKE_BUILD_TYPE=Debug ';
 
 if ( $dobuild ) {
    mysystem(qq(
@@ -110,7 +111,7 @@ tail o
 }
 
 if ( $doscope ) {
-   mysystem( "my_cscope --build --searchdir $prefix --verbose --index inc" );
+   mysystem( "my_scope --build --searchdir $prefix --verbose --index inc" );
 }
 
 exit 0;
