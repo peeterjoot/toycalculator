@@ -7,6 +7,10 @@
     - Haven't tested functions with any statements in them.
         - param lookup doesn't work:
             - Enabling stuff in function.toy:plus3: results in error: v not found.
+    - All the testerrors.sh tests appear to not fail as desired -- still an issue.
+    - Might now be able to try using the symbol table again in lowering (or was the lowering of declareOp to alloca the issue?)
+
+
     - Regressions in:
 
         function_intret_intparam
@@ -14,8 +18,29 @@
         function
 
        Fix and restore to testit enabled list.
-    - All the testerrors.sh tests appear to not fail as desired -- still an issue.
-    - Might now be able to try using the symbol table again in lowering (or was the lowering of declareOp to alloca the issue?)
+
+
+            # cat function_void_intparm.toy
+            FUNCTION plus3( INT32 v )
+            {
+                RETURN;
+            };
+            ##########################################################################
+            # ../build/toycalculator --output-directory out function_void_intparm.toy  -g --emit-llvm --emit-mlir
+            loc(fused<#llvm.di_subprogram<id = distinct[0]<>, compileUnit = <id = distinct[1]<>, sourceLanguage = DW_LANG_C, file = <"function_void_intparm.toy" in ".">, producer = "toycalculator", isOptimized = false, emissionKind = Full>, scope = #llvm.di_file<"function_void_intparm.toy" in ".">, name = "plus3", linkageName = "plus3", file = <"function_void_intparm.toy" in ".">, line = 1, scopeLine = 1, subprogramFlags = Definition, type = <types = #llvm.di_basic_type<tag = DW_TAG_base_type, name = "void">, #llvm.di_basic_type<tag = DW_TAG_base_type, name = "int", sizeInBits = 32, encoding = DW_ATE_signed>>>>["function_void_intparm.toy":1:1]): error: 'func.func' op arguments may only have dialect attributes
+            IR after stage I lowering failure:
+            "builtin.module"() ({
+              "func.func"() <{arg_attrs = [{sym_name = "v"}], function_type = (i32) -> (), sym_name = "plus3", sym_visibility = "private"}> ({
+>>>           ^bb0(%arg0: i32):
+                "func.return"() : () -> ()
+              }) {llvm.debug.subprogram = #llvm.di_subprogram<id = distinct[0]<>, compileUnit = <id = distinct[1]<>, sourceLanguage = DW_LANG_C, file = <"function_void_intparm.toy" in ".">, producer = "toycalculator", isOptimized = false, emissionKind = Full>, scope = #llvm.di_file<"function_void_intparm.toy" in ".">, name = "plus3", linkageName = "plus3", file = <"function_void_intparm.toy" in ".">, line = 1, scopeLine = 1, subprogramFlags = Definition, type = <types = #llvm.di_basic_type<tag = DW_TAG_base_type, name = "void">, #llvm.di_basic_type<tag = DW_TAG_base_type, name = "int", sizeInBits = 32, encoding = DW_ATE_signed>>>} : () -> ()
+              "func.func"() <{function_type = () -> i32, sym_name = "main"}> ({
+                %0 = "llvm.mlir.constant"() <{value = 0 : i32}> : () -> i32
+                "func.return"(%0) : (i32) -> ()
+              }) {llvm.debug.subprogram = #llvm.di_subprogram<id = distinct[2]<>, compileUnit = <id = distinct[1]<>, sourceLanguage = DW_LANG_C, file = <"function_void_intparm.toy" in ".">, producer = "toycalculator", isOptimized = false, emissionKind = Full>, scope = #llvm.di_file<"function_void_intparm.toy" in ".">, name = "main", linkageName = "main", file = <"function_void_intparm.toy" in ".">, line = 1, scopeLine = 1, subprogramFlags = Definition, type = <types = #llvm.di_basic_type<tag = DW_TAG_base_type, name = "int", sizeInBits = 32, encoding = DW_ATE_signed>>>} : () -> ()
+            }) {llvm.ident = "toycalculator V2"} : () -> ()
+
+
 
 * Switch to CamelCase uniformly.
 * Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
