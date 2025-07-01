@@ -368,31 +368,32 @@ namespace toy
         auto &block = *func.addEntryBlock();
         builder.setInsertionPointToStart( &block );
 
-        // Create Toy::ScopeOp with empty operands and results
+        // Create Toy::ScopeOp with empty operands and results, and a terminator (yield) for the funcOp's block:
         auto scopeOp = builder.create<toy::ScopeOp>( loc, mlir::TypeRange{}, mlir::ValueRange{} );
-
-        // Insert a default mlir::func::ReturnOp terminator (with no operands, or default zero return for main).
-        // This will be replaced later with an mlir::func::ReturnOp with the actual return code if desired.
-        auto returnType = func.getFunctionType().getResults();
-        if ( !returnType.empty() )
-        {
-            auto zero = builder.create<mlir::arith::ConstantOp>( loc, returnType[0],
-                                                                 builder.getIntegerAttr( returnType[0], 0 ) );
-            builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{ zero } );
-        }
-        else
-        {
-            builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{} );
-        }
+        builder.create<toy::YieldOp>( loc );
 
         // Add a block to the ScopeOp's region
         auto &scopeBlock = scopeOp.getBody().emplaceBlock();
-
-        // Reset insertion point for subsequent operations
         builder.setInsertionPointToStart( &scopeBlock );
-        builder.create<toy::YieldOp>( loc );
 
-        builder.setInsertionPointToStart( &scopeBlock );
+        // INT32 x;
+        std::string varName = "x";
+        auto strAttr = builder.getStringAttr( varName );
+        auto ty = tyI32;
+        auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr );
+        dcl->setAttr( "sym_name", strAttr );
+
+        // x = 3;
+        int32_t val = 3;
+        auto constValue3 = builder.create<mlir::arith::ConstantIntOp>( loc, val, 32 );
+        auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+        builder.create<toy::AssignOp>( loc, symRef, constValue3 );
+
+        // EXIT x;
+        mlir::Type varType = dcl.getTypeAttr().getValue();
+        auto loadValue = builder.create<toy::LoadOp>( loc, varType, symRef );
+
+        builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{ loadValue } );
 
         currentFuncName = funcName;
         funcByName[currentFuncName] = func;
