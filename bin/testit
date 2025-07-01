@@ -107,11 +107,11 @@ if ( $debug )
 system( qq(rm -rf out) );
 
 #function_intret_intparam
-#function_intret_void
 #function_void_intparm
-#function_void_void
 #function
 my %tests = map { $_ => 1 } (qw(
+function_intret_void
+function_void_void
 bool
 boolr
 exit3

@@ -7,16 +7,15 @@
     - Haven't tested functions with any statements in them.
         - param lookup doesn't work:
             - Enabling stuff in function.toy:plus3: results in error: v not found.
-    - See if regressions in:
+    - Regressions in:
 
         function_intret_intparam
-        function_intret_void
         function_void_intparm
-        function_void_void
         function
 
-        are still there.  Fix and restore to testit enabled list.
-    - All the testerrors.sh tests appear to not fail as desired -- check if fixed.
+       Fix and restore to testit enabled list.
+    - All the testerrors.sh tests appear to not fail as desired -- still an issue.
+    - Might now be able to try using the symbol table again in lowering (or was the lowering of declareOp to alloca the issue?)
 
 * Switch to CamelCase uniformly.
 * Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
