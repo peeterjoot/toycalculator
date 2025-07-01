@@ -36,11 +36,33 @@ namespace toy
     toy::DeclareOp MLIRListener::lookupDeclareForVar( const std::string &varName )
     {
         auto parentFunc = funcByName[currentFuncName];
-        auto scopeOp = mlir::dyn_cast<toy::ScopeOp>( parentFunc );
+
+        auto funcOp = mlir::cast<mlir::func::FuncOp>( parentFunc );
+
+        // Get the single block in the func::FuncOp's region
+        auto &funcBlock = funcOp.getBody().front();
+
+        toy::ScopeOp scopeOp{};
+        for (auto &op : funcBlock) {
+            if (mlir::isa<toy::ScopeOp>(&op)) {
+                scopeOp = mlir::dyn_cast<toy::ScopeOp>(&op);
+#if 0
+                LLVM_DEBUG({
+                    llvm::errs() << std::format("Found toy::ScopeOp while looking for symbol {}\n", varName);
+                    scopeOp.dump();
+                });
+#endif
+                break;
+            }
+        }
+
+        assert( scopeOp );
+#if 0
         LLVM_DEBUG( {
             llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
             scopeOp->dump();
         } );
+#endif
 
         auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
         if ( !symbolOp )
@@ -338,8 +360,8 @@ namespace toy
         // Create Toy::ScopeOp with empty operands and results
         auto scopeOp = builder.create<toy::ScopeOp>( loc, mlir::TypeRange{}, mlir::ValueRange{} );
 
-        // Insert a default Toy::ExitOp terminator (with no operands, or default zero return for main).
-        // This will be replaced later with an ExitOp with the actual return code if desired.
+        // Insert a default mlir::func::ReturnOp terminator (with no operands, or default zero return for main).
+        // This will be replaced later with an mlir::func::ReturnOp with the actual return code if desired.
         auto returnType = func.getFunctionType().getResults();
         if ( !returnType.empty() )
         {
@@ -628,17 +650,16 @@ namespace toy
         if ( !funcBlock->empty() && isa<mlir::func::ReturnOp>( funcBlock->getTerminator() ) )
         {
             mlir::Operation *existingExit = funcBlock->getTerminator();
+            mlir::Operation *constantOp{};
             if ( existingExit->getNumOperands() > 0 )
             {
-                if ( auto *constantOp = existingExit->getOperand( 0 ).getDefiningOp() )
-                {
-                    if ( mlir::isa<mlir::arith::ConstantOp>( constantOp ) )
-                    {
-                        constantOp->erase();
-                    }
-                }
+                constantOp = existingExit->getOperand( 0 ).getDefiningOp();
             }
             existingExit->erase();
+            if ( constantOp && mlir::isa<mlir::arith::ConstantOp>( constantOp ) )
+            {
+                constantOp->erase();
+            }
 
             // Set insertion point to func::FuncOp block
             builder.setInsertionPointToEnd( funcBlock );
@@ -670,55 +691,60 @@ namespace toy
             if ( !returnType.empty() && value.getType() != returnType[0] )
             {
                 auto valType = value.getType();
-                auto elemType = returnType[0];
+                auto elemReturnType = returnType[0];
 
                 if ( valType.isF64() )
                 {
-                    if ( mlir::isa<mlir::IntegerType>( elemType ) )
+                    if ( mlir::isa<mlir::IntegerType>( elemReturnType ) )
                     {
-                        value = builder.create<mlir::arith::FPToSIOp>( loc, elemType, value );
+                        value = builder.create<mlir::arith::FPToSIOp>( loc, elemReturnType, value );
                     }
-                    else if ( elemType.isF32() )
+                    else if ( elemReturnType.isF32() )
                     {
-                        value = builder.create<mlir::LLVM::FPExtOp>( loc, elemType, value );
+                        value = builder.create<mlir::LLVM::FPExtOp>( loc, elemReturnType, value );
                     }
                 }
                 else if ( valType.isF32() )
                 {
-                    if ( mlir::isa<mlir::IntegerType>( elemType ) )
+                    if ( mlir::isa<mlir::IntegerType>( elemReturnType ) )
                     {
-                        value = builder.create<mlir::arith::FPToSIOp>( loc, elemType, value );
+                        value = builder.create<mlir::arith::FPToSIOp>( loc, elemReturnType, value );
                     }
-                    else if ( elemType.isF64() )
+                    else if ( elemReturnType.isF64() )
                     {
-                        value = builder.create<mlir::LLVM::FPExtOp>( loc, elemType, value );
+                        value = builder.create<mlir::LLVM::FPExtOp>( loc, elemReturnType, value );
                     }
                 }
                 else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
                 {
                     auto vwidth = viType.getWidth();
-                    if ( mlir::isa<mlir::FloatType>( elemType ) )
+                    if ( mlir::isa<mlir::FloatType>( elemReturnType ) )
                     {
                         if ( vwidth == 1 )
                         {
-                            value = builder.create<mlir::arith::UIToFPOp>( loc, elemType, value );
+                            value = builder.create<mlir::arith::UIToFPOp>( loc, elemReturnType, value );
                         }
                         else
                         {
-                            value = builder.create<mlir::arith::SIToFPOp>( loc, elemType, value );
+                            value = builder.create<mlir::arith::SIToFPOp>( loc, elemReturnType, value );
                         }
                     }
-                    else if ( auto miType = mlir::cast<mlir::IntegerType>( elemType ) )
+                    else if ( auto miType = mlir::cast<mlir::IntegerType>( elemReturnType ) )
                     {
+                        // boolr: mwidth == 32, vwidth == 1
                         auto mwidth = miType.getWidth();
-                        if ( vwidth > mwidth )
+                        if ( (vwidth == 1) && (mwidth != 1) )
                         {
-                            value = builder.create<mlir::arith::TruncIOp>( loc, elemType, value );
+                            // widen bool to integer using unsigned extension:
+                            value = builder.create<mlir::arith::ExtUIOp>( loc, elemReturnType, value );
+                        }
+                        else if ( vwidth > mwidth )
+                        {
+                            value = builder.create<mlir::arith::TruncIOp>( loc, elemReturnType, value );
                         }
                         else if ( vwidth < mwidth )
                         {
-                            // Use ExtSIOp for signed integers, ExtUIOp for unsigned if needed
-                            value = builder.create<mlir::arith::ExtSIOp>( loc, elemType, value );
+                            value = builder.create<mlir::arith::ExtSIOp>( loc, elemReturnType, value );
                         }
                     }
                 }
@@ -731,7 +757,7 @@ namespace toy
         {
             throw exception_with_context(
                 __FILE__, __LINE__, __func__,
-                std::format( "{}error: Expected a dummy ExitOp to replace\n", formatLocation( loc ) ) );
+                std::format( "{}error: Expected a dummy mlir::func::ReturnOp to replace\n", formatLocation( loc ) ) );
         }
     }
 

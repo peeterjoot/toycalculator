@@ -1,4 +1,3 @@
-
 #!/usr/bin/perl
 
 #-----------------------------------------------------------------------------
@@ -58,23 +57,33 @@ select STDOUT ; $| = 1 ;
 my $myName = '' ;
 
 ($myName = $0) =~ s@.*[/\\]@@ ;
+my $prog;
 
 Getopt::Long::Configure( 'pass_through' ) ;
 GetOptions (
    'help'               => sub { pod2usage(-verbose => 2) ; },
+   'j=s'                => \$prog,
 ) or pod2usage(-verbose => 0) ;
 
 # Validate/handle options, and everything else...
 
-die if ( scalar(@ARGV) != 1 );
+unless ( defined $prog )
+{
+   die if ( scalar(@ARGV) != 1 );
 
-my $prog = "@ARGV";
+   $prog = "@ARGV";
+}
 
 if ( !($prog =~ /\.toy/) )
 {
    $prog .= '.toy';
 }
 
-system( qq(../build/toycalculator ../samples/$prog --stdout --emit-mlir --emit-llvm --no-emit-object --debug -g 2>&1) );
+unless ( $prog =~ m,/, )
+{
+   $prog = "../samples/$prog";
+}
+
+system( qq(../build/toycalculator $prog --stdout --emit-mlir --emit-llvm --no-emit-object --debug -g 2>&1) );
 
 # vim: et ts=3 sw=3

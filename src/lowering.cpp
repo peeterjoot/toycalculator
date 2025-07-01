@@ -1561,18 +1561,18 @@ namespace toy
             {
                 ConversionTarget target( getContext() );
                 target.addLegalDialect<LLVM::LLVMDialect, toy::ToyDialect>();
-                target
-                    .addIllegalOp<arith::ConstantOp, toy::DeclareOp, toy::AssignOp, toy::PrintOp, toy::AddOp,
-                                  toy::SubOp, toy::MulOp, toy::DivOp, toy::NegOp, toy::StringLiteralOp, toy::LessOp,
-                                  toy::EqualOp, toy::NotEqualOp, toy::XorOp, toy::AndOp, toy::OrOp, toy::LessEqualOp>();
+                target.addIllegalOp<arith::ConstantOp, toy::AddOp, toy::AndOp, toy::AssignOp, toy::DeclareOp,
+                                    toy::DivOp, toy::EqualOp, toy::LessEqualOp, toy::LessOp, toy::LoadOp, toy::MulOp,
+                                    toy::NegOp, toy::NotEqualOp, toy::OrOp, toy::PrintOp, toy::StringLiteralOp,
+                                    toy::SubOp, toy::XorOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
                                   toy::ScopeOp, toy::YieldOp>();
 
                 RewritePatternSet patterns( &getContext() );
-                patterns.add<DeclareOpLowering, LoadOpLowering, AddOpLowering, SubOpLowering, MulOpLowering,
-                             DivOpLowering, NegOpLowering, LessOpLowering, EqualOpLowering, NotEqualOpLowering,
-                             XorOpLowering, AndOpLowering, OrOpLowering, LessEqualOpLowering, PrintOpLowering,
-                             ConstantOpLowering, AssignOpLowering, StringLiteralOpLowering>( lState, &getContext(), 1 );
+                patterns.add<AddOpLowering, AndOpLowering, AssignOpLowering, ConstantOpLowering, DeclareOpLowering,
+                             DivOpLowering, EqualOpLowering, LessEqualOpLowering, LessOpLowering, LoadOpLowering,
+                             MulOpLowering, NegOpLowering, NotEqualOpLowering, OrOpLowering, PrintOpLowering,
+                             StringLiteralOpLowering, SubOpLowering, XorOpLowering>( lState, &getContext(), 1 );
                 arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns );
 
                 if ( failed( applyFullConversion( module, target, std::move( patterns ) ) ) )

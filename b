@@ -7,13 +7,14 @@
 b main
 # pick which sample program to use for the compiler debugging.
 #run ../samples/test.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
-run ../samples/dcl.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+#run ../samples/dcl.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+run ../samples/boolr.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 #run ../samples/dcl_assign.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 #run ../samples/function_void_void.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 #run ../samples/function_intret_void.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 
 b __assert_perror_fail
-#b MLIRListener::processReturnLike
+b MLIRListener::processReturnLike
 #b toy::MLIRListener::enterCall
 #b toy::MLIRListener::enterFunction
 

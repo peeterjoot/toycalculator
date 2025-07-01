@@ -1,0 +1,3 @@
+BOOL i1v;
+i1v = TRUE;
+EXIT i1v;

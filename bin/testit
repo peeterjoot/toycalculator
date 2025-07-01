@@ -106,20 +106,25 @@ if ( $debug )
 
 system( qq(rm -rf out) );
 
+#bool
+#exit3
+#exitx
+#function_intret_intparam
+#function_intret_void
+#function_void_intparm
+#function_void_void
+#function
 my %tests = map { $_ => 1 } (qw(
 0minus
 addi
 andop
 array
 bin
-bool
 boolop
 converti
 dcl
 empty
 eqop
-exit3
-exitx
 foo
 lessbug
 lessbug2
@@ -136,11 +141,6 @@ test
 types
 unary
 xorop
-function_intret_intparam
-function_intret_void
-function_void_intparm
-function_void_void
-function
 ));
 #shortstring
 
