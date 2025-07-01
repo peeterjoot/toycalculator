@@ -1246,33 +1246,29 @@ namespace toy
                 return rewriter.notifyMatchFailure( op, "Expected func::FuncOp terminator to be toy::YieldOp" );
             }
 
-            // Create a new block to hold transformed operations
-            Block* newBlock = rewriter.createBlock( entryBlock, entryBlock->end() );
-
             // If ScopeOp has a non-empty body, process its operations
             if ( !scopeOp.getBody().empty() )
             {
                 auto& scopeBlock = scopeOp.getBody().front();
 
-                // Walk through operations in the scope block
-                for ( auto& scopeOp : llvm::make_early_inc_range( scopeBlock ) )
+                // Set insertion point before the func terminator
+                rewriter.setInsertionPoint( funcTerminator );
+
+                // Process operations in the scope block
+                for ( auto& op : llvm::make_early_inc_range( scopeBlock ) )
                 {
-                    if ( isa<toy::ReturnOp>( scopeOp ) )
+                    if ( isa<toy::ReturnOp>( op ) )
                     {
                         // Replace toy::ReturnOp with func::ReturnOp
-                        rewriter.setInsertionPointToEnd( newBlock );
-                        rewriter.create<func::ReturnOp>( scopeOp.getLoc(), scopeOp.getOperands() );
-                        rewriter.eraseOp( &scopeOp );
+                        rewriter.create<func::ReturnOp>( op.getLoc(), op.getOperands() );
+                        rewriter.eraseOp( &op );
                     }
                     else
                     {
-                        // Move other operations to the new block
-                        rewriter.moveOpBefore( &scopeOp, newBlock, newBlock->end() );
+                        // Clone other operations into the entry block
+                        rewriter.clone( op );
                     }
                 }
-
-                // Inline the new block before the func terminator
-                rewriter.inlineBlockBefore( newBlock, funcTerminator );
             }
 
             // Erase the func::FuncOp's YieldOp terminator
