@@ -1232,23 +1232,59 @@ namespace toy
         {
             auto scopeOp = cast<toy::ScopeOp>( op );
             auto* funcRegion = scopeOp->getParentRegion();
-            auto* entryBlock = &*funcRegion->begin();
+            if ( !funcRegion || !isa<func::FuncOp>( scopeOp->getParentOp() ) )
+            {
+                return rewriter.notifyMatchFailure( op, "ScopeOp must be nested in a func::FuncOp" );
+            }
 
-            // Inline Toy::ScopeOp's region (may be empty)
+            auto* entryBlock = &*funcRegion->begin();
+            auto* funcTerminator = entryBlock->getTerminator();
+
+            // Verify that the terminator is a YieldOp
+            if ( !isa<toy::YieldOp>( funcTerminator ) )
+            {
+                return rewriter.notifyMatchFailure( op, "Expected func::FuncOp terminator to be toy::YieldOp" );
+            }
+
+            // Create a new block to hold transformed operations
+            Block* newBlock = rewriter.createBlock( entryBlock, entryBlock->end() );
+
+            // If ScopeOp has a non-empty body, process its operations
             if ( !scopeOp.getBody().empty() )
             {
                 auto& scopeBlock = scopeOp.getBody().front();
-                // Inline operations before the func::ReturnOp
-                auto insertPoint = entryBlock->getTerminator()->getIterator();
-                rewriter.inlineBlockBefore( &scopeBlock, entryBlock, insertPoint );
+
+                // Walk through operations in the scope block
+                for ( auto& scopeOp : llvm::make_early_inc_range( scopeBlock ) )
+                {
+                    if ( isa<toy::ReturnOp>( scopeOp ) )
+                    {
+                        // Replace toy::ReturnOp with func::ReturnOp
+                        rewriter.setInsertionPointToEnd( newBlock );
+                        rewriter.create<func::ReturnOp>( scopeOp.getLoc(), scopeOp.getOperands() );
+                        rewriter.eraseOp( &scopeOp );
+                    }
+                    else
+                    {
+                        // Move other operations to the new block
+                        rewriter.moveOpBefore( &scopeOp, newBlock, newBlock->end() );
+                    }
+                }
+
+                // Inline the new block before the func terminator
+                rewriter.inlineBlockBefore( newBlock, funcTerminator );
             }
 
-            // Erase Toy::ScopeOp
+            // Erase the func::FuncOp's YieldOp terminator
+            rewriter.eraseOp( funcTerminator );
+
+            // Erase the original ScopeOp
             rewriter.eraseOp( op );
             return success();
         }
     };
 
+    // Now unused (again)
     template <class toyOpType>
     class LowerByDeletion : public ConversionPattern
     {
@@ -1269,8 +1305,6 @@ namespace toy
             return success();
         }
     };
-
-    using YieldOpLowering = LowerByDeletion<toy::YieldOp>;
 
     // Lower toy.print to a call to __toy_print.
     class PrintOpLowering : public ConversionPattern
@@ -1566,7 +1600,7 @@ namespace toy
                                     toy::NegOp, toy::NotEqualOp, toy::OrOp, toy::PrintOp, toy::StringLiteralOp,
                                     toy::SubOp, toy::XorOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
-                                  toy::ScopeOp, toy::YieldOp>();
+                                  toy::ScopeOp, toy::YieldOp, toy::ReturnOp>();
 
                 RewritePatternSet patterns( &getContext() );
                 patterns.add<AddOpLowering, AndOpLowering, AssignOpLowering, ConstantOpLowering, DeclareOpLowering,
@@ -1592,12 +1626,11 @@ namespace toy
             {
                 ConversionTarget target( getContext() );
                 target.addLegalDialect<LLVM::LLVMDialect>();
-                target.addIllegalOp<toy::ScopeOp, toy::YieldOp>();
+                target.addIllegalOp<toy::ScopeOp, toy::YieldOp, toy::ReturnOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
 
                 RewritePatternSet patterns( &getContext() );
-                patterns.add<ScopeOpLowering>( lState, &getContext(), 2 );
-                patterns.add<YieldOpLowering>( lState, &getContext(), 1 );
+                patterns.add<ScopeOpLowering>( lState, &getContext(), 1 );
 
                 if ( failed( applyFullConversion( module, target, std::move( patterns ) ) ) )
                 {

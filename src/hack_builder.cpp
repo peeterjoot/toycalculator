@@ -393,7 +393,7 @@ namespace toy
         mlir::Type varType = dcl.getTypeAttr().getValue();
         auto loadValue = builder.create<toy::LoadOp>( loc, varType, symRef );
 
-        builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{ loadValue } );
+        builder.create<toy::ReturnOp>( loc, mlir::ValueRange{ loadValue } );
 
         currentFuncName = funcName;
         funcByName[currentFuncName] = func;

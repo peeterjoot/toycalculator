@@ -70,7 +70,6 @@ def Toy_YieldOp : Op<Toy_Dialect, "yield"> {
   }];
   let arguments = (ins);
   let results = (outs);
-  //let regions = (region None:$region);
   let traits = [Terminator];
 }
 
@@ -87,14 +86,21 @@ def Toy_ScopeOp : Op<Toy_Dialect, "scope"> {
         if (getBody().getBlocks().size() != 1) {
           return emitOpError("expects exactly one block in the body region");
         }
-//        Operation *terminator = getBody().front().getTerminator();
-//        if (!terminator || !isa<toy::YieldOp>(terminator)) {
-//          return emitOpError("expects toy.yield terminator");
-//        }
       }
       return mlir::success();
     }
   }];
+}
+
+def Toy_ReturnOp : Op<Toy_Dialect, "return"> {
+  let summary = "Return operation for toy.scope blocks";
+  let description = [{
+    A return operation within a `toy.scope` that returns a value to the parent function.
+    It is lowered to a `func.return` during `ScopeOp` lowering.
+  }];
+  let arguments = (ins Variadic<AnyType>:$operands);
+  let results = (outs);
+  let traits = [Terminator];
 }
 
 def Toy_StringLiteralOp : Op<Toy_Dialect, "string_literal"> {
