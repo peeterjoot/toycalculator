@@ -7,32 +7,16 @@
     - Haven't tested functions with any statements in them.
         - param lookup doesn't work:
             - Enabling stuff in function.toy:plus3: results in error: v not found.
-    - All the testerrors.sh tests appear to not fail as desired.
-    - Regressions in:
-        bool
-        boolr -- forked from bool with just the assign/exit
-        exit3
-        exitx
+    - See if regressions in:
+
         function_intret_intparam
         function_intret_void
         function_void_intparm
         function_void_void
         function
-    - the new fancy exit/return logic doesn't work:
 
-            "toy.declare"() <{type = i1}> {sym_name = "i1v"} : () -> ()
-            %true = arith.constant true
-            "toy.assign"(%true) <{var_name = @i1v}> : (i1) -> ()
-            %4 = "toy.load"() <{var_name = @i1v}> : () -> i1
-            "toy.yield"() : () -> ()
-          }) : () -> ()
-          %0 = "toy.load"() <{var_name = @i1v}> : () -> i1
-          %1 = arith.extui %0 : i1 to i32
-          return %1 : i32
-        }
-
-        This load has to be in the scope.
-
+        are still there.  Fix and restore to testit enabled list.
+    - All the testerrors.sh tests appear to not fail as desired -- check if fixed.
 
 * Switch to CamelCase uniformly.
 * Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...

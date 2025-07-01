@@ -106,15 +106,16 @@ if ( $debug )
 
 system( qq(rm -rf out) );
 
-#bool
-#exit3
-#exitx
 #function_intret_intparam
 #function_intret_void
 #function_void_intparm
 #function_void_void
 #function
 my %tests = map { $_ => 1 } (qw(
+bool
+boolr
+exit3
+exitx
 0minus
 addi
 andop
@@ -151,6 +152,7 @@ if ( defined $just )
 
 my %expectedRC = (
    'bool' => 1,
+   'boolr' => 1,
    'exit3' => 3,
    'exitx' => 3,
 );
