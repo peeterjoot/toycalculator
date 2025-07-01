@@ -1246,13 +1246,16 @@ namespace toy
                 return rewriter.notifyMatchFailure( op, "Expected func::FuncOp terminator to be toy::YieldOp" );
             }
 
+            // Erase the YieldOp first to ensure only one terminator will exist
+            rewriter.eraseOp( funcTerminator );
+
             // If ScopeOp has a non-empty body, process its operations
             if ( !scopeOp.getBody().empty() )
             {
                 auto& scopeBlock = scopeOp.getBody().front();
 
-                // Set insertion point before the func terminator
-                rewriter.setInsertionPoint( funcTerminator );
+                // Set insertion point at the end of the func entry block
+                rewriter.setInsertionPointToEnd( entryBlock );
 
                 // Process operations in the scope block
                 for ( auto& op : llvm::make_early_inc_range( scopeBlock ) )
@@ -1265,14 +1268,11 @@ namespace toy
                     }
                     else
                     {
-                        // Clone other operations into the entry block
-                        rewriter.clone( op );
+                        // Move other operations to the entry block
+                        rewriter.moveOpBefore( &op, entryBlock, entryBlock->end() );
                     }
                 }
             }
-
-            // Erase the func::FuncOp's YieldOp terminator
-            rewriter.eraseOp( funcTerminator );
 
             // Erase the original ScopeOp
             rewriter.eraseOp( op );
