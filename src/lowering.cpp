@@ -1231,11 +1231,19 @@ namespace toy
                                        ConversionPatternRewriter& rewriter ) const override
         {
             auto scopeOp = cast<toy::ScopeOp>( op );
+            auto* funcRegion = scopeOp->getParentRegion();
+            auto* entryBlock = &*funcRegion->begin();
 
-            // Inline the ScopeOp's region into the parent (mlir::func::FuncOp) region
-            mlir::Region* funcRegion = scopeOp->getParentRegion();
-            rewriter.inlineRegionBefore( scopeOp.getBody(), *funcRegion, funcRegion->end() );
+            // Inline Toy::ScopeOp's region (may be empty)
+            if ( !scopeOp.getBody().empty() )
+            {
+                auto& scopeBlock = scopeOp.getBody().front();
+                // Inline operations before the func::ReturnOp
+                auto insertPoint = entryBlock->getTerminator()->getIterator();
+                rewriter.inlineBlockBefore( &scopeBlock, entryBlock, insertPoint );
+            }
 
+            // Erase Toy::ScopeOp
             rewriter.eraseOp( op );
             return success();
         }
@@ -1531,9 +1539,7 @@ namespace toy
 
         void runOnOperation() override
         {
-            ModuleOp module = getOperation();    // really an operation wrapped ModuleOp, not the same as, say,
-                                                 // mlir::ModuleOp::create( loc );
-
+            ModuleOp module = getOperation();
             LLVM_DEBUG( {
                 llvm::dbgs() << "Starting ToyToLLVMLoweringPass on:\n";
                 module->dump();
@@ -1542,7 +1548,6 @@ namespace toy
             loweringContext lState( module, *pDriverState );
             lState.createDICompileUnit();
 
-            auto context = lState.getContext();
             for ( auto funcOp : module.getBodyRegion().getOps<mlir::func::FuncOp>() )
             {
                 LLVM_DEBUG( {
@@ -1552,35 +1557,58 @@ namespace toy
                 lState.createFuncDebug( funcOp );
             }
 
-            // Conversion target: only LLVM dialect is legal, except for mlir::func::FuncOp and mlir::ModuleOp
-            ConversionTarget target1( getContext() );
-            target1.addLegalDialect<LLVM::LLVMDialect>();
-            target1.addIllegalOp<arith::ConstantOp>();
-            target1.addIllegalOp<toy::DeclareOp, toy::AssignOp, toy::PrintOp, toy::AddOp, toy::SubOp, toy::MulOp,
-                                 toy::DivOp, toy::NegOp, toy::ScopeOp, toy::YieldOp>();
-            target1.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
-
-            // Patterns for toy dialect and standard ops
-            RewritePatternSet patterns1( context );
-
-            patterns1.add<DeclareOpLowering, LoadOpLowering, AddOpLowering, SubOpLowering, MulOpLowering, DivOpLowering,
-                          NegOpLowering, LessOpLowering, EqualOpLowering, NotEqualOpLowering, XorOpLowering,
-                          AndOpLowering, OrOpLowering, LessEqualOpLowering, PrintOpLowering, ConstantOpLowering,
-                          AssignOpLowering, StringLiteralOpLowering>( lState, context, 3 );
-            patterns1.add<ScopeOpLowering>( lState, context, 2 );
-            patterns1.add<YieldOpLowering>( lState, context, 1 );
-
-            arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns1 );
-
-            if ( failed( applyFullConversion( module, target1, std::move( patterns1 ) ) ) )
+            // First phase: Lower toy operations except ScopeOp and YieldOp
             {
-                LLVM_DEBUG( llvm::dbgs() << "Toy Lowering: Toy Op Conversion failed\n" );
-                signalPassFailure();
-                return;
+                ConversionTarget target( getContext() );
+                target.addLegalDialect<LLVM::LLVMDialect, toy::ToyDialect>();
+                target
+                    .addIllegalOp<arith::ConstantOp, toy::DeclareOp, toy::AssignOp, toy::PrintOp, toy::AddOp,
+                                  toy::SubOp, toy::MulOp, toy::DivOp, toy::NegOp, toy::StringLiteralOp, toy::LessOp,
+                                  toy::EqualOp, toy::NotEqualOp, toy::XorOp, toy::AndOp, toy::OrOp, toy::LessEqualOp>();
+                target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
+                                  toy::ScopeOp, toy::YieldOp>();
+
+                RewritePatternSet patterns( &getContext() );
+                patterns.add<DeclareOpLowering, LoadOpLowering, AddOpLowering, SubOpLowering, MulOpLowering,
+                             DivOpLowering, NegOpLowering, LessOpLowering, EqualOpLowering, NotEqualOpLowering,
+                             XorOpLowering, AndOpLowering, OrOpLowering, LessEqualOpLowering, PrintOpLowering,
+                             ConstantOpLowering, AssignOpLowering, StringLiteralOpLowering>( lState, &getContext(), 1 );
+                arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns );
+
+                if ( failed( applyFullConversion( module, target, std::move( patterns ) ) ) )
+                {
+                    LLVM_DEBUG( llvm::dbgs() << "Toy Lowering: First phase failed\n" );
+                    signalPassFailure();
+                    return;
+                }
+
+                LLVM_DEBUG( {
+                    llvm::dbgs() << "After first phase (toy ops lowered):\n";
+                    module->dump();
+                } );
+            }
+
+            // Second phase: Inline ScopeOp and erase YieldOp
+            {
+                ConversionTarget target( getContext() );
+                target.addLegalDialect<LLVM::LLVMDialect>();
+                target.addIllegalOp<toy::ScopeOp, toy::YieldOp>();
+                target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
+
+                RewritePatternSet patterns( &getContext() );
+                patterns.add<ScopeOpLowering>( lState, &getContext(), 2 );
+                patterns.add<YieldOpLowering>( lState, &getContext(), 1 );
+
+                if ( failed( applyFullConversion( module, target, std::move( patterns ) ) ) )
+                {
+                    LLVM_DEBUG( llvm::dbgs() << "Toy Lowering: Second phase failed\n" );
+                    signalPassFailure();
+                    return;
+                }
             }
 
             LLVM_DEBUG( {
-                llvm::dbgs() << "After successfull ToyToLLVMLoweringPass:\n";
+                llvm::dbgs() << "After successful ToyToLLVMLoweringPass:\n";
                 for ( Operation& op : module->getRegion( 0 ).front() )
                 {
                     op.dump();
@@ -1591,6 +1619,7 @@ namespace toy
        private:
         toy::driverState* pDriverState;
     };
+
 }    // namespace toy
 
 namespace mlir
