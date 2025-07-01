@@ -952,7 +952,6 @@ namespace toy
                 else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
                 {
                     auto vwidth = viType.getWidth();
-
                     if ( lState.isTypeFloat( elemType ) )
                     {
                         if ( vwidth == 1 )
@@ -964,18 +963,16 @@ namespace toy
                             value = rewriter.create<LLVM::SIToFPOp>( loc, elemType, value );
                         }
                     }
-                    else
+                    else if ( auto miType = mlir::cast<mlir::IntegerType>( elemType ) )
                     {
-                        auto miType = mlir::cast<mlir::IntegerType>( elemType );
-
                         auto mwidth = miType.getWidth();
                         if ( vwidth > mwidth )
                         {
-                            value = rewriter.create<mlir::LLVM::TruncOp>( loc, elemType, value );
+                            value = rewriter.create<LLVM::TruncOp>( loc, elemType, value );
                         }
                         else if ( vwidth < mwidth )
                         {
-                            value = rewriter.create<mlir::LLVM::ZExtOp>( loc, elemType, value );
+                            value = rewriter.create<LLVM::ZExtOp>( loc, elemType, value );
                         }
                     }
                 }
@@ -1243,6 +1240,29 @@ namespace toy
             return success();
         }
     };
+
+    template <class toyOpType>
+    class LowerByDeletion : public ConversionPattern
+    {
+       private:
+        loweringContext& lState;
+
+       public:
+        LowerByDeletion( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
+            : ConversionPattern( toyOpType::getOperationName(), benefit, context ), lState{ lState_ }
+        {
+        }
+
+        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
+                                       ConversionPatternRewriter& rewriter ) const override
+        {
+            LLVM_DEBUG( llvm::dbgs() << "Lowering (by erase): " << *op << '\n' );
+            rewriter.eraseOp( op );
+            return success();
+        }
+    };
+
+    using YieldOpLowering = LowerByDeletion<toy::YieldOp>;
 
     // Lower toy.print to a call to __toy_print.
     class PrintOpLowering : public ConversionPattern
@@ -1537,7 +1557,7 @@ namespace toy
             target1.addLegalDialect<LLVM::LLVMDialect>();
             target1.addIllegalOp<arith::ConstantOp>();
             target1.addIllegalOp<toy::DeclareOp, toy::AssignOp, toy::PrintOp, toy::AddOp, toy::SubOp, toy::MulOp,
-                                 toy::DivOp, toy::NegOp, toy::ScopeOp>();
+                                 toy::DivOp, toy::NegOp, toy::ScopeOp, toy::YieldOp>();
             target1.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
 
             // Patterns for toy dialect and standard ops
@@ -1546,8 +1566,9 @@ namespace toy
             patterns1.add<DeclareOpLowering, LoadOpLowering, AddOpLowering, SubOpLowering, MulOpLowering, DivOpLowering,
                           NegOpLowering, LessOpLowering, EqualOpLowering, NotEqualOpLowering, XorOpLowering,
                           AndOpLowering, OrOpLowering, LessEqualOpLowering, PrintOpLowering, ConstantOpLowering,
-                          AssignOpLowering, StringLiteralOpLowering>( lState, context, 2 );
-            patterns1.add<ScopeOpLowering>( lState, context, 1 );
+                          AssignOpLowering, StringLiteralOpLowering>( lState, context, 3 );
+            patterns1.add<ScopeOpLowering>( lState, context, 2 );
+            patterns1.add<YieldOpLowering>( lState, context, 1 );
 
             arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns1 );
 

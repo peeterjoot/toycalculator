@@ -357,6 +357,9 @@ namespace toy
 
         // Reset insertion point for subsequent operations
         builder.setInsertionPointToStart( &scopeBlock );
+        builder.create<toy::YieldOp>( loc );
+
+        builder.setInsertionPointToStart( &scopeBlock );
 
         currentFuncName = funcName;
         funcByName[currentFuncName] = func;
@@ -443,7 +446,8 @@ namespace toy
         builder.create<mlir::func::CallOp>( loc, function, mlir::TypeRange{ resultType }, mlir::ValueRange{} );
 
         // example call w/ params: TODO (see assert(0) above.)
-        // builder.create<mlir::func::CallOp>( printLoc, "__toy_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val } );
+        // builder.create<mlir::func::CallOp>( printLoc, "__toy_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val }
+        // );
     }
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
@@ -608,13 +612,17 @@ namespace toy
 
         // Handle the dummy ReturnOp originally inserted in the FuncOp's block
         auto *currentBlock = builder.getInsertionBlock();
-        auto *scopeOp = currentBlock->getParentOp();
-        assert( isa<toy::ScopeOp>( scopeOp ) );
+        auto *parentOp = currentBlock->getParentOp();
+        if ( !isa<toy::ScopeOp>( parentOp ) )
+        {
+            throw exception_with_context(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}error: RETURN statement must be inside a toy.scope\n", formatLocation( loc ) ) );
+        }
 
-        auto *funcOp = currentBlock->getParentOp();
-        assert( isa<mlir::func::FuncOp>( funcOp ) );
-
-        auto *funcBlock = builder.getInsertionBlock();
+        auto func = parentOp->getParentOfType<mlir::func::FuncOp>();
+        auto *funcBlock = &*func.getBody().begin();
+        auto returnType = func.getFunctionType().getResults();
 
         // Erase existing mlir::func::ReturnOp and its constant
         if ( !funcBlock->empty() && isa<mlir::func::ReturnOp>( funcBlock->getTerminator() ) )
@@ -632,8 +640,91 @@ namespace toy
             }
             existingExit->erase();
 
-            // Create new mlir::func::ReturnOp
-            builder.setInsertionPointToEnd( currentBlock );
+            // Set insertion point to func::FuncOp block
+            builder.setInsertionPointToEnd( funcBlock );
+
+            // Handle empty RETURN statement
+            if ( !lit && !var && !boolNode )
+            {
+                if ( !returnType.empty() )
+                {
+                    auto zero = builder.create<mlir::arith::ConstantOp>( loc, returnType[0],
+                                                                         builder.getIntegerAttr( returnType[0], 0 ) );
+                    builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{ zero } );
+                }
+                else
+                {
+                    builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{} );
+                }
+                return;
+            }
+
+            // Build return expression
+            mlir::Value value;
+            auto s = buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                           lit ? lit->FLOAT_PATTERN() : nullptr, var, nullptr, loc, value );
+            assert( s.length() == 0 );
+
+            // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
+            // uses arith dialect operations instead of LLVM dialect
+            if ( !returnType.empty() && value.getType() != returnType[0] )
+            {
+                auto valType = value.getType();
+                auto elemType = returnType[0];
+
+                if ( valType.isF64() )
+                {
+                    if ( mlir::isa<mlir::IntegerType>( elemType ) )
+                    {
+                        value = builder.create<mlir::arith::FPToSIOp>( loc, elemType, value );
+                    }
+                    else if ( elemType.isF32() )
+                    {
+                        value = builder.create<mlir::LLVM::FPExtOp>( loc, elemType, value );
+                    }
+                }
+                else if ( valType.isF32() )
+                {
+                    if ( mlir::isa<mlir::IntegerType>( elemType ) )
+                    {
+                        value = builder.create<mlir::arith::FPToSIOp>( loc, elemType, value );
+                    }
+                    else if ( elemType.isF64() )
+                    {
+                        value = builder.create<mlir::LLVM::FPExtOp>( loc, elemType, value );
+                    }
+                }
+                else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
+                {
+                    auto vwidth = viType.getWidth();
+                    if ( mlir::isa<mlir::FloatType>( elemType ) )
+                    {
+                        if ( vwidth == 1 )
+                        {
+                            value = builder.create<mlir::arith::UIToFPOp>( loc, elemType, value );
+                        }
+                        else
+                        {
+                            value = builder.create<mlir::arith::SIToFPOp>( loc, elemType, value );
+                        }
+                    }
+                    else if ( auto miType = mlir::cast<mlir::IntegerType>( elemType ) )
+                    {
+                        auto mwidth = miType.getWidth();
+                        if ( vwidth > mwidth )
+                        {
+                            value = builder.create<mlir::arith::TruncIOp>( loc, elemType, value );
+                        }
+                        else if ( vwidth < mwidth )
+                        {
+                            // Use ExtSIOp for signed integers, ExtUIOp for unsigned if needed
+                            value = builder.create<mlir::arith::ExtSIOp>( loc, elemType, value );
+                        }
+                    }
+                }
+            }
+
+            // Create new func::ReturnOp
             builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{ value } );
         }
         else

@@ -61,6 +61,19 @@ def Toy_LoadOp : Op<Toy_Dialect, "load"> {
   let results = (outs AnyType:$result);
 }
 
+def Toy_YieldOp : Op<Toy_Dialect, "yield"> {
+  let summary = "Terminator for toy.scope blocks";
+  let description = [{
+    A no-op terminator operation for `toy.scope` blocks to satisfy MLIR's block
+    termination requirement. It carries no semantic meaning and is removed during
+    lowering.
+  }];
+  let arguments = (ins);
+  let results = (outs);
+  //let regions = (region None:$region);
+  let traits = [Terminator];
+}
+
 def Toy_ScopeOp : Op<Toy_Dialect, "scope"> {
   let summary = "A scoping construct for local variables in the Toy dialect";
   let description = "A scope operation that defines a region with a symbol table for local variables, nested within a function.";
@@ -74,6 +87,10 @@ def Toy_ScopeOp : Op<Toy_Dialect, "scope"> {
         if (getBody().getBlocks().size() != 1) {
           return emitOpError("expects exactly one block in the body region");
         }
+//        Operation *terminator = getBody().front().getTerminator();
+//        if (!terminator || !isa<toy::YieldOp>(terminator)) {
+//          return emitOpError("expects toy.yield terminator");
+//        }
       }
       return mlir::success();
     }
