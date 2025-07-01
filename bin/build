@@ -10,7 +10,7 @@ build.sh - delete and recreate the build directory, run the cmake ninja generato
 
 =head1 SYNOPSIS
 
-build.sh [--help] [--serial] [--[no-]cscope] [--[no-]build]
+build.sh [--help] [--serial] [--[no-]cscope] [--[no-]build] [--hack]
 
 =head1 DESCRIPTION
 
@@ -49,6 +49,7 @@ my $myName = '' ;
 my $doscope = 0;
 my $dobuild = 1;
 my $serial = 0;
+my $hack = 0;
 ($myName = $0) =~ s@.*[/\\]@@ ;
 
 #Getopt::Long::Configure( 'pass_through' ) ;
@@ -57,6 +58,7 @@ GetOptions (
    'cscope!'		      => \$doscope,
    'build!'		         => \$dobuild,
    'serial!'	         => \$serial,
+   'hack!'	            => \$hack,
 ) or pod2usage(-verbose => 0) ;
 
 # Didn't pick consistent install prefixes for my mlir builds (WSL2/Ubuntu, and Fedora-42)... find it:
@@ -92,6 +94,11 @@ else
 
 # for a compilation database:
 $flags .= '-DCMAKE_EXPORT_COMPILE_COMMANDS=ON ';
+
+if ( $hack )
+{
+   $flags .= '-DHACK_BUILDER=1 ';
+}
 
 if ( $dobuild ) {
    mysystem(qq(

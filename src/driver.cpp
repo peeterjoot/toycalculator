@@ -45,7 +45,11 @@
 #include "ToyPasses.hpp"
 #include "driver.hpp"
 #include "lowering.hpp"
+#ifdef HACK_BUILDER
+#include "hack_builder.hpp"
+#else
 #include "parser.hpp"
+#endif
 
 #define DEBUG_TYPE "toy-driver"
 
@@ -172,6 +176,7 @@ int main( int argc, char** argv )
     {
         MLIRListener listener( filename );
 
+#ifndef HACK_BUILDER
         antlr4::ANTLRInputStream antlrInput( inputStream );
         ToyLexer lexer( &antlrInput );
         antlr4::CommonTokenStream tokens( &lexer );
@@ -183,6 +188,7 @@ int main( int argc, char** argv )
 
         antlr4::tree::ParseTree* tree = parser.startRule();
         antlr4::tree::ParseTreeWalker::DEFAULT.walk( &listener, tree );
+#endif
 
         // For now, always dump the original MLIR unconditionally, even if we
         // are doing the LLVM IR lowering pass:
