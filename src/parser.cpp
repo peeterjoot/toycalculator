@@ -316,7 +316,8 @@ namespace toy
         if ( arraySize )
         {
             auto sizeAttr = builder.getI64IntegerAttr( arraySize );
-            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), sizeAttr, /*parameter=*/nullptr );
+            auto dcl =
+                builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), sizeAttr, /*parameter=*/nullptr );
             dcl->setAttr( "sym_name", strAttr );
         }
         else
@@ -354,7 +355,8 @@ namespace toy
         tyPtr = mlir::LLVM::LLVMPointerType::get( ctx );
     }
 
-    void MLIRListener::createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName, const std::vector<std::string> & paramNames )
+    void MLIRListener::createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName,
+                                    const std::vector<std::string> &paramNames )
     {
         auto &block = *func.addEntryBlock();
         builder.setInsertionPointToStart( &block );
@@ -366,6 +368,15 @@ namespace toy
         auto &scopeBlock = scopeOp.getBody().emplaceBlock();
 
         builder.setInsertionPointToStart( &scopeBlock );
+
+        for ( size_t i = 0; i < func.getNumArguments() && i < paramNames.size(); ++i )
+        {
+            auto argType = func.getArgument( i ).getType();
+            auto strAttr = builder.getStringAttr( paramNames[i] );
+            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( argType ), /*size=*/nullptr,
+                                                       builder.getUnitAttr() );
+            dcl->setAttr( "sym_name", strAttr );
+        }
 
         // Insert a default toy::ReturnOp terminator (with no operands, or default zero return for scalar return
         // functions, like main). This will be replaced later with an toy::ReturnOp with the actual return code if
