@@ -28,7 +28,11 @@ def Toy_Dialect : Dialect {
 }
 
 def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
-  let summary = "Declare a variable or array, type (integer or float), and optional size.";
+  let summary = "Declare a parameter, variable or array, type (integer or float), and optional size.";
+  let description = [{
+    Declares a variable (scalar or array) or function parameter with a name and type.
+    For parameters, the `parameter` attribute is set to indicate it represents a function argument.
+  }];
   let arguments = (ins TypeAttr:$type, OptionalAttr<I64Attr>:$size);
   let results = (outs);
   let traits = [Symbol];
@@ -36,9 +40,11 @@ def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
   let extraClassDeclaration = [{
     mlir::StringAttr getSymNameAttr() { return mlir::dyn_cast<mlir::StringAttr>( getOperation()->getAttr("sym_name") ); }
 
+    bool isParameter() { return getOperation()->hasAttr("parameter"); }
+
     mlir::LogicalResult verify() {
-      if (!getSymNameAttr()) {
-        return emitOpError("requires a 'sym_name' attribute of type StringAttr");
+      if (!getSymNameAttr() && !isParameter()) {
+        return emitOpError("requires a 'sym_name' attribute of type StringAttr, or a parameter attribute.");
       }
       return mlir::success();
     }
