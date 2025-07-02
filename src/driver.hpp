@@ -3,12 +3,9 @@
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   State to pass between driver and lowering pass.
  */
-#if !defined __Toy_driver_hpp_is_included
-#define __Toy_driver_hpp_is_included
+#pragma once
 
 #include <string>
-
-#pragma once
 
 namespace toy
 {
@@ -19,7 +16,5 @@ namespace toy
         std::string filename;
     };
 }
-
-#endif
 
 // vim: et ts=4 sw=4

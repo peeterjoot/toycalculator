@@ -3,8 +3,7 @@
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   Include the ToyDialect.md generated include files and their MLIR dependencies.
  */
-#ifndef TOYDIALECT_H
-#define TOYDIALECT_H
+#pragma once
 
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/Dialect.h>
@@ -22,7 +21,5 @@
 // Include generated operation declarations
 #define GET_OP_CLASSES
 #include "ToyDialect.hpp.inc"
-
-#endif // TOYDIALECT_H
 
 // vim: et ts=4 sw=4

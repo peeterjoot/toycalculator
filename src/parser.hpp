@@ -5,9 +5,6 @@
  * (calculator) compiler.
  *
  */
-#if !defined __ToyParser_hpp_is_included
-#define __ToyParser_hpp_is_included
-
 #pragma once
 
 #include <antlr4-runtime.h>
@@ -201,7 +198,5 @@ namespace toy
         void enterAssignmentExpression( ToyParser::AssignmentExpressionContext *ctx ) override;
     };
 }    // namespace toy
-
-#endif
 
 // vim: et ts=4 sw=4
