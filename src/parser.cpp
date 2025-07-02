@@ -316,12 +316,12 @@ namespace toy
         if ( arraySize )
         {
             auto sizeAttr = builder.getI64IntegerAttr( arraySize );
-            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), sizeAttr );
+            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), sizeAttr, /*parameter=*/nullptr );
             dcl->setAttr( "sym_name", strAttr );
         }
         else
         {
-            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr );
+            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr, /*parameter=*/nullptr );
             dcl->setAttr( "sym_name", strAttr );
         }
 

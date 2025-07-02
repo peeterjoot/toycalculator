@@ -33,7 +33,7 @@ def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
     Declares a variable (scalar or array) or function parameter with a name and type.
     For parameters, the `parameter` attribute is set to indicate it represents a function argument.
   }];
-  let arguments = (ins TypeAttr:$type, OptionalAttr<I64Attr>:$size);
+  let arguments = (ins TypeAttr:$type, OptionalAttr<I64Attr>:$size, OptionalAttr<UnitAttr>:$parameter);
   let results = (outs);
   let traits = [Symbol];
 
@@ -43,8 +43,8 @@ def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
     bool isParameter() { return getOperation()->hasAttr("parameter"); }
 
     mlir::LogicalResult verify() {
-      if (!getSymNameAttr() && !isParameter()) {
-        return emitOpError("requires a 'sym_name' attribute of type StringAttr, or a parameter attribute.");
+      if (!getSymNameAttr()) {
+        return emitOpError("requires a 'sym_name' attribute of type StringAttr.");
       }
       return mlir::success();
     }
