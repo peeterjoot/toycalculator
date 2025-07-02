@@ -43,9 +43,11 @@ namespace toy
         auto &funcBlock = funcOp.getBody().front();
 
         toy::ScopeOp scopeOp{};
-        for (auto &op : funcBlock) {
-            if (mlir::isa<toy::ScopeOp>(&op)) {
-                scopeOp = mlir::dyn_cast<toy::ScopeOp>(&op);
+        for ( auto &op : funcBlock )
+        {
+            if ( mlir::isa<toy::ScopeOp>( &op ) )
+            {
+                scopeOp = mlir::dyn_cast<toy::ScopeOp>( &op );
 #if 0
                 LLVM_DEBUG({
                     llvm::errs() << std::format("Found toy::ScopeOp while looking for symbol {}\n", varName);
@@ -352,7 +354,7 @@ namespace toy
         tyPtr = mlir::LLVM::LLVMPointerType::get( ctx );
     }
 
-    void MLIRListener::createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName )
+    void MLIRListener::createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName, const std::vector<std::string> & paramNames )
     {
         auto &block = *func.addEntryBlock();
         builder.setInsertionPointToStart( &block );
@@ -365,8 +367,9 @@ namespace toy
 
         builder.setInsertionPointToStart( &scopeBlock );
 
-        // Insert a default toy::ReturnOp terminator (with no operands, or default zero return for scalar return functions, like main).
-        // This will be replaced later with an toy::ReturnOp with the actual return code if desired.
+        // Insert a default toy::ReturnOp terminator (with no operands, or default zero return for scalar return
+        // functions, like main). This will be replaced later with an toy::ReturnOp with the actual return code if
+        // desired.
         auto returnType = func.getFunctionType().getResults();
         if ( !returnType.empty() )
         {
@@ -378,6 +381,11 @@ namespace toy
         {
             builder.create<toy::ReturnOp>( loc, mlir::ValueRange{} );
         }
+
+        LLVM_DEBUG( {
+            llvm::errs() << std::format( "Created mlir::func::FuncOp stub for function {}\n", funcName );
+            func.dump();
+        } );
 
         builder.setInsertionPointToStart( &scopeBlock );
 
@@ -392,7 +400,8 @@ namespace toy
         auto funcType = builder.getFunctionType( {}, tyI32 );
         auto funcOp = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
 
-        createScope( loc, funcOp, ENTRY_SYMBOL_NAME );
+        std::vector<std::string> paramNames;
+        createScope( loc, funcOp, ENTRY_SYMBOL_NAME, paramNames );
     }
 
     void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
@@ -413,15 +422,13 @@ namespace toy
         }
 
         std::vector<mlir::Type> paramTypes;
-        std::vector<mlir::DictionaryAttr> paramAttrs;
+        std::vector<std::string> paramNames;
         for ( auto *paramCtx : ctx->parameterTypeAndName() )
         {
             auto paramType = parseScalarType( paramCtx->scalarType()->getText() );
             auto paramName = paramCtx->IDENTIFIER()->getText();
             paramTypes.push_back( paramType );
-            paramAttrs.push_back( mlir::DictionaryAttr::get(
-                builder.getContext(),
-                { { builder.getStringAttr( "sym_name" ), builder.getStringAttr( paramName ) } } ) );
+            paramNames.push_back( paramName );
         }
 
         std::vector<mlir::NamedAttribute> attrs;
@@ -429,8 +436,8 @@ namespace toy
             mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
 
         auto funcType = builder.getFunctionType( paramTypes, returns );
-        auto funcOp = builder.create<mlir::func::FuncOp>( loc, funcName, funcType, attrs, paramAttrs );
-        createScope( loc, funcOp, funcName );
+        auto funcOp = builder.create<mlir::func::FuncOp>( loc, funcName, funcType, attrs );
+        createScope( loc, funcOp, funcName, paramNames );
     }
 
     void MLIRListener::exitFunction( ToyParser::FunctionContext *ctx )
@@ -716,7 +723,7 @@ namespace toy
                 {
                     // boolr: mwidth == 32, vwidth == 1
                     auto mwidth = miType.getWidth();
-                    if ( (vwidth == 1) && (mwidth != 1) )
+                    if ( ( vwidth == 1 ) && ( mwidth != 1 ) )
                     {
                         // widen bool to integer using unsigned extension:
                         value = builder.create<mlir::arith::ExtUIOp>( loc, elemReturnType, value );

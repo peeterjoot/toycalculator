@@ -114,7 +114,7 @@ namespace toy
 
         inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx );
 
-        void createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string & funcName );
+        void createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string & funcName, const std::vector<std::string> & paramNames );
 
         inline std::string formatLocation( mlir::Location loc );
 
