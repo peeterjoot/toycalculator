@@ -769,15 +769,26 @@ namespace toy
         }
 
         /// Emit debug info for parameter
-        void generateParamDI( mlir::Location loc, ConversionPatternRewriter& rewriter, const std::string& varName,
+        void generateParamDI( mlir::FileLineColLoc loc, ConversionPatternRewriter& rewriter, const std::string& varName,
                               mlir::BlockArgument value, mlir::Type elemType, int paramIndex,
                               const std::string& funcName )
         {
-            auto diType = mlir::LLVM::DITypeAttr::get( rewriter.getContext(), elemType );
+            // Create debug type for basic types (e.g., i32, f32)
+            auto* context = rewriter.getContext();
+            auto diType = getDIType( elemType );
+
+            // Get DISubprogram from pr_subprogramAttr
             auto sub = pr_subprogramAttr[funcName];
-            auto diVar = mlir::LLVM::DILocalVariableAttr::get(
-                rewriter.getContext(), sub, varName, diType,
-                /*argNo=*/paramIndex + 1, elemType.getIntOrFloatBitWidth(), mlir::LLVM::DIFlags::Zero );
+            assert( sub );
+
+            unsigned bitWidth = elemType.getIntOrFloatBitWidth();
+
+            // Create debug variable
+            auto diVar = mlir::LLVM::DILocalVariableAttr::get( context, sub, rewriter.getStringAttr( varName ),
+                                                               pr_fileAttr, loc.getLine(), paramIndex + 1, bitWidth,
+                                                               diType, mlir::LLVM::DIFlags::Zero );
+
+            // Emit llvm.dbg.declare
             rewriter.create<mlir::LLVM::DbgDeclareOp>( loc, value, diVar );
         }
     };
@@ -825,7 +836,7 @@ namespace toy
 
                 auto funcName = funcOp.getSymName().str();
 
-                lState.generateParamDI( loc, rewriter, varName.str(), value, elemType, paramIndex, funcName );
+                lState.generateParamDI( getLocation( loc ), rewriter, varName.str(), value, elemType, paramIndex, funcName );
             }
             else
             {
