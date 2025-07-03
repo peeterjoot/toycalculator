@@ -767,6 +767,19 @@ namespace toy
 
             return result;
         }
+
+        /// Emit debug info for parameter
+        void generateParamDI( mlir::Location loc, ConversionPatternRewriter& rewriter, const std::string& varName,
+                              mlir::BlockArgument value, mlir::Type elemType, int paramIndex,
+                              const std::string& funcName )
+        {
+            auto diType = mlir::LLVM::DITypeAttr::get( rewriter.getContext(), elemType );
+            auto sub = pr_subprogramAttr[funcName];
+            auto diVar = mlir::LLVM::DILocalVariableAttr::get(
+                rewriter.getContext(), sub, varName, diType,
+                /*argNo=*/paramIndex + 1, elemType.getIntOrFloatBitWidth(), mlir::LLVM::DIFlags::Zero );
+            rewriter.create<mlir::LLVM::DbgDeclareOp>( loc, value, diVar );
+        }
     };
 
     class DeclareOpLowering : public ConversionPattern
@@ -785,22 +798,44 @@ namespace toy
         {
             auto declareOp = cast<toy::DeclareOp>( op );
             auto loc = declareOp.getLoc();
+            auto param = declareOp.isParameter();
 
             //   toy.declare "x" : i32
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.declare: " << declareOp << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << std::format( "Lowering toy.declare: param: {}", param ) << declareOp << '\n' );
 
             rewriter.setInsertionPoint( op );
 
             auto varName = declareOp.getName();
             auto elemType = declareOp.getType();
 
-            if ( !elemType.isIntOrFloat() )
+            if ( param )
             {
-                return rewriter.notifyMatchFailure( declareOp, "declare type must be integer or float" );
-            }
+                auto paramNumberAttr = declareOp.getParamNumberAttr();
+                if ( !paramNumberAttr )
+                {
+                    return rewriter.notifyMatchFailure( op, "Parameter missing param_number attribute" );
+                }
+                int64_t paramIndex = paramNumberAttr.getInt();
+                auto funcOp = op->getParentOfType<mlir::func::FuncOp>();
+                if ( paramIndex >= funcOp.getNumArguments() )
+                {
+                    return rewriter.notifyMatchFailure( op, "Parameter index out of bounds" );
+                }
+                auto value = funcOp.getArgument( paramIndex );
 
-            unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
-            // unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
+                auto funcName = funcOp.getSymName().str();
+
+                lState.generateParamDI( loc, rewriter, varName.str(), value, elemType, paramIndex, funcName );
+            }
+            else
+            {
+                if ( !elemType.isIntOrFloat() )
+                {
+                    return rewriter.notifyMatchFailure( declareOp, "declare type must be integer or float" );
+                }
+
+                unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
+                // unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
 
 #if 0    // FIXME: could pack array creation for i1 types.  For now, just use a separate byte for each.
             if ( elemType.isInteger( 1 ) )
@@ -808,27 +843,29 @@ namespace toy
                 ...
             }
 #endif
-            unsigned alignment = lState.preferredTypeAlignment( op, elemType );
+                unsigned alignment = lState.preferredTypeAlignment( op, elemType );
 
-            mlir::Value sizeVal;
-            int64_t arraySize = 1;
-            if ( declareOp.getSize().has_value() )
-            {
-                arraySize = declareOp.getSize().value();
-                if ( arraySize <= 0 )
+                mlir::Value sizeVal;
+                int64_t arraySize = 1;
+                if ( declareOp.getSize().has_value() )
                 {
-                    return rewriter.notifyMatchFailure( declareOp, "array size must be positive" );
+                    arraySize = declareOp.getSize().value();
+                    if ( arraySize <= 0 )
+                    {
+                        return rewriter.notifyMatchFailure( declareOp, "array size must be positive" );
+                    }
+                    sizeVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.tyI64,
+                                                                       rewriter.getI64IntegerAttr( arraySize ) );
                 }
-                sizeVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.tyI64,
-                                                                   rewriter.getI64IntegerAttr( arraySize ) );
-            }
-            else
-            {
-                sizeVal = lState.getI64one( loc, rewriter );
-            }
+                else
+                {
+                    sizeVal = lState.getI64one( loc, rewriter );
+                }
 
-            auto allocaOp = rewriter.create<LLVM::AllocaOp>( loc, lState.tyPtr, elemType, sizeVal, alignment );
-            lState.constructVariableDI( varName, elemType, getLocation( loc ), elemSizeInBits, allocaOp, arraySize );
+                auto allocaOp = rewriter.create<LLVM::AllocaOp>( loc, lState.tyPtr, elemType, sizeVal, alignment );
+                lState.constructVariableDI( varName, elemType, getLocation( loc ), elemSizeInBits, allocaOp,
+                                            arraySize );
+            }
 
             rewriter.eraseOp( op );
 

@@ -316,13 +316,14 @@ namespace toy
         if ( arraySize )
         {
             auto sizeAttr = builder.getI64IntegerAttr( arraySize );
-            auto dcl =
-                builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), sizeAttr, /*parameter=*/nullptr );
+            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), sizeAttr, /*parameter=*/nullptr,
+                                                       nullptr );
             dcl->setAttr( "sym_name", strAttr );
         }
         else
         {
-            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr, /*parameter=*/nullptr );
+            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr, /*parameter=*/nullptr,
+                                                       nullptr );
             dcl->setAttr( "sym_name", strAttr );
         }
 
@@ -372,9 +373,13 @@ namespace toy
         for ( size_t i = 0; i < func.getNumArguments() && i < paramNames.size(); ++i )
         {
             auto argType = func.getArgument( i ).getType();
+            LLVM_DEBUG( {
+                llvm::errs() << std::format( "function {}: parameter{}:\n", funcName, i );
+                func.getArgument( i ).dump();
+            } );
             auto strAttr = builder.getStringAttr( paramNames[i] );
             auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( argType ), /*size=*/nullptr,
-                                                       builder.getUnitAttr() );
+                                                       builder.getUnitAttr(), builder.getI64IntegerAttr( i ) );
             dcl->setAttr( "sym_name", strAttr );
         }
 

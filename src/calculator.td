@@ -31,9 +31,9 @@ def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
   let summary = "Declare a parameter, variable or array, type (integer or float), and optional size.";
   let description = [{
     Declares a variable (scalar or array) or function parameter with a name and type.
-    For parameters, the `parameter` attribute is set to indicate it represents a function argument.
+    For parameters, the `parameter` attribute is set, and `param_number` indicates the parameter index.
   }];
-  let arguments = (ins TypeAttr:$type, OptionalAttr<I64Attr>:$size, OptionalAttr<UnitAttr>:$parameter);
+  let arguments = (ins TypeAttr:$type, OptionalAttr<I64Attr>:$size, OptionalAttr<UnitAttr>:$parameter, OptionalAttr<I64Attr>:$param_number);
   let results = (outs);
   let traits = [Symbol];
 
@@ -45,6 +45,12 @@ def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
     mlir::LogicalResult verify() {
       if (!getSymNameAttr()) {
         return emitOpError("requires a 'sym_name' attribute of type StringAttr.");
+      }
+      if (isParameter() && !getParamNumberAttr()) {
+        return emitOpError("parameter declarations require a 'param_number' attribute.");
+      }
+      if (!isParameter() && getParamNumberAttr()) {
+        return emitOpError("non-parameter declarations cannot have a 'param_number' attribute.");
       }
       return mlir::success();
     }

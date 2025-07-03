@@ -17,7 +17,8 @@ run ../samples/function_void_intparm.toy --stdout --emit-mlir --no-emit-object -
 b __assert_perror_fail
 #b MLIRListener::processReturnLike
 
-b MLIRListener::createScope
+b toy::DeclareOpLowering::matchAndRewrite
+#b MLIRListener::createScope
 #b ScopeOpLowering::matchAndRewrite
 
 #b toy::MLIRListener::enterCall
