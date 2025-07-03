@@ -138,6 +138,8 @@ namespace toy
 
         mlir::Type parseScalarType( const std::string &ty );
 
+        mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType );
+
        public:
         MLIRListener( const std::string &_filename );
 

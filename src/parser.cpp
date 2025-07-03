@@ -476,6 +476,7 @@ namespace toy
         std::vector<mlir::Value> parameters;
         if ( auto params = ctx->parameterList() )
         {
+            int i = 0;
             for ( ToyParser::ParameterContext *p : params->parameter() )
             {
                 std::string paramText = p->getText();
@@ -491,7 +492,9 @@ namespace toy
 
                 assert( s.length() == 0 ); // for StringNode.  Want to support passing string literals (not just to PRINT builtin), but not now.
 
+                value = castOpIfRequired( loc, value, funcType.getInputs()[i] );
                 parameters.push_back( value );
+                i++;
             }
         }
 
@@ -644,6 +647,74 @@ namespace toy
         }
     }
 
+    // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
+    // uses arith dialect operations instead of LLVM dialect
+    mlir::Value MLIRListener::castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType )
+    {
+        if ( value.getType() != desiredType )
+        {
+            auto valType = value.getType();
+
+            if ( valType.isF64() )
+            {
+                if ( mlir::isa<mlir::IntegerType>( desiredType ) )
+                {
+                    value = builder.create<mlir::arith::FPToSIOp>( loc, desiredType, value );
+                }
+                else if ( desiredType.isF32() )
+                {
+                    value = builder.create<mlir::LLVM::FPExtOp>( loc, desiredType, value );
+                }
+            }
+            else if ( valType.isF32() )
+            {
+                if ( mlir::isa<mlir::IntegerType>( desiredType ) )
+                {
+                    value = builder.create<mlir::arith::FPToSIOp>( loc, desiredType, value );
+                }
+                else if ( desiredType.isF64() )
+                {
+                    value = builder.create<mlir::LLVM::FPExtOp>( loc, desiredType, value );
+                }
+            }
+            else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
+            {
+                auto vwidth = viType.getWidth();
+                if ( mlir::isa<mlir::FloatType>( desiredType ) )
+                {
+                    if ( vwidth == 1 )
+                    {
+                        value = builder.create<mlir::arith::UIToFPOp>( loc, desiredType, value );
+                    }
+                    else
+                    {
+                        value = builder.create<mlir::arith::SIToFPOp>( loc, desiredType, value );
+                    }
+                }
+                else if ( auto miType = mlir::cast<mlir::IntegerType>( desiredType ) )
+                {
+                    // boolr: mwidth == 32, vwidth == 1
+                    auto mwidth = miType.getWidth();
+                    if ( ( vwidth == 1 ) && ( mwidth != 1 ) )
+                    {
+                        // widen bool to integer using unsigned extension:
+                        value = builder.create<mlir::arith::ExtUIOp>( loc, desiredType, value );
+                    }
+                    else if ( vwidth > mwidth )
+                    {
+                        value = builder.create<mlir::arith::TruncIOp>( loc, desiredType, value );
+                    }
+                    else if ( vwidth < mwidth )
+                    {
+                        value = builder.create<mlir::arith::ExtSIOp>( loc, desiredType, value );
+                    }
+                }
+            }
+        }
+
+        return value;
+    }
+
     template <class Literal>
     void MLIRListener::processReturnLike( mlir::Location loc, Literal *lit, tNode *var, tNode *boolNode )
     {
@@ -701,66 +772,9 @@ namespace toy
 
         // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
         // uses arith dialect operations instead of LLVM dialect
-        if ( !returnType.empty() && value.getType() != returnType[0] )
+        if ( !returnType.empty() )
         {
-            auto valType = value.getType();
-            auto elemReturnType = returnType[0];
-
-            if ( valType.isF64() )
-            {
-                if ( mlir::isa<mlir::IntegerType>( elemReturnType ) )
-                {
-                    value = builder.create<mlir::arith::FPToSIOp>( loc, elemReturnType, value );
-                }
-                else if ( elemReturnType.isF32() )
-                {
-                    value = builder.create<mlir::LLVM::FPExtOp>( loc, elemReturnType, value );
-                }
-            }
-            else if ( valType.isF32() )
-            {
-                if ( mlir::isa<mlir::IntegerType>( elemReturnType ) )
-                {
-                    value = builder.create<mlir::arith::FPToSIOp>( loc, elemReturnType, value );
-                }
-                else if ( elemReturnType.isF64() )
-                {
-                    value = builder.create<mlir::LLVM::FPExtOp>( loc, elemReturnType, value );
-                }
-            }
-            else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
-            {
-                auto vwidth = viType.getWidth();
-                if ( mlir::isa<mlir::FloatType>( elemReturnType ) )
-                {
-                    if ( vwidth == 1 )
-                    {
-                        value = builder.create<mlir::arith::UIToFPOp>( loc, elemReturnType, value );
-                    }
-                    else
-                    {
-                        value = builder.create<mlir::arith::SIToFPOp>( loc, elemReturnType, value );
-                    }
-                }
-                else if ( auto miType = mlir::cast<mlir::IntegerType>( elemReturnType ) )
-                {
-                    // boolr: mwidth == 32, vwidth == 1
-                    auto mwidth = miType.getWidth();
-                    if ( ( vwidth == 1 ) && ( mwidth != 1 ) )
-                    {
-                        // widen bool to integer using unsigned extension:
-                        value = builder.create<mlir::arith::ExtUIOp>( loc, elemReturnType, value );
-                    }
-                    else if ( vwidth > mwidth )
-                    {
-                        value = builder.create<mlir::arith::TruncIOp>( loc, elemReturnType, value );
-                    }
-                    else if ( vwidth < mwidth )
-                    {
-                        value = builder.create<mlir::arith::ExtSIOp>( loc, elemReturnType, value );
-                    }
-                }
-            }
+            value = castOpIfRequired( loc, value, returnType[0] );
         }
 
         // Create new ReturnOp with user specified value:
