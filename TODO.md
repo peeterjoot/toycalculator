@@ -3,12 +3,21 @@
 * Function support: WIP:
     - Builder: implement FUNCTION builder (i.e.: within assignment.)
     - Lowering?: implement function call lowering if required.
-    - Implement CALL w/ parameters:
-        function_plist.toy
     - Haven't tested functions with any statements in them.
         - param lookup doesn't work:
             - Enabling stuff in function.toy:plus3: results in error: v not found. -- will need to implement symbol lookup like for variables.  Might have lowering impacts too, as there's now an alloca per parameter in the parameter declareop lowering.
     - All the testerrors.sh tests appear to not fail as desired -- still an issue.
+    - CALL w/ parameters:
+        function_plist.toy
+
+        - Need to factor out the cast logic from the return parser code:
+
+            loc("function_plist.toy":13:5): error: 'func.call' op operand type mismatch: expected operand type 'i32', but provided 'i64' for operand number 1
+
+        - also end up with weird back to back addressof:
+
+            %18 = "llvm.mlir.addressof"() <{global_name = @str_0}> : () -> !llvm.ptr
+            %19 = "llvm.mlir.addressof"() <{global_name = @str_0}> : () -> !llvm.ptr
 
 * Switch to CamelCase uniformly.
 * Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...

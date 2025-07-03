@@ -108,6 +108,7 @@ system( qq(rm -rf out) );
 
 # function_plist
 my %tests = map { $_ => 1 } (qw(
+function_plist_nocast
 0minus
 addi
 andop

@@ -1,9 +1,9 @@
-FUNCTION f1( INT32 v ) 
+FUNCTION f1( INT32 v )
 {
     RETURN;
 };
 
-FUNCTION f2( INT32 w ) 
+FUNCTION f2( INT32 w )
 {
     RETURN;
 };

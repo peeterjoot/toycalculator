@@ -469,28 +469,35 @@ namespace toy
     void MLIRListener::enterCall( ToyParser::CallContext *ctx )
     {
         auto loc = getLocation( ctx );
-
-        auto function = ctx->IDENTIFIER()->getText();
-        std::vector<mlir::Operation *> parameters;
+        auto funcName = ctx->IDENTIFIER()->getText();
+        auto op = funcByName[funcName];
+        auto funcOp = mlir::dyn_cast<mlir::func::FuncOp>( op );
+        auto funcType = funcOp.getFunctionType();
+        std::vector<mlir::Value> parameters;
         if ( auto params = ctx->parameterList() )
         {
             for ( ToyParser::ParameterContext *p : params->parameter() )
             {
-                std::cout << std::format( "param: {}\n", p->getText() );
-                assert( 0 );
+                std::string paramText = p->getText();
+                std::cout << std::format( "CALL function {}: param: {}\n", funcName, paramText );
+
+                mlir::Value value;
+                auto lit = p->literal();
+
+                auto s =
+                    buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr,
+                                          lit ? lit->INTEGER_PATTERN() : nullptr, lit ? lit->FLOAT_PATTERN() : nullptr,
+                                          p->IDENTIFIER(), lit ? lit->STRING_PATTERN() : nullptr, loc, value );
+
+                assert( s.length() == 0 ); // for StringNode.  Want to support passing string literals (not just to PRINT builtin), but not now.
+
+                parameters.push_back( value );
             }
         }
 
-        auto op = funcByName[function];
-        auto funcOp = mlir::dyn_cast<mlir::func::FuncOp>( op );
-        auto funcType = funcOp.getFunctionType();
         mlir::TypeRange resultTypes = funcType.getResults();
 
-        builder.create<mlir::func::CallOp>( loc, function, resultTypes, mlir::ValueRange{} );
-
-        // example call w/ params: TODO (see assert(0) above.)
-        // builder.create<mlir::func::CallOp>( printLoc, "__toy_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val }
-        // );
+        builder.create<mlir::func::CallOp>( loc, funcName, resultTypes, parameters );
     }
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
