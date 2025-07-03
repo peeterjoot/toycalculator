@@ -70,16 +70,6 @@ namespace toy
     class loweringContext
     {
        private:
-        // Caching these may not be a good idea, as they are created with a single loc value, but using an existing
-        // constant is also allowed, so maybe that's okay?
-        mlir::LLVM::ConstantOp pr_zero_I8;
-        mlir::LLVM::ConstantOp pr_zero_I16;
-        mlir::LLVM::ConstantOp pr_zero_I32;
-        mlir::LLVM::ConstantOp pr_zero_I64;
-        mlir::LLVM::ConstantOp pr_one_I64;
-        mlir::LLVM::ConstantOp pr_zero_F32;
-        mlir::LLVM::ConstantOp pr_zero_F64;
-
         mlir::LLVM::DIFileAttr pr_fileAttr;
         std::unordered_map<std::string, mlir::LLVM::DISubprogramAttr> pr_subprogramAttr;
         std::unordered_map<std::string, mlir::LLVM::GlobalOp> pr_stringLiterals;
@@ -158,42 +148,22 @@ namespace toy
 
         mlir::LLVM::ConstantOp getI8zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
-            if ( !pr_zero_I8 )
-            {
-                pr_zero_I8 = rewriter.create<LLVM::ConstantOp>( loc, tyI8, rewriter.getI8IntegerAttr( 0 ) );
-            }
-
-            return pr_zero_I8;
+            return rewriter.create<LLVM::ConstantOp>( loc, tyI8, rewriter.getI8IntegerAttr( 0 ) );
         }
 
         mlir::LLVM::ConstantOp getI16zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
-            if ( !pr_zero_I16 )
-            {
-                pr_zero_I16 = rewriter.create<LLVM::ConstantOp>( loc, tyI16, rewriter.getI16IntegerAttr( 0 ) );
-            }
-
-            return pr_zero_I16;
+            return rewriter.create<LLVM::ConstantOp>( loc, tyI16, rewriter.getI16IntegerAttr( 0 ) );
         }
 
         mlir::LLVM::ConstantOp getI32zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
-            if ( !pr_zero_I32 )
-            {
-                pr_zero_I32 = rewriter.create<LLVM::ConstantOp>( loc, tyI32, rewriter.getI32IntegerAttr( 0 ) );
-            }
-
-            return pr_zero_I32;
+            return rewriter.create<LLVM::ConstantOp>( loc, tyI32, rewriter.getI32IntegerAttr( 0 ) );
         }
 
         mlir::LLVM::ConstantOp getI64zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
-            if ( !pr_zero_I64 )
-            {
-                pr_zero_I64 = rewriter.create<LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( 0 ) );
-            }
-
-            return pr_zero_I64;
+            return rewriter.create<LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( 0 ) );
         }
 
         /// Returns a cached zero constant for the given integer width (i8, i16, i32, i64).
@@ -218,34 +188,19 @@ namespace toy
 
         mlir::LLVM::ConstantOp getI64one( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
-            if ( !pr_one_I64 )
-            {
-                pr_one_I64 = rewriter.create<LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( 1 ) );
-            }
-
-            return pr_one_I64;
+            return rewriter.create<LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( 1 ) );
         }
 
         mlir::LLVM::ConstantOp getF32zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
-            if ( !pr_zero_F32 )
-            {
-                pr_zero_F32 = rewriter.create<LLVM::ConstantOp>( loc, tyF32, rewriter.getF32FloatAttr( 0 ) );
-            }
-
-            return pr_zero_F32;
+            return rewriter.create<LLVM::ConstantOp>( loc, tyF32, rewriter.getF32FloatAttr( 0 ) );
         }
 
         /// Returns a cached zero constant for the given float width (f32, f64).
         /// Throws an exception for unsupported widths.
         mlir::LLVM::ConstantOp getF64zero( mlir::Location loc, ConversionPatternRewriter& rewriter )
         {
-            if ( !pr_zero_F64 )
-            {
-                pr_zero_F64 = rewriter.create<LLVM::ConstantOp>( loc, tyF64, rewriter.getF64FloatAttr( 0 ) );
-            }
-
-            return pr_zero_F64;
+            return rewriter.create<LLVM::ConstantOp>( loc, tyF64, rewriter.getF64FloatAttr( 0 ) );
         }
 
         mlir::LLVM::ConstantOp getFzero( mlir::Location loc, ConversionPatternRewriter& rewriter, unsigned width )
