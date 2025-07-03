@@ -3,7 +3,8 @@
 * Function support: WIP:
     - Builder: implement FUNCTION builder (i.e.: within assignment.)
     - Lowering?: implement function call lowering if required.
-    - Implement CALL w/ parameters.
+    - Implement CALL w/ parameters:
+        function_plist.toy
     - Haven't tested functions with any statements in them.
         - param lookup doesn't work:
             - Enabling stuff in function.toy:plus3: results in error: v not found. -- will need to implement symbol lookup like for variables.  Might have lowering impacts too, as there's now an alloca per parameter in the parameter declareop lowering.
