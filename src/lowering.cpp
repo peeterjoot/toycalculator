@@ -770,7 +770,7 @@ namespace toy
 
         /// Emit debug info for parameter
         void constructParameterDI( mlir::FileLineColLoc loc, ConversionPatternRewriter& rewriter,
-                                   const std::string& varName, mlir::BlockArgument value, mlir::Type elemType,
+                                   const std::string& varName, mlir::LLVM::AllocaOp value, mlir::Type elemType,
                                    int paramIndex, const std::string& funcName )
         {
             // Create debug type for basic types (e.g., i32, f32)
@@ -833,10 +833,19 @@ namespace toy
                     return rewriter.notifyMatchFailure( op, "Parameter index out of bounds" );
                 }
                 auto value = funcOp.getArgument( paramIndex );
-
                 auto funcName = funcOp.getSymName().str();
 
-                lState.constructParameterDI( getLocation( loc ), rewriter, varName.str(), value, elemType, paramIndex,
+                unsigned alignment = lState.preferredTypeAlignment( funcOp, elemType );
+
+                // Allocate stack space for the parameter
+                auto one = lState.getI64one( loc, rewriter );
+                auto allocaOp = rewriter.create<LLVM::AllocaOp>( loc, lState.tyPtr, elemType, one, alignment );
+                allocaOp->setAttr( "bindc_name", rewriter.getStringAttr( varName + ".addr" ) );
+
+                // Store the parameter value in the allocated memory
+                rewriter.create<mlir::LLVM::StoreOp>( loc, value, allocaOp );
+
+                lState.constructParameterDI( getLocation( loc ), rewriter, varName.str(), allocaOp, elemType, paramIndex,
                                              funcName );
             }
             else

@@ -107,8 +107,7 @@ if ( $debug )
 system( qq(rm -rf out) );
 
 #function
-#function_intret_intparam
-#function_void_intparm
+#function_two
 my %tests = map { $_ => 1 } (qw(
 0minus
 addi
@@ -125,7 +124,10 @@ eqop
 exit3
 exitx
 foo
+function_add
+function_intret_intparam
 function_intret_void
+function_void_intparm
 function_void_void
 lessbug
 lessbug2

@@ -1,0 +1,9 @@
+FUNCTION add( INT32 v, INT32 w ) : INT32
+{
+    //INT32 r;
+    //r = v + w;
+    //RETURN r;
+    RETURN 0;
+};
+
+PRINT "Hello function codegen, but no calls.";
