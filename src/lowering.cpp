@@ -769,9 +769,9 @@ namespace toy
         }
 
         /// Emit debug info for parameter
-        void generateParamDI( mlir::FileLineColLoc loc, ConversionPatternRewriter& rewriter, const std::string& varName,
-                              mlir::BlockArgument value, mlir::Type elemType, int paramIndex,
-                              const std::string& funcName )
+        void constructParameterDI( mlir::FileLineColLoc loc, ConversionPatternRewriter& rewriter,
+                                   const std::string& varName, mlir::BlockArgument value, mlir::Type elemType,
+                                   int paramIndex, const std::string& funcName )
         {
             // Create debug type for basic types (e.g., i32, f32)
             auto* context = rewriter.getContext();
@@ -836,7 +836,8 @@ namespace toy
 
                 auto funcName = funcOp.getSymName().str();
 
-                lState.generateParamDI( getLocation( loc ), rewriter, varName.str(), value, elemType, paramIndex, funcName );
+                lState.constructParameterDI( getLocation( loc ), rewriter, varName.str(), value, elemType, paramIndex,
+                                             funcName );
             }
             else
             {
