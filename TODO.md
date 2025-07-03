@@ -1,21 +1,17 @@
 ## TODO
 
 * Function support: WIP:
-    - Builder: implement CALL builder.
+    - Builder: implement CALL builder -- may have done that (using FUNCTION token I think.)
     - Builder: implement FUNCTION builder (i.e.: within assignment.)
     - Lowering?: implement function call lowering if required.
     - Haven't tested functions with any statements in them.
         - param lookup doesn't work:
-            - Enabling stuff in function.toy:plus3: results in error: v not found.
+            - Enabling stuff in function.toy:plus3: results in error: v not found. -- will need to implement symbol lookup like for variables.  Might have lowering impacts too, as there's now an alloca per parameter in the parameter declareop lowering.
     - All the testerrors.sh tests appear to not fail as desired -- still an issue.
-    - Might now be able to try using the symbol table again in lowering (or was the lowering of declareOp to alloca the issue?)
-    - parameter=1 regresses:
+    - parameter failures remaining:
 
-        function_intret_intparam
-        function_void_intparm
         function
-
-     -- need to implement lowering for those (shouldn't be the alloca)
+        function_two
 
 * Switch to CamelCase uniformly.
 * Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
