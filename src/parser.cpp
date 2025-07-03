@@ -484,9 +484,9 @@ namespace toy
         auto op = funcByName[function];
         auto funcOp = mlir::dyn_cast<mlir::func::FuncOp>( op );
         auto funcType = funcOp.getFunctionType();
-        auto resultType = funcType.getNumResults() ? funcType.getResults()[0] : tyVoid;
+        mlir::TypeRange resultTypes = funcType.getResults();
 
-        builder.create<mlir::func::CallOp>( loc, function, mlir::TypeRange{ resultType }, mlir::ValueRange{} );
+        builder.create<mlir::func::CallOp>( loc, function, resultTypes, mlir::ValueRange{} );
 
         // example call w/ params: TODO (see assert(0) above.)
         // builder.create<mlir::func::CallOp>( printLoc, "__toy_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val }

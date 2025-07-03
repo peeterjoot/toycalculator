@@ -1,7 +1,20 @@
-FUNCTION bar0 ( )
+FUNCTION bar ( )
 {
+    PRINT "In bar";
+    RETURN;
+};
+
+FUNCTION foo ( )
+{
+    INT16 v;
+    v = 3;
+    PRINT "In foo";
+    CALL bar();
+    //CALL bar( v );
+    PRINT "Called bar";
     RETURN;
 };
 
 PRINT "In main";
-//CALL bar0();
+CALL foo();
+PRINT "Back in main";
