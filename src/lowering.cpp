@@ -802,6 +802,8 @@ namespace toy
 
                 lState.constructParameterDI( getLocation( loc ), rewriter, varName.str(), allocaOp, elemType, paramIndex,
                                              funcName );
+
+                lState.createLocalSymbolReference( allocaOp, varName.str() );
             }
             else
             {

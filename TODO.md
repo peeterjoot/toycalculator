@@ -10,10 +10,6 @@
     - CALL w/ parameters:
         function_plist.toy
 
-        - Need to factor out the cast logic from the return parser code:
-
-            loc("function_plist.toy":13:5): error: 'func.call' op operand type mismatch: expected operand type 'i32', but provided 'i64' for operand number 1
-
         - also end up with weird back to back addressof:
 
             %18 = "llvm.mlir.addressof"() <{global_name = @str_0}> : () -> !llvm.ptr

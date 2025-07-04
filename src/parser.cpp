@@ -59,7 +59,7 @@ namespace toy
         }
 
         assert( scopeOp );
-#if 0
+#if 1
         LLVM_DEBUG( {
             llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
             scopeOp->dump();
@@ -383,6 +383,10 @@ namespace toy
             dcl->setAttr( "sym_name", strAttr );
         }
 
+        // once the return is created, we want to come back to this point for the rest of the function codegen
+        // (after the parameter declarations, before the return)
+        auto resumeIP = builder.saveInsertionPoint();
+
         // Insert a default toy::ReturnOp terminator (with no operands, or default zero return for scalar return
         // functions, like main). This will be replaced later with an toy::ReturnOp with the actual return code if
         // desired.
@@ -403,7 +407,7 @@ namespace toy
             func.dump();
         } );
 
-        builder.setInsertionPointToStart( &scopeBlock );
+        builder.restoreInsertionPoint( resumeIP );
 
         currentFuncName = funcName;
         funcByName[currentFuncName] = func;
@@ -445,6 +449,8 @@ namespace toy
             auto paramName = paramCtx->IDENTIFIER()->getText();
             paramTypes.push_back( paramType );
             paramNames.push_back( paramName );
+
+            setVarState( funcName, paramName, variable_state::assigned );
         }
 
         std::vector<mlir::NamedAttribute> attrs;
@@ -477,6 +483,11 @@ namespace toy
         if ( auto params = ctx->parameterList() )
         {
             int i = 0;
+
+            auto psz = params->parameter().size();
+            auto fsz = funcType.getInputs().size();
+            assert( psz == fsz );
+
             for ( ToyParser::ParameterContext *p : params->parameter() )
             {
                 std::string paramText = p->getText();
