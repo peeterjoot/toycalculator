@@ -383,10 +383,6 @@ namespace toy
             dcl->setAttr( "sym_name", strAttr );
         }
 
-        // once the return is created, we want to come back to this point for the rest of the function codegen
-        // (after the parameter declarations, before the return)
-        auto resumeIP = builder.saveInsertionPoint();
-
         // Insert a default toy::ReturnOp terminator (with no operands, or default zero return for scalar return
         // functions, like main). This will be replaced later with an toy::ReturnOp with the actual return code if
         // desired.
@@ -407,7 +403,7 @@ namespace toy
             func.dump();
         } );
 
-        builder.restoreInsertionPoint( resumeIP );
+        builder.setInsertionPointToStart( &scopeBlock );
 
         currentFuncName = funcName;
         funcByName[currentFuncName] = func;
