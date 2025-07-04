@@ -1,0 +1,12 @@
+FUNCTION foo ( )
+{
+    INT16 v;
+    v = 3;
+    PRINT "In foo";
+    PRINT v;
+    RETURN;
+};
+
+PRINT "In main";
+CALL foo();
+PRINT "Back in main";

@@ -1,6 +1,7 @@
 ## TODO
 
 * Function support: WIP:
+    - Last commit messed things up.  Debug it.
     - Builder: implement FUNCTION builder (i.e.: within assignment.)
     - Lowering?: implement function call lowering if required.
     - Haven't tested functions with any statements in them.
