@@ -387,23 +387,67 @@ namespace toy
         // functions, like main). This will be replaced later with an toy::ReturnOp with the actual return code if
         // desired.
         auto returnType = func.getFunctionType().getResults();
+        mlir::Operation *returnOp = nullptr;
         if ( !returnType.empty() )
         {
             auto zero = builder.create<mlir::arith::ConstantOp>( loc, returnType[0],
                                                                  builder.getIntegerAttr( returnType[0], 0 ) );
-            builder.create<toy::ReturnOp>( loc, mlir::ValueRange{ zero } );
+            returnOp = builder.create<toy::ReturnOp>( loc, mlir::ValueRange{ zero } );
         }
         else
         {
-            builder.create<toy::ReturnOp>( loc, mlir::ValueRange{} );
+            returnOp = builder.create<toy::ReturnOp>( loc, mlir::ValueRange{} );
         }
+
 
         LLVM_DEBUG( {
             llvm::errs() << std::format( "Created mlir::func::FuncOp stub for function {}\n", funcName );
             func.dump();
         } );
 
-        builder.setInsertionPointToStart( &scopeBlock );
+#if 0
+        LLVM_DEBUG( {
+            llvm::errs() << "============================\nCREATE SCOPE I:\n";
+            builder.getInsertionBlock()->getParentOp()->dump();
+
+            llvm::errs() << "Current insertion block:\n";
+            builder.getInsertionBlock()->dump();
+
+            auto insertionPoint = builder.getInsertionPoint();
+            if ( insertionPoint != builder.getInsertionBlock()->end() )
+            {
+                llvm::errs() << "Insertion point is after operation:\n";
+                ( *insertionPoint ).dump();    // Dereference the iterator to get the Operation*
+            }
+            else
+            {
+                llvm::errs() << "Insertion point is at the end of the block\n";
+            }
+        } );
+#endif
+
+        builder.setInsertionPoint( returnOp );    // Set insertion point *before* the saved toy::ReturnOp
+
+#if 0
+        LLVM_DEBUG( {
+            llvm::errs() << "============================\nCREATE SCOPE II:\n";
+            builder.getInsertionBlock()->getParentOp()->dump();
+
+            llvm::errs() << "Current insertion block:\n";
+            builder.getInsertionBlock()->dump();
+
+            auto insertionPoint = builder.getInsertionPoint();
+            if ( insertionPoint != builder.getInsertionBlock()->end() )
+            {
+                llvm::errs() << "Insertion point is after operation:\n";
+                ( *insertionPoint ).dump();    // Dereference the iterator to get the Operation*
+            }
+            else
+            {
+                llvm::errs() << "Insertion point is at the end of the block\n";
+            }
+        } );
+#endif
 
         currentFuncName = funcName;
         funcByName[currentFuncName] = func;
@@ -497,7 +541,8 @@ namespace toy
                                           lit ? lit->INTEGER_PATTERN() : nullptr, lit ? lit->FLOAT_PATTERN() : nullptr,
                                           p->IDENTIFIER(), lit ? lit->STRING_PATTERN() : nullptr, loc, value );
 
-                assert( s.length() == 0 ); // for StringNode.  Want to support passing string literals (not just to PRINT builtin), but not now.
+                assert( s.length() == 0 );    // for StringNode.  Want to support passing string literals (not just to
+                                              // PRINT builtin), but not now.
 
                 value = castOpIfRequired( loc, value, funcType.getInputs()[i] );
                 parameters.push_back( value );
@@ -597,6 +642,27 @@ namespace toy
         auto loc = getLocation( ctx );
 
         mlir::Type varType;
+
+#if 0
+        LLVM_DEBUG( {
+            llvm::errs() << "Scope IR before toy::PrintOp creation:\n";
+            builder.getInsertionBlock()->getParentOp()->dump();
+
+            llvm::errs() << "Current insertion block:\n";
+            builder.getInsertionBlock()->dump();
+
+            auto insertionPoint = builder.getInsertionPoint();
+            if ( insertionPoint != builder.getInsertionBlock()->end() )
+            {
+                llvm::errs() << "Insertion point is after operation:\n";
+                ( *insertionPoint ).dump();    // Dereference the iterator to get the Operation*
+            }
+            else
+            {
+                llvm::errs() << "Insertion point is at the end of the block\n";
+            }
+        } );
+#endif
 
         auto varNameObject = ctx->IDENTIFIER();
         if ( varNameObject )
