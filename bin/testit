@@ -117,6 +117,7 @@ bin
 bool
 boolop
 boolr
+call_with_param_referenced
 converti
 dcl
 empty
