@@ -10,7 +10,7 @@ build.sh - delete and recreate the build directory, run the cmake ninja generato
 
 =head1 SYNOPSIS
 
-build.sh [--help] [--serial] [--[no-]cscope] [--[no-]build] [--hack]
+build.sh [--help] [--serial] [--[no-]cscope] [--[no-]build] [--hack] [--no-ccache]
 
 =head1 DESCRIPTION
 
@@ -50,6 +50,7 @@ my $doscope = 0;
 my $dobuild = 1;
 my $serial = 0;
 my $hack = 0;
+my $ccache = 1;
 ($myName = $0) =~ s@.*[/\\]@@ ;
 
 #Getopt::Long::Configure( 'pass_through' ) ;
@@ -59,6 +60,7 @@ GetOptions (
    'build!'		         => \$dobuild,
    'serial!'	         => \$serial,
    'hack!'	            => \$hack,
+   'ccache!'	         => \$ccache,
 ) or pod2usage(-verbose => 0) ;
 
 # Didn't pick consistent install prefixes for my mlir builds (WSL2/Ubuntu, and Fedora-42)... find it:
@@ -82,14 +84,16 @@ if ( defined $ENV{'WSL_DISTRO_NAME'} )
    $flags .= '-DCMAKE_CXX_COMPILER=/usr/bin/g++-14 ';
    $flags .= '-DCMAKE_C_COMPILER=/usr/bin/gcc-14 ';
 }
-else
+elsif ( $ccache )
 {
-   #$flags .= '-DCMAKE_CXX_COMPILER=/usr/bin/clang++ ';
-   #$flags .= '-DCMAKE_C_COMPILER=/usr/bin/clang ';
-
-   # try without PATH for ccache:
+   # without PATH for ccache:
    $flags .= '-DCMAKE_CXX_COMPILER=clang++ ';
    $flags .= '-DCMAKE_C_COMPILER=clang ';
+}
+else
+{
+   $flags .= '-DCMAKE_CXX_COMPILER=/usr/bin/clang++ ';
+   $flags .= '-DCMAKE_C_COMPILER=/usr/bin/clang ';
 }
 
 # for a compilation database:
