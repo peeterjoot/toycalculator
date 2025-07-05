@@ -730,20 +730,6 @@ namespace toy
             return;
         }
 
-        mlir::Value value;
-
-        auto s = buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                       lit ? lit->FLOAT_PATTERN() : nullptr, var,
-                                       nullptr,    // stringNode
-                                       loc, value );
-        assert( s.length() == 0 );
-
-        // Handle empty RETURN statement
-        if ( !lit && !var && !boolNode )
-        {
-            return;
-        }
-
         // Handle the dummy ReturnOp originally inserted in the FuncOp's block
         auto *currentBlock = builder.getInsertionBlock();
         assert( !currentBlock->empty() );
@@ -754,6 +740,9 @@ namespace toy
                 __FILE__, __LINE__, __func__,
                 std::format( "{}error: RETURN statement must be inside a toy.scope\n", formatLocation( loc ) ) );
         }
+
+        auto func = parentOp->getParentOfType<mlir::func::FuncOp>();
+        auto returnType = func.getFunctionType().getResults();
 
         assert( isa<toy::ReturnOp>( currentBlock->getTerminator() ) );
 
@@ -774,8 +763,13 @@ namespace toy
         // Set insertion point to func::FuncOp block
         builder.setInsertionPointToEnd( currentBlock );
 
-        auto func = parentOp->getParentOfType<mlir::func::FuncOp>();
-        auto returnType = func.getFunctionType().getResults();
+        mlir::Value value;
+
+        auto s = buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                       lit ? lit->FLOAT_PATTERN() : nullptr, var,
+                                       nullptr,    // stringNode
+                                       loc, value );
+        assert( s.length() == 0 );
 
         // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
         // uses arith dialect operations instead of LLVM dialect
