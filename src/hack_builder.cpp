@@ -33,7 +33,6 @@ namespace toy
         context.getOrLoadDialect<mlir::LLVM::LLVMDialect>();
     }
 
-#if 0
     toy::DeclareOp MLIRListener::lookupDeclareForVar( const std::string &varName )
     {
         auto parentFunc = funcByName[currentFuncName];
@@ -81,9 +80,8 @@ namespace toy
 
         return declareOp;
     }
-#endif
 
-    inline mlir::Location MLIRListener::getLocation( void * ctx )
+    inline mlir::Location MLIRListener::getLocation( void *ctx )
     {
         size_t line = 1;
         size_t col = 0;
@@ -202,7 +200,6 @@ namespace toy
         return nullptr;
     }
 
-#if 0
     // \retval true if error
     inline std::string MLIRListener::buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
                                                            tNode *variableNode, tNode *stringNode, mlir::Location loc,
@@ -287,6 +284,7 @@ namespace toy
         return std::string();
     }
 
+#if 0
     // \retval true if error
     inline bool MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                                    ToyParser::ArrayBoundsExpressionContext *arrayBounds )
@@ -353,52 +351,220 @@ namespace toy
         enterStartRule();
     }
 
-    void MLIRListener::enterStartRule( )
+    // call_with_param_referenced
+    void MLIRListener::enterStartRule()
     {
-        auto loc = getLocation(  );
+        auto loc = getLocation();
 
         auto funcType = builder.getFunctionType( {}, tyI32 );
         auto funcOp = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
 
         createScope( loc, funcOp, ENTRY_SYMBOL_NAME );
+
+#if 0
+        FUNCTION bar ( INT16 w )
+        {
+            PRINT w;
+            RETURN;
+        };
+
+        CALL bar( 3 );
+
+
+        "builtin.module"() ({
+          "func.func"() <{function_type = (i16) -> (), sym_name = "bar", sym_visibility = "private"}> ({
+          ^bb0(%arg0: i16):
+            "toy.scope"() ({
+              "toy.declare"() <{param_number = 0 : i64, parameter, type = i16}> {sym_name = "w"} : () -> ()
+              %3 = "toy.load"() <{var_name = @w}> : () -> i16
+              "toy.print"(%3) : (i16) -> ()
+              "toy.return"() : () -> ()
+            }) : () -> ()
+            "toy.yield"() : () -> ()
+          }) : () -> ()
+          "func.func"() <{function_type = () -> i32, sym_name = "main"}> ({
+            "toy.scope"() ({
+              %0 = "arith.constant"() <{value = 0 : i32}> : () -> i32
+              %1 = "arith.constant"() <{value = 3 : i64}> : () -> i64
+              %2 = "arith.trunci"(%1) : (i64) -> i16
+              "func.call"(%2) <{callee = @bar}> : (i16) -> ()
+              "toy.return"(%0) : (i32) -> ()
+            }) : () -> ()
+            "toy.yield"() : () -> ()
+          }) : () -> ()
+        }) : () -> ()
+
+#endif
+
+        // void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
+        {
+            mainIP = builder.saveInsertionPoint();
+
+            builder.setInsertionPointToStart( mod.getBody() );
+
+            std::string funcName = "bar";
+
+            std::vector<mlir::Type> returns;
+
+            std::vector<mlir::Type> paramTypes;
+            std::vector<mlir::DictionaryAttr> paramAttrs;
+
+            // for ( auto *paramCtx : ctx->parameterTypeAndName() )
+            {
+                auto paramType = parseScalarType( "INT16" );
+                auto paramName = "w";
+                paramTypes.push_back( paramType );
+                paramAttrs.push_back( mlir::DictionaryAttr::get(
+                    builder.getContext(),
+                    { { builder.getStringAttr( "sym_name" ), builder.getStringAttr( paramName ) } } ) );
+            }
+
+            std::vector<mlir::NamedAttribute> attrs;
+            attrs.push_back(
+                mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
+
+            auto funcType = builder.getFunctionType( paramTypes, returns );
+            auto funcOp = builder.create<mlir::func::FuncOp>( loc, funcName, funcType, attrs, paramAttrs );
+            createScope( loc, funcOp, funcName );
+
+            std::string varName = "w";
+            auto declareOp = lookupDeclareForVar( varName );
+
+            mlir::Type elemType = declareOp.getTypeAttr().getValue();
+
+            mlir::Type varType = elemType;
+
+            auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+            auto value = builder.create<toy::LoadOp>( loc, varType, symRef );
+            builder.create<toy::PrintOp>( loc, value );
+
+            builder.restoreInsertionPoint( mainIP );
+        }
+
+        //void MLIRListener::enterCall( ToyParser::CallContext *ctx )
+        {
+            auto funcName = "bar";
+            auto op = funcByName[funcName];
+            auto funcOp = mlir::dyn_cast<mlir::func::FuncOp>( op );
+            auto funcType = funcOp.getFunctionType();
+            std::vector<mlir::Value> parameters;
+
+            {
+                int i = 0;
+
+                {
+                    mlir::Value value;
+
+                    buildUnaryExpression( nullptr, "3", nullptr, nullptr, nullptr, loc, value );
+
+                    value = castOpIfRequired( loc, value, funcType.getInputs()[i] );
+                    parameters.push_back( value );
+                    i++;
+                }
+            }
+
+            mlir::TypeRange resultTypes = funcType.getResults();
+
+            builder.create<mlir::func::CallOp>( loc, funcName, resultTypes, parameters );
+        }
     }
 
-    void MLIRListener::createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName )
+    void MLIRListener::createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName,
+                                    const std::vector<std::string> &paramNames )
     {
         auto &block = *func.addEntryBlock();
         builder.setInsertionPointToStart( &block );
 
-        // Create Toy::ScopeOp with empty operands and results, and a terminator (yield) for the funcOp's block:
+        // Create Toy::ScopeOp with empty operands and results
         auto scopeOp = builder.create<toy::ScopeOp>( loc, mlir::TypeRange{}, mlir::ValueRange{} );
         builder.create<toy::YieldOp>( loc );
 
-        // Add a block to the ScopeOp's region
         auto &scopeBlock = scopeOp.getBody().emplaceBlock();
+
         builder.setInsertionPointToStart( &scopeBlock );
 
-        // INT32 x;
-        std::string varName = "x";
-        auto strAttr = builder.getStringAttr( varName );
-        auto ty = tyI32;
-        auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr );
-        dcl->setAttr( "sym_name", strAttr );
+        for ( size_t i = 0; i < func.getNumArguments() && i < paramNames.size(); ++i )
+        {
+            auto argType = func.getArgument( i ).getType();
+            LLVM_DEBUG( {
+                llvm::errs() << std::format( "function {}: parameter{}:\n", funcName, i );
+                func.getArgument( i ).dump();
+            } );
+            auto strAttr = builder.getStringAttr( paramNames[i] );
+            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( argType ), /*size=*/nullptr,
+                                                       builder.getUnitAttr(), builder.getI64IntegerAttr( i ) );
+            dcl->setAttr( "sym_name", strAttr );
+        }
 
-        // x = 3;
-        int32_t val = 3;
-        auto constValue3 = builder.create<mlir::arith::ConstantIntOp>( loc, val, 32 );
-        auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
-        builder.create<toy::AssignOp>( loc, symRef, constValue3 );
+        // Insert a default toy::ReturnOp terminator (with no operands, or default zero return for scalar return
+        // functions, like main). This will be replaced later with an toy::ReturnOp with the actual return code if
+        // desired.
+        auto returnType = func.getFunctionType().getResults();
+        mlir::Operation *returnOp = nullptr;
+        if ( !returnType.empty() )
+        {
+            auto zero = builder.create<mlir::arith::ConstantOp>( loc, returnType[0],
+                                                                 builder.getIntegerAttr( returnType[0], 0 ) );
+            returnOp = builder.create<toy::ReturnOp>( loc, mlir::ValueRange{ zero } );
+        }
+        else
+        {
+            returnOp = builder.create<toy::ReturnOp>( loc, mlir::ValueRange{} );
+        }
 
-        // EXIT x;
-        mlir::Type varType = dcl.getTypeAttr().getValue();
-        auto loadValue = builder.create<toy::LoadOp>( loc, varType, symRef );
 
-        builder.create<toy::ReturnOp>( loc, mlir::ValueRange{ loadValue } );
+        LLVM_DEBUG( {
+            llvm::errs() << std::format( "Created mlir::func::FuncOp stub for function {}\n", funcName );
+            func.dump();
+        } );
+
+#if 0
+        LLVM_DEBUG( {
+            llvm::errs() << "============================\nCREATE SCOPE I:\n";
+            builder.getInsertionBlock()->getParentOp()->dump();
+
+            llvm::errs() << "Current insertion block:\n";
+            builder.getInsertionBlock()->dump();
+
+            auto insertionPoint = builder.getInsertionPoint();
+            if ( insertionPoint != builder.getInsertionBlock()->end() )
+            {
+                llvm::errs() << "Insertion point is after operation:\n";
+                ( *insertionPoint ).dump();    // Dereference the iterator to get the Operation*
+            }
+            else
+            {
+                llvm::errs() << "Insertion point is at the end of the block\n";
+            }
+        } );
+#endif
+
+        builder.setInsertionPoint( returnOp );    // Set insertion point *before* the saved toy::ReturnOp
+
+#if 0
+        LLVM_DEBUG( {
+            llvm::errs() << "============================\nCREATE SCOPE II:\n";
+            builder.getInsertionBlock()->getParentOp()->dump();
+
+            llvm::errs() << "Current insertion block:\n";
+            builder.getInsertionBlock()->dump();
+
+            auto insertionPoint = builder.getInsertionPoint();
+            if ( insertionPoint != builder.getInsertionBlock()->end() )
+            {
+                llvm::errs() << "Insertion point is after operation:\n";
+                ( *insertionPoint ).dump();    // Dereference the iterator to get the Operation*
+            }
+            else
+            {
+                llvm::errs() << "Insertion point is at the end of the block\n";
+            }
+        } );
+#endif
 
         currentFuncName = funcName;
         funcByName[currentFuncName] = func;
     }
-
 #if 0
     void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
     {
