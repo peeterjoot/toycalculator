@@ -728,23 +728,26 @@ namespace toy
                                    const std::string& varName, mlir::LLVM::AllocaOp value, mlir::Type elemType,
                                    int paramIndex, const std::string& funcName )
         {
-            // Create debug type for basic types (e.g., i32, f32)
-            auto* context = rewriter.getContext();
-            auto diType = getDIType( elemType );
+            if ( pr_driverState.wantDebug )
+            {
+                // Create debug type for basic types (e.g., i32, f32)
+                auto* context = rewriter.getContext();
+                auto diType = getDIType( elemType );
 
-            // Get DISubprogram from pr_subprogramAttr
-            auto sub = pr_subprogramAttr[funcName];
-            assert( sub );
+                // Get DISubprogram from pr_subprogramAttr
+                auto sub = pr_subprogramAttr[funcName];
+                assert( sub );
 
-            unsigned bitWidth = elemType.getIntOrFloatBitWidth();
+                unsigned bitWidth = elemType.getIntOrFloatBitWidth();
 
-            // Create debug variable
-            auto diVar = mlir::LLVM::DILocalVariableAttr::get( context, sub, rewriter.getStringAttr( varName ),
-                                                               pr_fileAttr, loc.getLine(), paramIndex + 1, bitWidth,
-                                                               diType, mlir::LLVM::DIFlags::Zero );
+                // Create debug variable
+                auto diVar = mlir::LLVM::DILocalVariableAttr::get( context, sub, rewriter.getStringAttr( varName ),
+                                                                   pr_fileAttr, loc.getLine(), paramIndex + 1, bitWidth,
+                                                                   diType, mlir::LLVM::DIFlags::Zero );
 
-            // Emit llvm.dbg.declare
-            rewriter.create<mlir::LLVM::DbgDeclareOp>( loc, value, diVar );
+                // Emit llvm.dbg.declare
+                rewriter.create<mlir::LLVM::DbgDeclareOp>( loc, value, diVar );
+            }
         }
     };
 
@@ -800,8 +803,8 @@ namespace toy
                 // Store the parameter value in the allocated memory
                 rewriter.create<mlir::LLVM::StoreOp>( loc, value, allocaOp );
 
-                lState.constructParameterDI( getLocation( loc ), rewriter, varName.str(), allocaOp, elemType, paramIndex,
-                                             funcName );
+                lState.constructParameterDI( getLocation( loc ), rewriter, varName.str(), allocaOp, elemType,
+                                             paramIndex, funcName );
 
                 lState.createLocalSymbolReference( allocaOp, varName.str() );
             }
