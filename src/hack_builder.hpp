@@ -106,9 +106,18 @@ namespace toy
 
         inline toy::DeclareOp lookupDeclareForVar( const std::string & varName );
 
+        typedef void * tNode;
+
+        inline std::string buildUnaryExpression( tNode *booleanNode, std::string, tNode *floatNode,
+                                                           tNode *variableNode, tNode *stringNode, mlir::Location loc,
+                                                           mlir::Value &value );
+
+        mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType );
+
         inline mlir::Location getLocation( void * ctx = nullptr );
 
-        void createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string & funcName );
+        void createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName,
+                                    const std::vector<std::string> &paramNames );
 
         inline std::string formatLocation( mlir::Location loc );
 

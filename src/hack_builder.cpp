@@ -201,10 +201,11 @@ namespace toy
     }
 
     // \retval true if error
-    inline std::string MLIRListener::buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
+    inline std::string MLIRListener::buildUnaryExpression( tNode *booleanNode, std::string integerNode, tNode *floatNode,
                                                            tNode *variableNode, tNode *stringNode, mlir::Location loc,
                                                            mlir::Value &value )
     {
+#if 0
         if ( booleanNode )
         {
             int val;
@@ -227,11 +228,14 @@ namespace toy
 
             value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 1 );
         }
-        else if ( integerNode )
+        else
+#endif
+            if ( integerNode != "" )
         {
-            int64_t val = std::stoll( integerNode->getText() );
+            int64_t val = std::stoll( integerNode );
             value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
         }
+#if 0
         else if ( floatNode )
         {
             double val = std::stod( floatNode->getText() );
@@ -280,6 +284,7 @@ namespace toy
             throw exception_with_context( __FILE__, __LINE__, __func__,
                                           std::format( "{}error: Invalid operand\n", formatLocation( loc ) ) );
         }
+#endif
 
         return std::string();
     }
@@ -359,7 +364,8 @@ namespace toy
         auto funcType = builder.getFunctionType( {}, tyI32 );
         auto funcOp = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
 
-        createScope( loc, funcOp, ENTRY_SYMBOL_NAME );
+        std::vector<std::string> paramNames;
+        createScope( loc, funcOp, ENTRY_SYMBOL_NAME, paramNames );
 
 #if 0
         FUNCTION bar ( INT16 w )
@@ -407,16 +413,15 @@ namespace toy
             std::vector<mlir::Type> returns;
 
             std::vector<mlir::Type> paramTypes;
-            std::vector<mlir::DictionaryAttr> paramAttrs;
+            std::vector<std::string> paramNames;
 
-            // for ( auto *paramCtx : ctx->parameterTypeAndName() )
             {
                 auto paramType = parseScalarType( "INT16" );
                 auto paramName = "w";
                 paramTypes.push_back( paramType );
-                paramAttrs.push_back( mlir::DictionaryAttr::get(
-                    builder.getContext(),
-                    { { builder.getStringAttr( "sym_name" ), builder.getStringAttr( paramName ) } } ) );
+                paramNames.push_back( paramName );
+
+                setVarState( funcName, paramName, variable_state::assigned );
             }
 
             std::vector<mlir::NamedAttribute> attrs;
@@ -424,8 +429,9 @@ namespace toy
                 mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
 
             auto funcType = builder.getFunctionType( paramTypes, returns );
-            auto funcOp = builder.create<mlir::func::FuncOp>( loc, funcName, funcType, attrs, paramAttrs );
-            createScope( loc, funcOp, funcName );
+            auto funcOp = builder.create<mlir::func::FuncOp>( loc, funcName, funcType, attrs );
+            createScope( loc, funcOp, funcName, paramNames );
+
 
             std::string varName = "w";
             auto declareOp = lookupDeclareForVar( varName );
@@ -469,6 +475,73 @@ namespace toy
         }
     }
 
+    // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
+    // uses arith dialect operations instead of LLVM dialect
+    mlir::Value MLIRListener::castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType )
+    {
+        if ( value.getType() != desiredType )
+        {
+            auto valType = value.getType();
+
+            if ( valType.isF64() )
+            {
+                if ( mlir::isa<mlir::IntegerType>( desiredType ) )
+                {
+                    value = builder.create<mlir::arith::FPToSIOp>( loc, desiredType, value );
+                }
+                else if ( desiredType.isF32() )
+                {
+                    value = builder.create<mlir::LLVM::FPExtOp>( loc, desiredType, value );
+                }
+            }
+            else if ( valType.isF32() )
+            {
+                if ( mlir::isa<mlir::IntegerType>( desiredType ) )
+                {
+                    value = builder.create<mlir::arith::FPToSIOp>( loc, desiredType, value );
+                }
+                else if ( desiredType.isF64() )
+                {
+                    value = builder.create<mlir::LLVM::FPExtOp>( loc, desiredType, value );
+                }
+            }
+            else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
+            {
+                auto vwidth = viType.getWidth();
+                if ( mlir::isa<mlir::FloatType>( desiredType ) )
+                {
+                    if ( vwidth == 1 )
+                    {
+                        value = builder.create<mlir::arith::UIToFPOp>( loc, desiredType, value );
+                    }
+                    else
+                    {
+                        value = builder.create<mlir::arith::SIToFPOp>( loc, desiredType, value );
+                    }
+                }
+                else if ( auto miType = mlir::cast<mlir::IntegerType>( desiredType ) )
+                {
+                    // boolr: mwidth == 32, vwidth == 1
+                    auto mwidth = miType.getWidth();
+                    if ( ( vwidth == 1 ) && ( mwidth != 1 ) )
+                    {
+                        // widen bool to integer using unsigned extension:
+                        value = builder.create<mlir::arith::ExtUIOp>( loc, desiredType, value );
+                    }
+                    else if ( vwidth > mwidth )
+                    {
+                        value = builder.create<mlir::arith::TruncIOp>( loc, desiredType, value );
+                    }
+                    else if ( vwidth < mwidth )
+                    {
+                        value = builder.create<mlir::arith::ExtSIOp>( loc, desiredType, value );
+                    }
+                }
+            }
+        }
+
+        return value;
+    }
     void MLIRListener::createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName,
                                     const std::vector<std::string> &paramNames )
     {
