@@ -552,7 +552,7 @@ namespace toy
 
         mlir::TypeRange resultTypes = funcType.getResults();
 
-        builder.create<mlir::func::CallOp>( loc, funcName, resultTypes, parameters );
+        builder.create<toy::CallOp>( loc, resultTypes, funcName, parameters );
     }
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
