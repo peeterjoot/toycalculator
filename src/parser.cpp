@@ -258,7 +258,6 @@ namespace toy
 
             if ( varState == variable_state::undeclared )
             {
-                lastSemError = semantic_errors::variable_not_declared;
                 throw exception_with_context(
                     __FILE__, __LINE__, __func__,
                     std::format( "{}error: Variable {} not declared in expr\n", formatLocation( loc ), varName ) );
@@ -266,7 +265,6 @@ namespace toy
 
             if ( varState != variable_state::assigned )
             {
-                lastSemError = semantic_errors::variable_not_assigned;
                 throw exception_with_context(
                     __FILE__, __LINE__, __func__,
                     std::format( "{}error: Variable {} not assigned in expr\n", formatLocation( loc ), varName ) );
@@ -290,15 +288,15 @@ namespace toy
     }
 
     // \retval true if error
-    inline bool MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
+    inline void MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                                    ToyParser::ArrayBoundsExpressionContext *arrayBounds )
     {
         auto varState = getVarState( currentFuncName, varName );
         if ( varState != variable_state::undeclared )
         {
-            lastSemError = semantic_errors::variable_already_declared;
-            llvm::errs() << std::format( "{}error: Variable {} already declared\n", formatLocation( loc ), varName );
-            return true;
+            throw exception_with_context(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}error: Variable {} already declared\n", formatLocation( loc ), varName ) );
         }
 
         setVarState( currentFuncName, varName, variable_state::declared );
@@ -327,8 +325,6 @@ namespace toy
 
         // For test purposes to verify that symbol lookup for varName worked right after the DeclareOp build call:
         // auto ddcl = lookupDeclareForVar( varName );
-
-        return false;
     }
 
     MLIRListener::MLIRListener( const std::string &_filename )
@@ -680,17 +676,15 @@ namespace toy
             auto varState = getVarState( currentFuncName, varName );
             if ( varState == variable_state::undeclared )
             {
-                lastSemError = semantic_errors::variable_not_declared;
-                llvm::errs() << std::format( "{}error: Variable {} not declared in PRINT\n", formatLocation( loc ),
-                                             varName );
-                return;
+                throw exception_with_context(
+                    __FILE__, __LINE__, __func__,
+                    std::format( "{}error: Variable {} not declared in PRINT\n", formatLocation( loc ), varName ) );
             }
             if ( varState != variable_state::assigned )
             {
-                lastSemError = semantic_errors::variable_not_assigned;
-                llvm::errs() << std::format( "{}error: Variable {} not assigned in PRINT\n", formatLocation( loc ),
-                                             varName );
-                return;
+                throw exception_with_context(
+                    __FILE__, __LINE__, __func__,
+                    std::format( "{}error: Variable {} not assigned in PRINT\n", formatLocation( loc ), varName ) );
             }
 
             auto declareOp = lookupDeclareForVar( varName );
@@ -890,9 +884,10 @@ namespace toy
         }
         else if ( varState == variable_state::undeclared )
         {
-            lastSemError = semantic_errors::variable_not_declared;
-            llvm::errs() << std::format( "{}error: Variable {} not declared in assignment\n", formatLocation( loc ),
-                                         currentVarName );
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          std::format( "{}error: Variable {} not declared in assignment\n",
+                                                       formatLocation( loc ), currentVarName ) );
+
             assignmentTargetValid = false;
         }
         currentAssignLoc = loc;

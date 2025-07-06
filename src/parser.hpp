@@ -52,15 +52,6 @@ namespace toy
         return (int)ty >= (int)theTypes::float32;
     }
 
-    enum class semantic_errors : int
-    {
-        not_an_error,
-        variable_already_declared,
-        variable_not_declared,
-        variable_not_assigned,
-        unknown_error
-    };
-
     enum class variable_state : int
     {
         undeclared,
@@ -89,7 +80,6 @@ namespace toy
         mlir::FileLineColLoc lastLocation;
         mlir::ModuleOp mod;
         std::string currentVarName;
-        semantic_errors lastSemError{ semantic_errors::not_an_error };
         std::unordered_map<std::string, variable_state> pr_varStates;
         std::map<std::string, mlir::Operation*> funcByName;
         bool assignmentTargetValid{};
@@ -125,7 +115,7 @@ namespace toy
 
         // @param asz [in]
         //    Array size or zero for scalar.
-        inline bool registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
+        inline void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                          ToyParser::ArrayBoundsExpressionContext *arrayBounds );
 
         void setVarState( const std::string & funcName, const std::string & varName, variable_state st )
