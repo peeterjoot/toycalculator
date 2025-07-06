@@ -7,10 +7,11 @@
 b main
 # pick which sample program to use for the compiler debugging.
 #run ../samples/function_plist.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
-run ../samples/stringlit.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+#run ../samples/stringlit.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+run ../samples/function_return.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 
 b __assert_perror_fail
-b createPrintCall
+#b createPrintCall
 #b lookupLocalSymbolReference
 #b createLocalSymbolReference
 #b lookupDeclareForVar

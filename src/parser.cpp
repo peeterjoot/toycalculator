@@ -208,9 +208,9 @@ namespace toy
     }
 
     // \retval true if error
-    inline std::string MLIRListener::buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
-                                                           tNode *variableNode, tNode *stringNode, mlir::Location loc,
-                                                           mlir::Value &value )
+    inline void MLIRListener::buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
+                                                    tNode *variableNode, tNode *stringNode, mlir::Location loc,
+                                                    mlir::Value &value, std::string &s )
     {
         if ( booleanNode )
         {
@@ -280,15 +280,13 @@ namespace toy
         }
         else if ( stringNode )
         {
-            return stripQuotes( stringNode->getText() );
+            s = stripQuotes( stringNode->getText() );
         }
         else
         {
             throw exception_with_context( __FILE__, __LINE__, __func__,
                                           std::format( "{}error: Invalid operand\n", formatLocation( loc ) ) );
         }
-
-        return std::string();
     }
 
     // \retval true if error
@@ -512,7 +510,7 @@ namespace toy
         builder.restoreInsertionPoint( mainIP );
     }
 
-    void MLIRListener::enterCall( ToyParser::CallContext *ctx )
+    mlir::Value MLIRListener::handleCall( ToyParser::CallContext *ctx )
     {
         auto loc = getLocation( ctx );
         auto funcName = ctx->IDENTIFIER()->getText();
@@ -536,10 +534,10 @@ namespace toy
                 mlir::Value value;
                 auto lit = p->literal();
 
-                auto s =
-                    buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr,
-                                          lit ? lit->INTEGER_PATTERN() : nullptr, lit ? lit->FLOAT_PATTERN() : nullptr,
-                                          p->IDENTIFIER(), lit ? lit->STRING_PATTERN() : nullptr, loc, value );
+                std::string s;
+                buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                      lit ? lit->FLOAT_PATTERN() : nullptr, p->IDENTIFIER(),
+                                      lit ? lit->STRING_PATTERN() : nullptr, loc, value, s );
 
                 assert( s.length() == 0 );    // for StringNode.  Want to support passing string literals (not just to
                                               // PRINT builtin), but not now.
@@ -552,7 +550,18 @@ namespace toy
 
         mlir::TypeRange resultTypes = funcType.getResults();
 
-        builder.create<toy::CallOp>( loc, resultTypes, funcName, parameters );
+        auto callOp = builder.create<toy::CallOp>( loc, resultTypes, funcName, parameters );
+
+        // Return the first result (or null for void calls)
+        return resultTypes.empty() ? mlir::Value{} : callOp.getResults()[0];
+    }
+
+    void MLIRListener::enterCall( ToyParser::CallContext *ctx )
+    {
+        if ( callIsHandled )
+            return;
+
+        handleCall( ctx );
     }
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
@@ -831,10 +840,11 @@ namespace toy
 
         mlir::Value value;
 
-        auto s = buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                       lit ? lit->FLOAT_PATTERN() : nullptr, var,
-                                       nullptr,    // stringNode
-                                       loc, value );
+        std::string s;
+        buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr, lit ? lit->FLOAT_PATTERN() : nullptr,
+                              var,
+                              nullptr,    // stringNode
+                              loc, value, s );
         assert( s.length() == 0 );
 
         // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
@@ -886,6 +896,12 @@ namespace toy
             assignmentTargetValid = false;
         }
         currentAssignLoc = loc;
+        callIsHandled = false;
+    }
+
+    void MLIRListener::exitAssignment( ToyParser::AssignmentContext *ctx )
+    {
+        callIsHandled = false;
     }
 
     void MLIRListener::enterAssignmentExpression( ToyParser::AssignmentExpressionContext *ctx )
@@ -911,9 +927,17 @@ namespace toy
 
             auto lit = ctx->literal();
 
-            s = buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+            if ( auto call = ctx->call() )
+            {
+                callIsHandled = true;
+                lhsValue = handleCall( call );
+            }
+            else
+            {
+                buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
                                       lit ? lit->FLOAT_PATTERN() : nullptr, ctx->IDENTIFIER(),
-                                      lit ? lit->STRING_PATTERN() : nullptr, loc, lhsValue );
+                                      lit ? lit->STRING_PATTERN() : nullptr, loc, lhsValue, s );
+            }
 
             resultValue = lhsValue;
             if ( auto unaryOp = ctx->unaryOperator() )
@@ -944,20 +968,20 @@ namespace toy
             auto opText = ctx->binaryOperator()->getText();
 
             auto llit = lhs->numericLiteral();
-            s = buildUnaryExpression( nullptr,    // booleanNode
-                                      llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
-                                      lhs->IDENTIFIER(),
-                                      nullptr,    // stringNode
-                                      loc, lhsValue );
+            buildUnaryExpression( nullptr,    // booleanNode
+                                  llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
+                                  lhs->IDENTIFIER(),
+                                  nullptr,    // stringNode
+                                  loc, lhsValue, s );
             assert( s.length() == 0 );
 
             mlir::Value rhsValue;
             auto rlit = rhs->numericLiteral();
-            s = buildUnaryExpression( nullptr,    // booleanNode
-                                      rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
-                                      rhs->IDENTIFIER(),
-                                      nullptr,    // stringNode
-                                      loc, rhsValue );
+            buildUnaryExpression( nullptr,    // booleanNode
+                                  rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
+                                  rhs->IDENTIFIER(),
+                                  nullptr,    // stringNode
+                                  loc, rhsValue, s );
             assert( s.length() == 0 );
 
             // Create the binary operator (supports +, -, *, /)

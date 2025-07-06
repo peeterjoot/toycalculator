@@ -107,6 +107,8 @@ namespace toy
 
         mlir::OpBuilder::InsertPoint mainIP;
 
+        bool callIsHandled{};
+
         inline toy::DeclareOp lookupDeclareForVar( const std::string & varName );
 
         inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx );
@@ -115,9 +117,11 @@ namespace toy
 
         inline std::string formatLocation( mlir::Location loc );
 
-        inline std::string buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
-                                                 tNode *variableNode, tNode *stringNode, mlir::Location loc,
-                                                 mlir::Value &value );
+        inline void buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
+                                          tNode *variableNode, tNode *stringNode, mlir::Location loc,
+                                          mlir::Value &value, std::string & s );
+
+        mlir::Value handleCall( ToyParser::CallContext *ctx );
 
         // @param asz [in]
         //    Array size or zero for scalar.
@@ -194,6 +198,8 @@ namespace toy
         void enterPrint( ToyParser::PrintContext *ctx ) override;
 
         void enterAssignment( ToyParser::AssignmentContext *ctx ) override;
+
+        void exitAssignment( ToyParser::AssignmentContext *ctx ) override;
 
         void enterExitStatement( ToyParser::ExitStatementContext *ctx ) override;
 

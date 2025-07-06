@@ -1303,7 +1303,14 @@ namespace toy
                     {
                         // Lower toy::CallOp to func::CallOp
                         auto calleeAttr = mlir::cast<mlir::FlatSymbolRefAttr>( callOp->getAttr( "callee" ) );
-                        rewriter.create<mlir::func::CallOp>( op.getLoc(), TypeRange{}, calleeAttr, callOp.getOperands() );
+
+                        auto newCallOp = rewriter.create<mlir::func::CallOp>( op.getLoc(), callOp.getResultTypes(),
+                                                                              calleeAttr, callOp.getOperands() );
+
+                        for ( unsigned i = 0; i < callOp.getNumResults(); ++i )
+                        {
+                            callOp.getResults()[i].replaceAllUsesWith( newCallOp.getResult( i ) );
+                        }
                         rewriter.eraseOp( &op );
                     }
                     else

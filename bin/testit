@@ -130,6 +130,7 @@ function_intret_intparam
 function_intret_void
 function_plist
 function_plist_nocast
+function_return
 function_two
 function_void_intparm
 function_void_void

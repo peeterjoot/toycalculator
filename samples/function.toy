@@ -29,4 +29,17 @@ FUNCTION bar1 ( )
     RETURN;
 };
 
-PRINT "Hello function codegen, but no calls.";
+PRINT "Hello functions.";
+
+CALL bar0();
+CALL bar1();
+
+INT32 v;
+v = CALL add( 42, 0 );
+PRINT v;
+v = CALL zero();
+PRINT v;
+v = CALL plus3( 39 );
+PRINT v;
+
+PRINT "Goodbye functions.";
