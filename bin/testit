@@ -106,8 +106,6 @@ if ( $debug )
 
 system( qq(rm -rf out) );
 
-# function_plist
-# call_with_param_referenced
 my %tests = map { $_ => 1 } (qw(
 0minus
 addi
@@ -130,6 +128,7 @@ function_add
 function_foo_with_local
 function_intret_intparam
 function_intret_void
+function_plist
 function_plist_nocast
 function_two
 function_void_intparm

@@ -4,21 +4,46 @@
     PRINT 42;
 
 * Function support: WIP:
-    - Last commit messed things up.  Debug it.
-        - broken: call_with_param_referenced.toy
     - Builder: implement FUNCTION builder (i.e.: within assignment.)
-    - Lowering?: implement function call lowering if required.
-    - Haven't tested functions with any statements in them.
-        - param lookup doesn't work:
-            - Enabling stuff in function.toy:plus3: results in error: v not found. -- will need to implement symbol lookup like for variables.  Might have lowering impacts too, as there's now an alloca per parameter in the parameter declareop lowering.
     - All the testerrors.sh tests appear to not fail as desired -- still an issue.
-    - CALL w/ parameters:
-        function_plist.toy
+    - DI instrumentation isn't right (variable lookup actually works in bar, but foo shows up with the module location)
 
-        - also end up with weird back to back addressof:
+            Breakpoint 1, main () at function_plist.toy:19
+            19      PRINT "In main";
+            (gdb) n
+            In main
+            20      CALL foo();
+            (gdb) s
+            foo () at function_plist.toy:1
+            1       FUNCTION bar ( INT16 w, INT32 z )
+            (gdb) n
+            12          v = 3;
+            (gdb) p w
+            No symbol "w" in current context.
+            (gdb) n
+            13          PRINT "In foo";
+            (gdb) p w
+            No symbol "w" in current context.
+            (gdb) n
+            In foo
+            14          CALL bar( v, 42 );
+            (gdb) p v
+            $1 = 3
+            (gdb) s
+            bar (w=64, z=0) at function_plist.toy:1
+            1       FUNCTION bar ( INT16 w, INT32 z )
+            (gdb) n
+            3           PRINT "In bar";
+            (gdb) n
+            In bar
+            4           PRINT w;
+            (gdb) bt
+            #0  bar (w=3, z=42) at function_plist.toy:4
+            #1  0x00000000004004a6 in foo () at function_plist.toy:14
+            #2  0x0000000000400505 in main () at function_plist.toy:20
+            (gdb) p w
+            $2 = 3
 
-            %18 = "llvm.mlir.addressof"() <{global_name = @str_0}> : () -> !llvm.ptr
-            %19 = "llvm.mlir.addressof"() <{global_name = @str_0}> : () -> !llvm.ptr
 
 * Switch to CamelCase uniformly.
 * Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
