@@ -655,7 +655,7 @@ namespace toy
                 }
 
                 createToyPrintI64Prototype();
-                result = rewriter.create<toy::CallOp>( loc, "__toy_print_i64", ValueRange{ input } );
+                result = rewriter.create<toy::CallOp>( loc, TypeRange{}, "__toy_print_i64", ValueRange{ input } );
             }
             else if ( auto inputf = mlir::dyn_cast<FloatType>( inputType ) )
             {
@@ -669,7 +669,7 @@ namespace toy
                 }
 
                 createToyPrintF64Prototype();
-                result = rewriter.create<toy::CallOp>( loc, "__toy_print_f64", ValueRange{ input } );
+                result = rewriter.create<toy::CallOp>( loc, TypeRange{}, "__toy_print_f64", ValueRange{ input } );
             }
             else if ( inputType == tyPtr )
             {
@@ -723,7 +723,7 @@ namespace toy
 
                 createToyPrintStringPrototype();
                 auto name = "__toy_print_string";
-                result = rewriter.create<toy::CallOp>( loc, name, ValueRange{ sizeConst, input } );
+                result = rewriter.create<toy::CallOp>( loc, TypeRange{}, name, ValueRange{ sizeConst, input } );
             }
             else
             {

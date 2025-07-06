@@ -455,7 +455,7 @@ namespace toy
 
     void MLIRListener::enterStartRule( ToyParser::StartRuleContext *ctx )
     {
-        auto loc = getLocation( ctx );
+        auto loc = getLocation( nullptr );
 
         auto funcType = builder.getFunctionType( {}, tyI32 );
         auto funcOp = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );

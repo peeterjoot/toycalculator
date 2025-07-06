@@ -116,9 +116,9 @@ def Toy_CallOp : Op<Toy_Dialect, "call"> {
     FlatSymbolRefAttr:$callee,
     Variadic<AnyType>:$operands
   );
-  let results = (outs);
+  let results = (outs Variadic<AnyType>:$result);
 
-  let assemblyFormat = "$callee `(` type($operands) $operands `)` attr-dict";
+  //let assemblyFormat = "$callee `(` type($operands) $operands `)` attr-dict";
 }
 
 def Toy_ReturnOp : Op<Toy_Dialect, "return"> {
