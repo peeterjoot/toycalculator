@@ -1,0 +1,10 @@
+FUNCTION bar ( ) : INT32
+{
+    RETURN 3;
+};
+
+INT32 v;
+//PRINT "CALL foo";
+v = CALL foo();
+//PRINT v;
+//PRINT "Back in main";

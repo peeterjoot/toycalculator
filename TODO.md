@@ -5,20 +5,8 @@
 * If a FUNCTION is declared on the first line, then it ends up sharing the default location info for main (1:0).  Anything on the first line (variable, ...) would have the same behaviour, perhaps undesirable.  Could make the default location large and unreachable, but guess that would break stuff.  Solution?: make the module default use the first actual "main" statement, deferring main FuncOp build until the first actual (non-function) enter rule.
 
 * Function support: WIP:
-808003
     - Builder: implement FUNCTION builder (i.e.: within assignment.)
-    - function_plist.toy: have verifier errors for CallOp:
-
-        'func.call' op 'bar' does not reference a valid function
-        'func.call' op 'foo' does not reference a valid function
-        mlir-asm-printer: 'builtin.module' failed to verify and will be printed in generic form
-        IR before stage I lowering:
-        'func.call' op 'bar' does not reference a valid function
-        'func.call' op 'foo' does not reference a valid function
-        mlir-asm-printer: 'builtin.module' failed to verify and will be printed in generic form
-
-        (same as I had for print calls -- switch to toy::CallOp, but will have to add outs)
-
+        t/c: function_return.toy
     - All the testerrors.sh tests appear to not fail as desired -- still an issue.
     - DI instrumentation isn't right (variable lookup actually works in bar, but foo shows up with the module location)
 
