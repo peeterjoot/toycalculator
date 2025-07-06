@@ -1,11 +1,13 @@
 ## TODO
 
+* All the testerrors.sh tests appear to not fail as desired.
+  -- regressed in use_mlir_funcop_with_scopeop
+
 * Add integer literal support to PRINT, so that I can do a program as simple as:
     PRINT 42;
 * If a FUNCTION is declared on the first line, then it ends up sharing the default location info for main (1:0).  Anything on the first line (variable, ...) would have the same behaviour, perhaps undesirable.  Could make the default location large and unreachable, but guess that would break stuff.  Solution?: make the module default use the first actual "main" statement, deferring main FuncOp build until the first actual (non-function) enter rule.
 
 * Function support: WIP:
-    - All the testerrors.sh tests appear to not fail as desired -- still an issue.
     - DI instrumentation isn't right (variable lookup actually works in bar, but foo shows up with the module location)
 
             Breakpoint 1, main () at function_plist.toy:19
