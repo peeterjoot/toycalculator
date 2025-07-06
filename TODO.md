@@ -1,5 +1,8 @@
 ## TODO
 
+* Add integer literal support to PRINT, so that I can do a program as simple as:
+    PRINT 42;
+
 * Function support: WIP:
     - Last commit messed things up.  Debug it.
         - broken: call_with_param_referenced.toy

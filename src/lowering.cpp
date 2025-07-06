@@ -73,9 +73,9 @@ namespace toy
         mlir::LLVM::DIFileAttr pr_fileAttr;
         std::unordered_map<std::string, mlir::LLVM::DISubprogramAttr> pr_subprogramAttr;
         std::unordered_map<std::string, mlir::LLVM::GlobalOp> pr_stringLiterals;
-        mlir::LLVM::LLVMFuncOp pr_printFuncF64;
-        mlir::LLVM::LLVMFuncOp pr_printFuncI64;
-        mlir::LLVM::LLVMFuncOp pr_printFuncString;
+        mlir::func::FuncOp pr_printFuncF64;
+        mlir::func::FuncOp pr_printFuncI64;
+        mlir::func::FuncOp pr_printFuncString;
 
         const toy::driverState& pr_driverState;
         ModuleOp& pr_module;
@@ -235,46 +235,44 @@ namespace toy
             }
         };
 
-        mlir::LLVM::LLVMFuncOp toyPrintF64()
+        void createToyPrintF64Prototype()
         {
             if ( !pr_printFuncF64 )
             {
                 useModuleInsertionPoint ip( pr_module, pr_builder );
 
-                auto pr_printFuncF64Type = LLVM::LLVMFunctionType::get( tyVoid, { tyF64 }, false );
-                pr_printFuncF64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_f64",
-                                                                       pr_printFuncF64Type, LLVM::Linkage::External );
-            }
+                auto funcType = mlir::FunctionType::get( pr_builder.getContext(), { tyF64 }, {} );
 
-            return pr_printFuncF64;
+                pr_printFuncF64 =
+                    pr_builder.create<mlir::func::FuncOp>( pr_module.getLoc(), "__toy_print_f64", funcType );
+                pr_printFuncF64.setVisibility( mlir::SymbolTable::Visibility::Private );
+            }
         }
 
-        mlir::LLVM::LLVMFuncOp toyPrintI64()
+        void createToyPrintI64Prototype()
         {
             if ( !pr_printFuncI64 )
             {
                 useModuleInsertionPoint ip( pr_module, pr_builder );
 
-                auto printFuncI64Type = LLVM::LLVMFunctionType::get( tyVoid, { tyI64 }, false );
-                pr_printFuncI64 = pr_builder.create<LLVM::LLVMFuncOp>( pr_module.getLoc(), "__toy_print_i64",
-                                                                       printFuncI64Type, LLVM::Linkage::External );
+                auto funcType = mlir::FunctionType::get( pr_builder.getContext(), { tyI64 }, {} );
+                pr_printFuncI64 =
+                    pr_builder.create<mlir::func::FuncOp>( pr_module.getLoc(), "__toy_print_i64", funcType );
+                pr_printFuncI64.setVisibility( mlir::SymbolTable::Visibility::Private );
             }
-
-            return pr_printFuncI64;
         }
 
-        mlir::LLVM::LLVMFuncOp toyPrintString()
+        void createToyPrintStringPrototype()
         {
             if ( !pr_printFuncString )
             {
                 useModuleInsertionPoint ip( pr_module, pr_builder );
 
-                auto printFuncStringType = LLVM::LLVMFunctionType::get( tyVoid, { tyI64, tyPtr }, false );
-                pr_printFuncString = pr_builder.create<LLVM::LLVMFuncOp>(
-                    pr_module.getLoc(), "__toy_print_string", printFuncStringType, LLVM::Linkage::External );
+                auto funcType = mlir::FunctionType::get( pr_builder.getContext(), { tyI64, tyPtr }, {} );
+                pr_printFuncString =
+                    pr_builder.create<mlir::func::FuncOp>( pr_module.getLoc(), "__toy_print_string", funcType );
+                pr_printFuncString.setVisibility( mlir::SymbolTable::Visibility::Private );
             }
-
-            return pr_printFuncString;
         }
 
         void createDICompileUnit()
@@ -638,10 +636,10 @@ namespace toy
             return globalOp;
         }
 
-        mlir::LLVM::CallOp createPrintCall( ConversionPatternRewriter& rewriter, mlir::Location loc, mlir::Value input )
+        toy::CallOp createPrintCall( ConversionPatternRewriter& rewriter, mlir::Location loc, mlir::Value input )
         {
             mlir::Type inputType = input.getType();
-            mlir::LLVM::CallOp result;
+            toy::CallOp result;
 
             if ( auto inputi = mlir::dyn_cast<IntegerType>( inputType ) )
             {
@@ -656,7 +654,8 @@ namespace toy
                     input = rewriter.create<mlir::LLVM::SExtOp>( loc, tyI64, input );
                 }
 
-                result = rewriter.create<LLVM::CallOp>( loc, toyPrintI64(), ValueRange{ input } );
+                createToyPrintI64Prototype();
+                result = rewriter.create<toy::CallOp>( loc, "__toy_print_i64", ValueRange{ input } );
             }
             else if ( auto inputf = mlir::dyn_cast<FloatType>( inputType ) )
             {
@@ -668,7 +667,9 @@ namespace toy
                 {
                     assert( inputType == tyF64 );
                 }
-                result = rewriter.create<LLVM::CallOp>( loc, toyPrintF64(), ValueRange{ input } );
+
+                createToyPrintF64Prototype();
+                result = rewriter.create<toy::CallOp>( loc, "__toy_print_f64", ValueRange{ input } );
             }
             else if ( inputType == tyPtr )
             {
@@ -706,6 +707,13 @@ namespace toy
                 }
                 else
                 {
+                    LLVM_DEBUG( {
+                        llvm::errs() << "why am I here?\n";
+                        input.dump();
+                        // auto module = input.getParentOfType<ModuleOp>();
+                        // module.dump();
+                    } );
+
                     assert( 0 );    // should not get here.
                 }
                 assert( numElems );
@@ -713,12 +721,22 @@ namespace toy
                 auto sizeConst =
                     rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( numElems ) );
 
-                result = rewriter.create<mlir::LLVM::CallOp>( loc, toyPrintString(), ValueRange{ sizeConst, input } );
+                createToyPrintStringPrototype();
+                auto name = "__toy_print_string";
+                result = rewriter.create<toy::CallOp>( loc, name, ValueRange{ sizeConst, input } );
             }
             else
             {
                 assert( 0 );    // Error: unsupported type
             }
+
+#if 0
+            LLVM_DEBUG( {
+                llvm::errs() << "######################### module dump after print lowering\n";
+                auto module = result->getParentOfType<ModuleOp>();
+                module.dump();
+            } );
+#endif
 
             return result;
         }
@@ -881,10 +899,7 @@ namespace toy
                 return rewriter.notifyMatchFailure( op, "Failed to create or lookup string literal global" );
             }
 
-            auto addr = rewriter.create<LLVM::AddressOfOp>( loc, globalOp );
-
-            // Replace the string literal op with the pointer to the global
-            rewriter.replaceOp( op, addr.getResult() );
+            rewriter.eraseOp( op );
             return success();
         }
     };
@@ -1284,6 +1299,13 @@ namespace toy
                         rewriter.create<func::ReturnOp>( op.getLoc(), op.getOperands() );
                         rewriter.eraseOp( &op );
                     }
+                    else if ( auto callOp = dyn_cast<toy::CallOp>( op ) )
+                    {
+                        // Lower toy::CallOp to func::CallOp
+                        auto calleeAttr = mlir::cast<mlir::FlatSymbolRefAttr>( callOp->getAttr( "callee" ) );
+                        rewriter.create<mlir::func::CallOp>( op.getLoc(), TypeRange{}, calleeAttr, callOp.getOperands() );
+                        rewriter.eraseOp( &op );
+                    }
                     else
                     {
                         // Move other operations to the entry block
@@ -1335,6 +1357,10 @@ namespace toy
         LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
                                        ConversionPatternRewriter& rewriter ) const override
         {
+#if 0
+            auto module = op->getParentOfType<ModuleOp>();
+#endif
+
             auto printOp = cast<toy::PrintOp>( op );
             auto loc = printOp.getLoc();
 
@@ -1343,9 +1369,17 @@ namespace toy
             mlir::Value input = printOp.getInput();
             LLVM_DEBUG( llvm::dbgs() << "input: " << input << '\n' );
 
-            mlir::LLVM::CallOp result = lState.createPrintCall( rewriter, loc, input );
+            toy::CallOp result = lState.createPrintCall( rewriter, loc, input );
 
             rewriter.replaceOp( op, result );
+
+#if 0
+            LLVM_DEBUG( {
+                llvm::errs() << "######################### module dump after PrintOpLowering::matchAndRewrite replaceOp\n";
+                module.dump();
+            } );
+#endif
+
             return success();
         }
     };
@@ -1614,7 +1648,7 @@ namespace toy
                                     toy::NegOp, toy::NotEqualOp, toy::OrOp, toy::PrintOp, toy::StringLiteralOp,
                                     toy::SubOp, toy::XorOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
-                                  toy::ScopeOp, toy::YieldOp, toy::ReturnOp>();
+                                  toy::ScopeOp, toy::YieldOp, toy::ReturnOp, toy::CallOp>();
 
                 RewritePatternSet patterns( &getContext() );
                 patterns.add<AddOpLowering, AndOpLowering, AssignOpLowering, ConstantOpLowering, DeclareOpLowering,
@@ -1640,7 +1674,7 @@ namespace toy
             {
                 ConversionTarget target( getContext() );
                 target.addLegalDialect<LLVM::LLVMDialect>();
-                target.addIllegalOp<toy::ScopeOp, toy::YieldOp, toy::ReturnOp>();
+                target.addIllegalOp<toy::ScopeOp, toy::YieldOp, toy::ReturnOp, toy::CallOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
 
                 RewritePatternSet patterns( &getContext() );

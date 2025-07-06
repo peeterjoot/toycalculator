@@ -104,6 +104,23 @@ def Toy_ScopeOp : Op<Toy_Dialect, "scope"> {
   }];
 }
 
+def Toy_CallOp : Op<Toy_Dialect, "call"> {
+  let summary = "A call operation in the Toy dialect to invoke runtime functions.";
+  let description = [{
+    The `toy.call` operation represents a call to a runtime function, such as `__toy_print_string`.
+    It is used as an intermediate operation during lowering from `toy.print` to `func.call`.
+    The operation takes a callee name as a `FlatSymbolRefAttr` and a variadic list of operands.
+  }];
+
+  let arguments = (ins
+    FlatSymbolRefAttr:$callee,
+    Variadic<AnyType>:$operands
+  );
+  let results = (outs);
+
+  let assemblyFormat = "$callee `(` type($operands) $operands `)` attr-dict";
+}
+
 def Toy_ReturnOp : Op<Toy_Dialect, "return"> {
   let summary = "Return operation for toy.scope blocks";
   let description = [{
