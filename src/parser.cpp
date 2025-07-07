@@ -447,15 +447,29 @@ namespace toy
         funcByName[currentFuncName] = func;
     }
 
+    void MLIRListener::mainFirstTime( mlir::Location loc )
+    {
+        if ( !mainScopeGenerated && (MLIRListener::currentFuncName == ENTRY_SYMBOL_NAME) )
+        {
+            auto funcType = builder.getFunctionType( {}, tyI32 );
+            auto funcOp = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
+
+            std::vector<std::string> paramNames;
+            createScope( loc, funcOp, ENTRY_SYMBOL_NAME, paramNames );
+
+            mainScopeGenerated = true;
+        }
+    }
+
     void MLIRListener::enterStartRule( ToyParser::StartRuleContext *ctx )
     {
-        auto loc = getLocation( nullptr );
+        currentFuncName = ENTRY_SYMBOL_NAME;
+    }
 
-        auto funcType = builder.getFunctionType( {}, tyI32 );
-        auto funcOp = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
-
-        std::vector<std::string> paramNames;
-        createScope( loc, funcOp, ENTRY_SYMBOL_NAME, paramNames );
+    void MLIRListener::exitStartRule( ToyParser::StartRuleContext *ctx )
+    {
+        auto loc = getLocation( ctx );
+        mainFirstTime( loc );
     }
 
     void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
@@ -557,12 +571,16 @@ namespace toy
         if ( callIsHandled )
             return;
 
+        auto loc = getLocation( ctx );
+        mainFirstTime( loc );
+
         handleCall( ctx );
     }
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
     {
         auto loc = getLocation( ctx );
+        mainFirstTime( loc );
         auto varName = ctx->IDENTIFIER()->getText();
 
         registerDeclaration( loc, varName, tyF64, ctx->arrayBoundsExpression() );
@@ -571,6 +589,7 @@ namespace toy
     void MLIRListener::enterBoolDeclare( ToyParser::BoolDeclareContext *ctx )
     {
         auto loc = getLocation( ctx );
+        mainFirstTime( loc );
         auto varName = ctx->IDENTIFIER()->getText();
         registerDeclaration( loc, varName, tyI1, ctx->arrayBoundsExpression() );
     }
@@ -578,6 +597,7 @@ namespace toy
     void MLIRListener::enterIntDeclare( ToyParser::IntDeclareContext *ctx )
     {
         auto loc = getLocation( ctx );
+        mainFirstTime( loc );
         auto varName = ctx->IDENTIFIER()->getText();
 
         if ( ctx->INT8_TOKEN() )
@@ -606,6 +626,7 @@ namespace toy
     void MLIRListener::enterFloatDeclare( ToyParser::FloatDeclareContext *ctx )
     {
         auto loc = getLocation( ctx );
+        mainFirstTime( loc );
         auto varName = ctx->IDENTIFIER()->getText();
 
         if ( ctx->FLOAT32_TOKEN() )
@@ -626,6 +647,7 @@ namespace toy
     void MLIRListener::enterStringDeclare( ToyParser::StringDeclareContext *ctx )
     {
         auto loc = getLocation( ctx );
+        mainFirstTime( loc );
         auto varName = ctx->IDENTIFIER()->getText();
         ToyParser::ArrayBoundsExpressionContext *arrayBounds = ctx->arrayBoundsExpression();
         assert( arrayBounds );
@@ -636,6 +658,7 @@ namespace toy
     void MLIRListener::enterIfelifelse( ToyParser::IfelifelseContext *ctx )
     {
         auto loc = getLocation( ctx );
+        mainFirstTime( loc );
 
         llvm::errs() << std::format( "{}NYI: {}\n", formatLocation( loc ), ctx->getText() );
 
@@ -645,6 +668,7 @@ namespace toy
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
     {
         auto loc = getLocation( ctx );
+        mainFirstTime( loc );
 
         mlir::Type varType;
 
@@ -855,6 +879,7 @@ namespace toy
     void MLIRListener::enterReturnStatement( ToyParser::ReturnStatementContext *ctx )
     {
         auto loc = getLocation( ctx );
+        mainFirstTime( loc );
 
         auto lit = ctx->literal();
         auto var = ctx->IDENTIFIER();
@@ -865,6 +890,7 @@ namespace toy
     void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )
     {
         auto loc = getLocation( ctx );
+        mainFirstTime( loc );
 
         auto lit = ctx->numericLiteral();
         auto var = ctx->IDENTIFIER();
@@ -876,6 +902,7 @@ namespace toy
     {
         assignmentTargetValid = true;
         auto loc = getLocation( ctx );
+        mainFirstTime( loc );
         currentVarName = ctx->IDENTIFIER()->getText();
         auto varState = getVarState( currentFuncName, currentVarName );
         if ( varState == variable_state::declared )
@@ -906,6 +933,7 @@ namespace toy
             return;
         }
         auto loc = getLocation( ctx );
+        mainFirstTime( loc );
         mlir::Value resultValue;
 
         auto declareOp = lookupDeclareForVar( currentVarName );

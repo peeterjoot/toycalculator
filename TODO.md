@@ -2,47 +2,7 @@
 
 * Add integer literal support to PRINT, so that I can do a program as simple as:
     PRINT 42;
-* If a FUNCTION is declared on the first line, then it ends up sharing the default location info for main (1:0).  Anything on the first line (variable, ...) would have the same behaviour, perhaps undesirable.  Could make the default location large and unreachable, but guess that would break stuff.  Solution?: make the module default use the first actual "main" statement, deferring main FuncOp build until the first actual (non-function) enter rule.
-
-* Function support: WIP:
-    - DI instrumentation isn't right (variable lookup actually works in bar, but foo shows up with the module location)
-
-            Breakpoint 1, main () at function_plist.toy:19
-            19      PRINT "In main";
-            (gdb) n
-            In main
-            20      CALL foo();
-            (gdb) s
-            foo () at function_plist.toy:1
-            1       FUNCTION bar ( INT16 w, INT32 z )
-            (gdb) n
-            12          v = 3;
-            (gdb) p w
-            No symbol "w" in current context.
-            (gdb) n
-            13          PRINT "In foo";
-            (gdb) p w
-            No symbol "w" in current context.
-            (gdb) n
-            In foo
-            14          CALL bar( v, 42 );
-            (gdb) p v
-            $1 = 3
-            (gdb) s
-            bar (w=64, z=0) at function_plist.toy:1
-            1       FUNCTION bar ( INT16 w, INT32 z )
-            (gdb) n
-            3           PRINT "In bar";
-            (gdb) n
-            In bar
-            4           PRINT w;
-            (gdb) bt
-            #0  bar (w=3, z=42) at function_plist.toy:4
-            #1  0x00000000004004a6 in foo () at function_plist.toy:14
-            #2  0x0000000000400505 in main () at function_plist.toy:20
-            (gdb) p w
-            $2 = 3
-
+* The dummy returnOp ends up with the wrong location.  We really want it to be the last statement in the function (or source file.)  Should do a replacement unconditionally if not done, using the last location.
 
 * Switch to CamelCase uniformly.
 * Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...

@@ -98,6 +98,7 @@ namespace toy
         mlir::OpBuilder::InsertPoint mainIP;
 
         bool callIsHandled{};
+        bool mainScopeGenerated{};
 
         inline toy::DeclareOp lookupDeclareForVar( const std::string & varName );
 
@@ -164,6 +165,10 @@ namespace toy
         void processReturnLike( mlir::Location loc, Literal *lit, tNode *var, tNode *boolNode );
 
         void enterStartRule( ToyParser::StartRuleContext *ctx ) override;
+
+        void exitStartRule( ToyParser::StartRuleContext *ctx ) override;
+
+        void mainFirstTime( mlir::Location loc );
 
         void enterIfelifelse( ToyParser::IfelifelseContext *ctx ) override;
 
