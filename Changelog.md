@@ -1,21 +1,213 @@
-## tag: V4 (WIP)
+## tag: V5 (WIP)
 
-INTERNALS:
-* Generate the __toy_print... prototypes on demand, to clutter up the generated code less.  Can do this by saving and restoring the insertion point to the module level (where the symbol table and globals live.)
-* Introduce a string literal op, replacing the customized string assign operator:
+## tag: V4 (July 7, 2025)
+
+The big changes in this tag relative to V3 are:
+* Adds support (grammar, builder, lowering) for function declarations, and function calls.  Much of the work for this was done in branch use_mlir_funcop_with_scopeop, later squashed and merged as a big commit.
+Here's an example
+
 ```
-    toy.string_assign "s" = "hi"
+FUNCTION bar ( INT16 w, INT32 z )
+{
+    PRINT "In bar";
+    PRINT w;
+    PRINT z;
+    RETURN;
+};
+
+FUNCTION foo ( )
+{
+    INT16 v;
+    v = 3;
+    PRINT "In foo";
+    CALL bar( v, 42 );
+    PRINT "Called bar";
+    RETURN;
+};
+
+PRINT "In main";
+CALL foo();
+PRINT "Back in main";
 ```
-with plain old assign, after first constructing a string literal object:
+
+Here is the MLIR for this program:
+
 ```
-    %0 = "toy.string_literal"() <{value = "hi"}> : () -> !llvm.ptr
-    toy.assign "s", %0 : !llvm.ptr
+module {
+  func.func private @foo() {
+    "toy.scope"() ({
+      "toy.declare"() <{type = i16}> {sym_name = "v"} : () -> ()
+      %c3_i64 = arith.constant 3 : i64
+      "toy.assign"(%c3_i64) <{var_name = @v}> : (i64) -> ()
+      %0 = "toy.string_literal"() <{value = "In foo"}> : () -> !llvm.ptr
+      toy.print %0 : !llvm.ptr
+      %1 = "toy.load"() <{var_name = @v}> : () -> i16
+      %c42_i64 = arith.constant 42 : i64
+      %2 = arith.trunci %c42_i64 : i64 to i32
+      "toy.call"(%1, %2) <{callee = @bar}> : (i16, i32) -> ()
+      %3 = "toy.string_literal"() <{value = "Called bar"}> : () -> !llvm.ptr
+      toy.print %3 : !llvm.ptr
+      "toy.return"() : () -> ()
+    }) : () -> ()
+    "toy.yield"() : () -> ()
+  }
+  func.func private @bar(%arg0: i16, %arg1: i32) {
+    "toy.scope"() ({
+      "toy.declare"() <{param_number = 0 : i64, parameter, type = i16}> {sym_name = "w"} : () -> ()
+      "toy.declare"() <{param_number = 1 : i64, parameter, type = i32}> {sym_name = "z"} : () -> ()
+      %0 = "toy.string_literal"() <{value = "In bar"}> : () -> !llvm.ptr
+      toy.print %0 : !llvm.ptr
+      %1 = "toy.load"() <{var_name = @w}> : () -> i16
+      toy.print %1 : i16
+      %2 = "toy.load"() <{var_name = @z}> : () -> i32
+      toy.print %2 : i32
+      "toy.return"() : () -> ()
+    }) : () -> ()
+    "toy.yield"() : () -> ()
+  }
+  func.func @main() -> i32 {
+    "toy.scope"() ({
+      %c0_i32 = arith.constant 0 : i32
+      %0 = "toy.string_literal"() <{value = "In main"}> : () -> !llvm.ptr
+      toy.print %0 : !llvm.ptr
+      "toy.call"() <{callee = @foo}> : () -> ()
+      %1 = "toy.string_literal"() <{value = "Back in main"}> : () -> !llvm.ptr
+      toy.print %1 : !llvm.ptr
+      "toy.return"(%c0_i32) : (i32) -> ()
+    }) : () -> ()
+    "toy.yield"() : () -> ()
+  }
+}
 ```
+
+Here's a sample program with an assigned CALL value:
+
+```
+FUNCTION bar ( INT16 w )
+{
+    PRINT w;
+    RETURN;
+};
+
+PRINT "In main";
+CALL bar( 3 );
+PRINT "Back in main";
+```
+
+The MLIR for this one looks like:
+
+```
+module {
+  func.func private @bar(%arg0: i16) {
+    "toy.scope"() ({
+      "toy.declare"() <{param_number = 0 : i64, parameter, type = i16}> {sym_name = "w"} : () -> ()
+      %0 = "toy.load"() <{var_name = @w}> : () -> i16
+      toy.print %0 : i16
+      "toy.return"() : () -> ()
+    }) : () -> ()
+    "toy.yield"() : () -> ()
+  }
+  func.func @main() -> i32 {
+    "toy.scope"() ({
+      %c0_i32 = arith.constant 0 : i32
+      %0 = "toy.string_literal"() <{value = "In main"}> : () -> !llvm.ptr
+      toy.print %0 : !llvm.ptr
+      %c3_i64 = arith.constant 3 : i64
+      %1 = arith.trunci %c3_i64 : i64 to i16
+      "toy.call"(%1) <{callee = @bar}> : (i16) -> ()
+      %2 = "toy.string_literal"() <{value = "Back in main"}> : () -> !llvm.ptr
+      toy.print %2 : !llvm.ptr
+      "toy.return"(%c0_i32) : (i32) -> ()
+    }) : () -> ()
+    "toy.yield"() : () -> ()
+  }
+}
+```
+
+I've implemented a two stage lowering, where the toy.scope, toy.yield, toy.call, and toy.returns are stripped out leaving just the func and llvm dialects.  Code from that stage of the lowering is cleaner looking
+
+```
+llvm.mlir.global private constant @str_1(dense<[66, 97, 99, 107, 32, 105, 110, 32, 109, 97, 105, 110]> : tensor<12xi8>) {addr_space = 0 : i32} : !llvm.array<12 x i8>
+func.func private @__toy_print_string(i64, !llvm.ptr)
+llvm.mlir.global private constant @str_0(dense<[73, 110, 32, 109, 97, 105, 110]> : tensor<7xi8>) {addr_space = 0 : i32} : !llvm.array<7 x i8>
+func.func private @__toy_print_i64(i64)
+func.func private @bar(%arg0: i16) {
+  %0 = llvm.mlir.constant(1 : i64) : i64
+  %1 = llvm.alloca %0 x i16 {alignment = 2 : i64, bindc_name = "w.addr"} : (i64) -> !llvm.ptr
+  llvm.store %arg0, %1 : i16, !llvm.ptr
+  %2 = llvm.load %1 : !llvm.ptr -> i16
+  %3 = llvm.sext %2 : i16 to i64
+  call @__toy_print_i64(%3) : (i64) -> ()
+  return
+}
+func.func @main() -> i32 {
+  %0 = llvm.mlir.constant(0 : i32) : i32
+  %1 = llvm.mlir.addressof @str_0 : !llvm.ptr
+  %2 = llvm.mlir.constant(7 : i64) : i64
+  call @__toy_print_string(%2, %1) : (i64, !llvm.ptr) -> ()
+  %3 = llvm.mlir.constant(3 : i64) : i64
+  %4 = llvm.mlir.constant(3 : i16) : i16
+  call @bar(%4) : (i16) -> ()
+  %5 = llvm.mlir.addressof @str_1 : !llvm.ptr
+  %6 = llvm.mlir.constant(12 : i64) : i64
+  call @__toy_print_string(%6, %5) : (i64, !llvm.ptr) -> ()
+  return %0 : i32
+}
+```
+
+There are some dead code constants left there (%3), seeming due to type conversion, but they get stripped out nicely by the time we get to LLVM-IR:
+
+```
+@str_1 = private constant [12 x i8] c"Back in main"
+@str_0 = private constant [7 x i8] c"In main"
+
+declare void @__toy_print_string(i64, ptr)
+
+declare void @__toy_print_i64(i64)
+
+define void @bar(i16 %0) {
+  %2 = alloca i16, i64 1, align 2
+  store i16 %0, ptr %2, align 2
+  %3 = load i16, ptr %2, align 2
+  %4 = sext i16 %3 to i64
+  call void @__toy_print_i64(i64 %4)
+  ret void
+}
+
+define i32 @main() {
+  call void @__toy_print_string(i64 7, ptr @str_0)
+  call void @bar(i16 3)
+  call void @__toy_print_string(i64 12, ptr @str_1)
+  ret i32 0
+}
+```
+
+* Generalize NegOp lowering to support all types, not just f64.
 * Allow PRINT of string literals, avoiding requirement for variables.  Example:
+
 ```
     %0 = "toy.string_literal"() <{value = "A string literal!"}> : () -> !llvm.ptr loc(#loc)
     "toy.print"(%0) : (!llvm.ptr) -> () loc(#loc)
 ```
+
+There were lots of internal changes made along the way, one of which ended up reverted:
+* Cache constantop values so that they need not be repeated -- that caching should be function specific, and will have to be generalized.
+
+Other internal changes include:
+* Generate the __toy_print... prototypes on demand, to clutter up the generated code less.  Can do this by saving and restoring the insertion point to the module level (where the symbol table and globals live.)
+* Introduce a string literal op, replacing the customized string assign operator:
+
+```
+    toy.string_assign "s" = "hi"
+```
+
+with plain old assign, after first constructing a string literal object:
+
+```
+    %0 = "toy.string_literal"() <{value = "hi"}> : () -> !llvm.ptr
+    toy.assign "s", %0 : !llvm.ptr
+```
+
 * Standardize Type handling in lowering.  Cache all the supported int/float types so that I can do compares to those.  This meant that a wide variety of operations, for example:
   - IntegerType::get(...)
   - builder.getI64Type(), ...
@@ -23,8 +215,6 @@ with plain old assign, after first constructing a string literal object:
   - mlir::isa
   - mlir::dyn_cast
   could all be eliminated, replaced with the cached type values of interest.
-* Cache constantop values so that they need not be repeated -- that caching should be function specific, and will have to be generalized.
-* Generalize NegOp lowering to support all types, not just f64.
 * Grammar: add ifelifelse rule (samples/if.toy).  No builder nor lowering support yet.
 * Lowering: Fix StoreOp alignment (had i64's with align 4 in the generated ll.)
 * Replace toy::ProgramOp with mlir::func::FuncOp (prep for adding scopes and callable functions.)
@@ -86,31 +276,40 @@ This release:
 ## tag: V1 (May 17, 2025)
 
 * Declare variables with BOOL, INT8, INT16, INT32, INT64, FLOAT32, FLOAT64 types:
+
 ```
 BOOL b;
 INT16 i;
 FLOAT32 f;
 ```
+
 * TRUE, FALSE, and floating point constants:
+
 ```
 b = TRUE;
 f = 5 + 3.14E0;
 ```
+
 * An EXIT builtin to return a Unix command line value (must be the last statement in the program):
+
 ```
 EXIT 1;
 EXIT x;
+
 ```
 * Expression type conversions:
+
 ```
 INT16 x;
 FLOAT32 y;
 y = 3.14E0;
 x = 1 + y;
 ```
+
 The type conversion rules in the language are not like C.
 Instead, all expression elements are converted to the type of the destination before the operation, and integers are truncated.
 Example:
+
 ```
 INT32 x;
 x = 1.78 + 3.86E0;
@@ -122,6 +321,7 @@ PRINT f;
 ```
 
 The expected output for this program is:
+
 ```
 4.000000
 5.640000
@@ -171,6 +371,7 @@ for which the MLIR is now free of memref dialect:
 ```
 
 I'm still using llvm.alloca, but that now doesn't show up until lowering:
+
 ```
 ; ModuleID = 'test.toy'
 source_filename = "test.toy"
@@ -197,6 +398,7 @@ define i32 @main() {
 ```
 
 Example of the generated assembly code for this program:
+
 ```
 0000000000000000 <main>:
    0:   push   %rax
@@ -214,20 +416,26 @@ Example of the generated assembly code for this program:
 Language elements:
 
 * Declare a double equivalent variable:
+
 ```
 DCL variablename;
 ```
+
 * Unary assignments to a variable (constants or plus or minus variable-name):
+
 ```
 x = 3;
 x = +x;
 x = -x;
 ```
+
 * Rudimentary binary operations:
+
 ```
 x = 5 + 3;
 y = x * 2;
 ```
+
 * A PRINT builtin.
 
 ### MLIR examples
