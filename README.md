@@ -18,7 +18,7 @@ It implements a toy calculator language that supports a few primitive linguistic
 * integer bitwise operators (OR, AND, XOR).  These only for for integer types (including BOOL.)
 * a NOT operator, yielding BOOL.
 * array declarations, using any of the types above.  STRING is available as an alias for INT8 array.  string literal ASSIGN and PRINT implemented.
-* User defined functions.  CALL function_name( p1, p2), or w/ assign; x = CALL function_name( p1, p2 ).  Declaration looks like: FUNCTION foo( type name, type name, ...) : RETURN-type (where :RETURN-TYPE is optional.)
+* User defined functions.  CALL function_name( p1, p2), or w/ assign; x = CALL function_name( p1, p2 ).  Declaration looks like: FUNCTION foo( type name, type name, ...) : RETURN-type { ... ; RETURN v;};  (where :RETURN-TYPE is optional.)
 
 Computations occur in assignment operations, and any types are first promoted to the type of the variable.
 This means that 'x = 1.99 + 2.99' has the value 3, if x is an integer variable.
