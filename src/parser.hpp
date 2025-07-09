@@ -8,10 +8,10 @@
 #pragma once
 
 #include <antlr4-runtime.h>
+#include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/MLIRContext.h>
-#include <mlir/Dialect/Func/IR/FuncOps.h>
 
 #include <format>
 #include <map>
@@ -69,6 +69,17 @@ namespace toy
 
     using tNode = antlr4::tree::TerminalNode;
 
+    struct PerFunctionState
+    {
+        std::unordered_map<std::string, variable_state> varStates;
+        mlir::Operation *funcOp{};
+        mlir::Location lastLoc;
+
+        PerFunctionState( mlir::Location loc ) : lastLoc( loc )
+        {
+        }
+    };
+
     class MLIRListener : public ToyBaseListener, public antlr4::BaseErrorListener
     {
        private:
@@ -80,8 +91,7 @@ namespace toy
         mlir::FileLineColLoc lastLocation;
         mlir::ModuleOp mod;
         std::string currentVarName;
-        std::unordered_map<std::string, variable_state> pr_varStates;
-        std::map<std::string, mlir::Operation*> funcByName;
+        std::unordered_map<std::string, std::unique_ptr<PerFunctionState>> pr_funcState;
         bool assignmentTargetValid{};
         bool hasErrors{};
 
@@ -100,17 +110,17 @@ namespace toy
         bool callIsHandled{};
         bool mainScopeGenerated{};
 
-        inline toy::DeclareOp lookupDeclareForVar( const std::string & varName );
+        inline toy::DeclareOp lookupDeclareForVar( const std::string &varName );
 
         inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx );
 
-        void createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string & funcName, const std::vector<std::string> & paramNames );
+        void createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName,
+                          const std::vector<std::string> &paramNames );
 
         inline std::string formatLocation( mlir::Location loc );
 
-        inline void buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
-                                          tNode *variableNode, tNode *stringNode, mlir::Location loc,
-                                          mlir::Value &value, std::string & s );
+        inline void buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode, tNode *variableNode,
+                                          tNode *stringNode, mlir::Location loc, mlir::Value &value, std::string &s );
 
         mlir::Value handleCall( ToyParser::CallContext *ctx );
 
@@ -119,16 +129,50 @@ namespace toy
         inline void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                          ToyParser::ArrayBoundsExpressionContext *arrayBounds );
 
-        void setVarState( const std::string & funcName, const std::string & varName, variable_state st )
+        PerFunctionState &funcState( const std::string &funcName )
         {
-            auto k = funcName + "::" + varName;
-            pr_varStates[ k ] = st;
+            if ( !pr_funcState.contains( funcName ) )
+            {
+                pr_funcState[funcName] = std::make_unique<PerFunctionState>( builder.getUnknownLoc() );
+            }
+
+            return *pr_funcState[funcName];
         }
 
-        variable_state getVarState( const std::string & funcName, const std::string & varName )
+        void setVarState( const std::string &funcName, const std::string &varName, variable_state st )
         {
-            auto k = funcName + "::" + varName;
-            return pr_varStates[ k ];
+            auto &f = funcState( funcName );
+            f.varStates[varName] = st;
+        }
+
+        variable_state getVarState( const std::string &varName )
+        {
+            auto &f = funcState( currentFuncName );
+            return f.varStates[varName];
+        }
+
+        void setFuncOp( mlir::Operation *op )
+        {
+            auto &f = funcState( currentFuncName );
+            f.funcOp = op;
+        }
+
+        mlir::func::FuncOp getFuncOp( const std::string &funcName )
+        {
+            auto &f = funcState( funcName );
+            return mlir::cast<mlir::func::FuncOp>( f.funcOp );
+        }
+
+        void setLastLoc( mlir::Location loc )
+        {
+            auto &f = funcState( currentFuncName );
+            f.lastLoc = loc;
+        }
+
+        mlir::Location getLastLoc( )
+        {
+            auto &f = funcState( currentFuncName );
+            return f.lastLoc;
         }
 
         mlir::Type parseScalarType( const std::string &ty );
@@ -141,7 +185,7 @@ namespace toy
         // Override syntaxError to handle parsing errors
 
         void syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
-                          size_t charPositionInLine, const std::string &msg, std::exception_ptr e) override
+                          size_t charPositionInLine, const std::string &msg, std::exception_ptr e ) override
         {
             hasErrors = true;
             std::string tokenText = offendingSymbol ? offendingSymbol->getText() : "<none>";
@@ -174,7 +218,7 @@ namespace toy
 
         void enterFunction( ToyParser::FunctionContext *ctx ) override;
 
-        void enterCall( ToyParser::CallContext *ctx) override;
+        void enterCall( ToyParser::CallContext *ctx ) override;
 
         void exitFunction( ToyParser::FunctionContext *ctx ) override;
 
