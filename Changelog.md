@@ -1,5 +1,7 @@
 ## tag: V5 (WIP)
 
+* Fix Location info for implicit returns, using the last function location info.
+
 ## tag: V4 (July 7, 2025)
 
 The big changes in this tag relative to V3 are:
