@@ -2,7 +2,49 @@
 
 * Add integer literal support to PRINT, so that I can do a program as simple as:
     PRINT 42;
-* The dummy returnOp ends up with the wrong location.  We really want it to be the last statement in the function (or source file.)  Should do a replacement unconditionally if not done, using the last location.
+* t/c: function.toy:
+
+    line stepping behaves wrong after CALL, showing the wrong line after some calls:
+
+        (gdb) n
+        main () at function.toy:38
+        38      v = CALL add( 42, 0 );
+        (gdb) s
+        add (v=0, w=4196336) at function.toy:13
+        13      FUNCTION add( INT32 v, INT32 w ) : INT32
+        (gdb) n
+        16          r = v + w;
+        (gdb) n
+        17          RETURN r;
+        (gdb) p r
+        $1 = 42
+        (gdb) p v
+        $2 = 42
+        (gdb) p w
+        $3 = 0
+        (gdb) n
+        main () at function.toy:39
+        39      PRINT v;                    << OKAY
+        (gdb) n
+        38      v = CALL add( 42, 0 );      << WRONG, ALREADY DONE.
+        (gdb) s
+        39      PRINT v;                    << WRONG, ALREADY DONE.
+        (gdb) n
+        42
+        40      v = CALL zero();
+
+    sequence should have been:
+
+     37 INT32 v;
+     38 v = CALL add( 42, 0 );
+     39 PRINT v;
+     40 v = CALL zero();
+     41 PRINT v;
+     42 v = CALL plus3( 39 );
+     43 PRINT v;
+
+
+* remove the mandatory RETURN in the FUNCTION grammar, and mirror the exitHandled
 
 * Switch to CamelCase uniformly.
 * Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...

@@ -9,36 +9,13 @@ b main
 #run ../samples/function_plist.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 #run ../samples/stringlit.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 run ../samples/function_return.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+#run ../samples/bool.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
+#run ../samples/function_void_intparm.toy --stdout --emit-mlir --no-emit-object --debug -g --emit-llvm
 
 b __assert_perror_fail
-#b createPrintCall
-#b lookupLocalSymbolReference
-#b createLocalSymbolReference
-#b lookupDeclareForVar
-#b MLIRListener::enterDeclare
-#b MLIRListener::enterBoolDeclare
-#b MLIRListener::enterIntDeclare
-#b MLIRListener::enterFunction
-#b MLIRListener::exitFunction
-#b MLIRListener::enterFloatDeclare
-#b MLIRListener::enterStringDeclare
-#b MLIRListener::enterIfelifelse
-#b MLIRListener::enterPrint
-#b MLIRListener::enterReturnStatement
-#b MLIRListener::enterExitStatement
-#b MLIRListener::enterAssignment
-#b MLIRListener::enterAssignmentExpression
 
-#b MLIRListener::processReturnLike
-#b createPrintCall
-#b enterPrint
-
-#b toy::DeclareOpLowering::matchAndRewrite
-#b MLIRListener::createScope
-#b ScopeOpLowering::matchAndRewrite
-
-#b toy::MLIRListener::enterCall
-#b toy::MLIRListener::enterFunction
+b markExplicitTerminator
+b wasTerminatorExplicit
 
 #b buildUnaryExpression
 #b createDICompileUnit
@@ -46,39 +23,47 @@ b __assert_perror_fail
 #b createDISubprogram
 #b createFuncDebug
 #b createLocalSymbolReference
+#b createPrintCall
 #b DebugTranslation::DebugTranslation
-#b enterAssignment
-#b enterAssignmentExpression
 #b enterBinaryexpression
-#b enterBoolDeclare
-#b enterDeclare
-#b enterFloatDeclare
-#b enterIntDeclare
-#b enterPrint
-#b enterReturn
-#b enterReturnstatement
-#b enterStartRule
 #b enterUnaryexpression
-#b exitReturnstatement
+b exitReturnstatement
 #b getDbgRecordRange
 #b lookupAllocaForVar
 #b lookupDeclareForVar
 #b lookupFuncNameForOp
 #b lookupLocalSymbolReference
 #b mlir::createToyToLLVMLoweringPass
-#b MLIRListener::enterAssignmentExpression
-#b MLIRListener::enterStartRule
-#b MLIRListener::registerDeclaration
 #b ProgramOpLowering::matchAndRewrite
 #b ReturnOpLowering::matchAndRewrite
+#b ScopeOpLowering::matchAndRewrite
 #b toy::AssignOpLowering::matchAndRewrite
 #b toy::DeclareOpLowering::matchAndRewrite
 #b toy::ExitOpLowering::matchAndRewrite
 #b toy::FuncOp::addEntryBlock
 #b toy::FuncOpLowering::matchAndRewrite
 #b toy::LoadOpLowering::matchAndRewrite
+#b toy::MLIRListener::createScope
 #b toy::MLIRListener::enterAssignment
+#b toy::MLIRListener::enterAssignmentExpression
+#b toy::MLIRListener::enterBoolDeclare
+#b toy::MLIRListener::enterCall
+#b toy::MLIRListener::enterDeclare
+#b toy::MLIRListener::enterExitStatement
+#b toy::MLIRListener::enterExitStatement 
+#b toy::MLIRListener::enterFloatDeclare
+#b toy::MLIRListener::enterFunction
+#b toy::MLIRListener::enterIfelifelse
+#b toy::MLIRListener::enterIntDeclare
+#b toy::MLIRListener::enterPrint
+b toy::MLIRListener::enterReturnStatement
+#b toy::MLIRListener::enterStartRule
+#b toy::MLIRListener::enterStringDeclare
+#b toy::MLIRListener::exitFunction
+#b toy::MLIRListener::exitStartRule 
 #b toy::MLIRListener::lookupDeclareForVar
+#b toy::MLIRListener::processReturnLike
+#b toy::MLIRListener::registerDeclaration
 #b toy::PrintOpLowering::matchAndRewrite
 #b toy::ProgramOpLowering::matchAndRewrite
 #b ToyToLLVMLoweringPass::runOnOperation

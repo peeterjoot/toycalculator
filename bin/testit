@@ -179,6 +179,7 @@ sub verbose_system
 my $pwd = `pwd` ; chomp $pwd;
 foreach my $stem (sort keys %tests)
 {
+    next if ( $stem =~ /^#/ );
     next if ( defined $just and $just ne $stem );
 
     print "##########################################################################\n";

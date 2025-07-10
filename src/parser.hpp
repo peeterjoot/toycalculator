@@ -74,6 +74,7 @@ namespace toy
         std::unordered_map<std::string, variable_state> varStates;
         mlir::Operation *funcOp{};
         mlir::Location lastLoc;
+        bool terminatorWasExplcit{};
 
         PerFunctionState( mlir::Location loc ) : lastLoc( loc )
         {
@@ -161,6 +162,18 @@ namespace toy
         {
             auto &f = funcState( funcName );
             return mlir::cast<mlir::func::FuncOp>( f.funcOp );
+        }
+
+        void markExplicitTerminator( )
+        {
+            auto &f = funcState( currentFuncName );
+            f.terminatorWasExplcit = true;
+        }
+
+        bool wasTerminatorExplicit( )
+        {
+            auto &f = funcState( currentFuncName );
+            return f.terminatorWasExplcit;
         }
 
         void setLastLoc( mlir::Location loc )

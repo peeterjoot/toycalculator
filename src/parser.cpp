@@ -246,7 +246,7 @@ namespace toy
             // Like the INTEGER_PATTERN node above, create the float literal with
             // the max sized type. Would need a grammar change to have a
             // specific type (i.e.: size) associated with literals.
-            value = builder.create<mlir::arith::ConstantFloatOp>( loc, apVal, builder.getF64Type() );
+            value = builder.create<mlir::arith::ConstantFloatOp>( loc, apVal, tyF64 );
         }
         else if ( variableNode )
         {
@@ -470,6 +470,13 @@ namespace toy
     {
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
+
+        auto lastLoc = getLastLoc( );
+
+        if ( !wasTerminatorExplicit( ) )
+        {
+            processReturnLike<ToyParser::NumericLiteralContext>( lastLoc, nullptr, nullptr, nullptr );
+        }
     }
 
     void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
@@ -513,12 +520,19 @@ namespace toy
 
     void MLIRListener::exitFunction( ToyParser::FunctionContext *ctx )
     {
-        // Could add the return if it wasn't done, as done for exit.  Instead, perhaps temporarily (at
-        // least until ready to support premature return, when control flow possibilities are allowed),
-        // have enforced mandatory RETURN at function end in the grammar.
-        currentFuncName = ENTRY_SYMBOL_NAME;
+        auto lastLoc = getLastLoc( );
+
+        // This is in case the grammar enforcement of a RETURN at end of FUNCTION is removed (which would make sense, and is also
+        // desirable when control flow is added.)
+        // For now, still have enforced mandatory RETURN at function-end in the grammar.
+        if ( !wasTerminatorExplicit( ) )
+        {
+            processReturnLike<ToyParser::LiteralContext>( lastLoc, nullptr, nullptr, nullptr );
+        }
 
         builder.restoreInsertionPoint( mainIP );
+
+        currentFuncName = ENTRY_SYMBOL_NAME;
     }
 
     mlir::Value MLIRListener::handleCall( ToyParser::CallContext *ctx )
@@ -825,11 +839,6 @@ namespace toy
     template <class Literal>
     void MLIRListener::processReturnLike( mlir::Location loc, Literal *lit, tNode *var, tNode *boolNode )
     {
-        if ( !lit && !var && !boolNode )
-        {
-            return;
-        }
-
         // Handle the dummy ReturnOp originally inserted in the FuncOp's block
         auto *currentBlock = builder.getInsertionBlock();
         assert( !currentBlock->empty() );
@@ -863,24 +872,70 @@ namespace toy
         // Set insertion point to func::FuncOp block
         builder.setInsertionPointToEnd( currentBlock );
 
-        mlir::Value value;
+        mlir::Value value{};
 
-        std::string s;
-        buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr, lit ? lit->FLOAT_PATTERN() : nullptr,
-                              var,
-                              nullptr,    // stringNode
-                              loc, value, s );
-        assert( s.length() == 0 );
-
-        // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
-        // uses arith dialect operations instead of LLVM dialect
-        if ( !returnType.empty() )
+        // always regenerate the RETURN/EXIT so that we have the terminator location set properly (not the function body start location
+        // that was used to create the dummy toy.ReturnOp that we rewrite here.)
+        if ( lit || var || boolNode )
         {
-            value = castOpIfRequired( loc, value, returnType[0] );
+            std::string s;
+            buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr, lit ? lit->FLOAT_PATTERN() : nullptr,
+                                  var,
+                                  nullptr,    // stringNode
+                                  loc, value, s );
+            assert( s.length() == 0 );
+
+            // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
+            // uses arith dialect operations instead of LLVM dialect
+            if ( !returnType.empty() )
+            {
+                value = castOpIfRequired( loc, value, returnType[0] );
+            }
+        }
+        else
+        {
+            if ( !returnType.empty() )
+            {
+                // FIXME: factor this out into a generateZeroMatchingType() function.
+                if ( auto intType = mlir::dyn_cast<mlir::IntegerType>( returnType[0] ) )
+                {
+                    auto width = intType.getWidth();
+                    value = builder.create<mlir::arith::ConstantIntOp>( loc, 0, width );
+                }
+                else if ( auto floatType = mlir::dyn_cast<mlir::FloatType>( returnType[0] ) )
+                {
+                    llvm::APFloat apVal( 0.0 );
+                    if ( floatType.getWidth() == 64 )
+                    {
+                        value = builder.create<mlir::arith::ConstantFloatOp>( loc, apVal, tyF64 );
+                    }
+                    else if ( floatType.getWidth() == 32 )
+                    {
+                        value = builder.create<mlir::arith::ConstantFloatOp>( loc, apVal, tyF32 );
+                    }
+                    else
+                    {
+                        assert( 0 );
+                    }
+                }
+                else
+                {
+                    assert( 0 );
+                }
+            }
         }
 
         // Create new ReturnOp with user specified value:
-        builder.create<toy::ReturnOp>( loc, mlir::ValueRange{ value } );
+        if ( value )
+        {
+            builder.create<toy::ReturnOp>( loc, mlir::ValueRange{ value } );
+        }
+        else
+        {
+            builder.create<toy::ReturnOp>( loc, mlir::ValueRange{ } );
+        }
+
+        markExplicitTerminator();
     }
 
     void MLIRListener::enterReturnStatement( ToyParser::ReturnStatementContext *ctx )
