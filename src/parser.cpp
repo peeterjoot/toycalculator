@@ -246,7 +246,7 @@ namespace toy
             // Like the INTEGER_PATTERN node above, create the float literal with
             // the max sized type. Would need a grammar change to have a
             // specific type (i.e.: size) associated with literals.
-            value = builder.create<mlir::arith::ConstantFloatOp>( loc, apVal, tyF64 );
+            value = builder.create<mlir::arith::ConstantFloatOp>( loc, tyF64, apVal );
         }
         else if ( variableNode )
         {
@@ -907,11 +907,11 @@ namespace toy
                     llvm::APFloat apVal( 0.0 );
                     if ( floatType.getWidth() == 64 )
                     {
-                        value = builder.create<mlir::arith::ConstantFloatOp>( loc, apVal, tyF64 );
+                        value = builder.create<mlir::arith::ConstantFloatOp>( loc, tyF64, apVal );
                     }
                     else if ( floatType.getWidth() == 32 )
                     {
-                        value = builder.create<mlir::arith::ConstantFloatOp>( loc, apVal, tyF32 );
+                        value = builder.create<mlir::arith::ConstantFloatOp>( loc, tyF32, apVal );
                     }
                     else
                     {

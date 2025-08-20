@@ -276,7 +276,7 @@ int main( int argc, char** argv )
         LLVM_DEBUG( { llvm::errs() << "IR before stage I lowering:\n"; module->dump(); } );
 
         pm.addPass( mlir::createToyToLLVMLoweringPass( &st ) );
-        pm.addPass( mlir::createConvertSCFToCFPass() );
+        pm.addPass( mlir::createSCFToControlFlowPass() );
         pm.addPass( mlir::createFinalizeMemRefToLLVMConversionPass() );
         pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
 
@@ -336,9 +336,9 @@ int main( int argc, char** argv )
 
             if ( emitObject )
             {
-                // Set target triple
-                std::string targetTriple = llvm::sys::getProcessTriple();
-                llvmModule->setTargetTriple( targetTriple );
+                std::string targetTripleStr = llvm::sys::getProcessTriple();
+                llvm::Triple targetTriple(targetTripleStr);
+                llvmModule->setTargetTriple(targetTriple);
 
                 // Lookup the target
                 std::string error;

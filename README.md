@@ -100,6 +100,12 @@ Having used antlr4 for previous prototyping, also generating a C++ listener, it 
 
 See `bin/buildllvm` for how I built and deployed the llvm+mlir installation used for this project.
 
+The current required version of LLVM/MLIR is:
+
+    21.1.0-rc3
+
+Any 21.1.* version after that will probably work too.
+
 ### Building the project.
 
 ```
