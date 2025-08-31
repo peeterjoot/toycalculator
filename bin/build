@@ -90,6 +90,11 @@ elsif ( $ccache )
    $flags .= '-DCMAKE_CXX_COMPILER=clang++ ';
    $flags .= '-DCMAKE_C_COMPILER=clang ';
 }
+elsif ( -e "$prefix/bin/clang" )
+{
+   $flags .= "-DCMAKE_CXX_COMPILER=$prefix/bin/clang++ ";
+   $flags .= "-DCMAKE_C_COMPILER=$prefix/bin/clang ";
+}
 else
 {
    $flags .= '-DCMAKE_CXX_COMPILER=/usr/bin/clang++ ';
