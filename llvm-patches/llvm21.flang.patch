@@ -1,0 +1,38 @@
+diff --git a/flang/lib/Optimizer/Builder/CMakeLists.txt b/flang/lib/Optimizer/Builder/CMakeLists.txt
+index 31ae395805fa..eb4413887e67 100644
+--- a/flang/lib/Optimizer/Builder/CMakeLists.txt
++++ b/flang/lib/Optimizer/Builder/CMakeLists.txt
+@@ -49,6 +49,7 @@ add_flang_library(FIRBuilder
+   FIRDialectSupport
+   FIRSupport
+   FortranEvaluate
++  FortranSupport
+   HLFIRDialect
+ 
+   MLIR_DEPS
+diff --git a/flang/lib/Optimizer/HLFIR/IR/CMakeLists.txt b/flang/lib/Optimizer/HLFIR/IR/CMakeLists.txt
+index 99e31a43e01e..22533059cf5f 100644
+--- a/flang/lib/Optimizer/HLFIR/IR/CMakeLists.txt
++++ b/flang/lib/Optimizer/HLFIR/IR/CMakeLists.txt
+@@ -12,6 +12,8 @@ add_flang_library(HLFIRDialect
+   LINK_LIBS
+   CUFAttrs
+   FIRDialect
++  FortranEvaluate
++  FortranSupport
+ 
+   LINK_COMPONENTS
+   AsmParser
+diff --git a/flang/lib/Optimizer/HLFIR/Transforms/CMakeLists.txt b/flang/lib/Optimizer/HLFIR/Transforms/CMakeLists.txt
+index cc74273d9c5d..3775a13e31e9 100644
+--- a/flang/lib/Optimizer/HLFIR/Transforms/CMakeLists.txt
++++ b/flang/lib/Optimizer/HLFIR/Transforms/CMakeLists.txt
+@@ -27,6 +27,8 @@ add_flang_library(HLFIRTransforms
+   FIRSupport
+   FIRTransforms
+   FlangOpenMPTransforms
++  FortranEvaluate
++  FortranSupport
+   HLFIRDialect
+ 
+   LINK_COMPONENTS
