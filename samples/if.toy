@@ -4,39 +4,21 @@ x = 3;
 
 IF ( x < 4 )
 {
-   PRINT x;
-};
-
-IF ( x < 4 )
-{
-   PRINT x;
-}
-ELIF ( x > 5 )
-{
-   PRINT "Bug if we get here.";
-};
-
-IF ( x < 4 )
-{
-   PRINT x;
-}
-ELIF ( x > 5 )
-{
-   PRINT "Bug if we get here.";
+   PRINT "x < 4";
+   PRINT "a second statement";
 }
 ELSE
 {
-   PRINT "Bug if we get here too.";
+   PRINT "!(x < 4) -- should be dead code";
 };
 
-IF ( x < 4 )
+IF ( x > 5 )
 {
-   PRINT x;
-
-   IF ( x < 5 )
-   {
-      PRINT x;
-   };
+   PRINT "x > 5";
+}
+ELSE
+{
+   PRINT "!(x > 5) -- should see this";
 };
 
 PRINT "Done.";

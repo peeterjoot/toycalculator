@@ -8,6 +8,7 @@
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
+#include <mlir/Dialect/SCF/IR/SCF.h>
 #include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/Location.h>
 #include <mlir/IR/OpImplementation.h>
@@ -31,6 +32,7 @@ namespace toy
         context.getOrLoadDialect<mlir::arith::ArithDialect>();
         context.getOrLoadDialect<mlir::memref::MemRefDialect>();
         context.getOrLoadDialect<mlir::LLVM::LLVMDialect>();
+        context.getOrLoadDialect<mlir::scf::SCFDialect>();
     }
 
     toy::DeclareOp MLIRListener::lookupDeclareForVar( const std::string &varName )
@@ -81,14 +83,22 @@ namespace toy
         return declareOp;
     }
 
-    inline mlir::Location MLIRListener::getLocation( antlr4::ParserRuleContext *ctx )
+    inline mlir::Location MLIRListener::getLocation( antlr4::ParserRuleContext *ctx, bool useStopLocation )
     {
         size_t line = 1;
         size_t col = 0;
         if ( ctx )
         {
-            line = ctx->getStart()->getLine();
-            col = ctx->getStart()->getCharPositionInLine();
+            if ( useStopLocation )
+            {
+                line = ctx->getStop()->getLine();
+                col = ctx->getStop()->getCharPositionInLine();
+            }
+            else
+            {
+                line = ctx->getStart()->getLine();
+                col = ctx->getStart()->getCharPositionInLine();
+            }
         }
 
         auto loc = mlir::FileLineColLoc::get( builder.getStringAttr( filename ), line, col + 1 );
@@ -447,7 +457,7 @@ namespace toy
 
     void MLIRListener::mainFirstTime( mlir::Location loc )
     {
-        if ( !mainScopeGenerated && (MLIRListener::currentFuncName == ENTRY_SYMBOL_NAME) )
+        if ( !mainScopeGenerated && ( MLIRListener::currentFuncName == ENTRY_SYMBOL_NAME ) )
         {
             auto funcType = builder.getFunctionType( {}, tyI32 );
             auto funcOp = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
@@ -471,12 +481,17 @@ namespace toy
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
 
-        auto lastLoc = getLastLoc( );
+        auto lastLoc = getLastLoc();
 
-        if ( !wasTerminatorExplicit( ) )
+        // LLVM_DEBUG( { llvm::errs() << "exitStartRule module dump before return rewrite:\n"; mod->dump(); } );
+        if ( !wasTerminatorExplicit() )
         {
             processReturnLike<ToyParser::NumericLiteralContext>( lastLoc, nullptr, nullptr, nullptr );
         }
+        LLVM_DEBUG( {
+            llvm::errs() << "exitStartRule done: module dump:\n";
+            mod->dump();
+        } );
     }
 
     void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
@@ -520,12 +535,12 @@ namespace toy
 
     void MLIRListener::exitFunction( ToyParser::FunctionContext *ctx )
     {
-        auto lastLoc = getLastLoc( );
+        auto lastLoc = getLastLoc();
 
-        // This is in case the grammar enforcement of a RETURN at end of FUNCTION is removed (which would make sense, and is also
-        // desirable when control flow is added.)
-        // For now, still have enforced mandatory RETURN at function-end in the grammar.
-        if ( !wasTerminatorExplicit( ) )
+        // This is in case the grammar enforcement of a RETURN at end of FUNCTION is removed (which would make sense,
+        // and is also desirable when control flow is added.) For now, still have enforced mandatory RETURN at
+        // function-end in the grammar.
+        if ( !wasTerminatorExplicit() )
         {
             processReturnLike<ToyParser::LiteralContext>( lastLoc, nullptr, nullptr, nullptr );
         }
@@ -675,14 +690,216 @@ namespace toy
         registerDeclaration( loc, varName, tyI8, arrayBounds );
     }
 
+    // Lower a preciate condition to an i1 Value
+    mlir::Value MLIRListener::parsePredicate( mlir::Location loc, ToyParser::BooleanValueContext *booleanValue )
+    {
+        // booleanValue
+        //   : booleanElement | (binaryElement predicateOperator binaryElement)
+        //   ;
+
+        mlir::Value conditionPredicate{};
+
+        if ( auto boolElement = booleanValue->booleanElement() )
+        {
+            std::string s;
+
+            auto lit = boolElement->booleanLiteral();
+            buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                  nullptr, boolElement->IDENTIFIER(),
+                                  nullptr,    // stringNode
+                                  loc, conditionPredicate, s );
+            assert( s.length() == 0 );
+        }
+        else
+        {
+            // binaryElement : numericLiteral | unaryOperator? IDENTIFIER
+
+            std::vector<ToyParser::BinaryElementContext *> operands = booleanValue->binaryElement();
+            if ( operands.size() == 2 )
+            {
+                std::string s;
+                mlir::Value lhsValue;
+                mlir::Value rhsValue;
+                auto lhs = operands[0];
+                auto rhs = operands[1];
+
+                auto llit = lhs->numericLiteral();
+                buildUnaryExpression( nullptr,    // booleanNode
+                                      llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
+                                      lhs->IDENTIFIER(),
+                                      nullptr,    // stringNode
+                                      loc, lhsValue, s );
+                assert( s.length() == 0 );
+
+                auto rlit = rhs->numericLiteral();
+                buildUnaryExpression( nullptr,    // booleanNode
+                                      rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
+                                      lhs->IDENTIFIER(),
+                                      nullptr,    // stringNode
+                                      loc, rhsValue, s );
+                assert( s.length() == 0 );
+
+                auto op = booleanValue->predicateOperator();
+                if ( op->LESSTHAN_TOKEN() )
+                {
+                    conditionPredicate = builder.create<toy::LessOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
+                }
+                else if ( op->GREATERTHAN_TOKEN() )
+                {
+                    conditionPredicate = builder.create<toy::LessOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
+                }
+                else if ( op->LESSEQUAL_TOKEN() )
+                {
+                    conditionPredicate = builder.create<toy::LessEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
+                }
+                else if ( op->GREATEREQUAL_TOKEN() )
+                {
+                    conditionPredicate = builder.create<toy::LessEqualOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
+                }
+                else if ( op->EQUALITY_TOKEN() )
+                {
+                    conditionPredicate = builder.create<toy::EqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
+                }
+                else if ( op->NOTEQUAL_TOKEN() )
+                {
+                    conditionPredicate = builder.create<toy::NotEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
+                }
+                else
+                {
+                    throw exception_with_context( __FILE__, __LINE__, __func__,
+                                                  "error: Unsupported binary operator in if condition.\n" );
+                }
+            }
+            else
+            {
+                throw exception_with_context( __FILE__, __LINE__, __func__,
+                                              "error: Only binary operators supported in if condition (for now).\n" );
+            }
+        }
+
+        LLVM_DEBUG( {
+            llvm::errs() << "Predicate:\n";
+            conditionPredicate.dump();
+        } );
+
+        // Ensure the predicate has type i1
+        assert( conditionPredicate.getType().isInteger( 1 ) && "if condition must be i1" );
+
+        return conditionPredicate;
+    }
+
     void MLIRListener::enterIfelifelse( ToyParser::IfelifelseContext *ctx )
     {
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
 
-        llvm::errs() << std::format( "{}NYI: {}\n", formatLocation( loc ), ctx->getText() );
+        auto theIf = ctx->ifStatement();
+        ToyParser::BooleanValueContext *booleanValue = theIf->booleanValue();
 
-        assert( 0 );
+        LLVM_DEBUG( {
+            auto statements = theIf->statement();
+            std::cout << std::format( "IF: ({})", booleanValue->getText() );
+            for ( auto s : statements )
+            {
+                std::cout << std::format( " STATEMENT: {}", s->getText() );
+            }
+            std::cout << "\n";
+        } );
+
+        mlir::Value conditionPredicate = MLIRListener::parsePredicate( loc, booleanValue );
+
+        insertionPointStack.push_back( builder.saveInsertionPoint() );
+
+        // Create the scf.if — it will be inserted at the current IP
+        auto ifOp = builder.create<mlir::scf::IfOp>( loc, conditionPredicate );
+
+        mlir::Block &thenBlock = ifOp.getThenRegion().front();
+        builder.setInsertionPointToStart( &thenBlock );
+    }
+
+    void MLIRListener::exitIfStatement( ToyParser::IfStatementContext *ctx )
+    {
+        auto loc = getLocation( ctx );
+        // All statements in the if-body have now been processed by their own enter/exit callbacks, accumulated
+        // into an scf.if then region.
+
+        antlr4::tree::ParseTree *parent = ctx->parent;
+        auto *ifElifElse = dynamic_cast<ToyParser::IfelifelseContext *>( parent );
+
+        if ( !ifElifElse )
+        {
+            llvm::errs() << std::format( "{}IfStatement parent is not IfelifelseContext: ctx: {}\n",
+                                         formatLocation( loc ), ctx->getText() );
+            assert( 0 );
+        }
+
+        auto elifs = ifElifElse->elifStatement();
+        if ( elifs.size() )
+        {
+            llvm::errs() << std::format( "{}ELIF NYI: {}\n", formatLocation( loc ), ctx->getText() );
+            assert( 0 );
+        }
+
+        auto elseCtx = ifElifElse->elseStatement();
+        if ( elseCtx )
+        {
+            mlir::scf::IfOp ifOp;
+
+            // Temporarily restore the insertion point to right after the scf.if, to search for our current IfOp
+            builder.restoreInsertionPoint( insertionPointStack.back() );
+
+            // Now find the scf.if op that is just before the current insertion point
+            mlir::Block *currentBlock = builder.getInsertionBlock();
+            auto ip = builder.getInsertionPoint();
+
+            // The insertion point is at the position where new ops would be inserted.
+            // So the operation just before it should be the scf.if
+            if ( ip != currentBlock->begin() )
+            {
+                auto *prevOp = &*( --ip );    // the op immediately before the insertion point
+                ifOp = dyn_cast<mlir::scf::IfOp>( prevOp );
+            }
+
+#if 0    // needed?
+         // Fallback: search backwards in the block if needed
+            if (!ifOp) {
+                for (auto &op : llvm::reverse(*currentBlock)) {
+                    ifOp = dyn_cast<mlir::scf::IfOp>(&op);
+                    if (ifOp) break;
+                }
+            }
+#endif
+
+            assert( ifOp && "Could not find scf.if op corresponding to this if statement" );
+
+            mlir::Region &elseRegion = ifOp.getElseRegion();
+            assert( elseRegion.empty() );
+
+            elseRegion.emplaceBlock();    // creates one empty block
+
+            mlir::Block &elseBlock = elseRegion.front();
+            builder.setInsertionPointToStart( &elseBlock );
+        }
+        else
+        {
+            // Restore EXACTLY where we were before creating the scf.if
+            // This places new ops right AFTER the scf.if
+            builder.restoreInsertionPoint( insertionPointStack.back() );
+            insertionPointStack.pop_back();
+        }
+
+        // LLVM_DEBUG( { llvm::errs() << "exitIfStatement module dump:\n"; mod->dump(); } );
+    }
+
+    void MLIRListener::exitElseStatement( ToyParser::ElseStatementContext *ctx )
+    {
+        auto loc = getLocation( ctx, true );
+        builder.create<mlir::scf::YieldOp>( loc );
+
+        builder.restoreInsertionPoint( insertionPointStack.back() );
+        insertionPointStack.pop_back();
+
+        // LLVM_DEBUG( { llvm::errs() << "exitElseStatement module dump:\n"; mod->dump(); } );
     }
 
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
@@ -767,6 +984,37 @@ namespace toy
                 std::format( "{}error: unexpected print context {}\n", formatLocation( loc ), ctx->getText() ) );
         }
     }
+
+#if 0    // Didn't end up needing this.  LessOp, ... lowering takes care of type coersion.
+    mlir::Type MLIRListener::biggerTypeOf( mlir::Type lhsType, mlir::Type rhsType )
+    {
+        if ( lhsType.isF64() || rhsType.isF64() )
+        {
+            return tyF64;
+        }
+        else if ( lhsType.isF32() || rhsType.isF32() )
+        {
+            return tyF32;
+        }
+        else if ( auto liType = mlir::dyn_cast<mlir::IntegerType>( lhsType ) )
+        {
+            if ( auto riType = mlir::dyn_cast<mlir::IntegerType>( rhsType ) )
+            {
+                if ( liType.getWidth() >= riType.getWidth() )
+                {
+                    return lhsType;
+                }
+                else
+                {
+                    return rhsType;
+                }
+            }
+        }
+
+        throw exception_with_context( __FILE__, __LINE__, __func__,
+                                      "internal error: unable to determine bigger type\n" );
+    }
+#endif
 
     // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
     // uses arith dialect operations instead of LLVM dialect
@@ -874,13 +1122,13 @@ namespace toy
 
         mlir::Value value{};
 
-        // always regenerate the RETURN/EXIT so that we have the terminator location set properly (not the function body start location
-        // that was used to create the dummy toy.ReturnOp that we rewrite here.)
+        // always regenerate the RETURN/EXIT so that we have the terminator location set properly (not the function body
+        // start location that was used to create the dummy toy.ReturnOp that we rewrite here.)
         if ( lit || var || boolNode )
         {
             std::string s;
-            buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr, lit ? lit->FLOAT_PATTERN() : nullptr,
-                                  var,
+            buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                  lit ? lit->FLOAT_PATTERN() : nullptr, var,
                                   nullptr,    // stringNode
                                   loc, value, s );
             assert( s.length() == 0 );
@@ -932,7 +1180,7 @@ namespace toy
         }
         else
         {
-            builder.create<toy::ReturnOp>( loc, mlir::ValueRange{ } );
+            builder.create<toy::ReturnOp>( loc, mlir::ValueRange{} );
         }
 
         markExplicitTerminator();
