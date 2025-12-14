@@ -26,9 +26,21 @@ statement
   ;
 
 ifelifelse
+  : ifStatement
+    elifStatement*
+    elseStatement?
+  ;
+
+ifStatement
   : IF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
-    (ELIF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN)*
-    (ELSE_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN)?
+  ;
+
+elifStatement
+  : ELIF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
+  ;
+
+elseStatement
+  : ELSE_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
   ;
 
 // For now both return and parameters, can only be scalar types.

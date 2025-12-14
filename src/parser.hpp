@@ -192,6 +192,8 @@ namespace toy
 
         mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType );
 
+        //mlir::Type biggerTypeOf( mlir::Type lhsType, mlir::Type rhsType );
+
        public:
         MLIRListener( const std::string &_filename );
 
