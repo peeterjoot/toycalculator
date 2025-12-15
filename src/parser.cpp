@@ -809,14 +809,9 @@ namespace toy
         insertionPointStack.push_back(builder.saveInsertionPoint());
 
         // Create the scf.if — it will be inserted at the current IP
-        builder.create<mlir::scf::IfOp>(loc, conditionPredicate);
+        auto ifOp = builder.create<mlir::scf::IfOp>(loc, conditionPredicate);
 
-        // Now move into the then-region
-        mlir::Block &thenBlock = builder.getInsertionBlock()
-                                    ->getParentOp()          // the scf.if
-                                    ->getRegion(0)           // then region
-                                    .front();
-
+        mlir::Block &thenBlock = ifOp.getThenRegion().front();
         builder.setInsertionPointToStart(&thenBlock);
     }
 
