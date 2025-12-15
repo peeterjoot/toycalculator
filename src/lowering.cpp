@@ -30,6 +30,8 @@
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/Pass/Pass.h>
 #include <mlir/Transforms/DialectConversion.h>
+#include <mlir/Dialect/SCF/IR/SCF.h>
+#include <mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h>
 
 #include <format>
 #include <numeric>
@@ -1623,7 +1625,7 @@ namespace toy
 
         void getDependentDialects( DialectRegistry& registry ) const override
         {
-            registry.insert<LLVM::LLVMDialect, arith::ArithDialect>();
+            registry.insert<LLVM::LLVMDialect, arith::ArithDialect, mlir::scf::SCFDialect>();
         }
 
         void runOnOperation() override
@@ -1649,13 +1651,13 @@ namespace toy
             // First phase: Lower toy operations except ScopeOp and YieldOp
             {
                 ConversionTarget target( getContext() );
-                target.addLegalDialect<LLVM::LLVMDialect, toy::ToyDialect>();
+                target.addLegalDialect<LLVM::LLVMDialect, toy::ToyDialect, mlir::scf::SCFDialect>();
                 target.addIllegalOp<arith::ConstantOp, toy::AddOp, toy::AndOp, toy::AssignOp, toy::DeclareOp,
                                     toy::DivOp, toy::EqualOp, toy::LessEqualOp, toy::LessOp, toy::LoadOp, toy::MulOp,
                                     toy::NegOp, toy::NotEqualOp, toy::OrOp, toy::PrintOp, toy::StringLiteralOp,
                                     toy::SubOp, toy::XorOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
-                                  toy::ScopeOp, toy::YieldOp, toy::ReturnOp, toy::CallOp>();
+                                  toy::ScopeOp, toy::YieldOp, toy::ReturnOp, toy::CallOp, mlir::scf::IfOp, mlir::scf::YieldOp>();
 
                 RewritePatternSet patterns( &getContext() );
                 patterns.add<AddOpLowering, AndOpLowering, AssignOpLowering, ConstantOpLowering, DeclareOpLowering,
@@ -1663,6 +1665,7 @@ namespace toy
                              MulOpLowering, NegOpLowering, NotEqualOpLowering, OrOpLowering, PrintOpLowering,
                              StringLiteralOpLowering, SubOpLowering, XorOpLowering>( lState, &getContext(), 1 );
                 arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns );
+                populateSCFToControlFlowConversionPatterns(patterns);
 
                 if ( failed( applyFullConversion( module, target, std::move( patterns ) ) ) )
                 {
