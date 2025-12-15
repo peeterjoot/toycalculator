@@ -15,6 +15,7 @@
 #include <mlir/IR/OpImplementation.h>
 #include <mlir/IR/Operation.h>
 #include <mlir/IR/Types.h>
+#include <mlir/Dialect/SCF/IR/SCF.h>
 
 #include <format>
 
@@ -32,6 +33,7 @@ namespace toy
         context.getOrLoadDialect<mlir::arith::ArithDialect>();
         context.getOrLoadDialect<mlir::memref::MemRefDialect>();
         context.getOrLoadDialect<mlir::LLVM::LLVMDialect>();
+        context.getOrLoadDialect<mlir::scf::SCFDialect>();
     }
 
     toy::DeclareOp MLIRListener::lookupDeclareForVar( const std::string &varName )
@@ -474,10 +476,12 @@ namespace toy
 
         auto lastLoc = getLastLoc();
 
+        LLVM_DEBUG( { llvm::errs() << "exitStartRule module dump before return rewrite:\n"; mod->dump(); } );
         if ( !wasTerminatorExplicit() )
         {
             processReturnLike<ToyParser::NumericLiteralContext>( lastLoc, nullptr, nullptr, nullptr );
         }
+        LLVM_DEBUG( { llvm::errs() << "exitStartRule done: module dump:\n"; mod->dump(); } );
     }
 
     void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
@@ -714,7 +718,7 @@ namespace toy
         //   ;
 
         // 1. Lower the condition to an i1 Value
-        mlir::Value value{};
+        mlir::Value conditionPredicate{};
 
         if ( auto boolElement = booleanValue->booleanElement() )
         {
@@ -724,7 +728,7 @@ namespace toy
             buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
                                   nullptr, boolElement->IDENTIFIER(),
                                   nullptr,    // stringNode
-                                  loc, value, s );
+                                  loc, conditionPredicate, s );
             assert( s.length() == 0 );
         }
         else
@@ -759,27 +763,27 @@ namespace toy
                 auto op = booleanValue->predicateOperator();
                 if ( op->LESSTHAN_TOKEN() )
                 {
-                    value = builder.create<toy::LessOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
+                    conditionPredicate = builder.create<toy::LessOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
                 }
                 else if ( op->GREATERTHAN_TOKEN() )
                 {
-                    value = builder.create<toy::LessOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
+                    conditionPredicate = builder.create<toy::LessOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
                 }
                 else if ( op->LESSEQUAL_TOKEN() )
                 {
-                    value = builder.create<toy::LessEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
+                    conditionPredicate = builder.create<toy::LessEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
                 }
                 else if ( op->GREATEREQUAL_TOKEN() )
                 {
-                    value = builder.create<toy::LessEqualOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
+                    conditionPredicate = builder.create<toy::LessEqualOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
                 }
                 else if ( op->EQUALITY_TOKEN() )
                 {
-                    value = builder.create<toy::EqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
+                    conditionPredicate = builder.create<toy::EqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
                 }
                 else if ( op->NOTEQUAL_TOKEN() )
                 {
-                    value = builder.create<toy::NotEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
+                    conditionPredicate = builder.create<toy::NotEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
                 }
                 else
                 {
@@ -795,35 +799,37 @@ namespace toy
         }
 
         LLVM_DEBUG( {
-            llvm::errs() << "Predicate value:\n";
-            value.dump();
+            llvm::errs() << "Predicate:\n";
+            conditionPredicate.dump();
         } );
 
         // 2. Ensure the predicate has type i1
-        assert( value.getType().isInteger( 1 ) && "if condition must be i1" );
+        assert( conditionPredicate.getType().isInteger( 1 ) && "if condition must be i1" );
 
-        assert( 0 && "NYI: if statement.  Got as far as future scf.if creation." );
+        insertionPointStack.push_back(builder.saveInsertionPoint());
 
-#if 0
-        // 3. Create the scf.if with only a then region (no else, no results)
-        builder.create<mlir::scf::IfOp>(
-          loc,
-          value,
-          // Then region builder lambda
-          [&](OpBuilder &thenBuilder, Location thenLoc) {
-            // Save current insertion point
-            OpBuilder::InsertionGuard guard(thenBuilder);
+        // Create the scf.if — it will be inserted at the current IP
+        builder.create<mlir::scf::IfOp>(loc, conditionPredicate);
 
-            // Lower all statements in the if-body
-            for (auto* stmt : ifStmt->thenBody) {
-              lowerStatement(stmt);
-            }
+        // Now move into the then-region
+        mlir::Block &thenBlock = builder.getInsertionBlock()
+                                    ->getParentOp()          // the scf.if
+                                    ->getRegion(0)           // then region
+                                    .front();
 
-            // No scf.yield needed: no results → implicit empty yield
-          },
-          /*elseBuilder=*/nullptr  // explicitly no else region
-        );
-#endif
+        builder.setInsertionPointToStart(&thenBlock);
+    }
+
+    void MLIRListener::exitIfStatement(ToyParser::IfStatementContext *ctx)
+    {
+        // All statements in the if-body have now been processed by their own enter/exit callbacks.
+
+        // Restore EXACTLY where we were before creating the scf.if
+        // This places new ops right AFTER the scf.if
+        builder.restoreInsertionPoint(insertionPointStack.back());
+        insertionPointStack.pop_back();
+
+        LLVM_DEBUG( { llvm::errs() << "exitIfStatement module dump:\n"; mod->dump(); } );
     }
 
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )

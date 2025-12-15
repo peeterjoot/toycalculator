@@ -14,7 +14,7 @@ def ToyToLLVMLowering : Pass<"toy-to-llvm-lowering", "mlir::ModuleOp"> {
   let dependentDialects = [
     "mlir::LLVM::LLVMDialect",
     "mlir::arith::ArithDialect",
-    "mlir::cf::ControlFlowDialect",
-    "mlir::memref::MemRefDialect"
+    "mlir::memref::MemRefDialect",
+    "mlir::scf::SCFDialect"
   ];
 }

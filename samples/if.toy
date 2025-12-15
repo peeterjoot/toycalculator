@@ -5,48 +5,6 @@ x = 3;
 IF ( x < 4 )
 {
    PRINT "x < 4";
-}
-//ELSE
-//{
-//   PRINT "Bug if we get here.";
-//}
-;
-
-//IF ( x < 4 )
-//{
-//   PRINT x;
-//};
-//
-//IF ( x < 4 )
-//{
-//   PRINT x;
-//}
-//ELIF ( x > 5 )
-//{
-//   PRINT "Bug if we get here.";
-//};
-//
-//IF ( x < 4 )
-//{
-//   PRINT x;
-//}
-//ELIF ( x > 5 )
-//{
-//   PRINT "Bug if we get here.";
-//}
-//ELSE
-//{
-//   PRINT "Bug if we get here too.";
-//};
-//
-//IF ( x < 4 )
-//{
-//   PRINT x;
-//
-//   IF ( x < 5 )
-//   {
-//      PRINT x;
-//   };
-//};
+};
 
 PRINT "Done.";

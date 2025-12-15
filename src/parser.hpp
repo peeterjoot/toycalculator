@@ -90,6 +90,7 @@ namespace toy
         mlir::Location currentAssignLoc;
         std::string currentFuncName;
         mlir::FileLineColLoc lastLocation;
+        std::vector<mlir::OpBuilder::InsertPoint> insertionPointStack; ///< scf.if block stack
         mlir::ModuleOp mod;
         std::string currentVarName;
         std::unordered_map<std::string, std::unique_ptr<PerFunctionState>> pr_funcState;
@@ -226,6 +227,8 @@ namespace toy
         void enterStartRule( ToyParser::StartRuleContext *ctx ) override;
 
         void exitStartRule( ToyParser::StartRuleContext *ctx ) override;
+
+        void exitIfStatement(ToyParser::IfStatementContext *ctx) override;
 
         void mainFirstTime( mlir::Location loc );
 
