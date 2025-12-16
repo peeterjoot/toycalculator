@@ -702,7 +702,6 @@ namespace toy
         auto theIf = ctx->ifStatement();
         ToyParser::BooleanValueContext *booleanValue = theIf->booleanValue();
         auto statements = theIf->statement();
-        assert( statements.size() == 1 );    // start with this.
 
         LLVM_DEBUG( {
             std::cout << std::format( "IF: ({})", booleanValue->getText() );
@@ -817,7 +816,8 @@ namespace toy
 
     void MLIRListener::exitIfStatement(ToyParser::IfStatementContext *ctx)
     {
-        // All statements in the if-body have now been processed by their own enter/exit callbacks.
+        // All statements in the if-body have now been processed by their own enter/exit callbacks, accumulated
+        // into an scf.if region.
 
         // Restore EXACTLY where we were before creating the scf.if
         // This places new ops right AFTER the scf.if

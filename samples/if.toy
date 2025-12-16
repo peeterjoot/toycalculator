@@ -5,6 +5,7 @@ x = 3;
 IF ( x < 4 )
 {
    PRINT "x < 4";
+   PRINT "a second statement";
 };
 
 IF ( x > 5 )
