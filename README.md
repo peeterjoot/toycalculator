@@ -19,6 +19,7 @@ It implements a toy calculator language that supports a few primitive linguistic
 * a NOT operator, yielding BOOL.
 * array declarations, using any of the types above.  STRING is available as an alias for INT8 array.  string literal ASSIGN and PRINT implemented.
 * User defined functions.  CALL function_name( p1, p2), or w/ assign; x = CALL function_name( p1, p2 ).  Declaration looks like: FUNCTION foo( type name, type name, ...) : RETURN-type { ... ; RETURN v;};  (where :RETURN-TYPE is optional.)
+* IF statement support.  The grammar has ELIF and ELSE constructs, but those aren't implemented yet.  AND and OR and XOR aren't supported in the predicates yet (just <, >, LE, GT, ...)  Complex predicates are also not supported ((a < b) AND (c < d)).  Nested IFs aren't tested yet, and may or may not work.
 
 Computations occur in assignment operations, and any types are first promoted to the type of the variable.
 This means that 'x = 1.99 + 2.99' has the value 3, if x is an integer variable.
