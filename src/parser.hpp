@@ -114,7 +114,7 @@ namespace toy
 
         inline toy::DeclareOp lookupDeclareForVar( const std::string &varName );
 
-        inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx );
+        inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx, bool useStopLocation = false );
 
         void createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName,
                           const std::vector<std::string> &paramNames );
@@ -195,6 +195,8 @@ namespace toy
 
         //mlir::Type biggerTypeOf( mlir::Type lhsType, mlir::Type rhsType );
 
+        mlir::Value parsePredicate( mlir::Location loc, ToyParser::BooleanValueContext * ctx);
+
        public:
         MLIRListener( const std::string &_filename );
 
@@ -229,6 +231,8 @@ namespace toy
         void exitStartRule( ToyParser::StartRuleContext *ctx ) override;
 
         void exitIfStatement(ToyParser::IfStatementContext *ctx) override;
+
+        void exitElseStatement(ToyParser::ElseStatementContext *ctx) override;
 
         void mainFirstTime( mlir::Location loc );
 

@@ -3,24 +3,23 @@
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   altlr4 parse tree listener and MLIR builder.
  */
-#include "parser.hpp"
-
 #include <llvm/Support/Debug.h>
 #include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
+#include <mlir/Dialect/SCF/IR/SCF.h>
 #include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/Location.h>
 #include <mlir/IR/OpImplementation.h>
 #include <mlir/IR/Operation.h>
 #include <mlir/IR/Types.h>
-#include <mlir/Dialect/SCF/IR/SCF.h>
 
 #include <format>
 
 #include "ToyExceptions.hpp"
 #include "constants.hpp"
+#include "parser.hpp"
 
 #define DEBUG_TYPE "toy-parser"
 
@@ -84,14 +83,22 @@ namespace toy
         return declareOp;
     }
 
-    inline mlir::Location MLIRListener::getLocation( antlr4::ParserRuleContext *ctx )
+    inline mlir::Location MLIRListener::getLocation( antlr4::ParserRuleContext *ctx, bool useStopLocation )
     {
         size_t line = 1;
         size_t col = 0;
         if ( ctx )
         {
-            line = ctx->getStart()->getLine();
-            col = ctx->getStart()->getCharPositionInLine();
+            if ( useStopLocation )
+            {
+                line = ctx->getStop()->getLine();
+                col = ctx->getStop()->getCharPositionInLine();
+            }
+            else
+            {
+                line = ctx->getStart()->getLine();
+                col = ctx->getStart()->getCharPositionInLine();
+            }
         }
 
         auto loc = mlir::FileLineColLoc::get( builder.getStringAttr( filename ), line, col + 1 );
@@ -476,12 +483,15 @@ namespace toy
 
         auto lastLoc = getLastLoc();
 
-        //LLVM_DEBUG( { llvm::errs() << "exitStartRule module dump before return rewrite:\n"; mod->dump(); } );
+        // LLVM_DEBUG( { llvm::errs() << "exitStartRule module dump before return rewrite:\n"; mod->dump(); } );
         if ( !wasTerminatorExplicit() )
         {
             processReturnLike<ToyParser::NumericLiteralContext>( lastLoc, nullptr, nullptr, nullptr );
         }
-        LLVM_DEBUG( { llvm::errs() << "exitStartRule done: module dump:\n"; mod->dump(); } );
+        LLVM_DEBUG( {
+            llvm::errs() << "exitStartRule done: module dump:\n";
+            mod->dump();
+        } );
     }
 
     void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
@@ -680,43 +690,13 @@ namespace toy
         registerDeclaration( loc, varName, tyI8, arrayBounds );
     }
 
-    void MLIRListener::enterIfelifelse( ToyParser::IfelifelseContext *ctx )
+    // Lower a preciate condition to an i1 Value
+    mlir::Value MLIRListener::parsePredicate( mlir::Location loc, ToyParser::BooleanValueContext *booleanValue )
     {
-        auto loc = getLocation( ctx );
-        mainFirstTime( loc );
-
-        auto theElifList = ctx->elifStatement();
-        if ( theElifList.size() )
-        {
-            llvm::errs() << std::format( "{}ELIF NYI: {}\n", formatLocation( loc ), ctx->getText() );
-            assert( 0 );
-        }
-
-        auto theElse = ctx->elseStatement();
-        if ( theElse )
-        {
-            llvm::errs() << std::format( "{}ELSE NYI: {}\n", formatLocation( loc ), ctx->getText() );
-            assert( 0 );
-        }
-
-        auto theIf = ctx->ifStatement();
-        ToyParser::BooleanValueContext *booleanValue = theIf->booleanValue();
-        auto statements = theIf->statement();
-
-        LLVM_DEBUG( {
-            std::cout << std::format( "IF: ({})", booleanValue->getText() );
-            for ( auto s : statements )
-            {
-                std::cout << std::format( " STATEMENT: {}", s->getText() );
-            }
-            std::cout << "\n";
-        } );
-
         // booleanValue
         //   : booleanElement | (binaryElement predicateOperator binaryElement)
         //   ;
 
-        // 1. Lower the condition to an i1 Value
         mlir::Value conditionPredicate{};
 
         if ( auto boolElement = booleanValue->booleanElement() )
@@ -802,29 +782,124 @@ namespace toy
             conditionPredicate.dump();
         } );
 
-        // 2. Ensure the predicate has type i1
+        // Ensure the predicate has type i1
         assert( conditionPredicate.getType().isInteger( 1 ) && "if condition must be i1" );
 
-        insertionPointStack.push_back(builder.saveInsertionPoint());
-
-        // Create the scf.if — it will be inserted at the current IP
-        auto ifOp = builder.create<mlir::scf::IfOp>(loc, conditionPredicate);
-
-        mlir::Block &thenBlock = ifOp.getThenRegion().front();
-        builder.setInsertionPointToStart(&thenBlock);
+        return conditionPredicate;
     }
 
-    void MLIRListener::exitIfStatement(ToyParser::IfStatementContext *ctx)
+    void MLIRListener::enterIfelifelse( ToyParser::IfelifelseContext *ctx )
     {
-        // All statements in the if-body have now been processed by their own enter/exit callbacks, accumulated
-        // into an scf.if region.
+        auto loc = getLocation( ctx );
+        mainFirstTime( loc );
 
-        // Restore EXACTLY where we were before creating the scf.if
-        // This places new ops right AFTER the scf.if
-        builder.restoreInsertionPoint(insertionPointStack.back());
+        auto theIf = ctx->ifStatement();
+        ToyParser::BooleanValueContext *booleanValue = theIf->booleanValue();
+
+        LLVM_DEBUG( {
+            auto statements = theIf->statement();
+            std::cout << std::format( "IF: ({})", booleanValue->getText() );
+            for ( auto s : statements )
+            {
+                std::cout << std::format( " STATEMENT: {}", s->getText() );
+            }
+            std::cout << "\n";
+        } );
+
+        mlir::Value conditionPredicate = MLIRListener::parsePredicate( loc, booleanValue );
+
+        insertionPointStack.push_back( builder.saveInsertionPoint() );
+
+        // Create the scf.if — it will be inserted at the current IP
+        auto ifOp = builder.create<mlir::scf::IfOp>( loc, conditionPredicate );
+
+        mlir::Block &thenBlock = ifOp.getThenRegion().front();
+        builder.setInsertionPointToStart( &thenBlock );
+    }
+
+    void MLIRListener::exitIfStatement( ToyParser::IfStatementContext *ctx )
+    {
+        auto loc = getLocation( ctx );
+        // All statements in the if-body have now been processed by their own enter/exit callbacks, accumulated
+        // into an scf.if then region.
+
+        antlr4::tree::ParseTree *parent = ctx->parent;
+        auto *ifElifElse = dynamic_cast<ToyParser::IfelifelseContext *>( parent );
+
+        if ( !ifElifElse )
+        {
+            llvm::errs() << std::format( "{}IfStatement parent is not IfelifelseContext: ctx: {}\n",
+                                         formatLocation( loc ), ctx->getText() );
+            assert( 0 );
+        }
+
+        auto elifs = ifElifElse->elifStatement();
+        if ( elifs.size() )
+        {
+            llvm::errs() << std::format( "{}ELIF NYI: {}\n", formatLocation( loc ), ctx->getText() );
+            assert( 0 );
+        }
+
+        auto elseCtx = ifElifElse->elseStatement();
+        if ( elseCtx )
+        {
+            mlir::scf::IfOp ifOp;
+
+            // Temporarily restore the insertion point to right after the scf.if, to search for our current IfOp
+            builder.restoreInsertionPoint( insertionPointStack.back() );
+
+            // Now find the scf.if op that is just before the current insertion point
+            mlir::Block *currentBlock = builder.getInsertionBlock();
+            auto ip = builder.getInsertionPoint();
+
+            // The insertion point is at the position where new ops would be inserted.
+            // So the operation just before it should be the scf.if
+            if ( ip != currentBlock->begin() )
+            {
+                auto *prevOp = &*( --ip );    // the op immediately before the insertion point
+                ifOp = dyn_cast<mlir::scf::IfOp>( prevOp );
+            }
+
+#if 0    // needed?
+         // Fallback: search backwards in the block if needed
+            if (!ifOp) {
+                for (auto &op : llvm::reverse(*currentBlock)) {
+                    ifOp = dyn_cast<mlir::scf::IfOp>(&op);
+                    if (ifOp) break;
+                }
+            }
+#endif
+
+            assert( ifOp && "Could not find scf.if op corresponding to this if statement" );
+
+            mlir::Region &elseRegion = ifOp.getElseRegion();
+            assert( elseRegion.empty() );
+
+            elseRegion.emplaceBlock();    // creates one empty block
+
+            mlir::Block &elseBlock = elseRegion.front();
+            builder.setInsertionPointToStart( &elseBlock );
+        }
+        else
+        {
+            // Restore EXACTLY where we were before creating the scf.if
+            // This places new ops right AFTER the scf.if
+            builder.restoreInsertionPoint( insertionPointStack.back() );
+            insertionPointStack.pop_back();
+        }
+
+        // LLVM_DEBUG( { llvm::errs() << "exitIfStatement module dump:\n"; mod->dump(); } );
+    }
+
+    void MLIRListener::exitElseStatement( ToyParser::ElseStatementContext *ctx )
+    {
+        auto loc = getLocation( ctx, true );
+        builder.create<mlir::scf::YieldOp>( loc );
+
+        builder.restoreInsertionPoint( insertionPointStack.back() );
         insertionPointStack.pop_back();
 
-        //LLVM_DEBUG( { llvm::errs() << "exitIfStatement module dump:\n"; mod->dump(); } );
+        // LLVM_DEBUG( { llvm::errs() << "exitElseStatement module dump:\n"; mod->dump(); } );
     }
 
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
@@ -910,7 +985,7 @@ namespace toy
         }
     }
 
-#if 0 // Didn't end up needing this.  LessOp, ... lowering takes care of type coersion.
+#if 0    // Didn't end up needing this.  LessOp, ... lowering takes care of type coersion.
     mlir::Type MLIRListener::biggerTypeOf( mlir::Type lhsType, mlir::Type rhsType )
     {
         if ( lhsType.isF64() || rhsType.isF64() )
