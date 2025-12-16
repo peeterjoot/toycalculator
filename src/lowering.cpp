@@ -32,6 +32,8 @@
 #include <mlir/Transforms/DialectConversion.h>
 #include <mlir/Dialect/SCF/IR/SCF.h>
 #include <mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h>
+#include <mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h>
+#include <mlir/Dialect/ControlFlow/IR/ControlFlow.h>
 
 #include <format>
 #include <numeric>
@@ -1251,6 +1253,40 @@ namespace toy
         }
     };
 
+    class CallOpLowering : public ConversionPattern {
+    public:
+      explicit CallOpLowering(MLIRContext* context)
+          : ConversionPattern(toy::CallOp::getOperationName(), 1, context) {}
+
+      LogicalResult matchAndRewrite(Operation* op, ArrayRef<Value> operands,
+                                    ConversionPatternRewriter& rewriter) const override {
+        auto callOp = cast<toy::CallOp>(op);
+        auto loc = callOp.getLoc();
+
+        // Get the callee symbol reference (stored as "callee" attribute)
+        auto calleeAttr = callOp->getAttrOfType<FlatSymbolRefAttr>("callee");
+        if (!calleeAttr)
+          return failure();
+
+        // Get result types (empty for void, one type for scalar return)
+        TypeRange resultTypes = callOp.getResultTypes();
+
+        auto mlirCall = rewriter.create<mlir::func::CallOp>( loc, resultTypes,
+                                                             calleeAttr, callOp.getOperands() );
+
+        // Replace uses correctly
+        if (!resultTypes.empty()) {
+          // Non-void: replace the single result
+          rewriter.replaceOp(op, mlirCall.getResults());
+        } else {
+          // Void: erase the op (no result to replace)
+          rewriter.eraseOp(op);
+        }
+
+        return success();
+      }
+    };
+
     class ScopeOpLowering : public ConversionPattern
     {
        private:
@@ -1299,20 +1335,6 @@ namespace toy
                     {
                         // Replace toy::ReturnOp with func::ReturnOp
                         rewriter.create<func::ReturnOp>( op.getLoc(), op.getOperands() );
-                        rewriter.eraseOp( &op );
-                    }
-                    else if ( auto callOp = dyn_cast<toy::CallOp>( op ) )
-                    {
-                        // Lower toy::CallOp to func::CallOp
-                        auto calleeAttr = mlir::cast<mlir::FlatSymbolRefAttr>( callOp->getAttr( "callee" ) );
-
-                        auto newCallOp = rewriter.create<mlir::func::CallOp>( op.getLoc(), callOp.getResultTypes(),
-                                                                              calleeAttr, callOp.getOperands() );
-
-                        for ( unsigned i = 0; i < callOp.getNumResults(); ++i )
-                        {
-                            callOp.getResults()[i].replaceAllUsesWith( newCallOp.getResult( i ) );
-                        }
                         rewriter.eraseOp( &op );
                     }
                     else
@@ -1657,7 +1679,7 @@ namespace toy
                                     toy::NegOp, toy::NotEqualOp, toy::OrOp, toy::PrintOp, toy::StringLiteralOp,
                                     toy::SubOp, toy::XorOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
-                                  toy::ScopeOp, toy::YieldOp, toy::ReturnOp, toy::CallOp, mlir::scf::IfOp, mlir::scf::YieldOp>();
+                                  toy::ScopeOp, toy::YieldOp, toy::ReturnOp, toy::CallOp, mlir::func::CallOp, mlir::scf::IfOp, mlir::scf::YieldOp>();
 
                 RewritePatternSet patterns( &getContext() );
                 patterns.add<AddOpLowering, AndOpLowering, AssignOpLowering, ConstantOpLowering, DeclareOpLowering,
@@ -1665,7 +1687,6 @@ namespace toy
                              MulOpLowering, NegOpLowering, NotEqualOpLowering, OrOpLowering, PrintOpLowering,
                              StringLiteralOpLowering, SubOpLowering, XorOpLowering>( lState, &getContext(), 1 );
                 arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns );
-                populateSCFToControlFlowConversionPatterns(patterns);
 
                 if ( failed( applyFullConversion( module, target, std::move( patterns ) ) ) )
                 {
@@ -1686,9 +1707,18 @@ namespace toy
                 target.addLegalDialect<LLVM::LLVMDialect>();
                 target.addIllegalOp<toy::ScopeOp, toy::YieldOp, toy::ReturnOp, toy::CallOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
+                target.addIllegalDialect<mlir::scf::SCFDialect>();
+                target.addIllegalDialect<mlir::cf::ControlFlowDialect>();  // forces lowering
 
                 RewritePatternSet patterns( &getContext() );
+                patterns.add<CallOpLowering>(&getContext());
                 patterns.add<ScopeOpLowering>( lState, &getContext(), 1 );
+
+                // SCF -> CF
+                mlir::populateSCFToControlFlowConversionPatterns(patterns);
+
+                // CF -> LLVM
+                mlir::cf::populateControlFlowToLLVMConversionPatterns(lState.typeConverter, patterns);
 
                 if ( failed( applyFullConversion( module, target, std::move( patterns ) ) ) )
                 {
