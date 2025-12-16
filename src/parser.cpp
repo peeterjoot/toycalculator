@@ -476,7 +476,7 @@ namespace toy
 
         auto lastLoc = getLastLoc();
 
-        LLVM_DEBUG( { llvm::errs() << "exitStartRule module dump before return rewrite:\n"; mod->dump(); } );
+        //LLVM_DEBUG( { llvm::errs() << "exitStartRule module dump before return rewrite:\n"; mod->dump(); } );
         if ( !wasTerminatorExplicit() )
         {
             processReturnLike<ToyParser::NumericLiteralContext>( lastLoc, nullptr, nullptr, nullptr );
@@ -824,7 +824,7 @@ namespace toy
         builder.restoreInsertionPoint(insertionPointStack.back());
         insertionPointStack.pop_back();
 
-        LLVM_DEBUG( { llvm::errs() << "exitIfStatement module dump:\n"; mod->dump(); } );
+        //LLVM_DEBUG( { llvm::errs() << "exitIfStatement module dump:\n"; mod->dump(); } );
     }
 
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
