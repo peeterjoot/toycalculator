@@ -7,4 +7,9 @@ IF ( x < 4 )
    PRINT "x < 4";
 };
 
+IF ( x > 5 )
+{
+   PRINT "x > 5";
+};
+
 PRINT "Done.";
