@@ -193,8 +193,6 @@ namespace toy
 
         mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType );
 
-        //mlir::Type biggerTypeOf( mlir::Type lhsType, mlir::Type rhsType );
-
         mlir::Value parsePredicate( mlir::Location loc, ToyParser::BooleanValueContext * ctx);
 
        public:

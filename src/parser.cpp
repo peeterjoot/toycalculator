@@ -985,37 +985,6 @@ namespace toy
         }
     }
 
-#if 0    // Didn't end up needing this.  LessOp, ... lowering takes care of type coersion.
-    mlir::Type MLIRListener::biggerTypeOf( mlir::Type lhsType, mlir::Type rhsType )
-    {
-        if ( lhsType.isF64() || rhsType.isF64() )
-        {
-            return tyF64;
-        }
-        else if ( lhsType.isF32() || rhsType.isF32() )
-        {
-            return tyF32;
-        }
-        else if ( auto liType = mlir::dyn_cast<mlir::IntegerType>( lhsType ) )
-        {
-            if ( auto riType = mlir::dyn_cast<mlir::IntegerType>( rhsType ) )
-            {
-                if ( liType.getWidth() >= riType.getWidth() )
-                {
-                    return lhsType;
-                }
-                else
-                {
-                    return rhsType;
-                }
-            }
-        }
-
-        throw exception_with_context( __FILE__, __LINE__, __func__,
-                                      "internal error: unable to determine bigger type\n" );
-    }
-#endif
-
     // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
     // uses arith dialect operations instead of LLVM dialect
     mlir::Value MLIRListener::castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType )
