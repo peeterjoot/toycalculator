@@ -1,6 +1,8 @@
 INT32 x;
+INT32 y;
 
 x = 3;
+y = 42;
 
 IF ( x < 4 )
 {
@@ -36,7 +38,7 @@ IF ( x < 4 )
 
   IF ( x < 5 )
   {
-    PRINT x;
+    PRINT y;
   }
   ELSE
   {
@@ -46,6 +48,31 @@ IF ( x < 4 )
 ELSE
 {
   PRINT "DEAD code II";
+};
+
+IF ( x < 2 )
+{
+  PRINT "More dead code I";
+
+  IF ( x < 5 )
+  {
+    PRINT "More dead code II";
+  }
+  ELSE
+  {
+    PRINT "More dead code III";
+  };
+}
+ELSE
+{
+  IF ( x < 5 )
+  {
+    PRINT "should see this";
+  }
+  ELSE
+  {
+    PRINT "More dead code IV";
+  };
 };
 
 PRINT "Done.";

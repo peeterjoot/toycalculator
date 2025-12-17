@@ -2,5 +2,6 @@ x < 4
 a second statement
 !(x > 5) -- should see this
 3
-3
+42
+should see this
 Done.
