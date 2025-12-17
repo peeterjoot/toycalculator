@@ -1,0 +1,12 @@
+INT32 x;
+
+x = 3;
+
+IF ( x < 4 )
+{
+  INT32 y;
+  y = 42;
+  PRINT y;
+};
+
+PRINT "Done.";

@@ -4,21 +4,21 @@ x = 3;
 
 IF ( x < 4 )
 {
-   PRINT "x < 4";
-   PRINT "a second statement";
+  PRINT "x < 4";
+  PRINT "a second statement";
 }
 ELSE
 {
-   PRINT "!(x < 4) -- should be dead code";
+  PRINT "!(x < 4) -- should be dead code";
 };
 
 IF ( x > 5 )
 {
-   PRINT "x > 5";
+  PRINT "x > 5";
 }
 ELSE
 {
-   PRINT "!(x > 5) -- should see this";
+  PRINT "!(x > 5) -- should see this";
 };
 
 IF ( x EQ 4 )

@@ -1,5 +1,7 @@
 ## TODO
 
+* Test a whole range of statements in if-then and if-else blocks (dcl, assignment, call, ...)
+* Symbol lookup when outside of a scope isn't working: ifdcl.toy -- find enclosing toy.scope and do symbol resolution there?
 * Add integer literal support to PRINT, so that I can do a program as simple as:
     PRINT 42;
 * t/c: function.toy:
@@ -77,7 +79,7 @@ enum class return_codes : int
 * tests for all the type conversions (i.e.: binary and unary arith operators)
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 * EXIT: enforce i8 return type in the MLIR layer (i.e.: actual UNIX shell semantics.) -- currently set to i32 return.
-* Implement IF/WHILE/DO/BREAK/CONTINUE statements.
+* Implement ELIF/WHILE/DO/BREAK/CONTINUE statements.
 * More complicated expressions.
 * CAST operators.
 * Allow EXIT at more than the end of program (that restriction is currently enforced in the grammar.)
@@ -115,7 +117,7 @@ Breakpoint 1, main () at simpleless.toy:4
 __libc_start_call_main (main=main@entry=0x400470 <main>, argc=argc@entry=1, argv=argv@entry=0x7fffffffdc08) at ../sysdeps/nptl/libc_start_call_main.h:74
 74        exit (result);
 
--- see the line numbers jump around.
+-- see the line numbers jump around.  probably want getLocation(, true) for ctx->getStop() in some places (like end of program.)
 
 Trickier, but would be fun:
 * Implement a JIT so that the "language" has an interpretor mode, as well as static compilation.
