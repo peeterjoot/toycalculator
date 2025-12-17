@@ -21,4 +21,13 @@ ELSE
    PRINT "!(x > 5) -- should see this";
 };
 
+IF ( x EQ 4 )
+{
+  // no statement.  should have an scf.yield in the if body, and no errors (in codegen nor lowering)
+}
+ELSE
+{
+  // also no statement.  should have an scf.yield in the else body, and no errors (in codegen nor lowering)
+};
+
 PRINT "Done.";
