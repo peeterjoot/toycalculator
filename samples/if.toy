@@ -30,4 +30,22 @@ ELSE
   // also no statement.  should have an scf.yield in the else body, and no errors (in codegen nor lowering)
 };
 
+IF ( x < 4 )
+{
+  PRINT x;
+
+  IF ( x < 5 )
+  {
+    PRINT x;
+  }
+  ELSE
+  {
+    PRINT "DEAD code I";
+  };
+}
+ELSE
+{
+  PRINT "DEAD code II";
+};
+
 PRINT "Done.";
