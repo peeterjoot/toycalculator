@@ -23,6 +23,35 @@ The language now supports functions, calls, parameters, returns, and basic condi
 * Updated README to note that IF/ELSE is now supported (but needs much more testing, especially nested IFs).
 * Reduced `samples/if.toy` to only the currently implemented subset; moved unimplemented parts to `if2.toy`.
 
+### 4. Array element access and assignment (rvalues and lvalues)
+
+* Added support for array element assignment: `t[i] = expr;`
+  - Generalized `toy.assign` to take an optional `index` operand (`Optional<Index>`).
+  - Updated grammar to allow `scalarOrArrayElement` (variable optionally indexed) on the LHS of assignments.
+  - Implemented lowering of indexed `toy.assign` using `llvm.getelementptr` + `store`, with static out-of-bounds checking for constant indices.
+  - Added custom assembly format: `toy.assign @t[%index] = %value : type`.
+
+* Added support for loading array elements (rvalues): `x = t[i];`
+  - Generalized `toy.load` to take an optional `index` operand.
+  - Implemented lowering using `llvm.getelementptr` + `load`, with static bounds checking.
+  - Added custom assembly format: `toy.load @t[%index] : element_type` (scalar case prints without brackets).
+
+* Parser and frontend changes:
+  - Introduced `scalarOrArrayElement` and `indexExpression` grammar rules.
+  - Extended unary expression handling and many statement types (PRINT, RETURN, EXIT, call arguments, etc.) to accept array element references.
+  - Added `indexTypeCast` helper for converting parsed index values to `index` type.
+  - Updated `intarray.toy` sample to demonstrate full round-trip (declare → assign element → load element → print).
+
+* Lowering improvements:
+  - Factored out `castToElemType` helper for consistent type conversion during stores/loads.
+  - Fixed several bugs during iterative development (GEP indexing, type handling, optional operand creation).
+
+* README and TODO updates:
+  - README now reflects full array element support and notes remaining limitations (no direct printing of array elements, no loops yet).
+  - TODO updated with future array enhancements (runtime bounds checking, richer index expressions, element printing).
+
+* Added test case `error_intarray_bad_constaccess.toy` (currently commented in testerrors.sh – static bounds checking catches the error at compile time).
+
 ## tag: V4 (July 7, 2025)
 
 The big changes in this tag relative to V3 are:

@@ -217,8 +217,9 @@ namespace toy
 
     // \retval true if error
     inline void MLIRListener::buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
-                                                    tNode *variableNode, tNode *stringNode, mlir::Location loc,
-                                                    mlir::Value &value, std::string &s )
+                                                    ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
+                                                    tNode *stringNode, mlir::Location loc, mlir::Value &value,
+                                                    std::string &s )
     {
         if ( booleanNode )
         {
@@ -258,8 +259,9 @@ namespace toy
             // specific type (i.e.: size) associated with literals.
             value = builder.create<mlir::arith::ConstantFloatOp>( loc, tyF64, apVal );
         }
-        else if ( variableNode )
+        else if ( scalarOrArrayElement )
         {
+            tNode *variableNode = scalarOrArrayElement->IDENTIFIER();
             auto varName = variableNode->getText();
 
             auto varState = getVarState( varName );
@@ -282,7 +284,22 @@ namespace toy
 
             mlir::Type varType = declareOp.getTypeAttr().getValue();
             auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
-            value = builder.create<toy::LoadOp>( loc, varType, symRef );
+
+            mlir::Value indexValue = mlir::Value();
+
+            if ( ToyParser::IndexExpressionContext * indexExpr = scalarOrArrayElement->indexExpression() ) {
+                std::string s;
+                buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr, loc, indexValue,
+                                      s );
+                assert( s.length() == 0 );
+
+                auto i = indexTypeCast( loc, indexValue );
+
+                value = builder.create<toy::LoadOp>( loc, varType, symRef, i );
+            }
+            else {
+                value = builder.create<toy::LoadOp>( loc, varType, symRef, mlir::Value() );
+            }
         }
         else if ( stringNode )
         {
@@ -553,7 +570,10 @@ namespace toy
     mlir::Value MLIRListener::handleCall( ToyParser::CallContext *ctx )
     {
         auto loc = getLocation( ctx );
-        auto funcName = ctx->IDENTIFIER()->getText();
+        assert( ctx );
+        auto id = ctx->IDENTIFIER();
+        assert( id );
+        auto funcName = id->getText();
         mlir::func::FuncOp funcOp = getFuncOp( funcName );
         auto funcType = funcOp.getFunctionType();
         std::vector<mlir::Value> parameters;
@@ -575,7 +595,7 @@ namespace toy
 
                 std::string s;
                 buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                      lit ? lit->FLOAT_PATTERN() : nullptr, p->IDENTIFIER(),
+                                      lit ? lit->FLOAT_PATTERN() : nullptr, p->scalarOrArrayElement(),
                                       lit ? lit->STRING_PATTERN() : nullptr, loc, value, s );
 
                 assert( s.length() == 0 );    // for StringNode.  Want to support passing string literals (not just to
@@ -705,7 +725,7 @@ namespace toy
 
             auto lit = boolElement->booleanLiteral();
             buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                  nullptr, boolElement->IDENTIFIER(),
+                                  nullptr, boolElement->scalarOrArrayElement(),
                                   nullptr,    // stringNode
                                   loc, conditionPredicate, s );
             assert( s.length() == 0 );
@@ -726,7 +746,7 @@ namespace toy
                 auto llit = lhs->numericLiteral();
                 buildUnaryExpression( nullptr,    // booleanNode
                                       llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
-                                      lhs->IDENTIFIER(),
+                                      lhs->scalarOrArrayElement(),
                                       nullptr,    // stringNode
                                       loc, lhsValue, s );
                 assert( s.length() == 0 );
@@ -734,7 +754,7 @@ namespace toy
                 auto rlit = rhs->numericLiteral();
                 buildUnaryExpression( nullptr,    // booleanNode
                                       rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
-                                      lhs->IDENTIFIER(),
+                                      lhs->scalarOrArrayElement(),
                                       nullptr,    // stringNode
                                       loc, rhsValue, s );
                 assert( s.length() == 0 );
@@ -931,7 +951,7 @@ namespace toy
         } );
 #endif
 
-        auto varNameObject = ctx->IDENTIFIER();
+        auto varNameObject = ctx->scalarOrArrayElement() ? ctx->scalarOrArrayElement()->IDENTIFIER() : nullptr;
         if ( varNameObject )
         {
             auto varName = varNameObject->getText();
@@ -965,7 +985,7 @@ namespace toy
             }
 
             auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
-            auto value = builder.create<toy::LoadOp>( loc, varType, symRef );
+            auto value = builder.create<toy::LoadOp>( loc, varType, symRef, mlir::Value() );
             builder.create<toy::PrintOp>( loc, value );
         }
         else if ( auto theString = ctx->STRING_PATTERN() )
@@ -1054,7 +1074,9 @@ namespace toy
     }
 
     template <class Literal>
-    void MLIRListener::processReturnLike( mlir::Location loc, Literal *lit, tNode *var, tNode *boolNode )
+    void MLIRListener::processReturnLike( mlir::Location loc, Literal *lit,
+                                          ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
+                                          tNode *boolNode )
     {
         // Handle the dummy ReturnOp originally inserted in the FuncOp's block
         auto *currentBlock = builder.getInsertionBlock();
@@ -1093,11 +1115,11 @@ namespace toy
 
         // always regenerate the RETURN/EXIT so that we have the terminator location set properly (not the function body
         // start location that was used to create the dummy toy.ReturnOp that we rewrite here.)
-        if ( lit || var || boolNode )
+        if ( lit || scalarOrArrayElement || boolNode )
         {
             std::string s;
             buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                  lit ? lit->FLOAT_PATTERN() : nullptr, var,
+                                  lit ? lit->FLOAT_PATTERN() : nullptr, scalarOrArrayElement,
                                   nullptr,    // stringNode
                                   loc, value, s );
             assert( s.length() == 0 );
@@ -1162,9 +1184,8 @@ namespace toy
         setLastLoc( loc );
 
         auto lit = ctx->literal();
-        auto var = ctx->IDENTIFIER();
-
-        processReturnLike<ToyParser::LiteralContext>( loc, lit, var, lit ? lit->BOOLEAN_PATTERN() : nullptr );
+        processReturnLike<ToyParser::LiteralContext>( loc, lit, ctx->scalarOrArrayElement(),
+                                                      lit ? lit->BOOLEAN_PATTERN() : nullptr );
     }
 
     void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )
@@ -1174,9 +1195,8 @@ namespace toy
         setLastLoc( loc );
 
         auto lit = ctx->numericLiteral();
-        auto var = ctx->IDENTIFIER();
 
-        processReturnLike<ToyParser::NumericLiteralContext>( loc, lit, var, nullptr );
+        processReturnLike<ToyParser::NumericLiteralContext>( loc, lit, ctx->scalarOrArrayElement(), nullptr );
     }
 
     void MLIRListener::enterAssignment( ToyParser::AssignmentContext *ctx )
@@ -1185,7 +1205,21 @@ namespace toy
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
         setLastLoc( loc );
-        currentVarName = ctx->IDENTIFIER()->getText();
+        auto lhs = ctx->scalarOrArrayElement();
+        currentVarName = lhs->IDENTIFIER()->getText();
+
+        ToyParser::IndexExpressionContext *indexExpr = lhs->indexExpression();
+
+        currentIndexExpr = mlir::Value();
+
+        if ( indexExpr )
+        {
+            std::string s;
+            buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, lhs, nullptr, loc, currentIndexExpr,
+                                  s );
+            assert( s.length() == 0 );
+        }
+
         auto varState = getVarState( currentVarName );
         if ( varState == variable_state::declared )
         {
@@ -1208,7 +1242,26 @@ namespace toy
         callIsHandled = false;
     }
 
-    void MLIRListener::enterAssignmentExpression( ToyParser::AssignmentExpressionContext *ctx )
+    mlir::Value MLIRListener::indexTypeCast( mlir::Location loc, mlir::Value val )
+    {
+        auto indexTy = builder.getIndexType();
+        auto valTy = val.getType();
+
+        if ( valTy == indexTy )
+            return val;
+
+        // If it's i64, convert
+        if ( valTy.isSignlessInteger( 64 ) )
+        {
+            return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
+        }
+
+        // Add more conversions as needed (i32 → index, etc.)
+        assert( 0 && "NYI" );
+        return nullptr;
+    }
+
+    void MLIRListener::enterRhs( ToyParser::RhsContext *ctx )
     {
         if ( !assignmentTargetValid )
         {
@@ -1241,7 +1294,7 @@ namespace toy
             else
             {
                 buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                      lit ? lit->FLOAT_PATTERN() : nullptr, ctx->IDENTIFIER(),
+                                      lit ? lit->FLOAT_PATTERN() : nullptr, ctx->scalarOrArrayElement(),
                                       lit ? lit->STRING_PATTERN() : nullptr, loc, lhsValue, s );
             }
 
@@ -1276,7 +1329,7 @@ namespace toy
             auto llit = lhs->numericLiteral();
             buildUnaryExpression( nullptr,    // booleanNode
                                   llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
-                                  lhs->IDENTIFIER(),
+                                  lhs->scalarOrArrayElement(),
                                   nullptr,    // stringNode
                                   loc, lhsValue, s );
             assert( s.length() == 0 );
@@ -1285,7 +1338,7 @@ namespace toy
             auto rlit = rhs->numericLiteral();
             buildUnaryExpression( nullptr,    // booleanNode
                                   rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
-                                  rhs->IDENTIFIER(),
+                                  rhs->scalarOrArrayElement(),
                                   nullptr,    // stringNode
                                   loc, rhsValue, s );
             assert( s.length() == 0 );
@@ -1372,15 +1425,39 @@ namespace toy
 
             auto stringLiteral = builder.create<toy::StringLiteralOp>( loc, tyPtr, strAttr );
 
-            builder.create<toy::AssignOp>( loc, symRef, stringLiteral );
+            mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
+
+            builder.create<toy::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ stringLiteral },
+                                           llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
         }
         else
         {
-            builder.create<toy::AssignOp>( loc, symRef, resultValue );
+            if ( currentIndexExpr )
+            {
+                auto i = indexTypeCast( loc, currentIndexExpr );
+
+                auto assign = builder.create<toy::AssignOp>( loc, symRef, i, resultValue );
+
+                LLVM_DEBUG( {
+                    mlir::OpPrintingFlags flags;
+                    flags.enableDebugInfo( true );
+
+                    assign->print( llvm::outs(), flags );
+                    llvm::outs() << "\n";
+                } );
+            }
+            else
+            {
+                mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
+
+                builder.create<toy::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ resultValue },
+                                               llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+            }
         }
 
         setVarState( currentFuncName, currentVarName, variable_state::assigned );
         currentVarName.clear();
+        currentIndexExpr = mlir::Value();
     }
 }    // namespace toy
 

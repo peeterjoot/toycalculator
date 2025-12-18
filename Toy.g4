@@ -93,30 +93,27 @@ arrayBoundsExpression
 
 // Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
 exitStatement
-  : EXIT_TOKEN (numericLiteral | IDENTIFIER)?
+  : EXIT_TOKEN (numericLiteral | scalarOrArrayElement)?
   ;
 
 returnStatement
-  : RETURN_TOKEN (literal | IDENTIFIER)?
+  : RETURN_TOKEN (literal | scalarOrArrayElement)?
   ;
 
 // A print statement that outputs a variable (e.g., 'PRINT x;').
 print
-  : PRINT_TOKEN (IDENTIFIER | STRING_PATTERN)
+  : PRINT_TOKEN (scalarOrArrayElement | STRING_PATTERN)
   ;
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
-//assignment
-//  : IDENTIFIER (INDEX_EXPRESSION)? EQUALS_TOKEN assignmentExpression
-//  ;
 assignment
-  : IDENTIFIER EQUALS_TOKEN assignmentExpression
+  : scalarOrArrayElement EQUALS_TOKEN rhs
   ;
 
 // The right-hand side of an assignment, either a binary or unary expression.
-assignmentExpression
+rhs
   : literal
-  | unaryOperator? IDENTIFIER
+  | unaryOperator? scalarOrArrayElement
   | binaryElement binaryOperator binaryElement
   | call
   ;
@@ -130,16 +127,26 @@ parameterList
   ;
 
 parameter
-  : literal | IDENTIFIER
+  : literal | scalarOrArrayElement
   ;
 
 binaryElement
   : numericLiteral
-  | unaryOperator? IDENTIFIER
+  | unaryOperator? scalarOrArrayElement
   ;
 
 booleanElement
-  : booleanLiteral | IDENTIFIER
+  : booleanLiteral | scalarOrArrayElement
+  ;
+
+scalarOrArrayElement
+  : IDENTIFIER (indexExpression)?
+  ;
+
+indexExpression
+// probably want (allow: Now t[i+1] or t[someFunc()], ..., to parse correctly.)
+// ARRAY_START_TOKEN assignmentExpression ARRAY_END_TOKEN
+  : ARRAY_START_TOKEN (IDENTIFIER | INTEGER_PATTERN) ARRAY_END_TOKEN
   ;
 
 // A binary operator for addition, subtraction, multiplication, or division, ...
@@ -174,10 +181,6 @@ booleanLiteral
 
 // Lexer Rules
 // ===========
-
-//INDEX_EXPRESSION
-//  : ARRAY_START_TOKEN (IDENTIFIER | INTEGER_PATTERN) ARRAY_END_TOKEN
-//  ;
 
 // Matches integer literals, optionally signed (e.g., '42', '-123', '+7').
 INTEGER_PATTERN

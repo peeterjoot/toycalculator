@@ -13,11 +13,11 @@
 // - A print operation.
 // - A Function operation (for the implicit main, and any user defined functions.)
 //
-include "mlir/IR/DialectBase.td"
-include "mlir/IR/OpBase.td"
 include "mlir/IR/BuiltinTypes.td"
-include "mlir/IR/SymbolInterfaces.td"
 include "mlir/IR/BuiltinAttributes.td"
+include "mlir/IR/OpBase.td"
+include "mlir/IR/DialectBase.td"
+include "mlir/IR/SymbolInterfaces.td"
 include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/Dialect/LLVMIR/LLVMTypes.td"
 
@@ -62,15 +62,37 @@ def Toy_IntOrFloat : TypeConstraint<
   "integer or float type">;
 
 def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
-  let summary = "Assign a value to a variable by symbol reference.";
-  let arguments = (ins SymbolRefAttr:$var_name, AnyType:$value);
+  let summary = "Assign a value to a variable (scalar or array element).";
+
+  let description = [{
+    Assigns `value` to the variable referenced by `var_name`.
+    If `index` is present, the assignment targets the array element at that index.
+    The target variable must have been declared with a matching `toy.declare`.
+  }];
+
+  let arguments = (ins
+    SymbolRefAttr:$var_name,               // @t
+    Optional<Index>:$index,                // optional SSA value of index type (dynamic or none)
+    AnyType:$value                         // the value being assigned
+  );
+
   let results = (outs);
+
+  let assemblyFormat =
+    "$var_name (`[` $index^ `]`)? `=` $value `:` type($value) attr-dict";
 }
 
 def Toy_LoadOp : Op<Toy_Dialect, "load"> {
-  let summary = "Load a variable by symbol reference.";
-  let arguments = (ins SymbolRefAttr:$var_name);
+  let summary = "Load a variable (scalar or array element) by symbol reference.";
+  let arguments = (ins
+    SymbolRefAttr:$var_name,               // @t
+    Optional<Index>:$index                 // optional SSA value of index type (dynamic or none)
+  );
+
   let results = (outs AnyType:$result);
+
+  let assemblyFormat =
+    "$var_name (`[` $index^ `]`)? `:` type($result) attr-dict";
 }
 
 def Toy_YieldOp : Op<Toy_Dialect, "yield"> {

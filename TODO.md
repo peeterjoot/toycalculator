@@ -73,8 +73,20 @@ enum class return_codes : int
 (vs. unknown_error which is returned for everything now.)
 
 * string literal tests for edge cases: shortstring.toy: two bugs unresolved.
-* array member assignment.
-* debug test cases for non-string array variables.  Need array member assignment first.
+* arrays:
+    - implement runtime bounds checking (make it a compiler option?)
+    - print/return/exit support for array element values.
+    - attempt to put in constant array access range checking did not work (for AssignOp lowering, probably also for LoadOp lowering -- untested).  Also want:
+
+        // allow: Now t[i+1] or t[someFunc()], ..., to parse correctly:
+        indexExpression
+          : ARRAY_START_TOKEN assignmentExpression ARRAY_END_TOKEN
+          ;
+
+        but currently have much more limited index expressions:
+
+          : ARRAY_START_TOKEN (IDENTIFIER | INTEGER_PATTERN) ARRAY_END_TOKEN
+
 * NOT operator: add more comprehensive all types testing.
 * tests for all the type conversions (i.e.: binary and unary arith operators)
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.

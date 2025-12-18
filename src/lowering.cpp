@@ -14,15 +14,19 @@
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/TargetParser/Host.h>
 #include <mlir/Conversion/ArithToLLVM/ArithToLLVM.h>
+#include <mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h>
 #include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Conversion/LLVMCommon/Pattern.h>
 #include <mlir/Conversion/LLVMCommon/TypeConverter.h>
 #include <mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h>
+#include <mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
+#include <mlir/Dialect/ControlFlow/IR/ControlFlow.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/Dialect/LLVMIR/LLVMAttrs.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
+#include <mlir/Dialect/SCF/IR/SCF.h>
 #include <mlir/IR/Block.h>
 #include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/BuiltinOps.h>
@@ -30,10 +34,6 @@
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/Pass/Pass.h>
 #include <mlir/Transforms/DialectConversion.h>
-#include <mlir/Dialect/SCF/IR/SCF.h>
-#include <mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h>
-#include <mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h>
-#include <mlir/Dialect/ControlFlow/IR/ControlFlow.h>
 
 #include <format>
 #include <numeric>
@@ -771,6 +771,62 @@ namespace toy
                 rewriter.create<mlir::LLVM::DbgDeclareOp>( loc, value, diVar );
             }
         }
+
+        mlir::Value castToElemType( mlir::Location loc, ConversionPatternRewriter& rewriter, mlir::Value value,
+                                    mlir::Type valType, mlir::Type elemType )
+        {
+            if ( valType == tyF64 )
+            {
+                if ( mlir::isa<mlir::IntegerType>( elemType ) )
+                {
+                    value = rewriter.create<LLVM::FPToSIOp>( loc, elemType, value );
+                }
+                else if ( elemType == tyF32 )
+                {
+                    value = rewriter.create<LLVM::FPTruncOp>( loc, elemType, value );
+                }
+            }
+            else if ( valType == tyF32 )
+            {
+                if ( mlir::isa<mlir::IntegerType>( elemType ) )
+                {
+                    value = rewriter.create<LLVM::FPToSIOp>( loc, elemType, value );
+                }
+                else if ( elemType == tyF64 )
+                {
+                    value = rewriter.create<LLVM::FPExtOp>( loc, elemType, value );
+                }
+            }
+            else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
+            {
+                auto vwidth = viType.getWidth();
+                if ( isTypeFloat( elemType ) )
+                {
+                    if ( vwidth == 1 )
+                    {
+                        value = rewriter.create<LLVM::UIToFPOp>( loc, elemType, value );
+                    }
+                    else
+                    {
+                        value = rewriter.create<LLVM::SIToFPOp>( loc, elemType, value );
+                    }
+                }
+                else if ( auto miType = mlir::cast<mlir::IntegerType>( elemType ) )
+                {
+                    auto mwidth = miType.getWidth();
+                    if ( vwidth > mwidth )
+                    {
+                        value = rewriter.create<LLVM::TruncOp>( loc, elemType, value );
+                    }
+                    else if ( vwidth < mwidth )
+                    {
+                        value = rewriter.create<LLVM::ZExtOp>( loc, elemType, value );
+                    }
+                }
+            }
+
+            return value;
+        }
     };
 
     class DeclareOpLowering : public ConversionPattern
@@ -935,7 +991,7 @@ namespace toy
 
             // Get string (e.g., "x")
             auto varName = varNameAttr.getLeafReference().str();
-            LLVM_DEBUG( { llvm::dbgs() << "LoadOp variable name: " << varName << "\n"; } );
+            LLVM_DEBUG( { llvm::dbgs() << "AssignOp variable name: " << varName << "\n"; } );
 
             auto allocaOp = lState.lookupLocalSymbolReference( assignOp, varName );
 
@@ -964,55 +1020,7 @@ namespace toy
 
             if ( numElems == 1 )
             {
-                if ( valType == lState.tyF64 )
-                {
-                    if ( mlir::isa<mlir::IntegerType>( elemType ) )
-                    {
-                        value = rewriter.create<LLVM::FPToSIOp>( loc, elemType, value );
-                    }
-                    else if ( elemType == lState.tyF32 )
-                    {
-                        value = rewriter.create<LLVM::FPTruncOp>( loc, elemType, value );
-                    }
-                }
-                else if ( valType == lState.tyF32 )
-                {
-                    if ( mlir::isa<mlir::IntegerType>( elemType ) )
-                    {
-                        value = rewriter.create<LLVM::FPToSIOp>( loc, elemType, value );
-                    }
-                    else if ( elemType == lState.tyF64 )
-                    {
-                        value = rewriter.create<LLVM::FPExtOp>( loc, elemType, value );
-                    }
-                }
-                else if ( auto viType = mlir::cast<mlir::IntegerType>( valType ) )
-                {
-                    auto vwidth = viType.getWidth();
-                    if ( lState.isTypeFloat( elemType ) )
-                    {
-                        if ( vwidth == 1 )
-                        {
-                            value = rewriter.create<LLVM::UIToFPOp>( loc, elemType, value );
-                        }
-                        else
-                        {
-                            value = rewriter.create<LLVM::SIToFPOp>( loc, elemType, value );
-                        }
-                    }
-                    else if ( auto miType = mlir::cast<mlir::IntegerType>( elemType ) )
-                    {
-                        auto mwidth = miType.getWidth();
-                        if ( vwidth > mwidth )
-                        {
-                            value = rewriter.create<LLVM::TruncOp>( loc, elemType, value );
-                        }
-                        else if ( vwidth < mwidth )
-                        {
-                            value = rewriter.create<LLVM::ZExtOp>( loc, elemType, value );
-                        }
-                    }
-                }
+                value = lState.castToElemType( loc, rewriter, value, valType, elemType );
 
                 unsigned alignment = lState.preferredTypeAlignment( op, elemType );
                 rewriter.create<LLVM::StoreOp>( loc, value, allocaOp, alignment );
@@ -1061,9 +1069,64 @@ namespace toy
                                                      remainingSize, rewriter.getBoolAttr( false ) );
                 }
             }
-            else
+            else    // ARRAY ELEMENT or UNSUPPORTED ASSIGNMENT
             {
-                llvm_unreachable( "AssignOp lowering: expect only fixed size floating or integer types." );
+                auto optIndex = assignOp.getIndex();    // std::optional<Value>
+
+                if ( !optIndex )
+                {
+                    // Assigning a non-string-literal to an array (e.g., t = some_expr;)
+                    // This is not supported (arrays are not first-class values)
+                    return rewriter.notifyMatchFailure(
+                        assignOp, "assignment of non-string-literal to array variable without index is not supported" );
+                }
+
+                Value indexVal = optIndex;
+                Value destBasePtr = allocaOp.getResult();
+
+                assert( numElems && "non-scalar, non-string assignment must be an array with non-zero size" );
+                if ( auto constOp = indexVal.getDefiningOp<arith::ConstantIndexOp>() )
+                {
+                    int64_t idx = constOp.value();
+                    if ( idx < 0 || idx >= numElems )
+                    {
+                        return assignOp.emitError() << "static out-of-bounds array access: index " << idx
+                                                    << " is out of bounds for array of size " << numElems;
+                    }
+                }
+
+                // Cast index to i64 for LLVM dialect GEP indexing
+                Value idxI64 = rewriter.create<arith::IndexCastOp>( loc, lState.tyI64, indexVal );
+
+                Type elemPtrTy = destBasePtr.getType();
+
+                Value elemPtr = rewriter.create<LLVM::GEPOp>( loc,
+                                                              elemPtrTy,    // result type
+                                                              elemType,     // pointee type
+                                                              destBasePtr, ValueRange{ idxI64 } );
+
+                // Nice to have (untested): Runtime bounds check -- make this a compile option?
+                // if (numElems > 0) {
+                //     Value sizeVal = rewriter.create<LLVM::ConstantOp>(
+                //         loc, lState.tyI64, rewriter.getI64IntegerAttr(numElems));
+                //     Value inBounds = rewriter.create<LLVM::ICmpOp>(
+                //         loc, LLVM::ICmpPredicate::ult, idxI64, sizeVal);
+                //
+                //     auto trapBB = rewriter.createBlock(rewriter.getInsertionBlock()->getParent());
+                //     auto contBB = rewriter.createBlock(trapBB);
+                //
+                //     rewriter.create<LLVM::CondBrOp>(loc, inBounds, contBB, trapBB);
+                //
+                //     rewriter.setInsertionPointToStart(trapBB);
+                //     rewriter.create<LLVM::UnreachableOp>(loc);  // or call abort()
+                //
+                //     rewriter.setInsertionPointToStart(contBB);
+                // }
+
+                value = lState.castToElemType( loc, rewriter, value, valType, elemType );
+
+                unsigned alignment = lState.preferredTypeAlignment( op, elemType );
+                rewriter.create<LLVM::StoreOp>( loc, value, elemPtr, alignment );
             }
 
             rewriter.eraseOp( op );
@@ -1230,61 +1293,110 @@ namespace toy
 
             auto varName = loadOp.getVarNameAttr().getRootReference().getValue().str();
             auto allocaOp = lState.lookupLocalSymbolReference( loadOp, varName );
+            auto optIndex = loadOp.getIndex();    // std::optional<Value>
 
             LLVM_DEBUG( llvm::dbgs() << "varName: " << varName << '\n' );
 
             Type elemType = allocaOp.getElemType();
+            mlir::Value load;
 
             if ( loadOp.getResult().getType() == lState.tyPtr )
             {
-                // Return the allocated pointer
-                LLVM_DEBUG( llvm::dbgs() << "Loading array address: " << allocaOp.getResult() << '\n' );
-                rewriter.replaceOp( op, allocaOp.getResult() );
+                load = allocaOp.getResult();
             }
             else
             {
-                // Scalar load
-                auto load = rewriter.create<LLVM::LoadOp>( loc, elemType, allocaOp );
-                LLVM_DEBUG( llvm::dbgs() << "new load op: " << load << '\n' );
-                rewriter.replaceOp( op, load.getResult() );
+                if ( optIndex )
+                {
+                    Value indexVal = optIndex;
+                    Value basePtr = allocaOp.getResult();
+
+                    int64_t numElems = 0;
+                    if ( auto allocationBoundsConstOp = allocaOp.getArraySize().getDefiningOp<LLVM::ConstantOp>() )
+                    {
+                        auto intAttr = mlir::dyn_cast<IntegerAttr>( allocationBoundsConstOp.getValue() );
+                        numElems = intAttr.getInt();
+                    }
+
+                    assert( numElems );
+
+                    if ( auto constOp = indexVal.getDefiningOp<arith::ConstantIndexOp>() )
+                    {
+                        int64_t idx = constOp.value();
+                        if ( idx < 0 || idx >= numElems )
+                        {
+                            return loadOp.emitError() << "static out-of-bounds array access: index " << idx
+                                                      << " is out of bounds for array of size " << numElems;
+                        }
+                    }
+
+                    // Cast index to i64 for LLVM GEP
+                    Value idxI64 = rewriter.create<arith::IndexCastOp>( loc, lState.tyI64, indexVal );
+
+                    // GEP to element
+                    Value elemPtr = rewriter.create<LLVM::GEPOp>( loc,
+                                                                  basePtr.getType(),    // result type: ptr-to-elem
+                                                                  elemType,             // pointee type
+                                                                  basePtr, ValueRange{ idxI64 } );
+
+                    // Load array element
+                    load = rewriter.create<LLVM::LoadOp>( loc, elemType, elemPtr ).getResult();
+                }
+                else
+                {
+                    // Scalar load
+                    load = rewriter.create<LLVM::LoadOp>( loc, elemType, allocaOp ).getResult();
+                }
             }
+
+            LLVM_DEBUG( llvm::dbgs() << "new load op: " << load << '\n' );
+            rewriter.replaceOp( op, load );
 
             return success();
         }
     };
 
-    class CallOpLowering : public ConversionPattern {
-    public:
-      explicit CallOpLowering(MLIRContext* context)
-          : ConversionPattern(toy::CallOp::getOperationName(), 1, context) {}
+    class CallOpLowering : public ConversionPattern
+    {
+       private:
+        loweringContext& lState;
 
-      LogicalResult matchAndRewrite(Operation* op, ArrayRef<Value> operands,
-                                    ConversionPatternRewriter& rewriter) const override {
-        auto callOp = cast<toy::CallOp>(op);
-        auto loc = callOp.getLoc();
-
-        // Get the callee symbol reference (stored as "callee" attribute)
-        auto calleeAttr = callOp->getAttrOfType<FlatSymbolRefAttr>("callee");
-        if (!calleeAttr)
-          return failure();
-
-        // Get result types (empty for void, one type for scalar return)
-        TypeRange resultTypes = callOp.getResultTypes();
-
-        auto mlirCall = rewriter.create<mlir::func::CallOp>( loc, resultTypes,
-                                                             calleeAttr, callOp.getOperands() );
-
-        // Replace uses correctly
-        if (!resultTypes.empty()) {
-          // Non-void: replace the single result
-          rewriter.replaceOp(op, mlirCall.getResults());
-        } else {
-          // Void: erase the op (no result to replace)
-          rewriter.eraseOp(op);
+       public:
+        CallOpLowering( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
+            : ConversionPattern( toy::CallOp::getOperationName(), benefit, context ), lState{ lState_ }
+        {
         }
 
-        return success();
-      }
+        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
+                                       ConversionPatternRewriter& rewriter ) const override
+        {
+            auto callOp = cast<toy::CallOp>( op );
+            auto loc = callOp.getLoc();
+
+            // Get the callee symbol reference (stored as "callee" attribute)
+            auto calleeAttr = callOp->getAttrOfType<FlatSymbolRefAttr>( "callee" );
+            if ( !calleeAttr )
+                return failure();
+
+            // Get result types (empty for void, one type for scalar return)
+            TypeRange resultTypes = callOp.getResultTypes();
+
+            auto mlirCall = rewriter.create<mlir::func::CallOp>( loc, resultTypes, calleeAttr, callOp.getOperands() );
+
+            // Replace uses correctly
+            if ( !resultTypes.empty() )
+            {
+                // Non-void: replace the single result
+                rewriter.replaceOp( op, mlirCall.getResults() );
+            }
+            else
+            {
+                // Void: erase the op (no result to replace)
+                rewriter.eraseOp( op );
+            }
+
+            return success();
+        }
     };
 
     class ScopeOpLowering : public ConversionPattern
@@ -1679,7 +1791,8 @@ namespace toy
                                     toy::NegOp, toy::NotEqualOp, toy::OrOp, toy::PrintOp, toy::StringLiteralOp,
                                     toy::SubOp, toy::XorOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
-                                  toy::ScopeOp, toy::YieldOp, toy::ReturnOp, toy::CallOp, mlir::func::CallOp, mlir::scf::IfOp, mlir::scf::YieldOp>();
+                                  toy::ScopeOp, toy::YieldOp, toy::ReturnOp, toy::CallOp, mlir::func::CallOp,
+                                  mlir::scf::IfOp, mlir::scf::YieldOp>();
 
                 RewritePatternSet patterns( &getContext() );
                 patterns.add<AddOpLowering, AndOpLowering, AssignOpLowering, ConstantOpLowering, DeclareOpLowering,
@@ -1708,17 +1821,16 @@ namespace toy
                 target.addIllegalOp<toy::ScopeOp, toy::YieldOp, toy::ReturnOp, toy::CallOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
                 target.addIllegalDialect<mlir::scf::SCFDialect>();
-                target.addIllegalDialect<mlir::cf::ControlFlowDialect>();  // forces lowering
+                target.addIllegalDialect<mlir::cf::ControlFlowDialect>();    // forces lowering
 
                 RewritePatternSet patterns( &getContext() );
-                patterns.add<CallOpLowering>(&getContext());
-                patterns.add<ScopeOpLowering>( lState, &getContext(), 1 );
+                patterns.add<CallOpLowering, ScopeOpLowering>( lState, &getContext(), 1 );
 
                 // SCF -> CF
-                mlir::populateSCFToControlFlowConversionPatterns(patterns);
+                mlir::populateSCFToControlFlowConversionPatterns( patterns );
 
                 // CF -> LLVM
-                mlir::cf::populateControlFlowToLLVMConversionPatterns(lState.typeConverter, patterns);
+                mlir::cf::populateControlFlowToLLVMConversionPatterns( lState.typeConverter, patterns );
 
                 if ( failed( applyFullConversion( module, target, std::move( patterns ) ) ) )
                 {
