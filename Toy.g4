@@ -106,11 +106,8 @@ print
   ;
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
-//assignment
-//  : IDENTIFIER (INDEX_EXPRESSION)? EQUALS_TOKEN assignmentExpression
-//  ;
 assignment
-  : IDENTIFIER EQUALS_TOKEN assignmentExpression
+  : IDENTIFIER (INDEX_EXPRESSION)? EQUALS_TOKEN assignmentExpression
   ;
 
 // The right-hand side of an assignment, either a binary or unary expression.
@@ -175,9 +172,9 @@ booleanLiteral
 // Lexer Rules
 // ===========
 
-//INDEX_EXPRESSION
-//  : ARRAY_START_TOKEN (IDENTIFIER | INTEGER_PATTERN) ARRAY_END_TOKEN
-//  ;
+INDEX_EXPRESSION
+  : ARRAY_START_TOKEN (IDENTIFIER | INTEGER_PATTERN) ARRAY_END_TOKEN
+  ;
 
 // Matches integer literals, optionally signed (e.g., '42', '-123', '+7').
 INTEGER_PATTERN
