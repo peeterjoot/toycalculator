@@ -553,7 +553,10 @@ namespace toy
     mlir::Value MLIRListener::handleCall( ToyParser::CallContext *ctx )
     {
         auto loc = getLocation( ctx );
-        auto funcName = ctx->IDENTIFIER()->getText();
+        assert(ctx);
+        auto id = ctx->IDENTIFIER();
+        assert(id);
+        auto funcName = id->getText();
         mlir::func::FuncOp funcOp = getFuncOp( funcName );
         auto funcType = funcOp.getFunctionType();
         std::vector<mlir::Value> parameters;
@@ -1185,7 +1188,7 @@ namespace toy
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
         setLastLoc( loc );
-        currentVarName = ctx->IDENTIFIER()->getText();
+        currentVarName = ctx->lhs()->IDENTIFIER()->getText();
         auto varState = getVarState( currentVarName );
         if ( varState == variable_state::declared )
         {
@@ -1208,7 +1211,7 @@ namespace toy
         callIsHandled = false;
     }
 
-    void MLIRListener::enterAssignmentExpression( ToyParser::AssignmentExpressionContext *ctx )
+    void MLIRListener::enterRhs( ToyParser::RhsContext *ctx )
     {
         if ( !assignmentTargetValid )
         {

@@ -262,7 +262,7 @@ namespace toy
 
         void enterExitStatement( ToyParser::ExitStatementContext *ctx ) override;
 
-        void enterAssignmentExpression( ToyParser::AssignmentExpressionContext *ctx ) override;
+        void enterRhs( ToyParser::RhsContext *ctx ) override;
     };
 }    // namespace toy
 
