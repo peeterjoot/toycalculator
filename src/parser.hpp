@@ -93,6 +93,7 @@ namespace toy
         std::vector<mlir::OpBuilder::InsertPoint> insertionPointStack; ///< scf.if block stack
         mlir::ModuleOp mod;
         std::string currentVarName;
+        mlir::Value currentIndexExpr;
         std::unordered_map<std::string, std::unique_ptr<PerFunctionState>> pr_funcState;
         bool assignmentTargetValid{};
         bool hasErrors{};

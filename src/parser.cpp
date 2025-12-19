@@ -1188,7 +1188,22 @@ namespace toy
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
         setLastLoc( loc );
-        currentVarName = ctx->lhs()->IDENTIFIER()->getText();
+        auto lhs = ctx->lhs();
+        currentVarName = lhs->IDENTIFIER()->getText();
+
+        ToyParser::IndexExpressionContext * indexExpr = lhs->indexExpression();
+
+        currentIndexExpr = mlir::Value();
+
+        if (indexExpr) {
+            std::string s;
+            buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(),
+                                  nullptr, indexExpr->IDENTIFIER(),
+                                  nullptr, loc, currentIndexExpr, s );
+            assert( s.length() == 0 );
+            assert(0); // TODO: generalize currentVarName handling to include currentIndexExpr.
+        }
+
         auto varState = getVarState( currentVarName );
         if ( varState == variable_state::declared )
         {
@@ -1375,11 +1390,29 @@ namespace toy
 
             auto stringLiteral = builder.create<toy::StringLiteralOp>( loc, tyPtr, strAttr );
 
-            builder.create<toy::AssignOp>( loc, symRef, stringLiteral );
+            mlir::NamedAttribute varNameAttr(
+              builder.getStringAttr("var_name"),
+              symRef
+            );
+
+            builder.create<toy::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{stringLiteral}, llvm::ArrayRef<mlir::NamedAttribute>{varNameAttr});
         }
         else
         {
-            builder.create<toy::AssignOp>( loc, symRef, resultValue );
+            if (currentIndexExpr) {
+                int64_t indexVal = 0;
+                auto indexAttr = builder.getI64IntegerAttr(indexVal);
+
+                builder.create<toy::AssignOp>( loc, symRef, indexAttr, resultValue );
+            } else {
+
+                mlir::NamedAttribute varNameAttr(
+                  builder.getStringAttr("var_name"),
+                  symRef
+                );
+
+                builder.create<toy::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{resultValue}, llvm::ArrayRef<mlir::NamedAttribute>{varNameAttr});
+            }
         }
 
         setVarState( currentFuncName, currentVarName, variable_state::assigned );

@@ -62,8 +62,20 @@ def Toy_IntOrFloat : TypeConstraint<
   "integer or float type">;
 
 def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
-  let summary = "Assign a value to a variable by symbol reference.";
-  let arguments = (ins SymbolRefAttr:$var_name, AnyType:$value);
+  let summary = "Assign a value to a variable (scalar or array element).";
+
+  let description = [{
+    Assigns `value` to the variable referenced by `var_name`.
+    If `index` is present, the assignment targets the array element at that index.
+    The target variable must have been declared with a matching `toy.declare`.
+  }];
+
+  let arguments = (ins
+    SymbolRefAttr:$var_name,               // @t
+    OptionalAttr<I64Attr>:$index,          // static index like 2 in t[2], or none for scalar
+    AnyType:$value                         // the value being assigned
+  );
+
   let results = (outs);
 }
 

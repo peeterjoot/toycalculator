@@ -73,8 +73,12 @@ enum class return_codes : int
 (vs. unknown_error which is returned for everything now.)
 
 * string literal tests for edge cases: shortstring.toy: two bugs unresolved.
-* array member assignment.
-* debug test cases for non-string array variables.  Need array member assignment first.
+* array member assignment.  grammar now done.  Builder TODO.  Generating explicit error until ready:
+
+    toycalculator: /home/pjoot/toycalculator/src/parser.cpp:1193: virtual void toy::MLIRListener::enterAssignment(ToyParser::AssignmentContext *): Assertion `indexExpr == nullptr' failed.
+
+until done.
+
 * NOT operator: add more comprehensive all types testing.
 * tests for all the type conversions (i.e.: binary and unary arith operators)
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
