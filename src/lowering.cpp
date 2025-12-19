@@ -1102,13 +1102,13 @@ namespace toy
                 Value zero = rewriter.create<LLVM::ConstantOp>( loc, lState.tyI64, rewriter.getI64IntegerAttr( 0 ) );
                 Value indices[] = { zero, idxI64 };
 
-                Type elemPtrTy = LLVM::LLVMPointerType::get(elemType);
+                Type elemPtrTy = destBasePtr.getType();
 
                 Value elemPtr = rewriter.create<LLVM::GEPOp>( loc,
                                                               elemPtrTy,       // result type
-                                                              elemType,        // pointee type (elementType)
-                                                              destBasePtr,     // base pointer
-                                                              ArrayRef<Value>( indices, 2 )    // indices
+                                                              elemType,        // pointee type
+                                                              destBasePtr,
+                                                              ArrayRef<Value>( indices, 2 )
                 );
 
                 // Nice to have (untested): Runtime bounds check -- make this a compile option?
