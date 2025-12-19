@@ -195,7 +195,8 @@ int main( int argc, char** argv )
         mlir::OpPrintingFlags flags;
         if ( debugInfo )
         {
-            flags.printGenericOpForm().enableDebugInfo( true );
+            flags.enableDebugInfo( true );
+            //flags.printGenericOpForm(); // Why did I do this?  If I have an assemblyFormat, I'd like it to show up.
         }
         llvm::StringRef stem = llvm::sys::path::stem( filename );
         if ( stem.empty() )

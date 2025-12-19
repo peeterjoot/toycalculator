@@ -553,9 +553,9 @@ namespace toy
     mlir::Value MLIRListener::handleCall( ToyParser::CallContext *ctx )
     {
         auto loc = getLocation( ctx );
-        assert(ctx);
+        assert( ctx );
         auto id = ctx->IDENTIFIER();
-        assert(id);
+        assert( id );
         auto funcName = id->getText();
         mlir::func::FuncOp funcOp = getFuncOp( funcName );
         auto funcType = funcOp.getFunctionType();
@@ -1191,17 +1191,16 @@ namespace toy
         auto lhs = ctx->lhs();
         currentVarName = lhs->IDENTIFIER()->getText();
 
-        ToyParser::IndexExpressionContext * indexExpr = lhs->indexExpression();
+        ToyParser::IndexExpressionContext *indexExpr = lhs->indexExpression();
 
         currentIndexExpr = mlir::Value();
 
-        if (indexExpr) {
+        if ( indexExpr )
+        {
             std::string s;
-            buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(),
-                                  nullptr, indexExpr->IDENTIFIER(),
-                                  nullptr, loc, currentIndexExpr, s );
+            buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, indexExpr->IDENTIFIER(), nullptr, loc,
+                                  currentIndexExpr, s );
             assert( s.length() == 0 );
-            assert(0); // TODO: generalize currentVarName handling to include currentIndexExpr.
         }
 
         auto varState = getVarState( currentVarName );
@@ -1224,6 +1223,25 @@ namespace toy
     void MLIRListener::exitAssignment( ToyParser::AssignmentContext *ctx )
     {
         callIsHandled = false;
+    }
+
+    mlir::Value MLIRListener::indexTypeCast( mlir::Location loc, mlir::Value val )
+    {
+        auto indexTy = builder.getIndexType();
+        auto valTy = val.getType();
+
+        if ( valTy == indexTy )
+            return val;
+
+        // If it's i64, convert
+        if ( valTy.isSignlessInteger( 64 ) )
+        {
+            return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
+        }
+
+        // Add more conversions as needed (i32 → index, etc.)
+        assert( 0 && "NYI" );
+        return nullptr;
     }
 
     void MLIRListener::enterRhs( ToyParser::RhsContext *ctx )
@@ -1390,33 +1408,39 @@ namespace toy
 
             auto stringLiteral = builder.create<toy::StringLiteralOp>( loc, tyPtr, strAttr );
 
-            mlir::NamedAttribute varNameAttr(
-              builder.getStringAttr("var_name"),
-              symRef
-            );
+            mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
 
-            builder.create<toy::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{stringLiteral}, llvm::ArrayRef<mlir::NamedAttribute>{varNameAttr});
+            builder.create<toy::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ stringLiteral },
+                                           llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
         }
         else
         {
-            if (currentIndexExpr) {
-                int64_t indexVal = 0;
-                auto indexAttr = builder.getI64IntegerAttr(indexVal);
+            if ( currentIndexExpr )
+            {
+                auto i = indexTypeCast( loc, currentIndexExpr );
 
-                builder.create<toy::AssignOp>( loc, symRef, indexAttr, resultValue );
-            } else {
+                auto assign = builder.create<toy::AssignOp>( loc, symRef, i, resultValue );
 
-                mlir::NamedAttribute varNameAttr(
-                  builder.getStringAttr("var_name"),
-                  symRef
-                );
+                LLVM_DEBUG( {
+                    mlir::OpPrintingFlags flags;
+                    flags.enableDebugInfo( true );
 
-                builder.create<toy::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{resultValue}, llvm::ArrayRef<mlir::NamedAttribute>{varNameAttr});
+                    assign->print( llvm::outs(), flags );
+                    llvm::outs() << "\n";
+                } );
+            }
+            else
+            {
+                mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
+
+                builder.create<toy::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ resultValue },
+                                               llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
             }
         }
 
         setVarState( currentFuncName, currentVarName, variable_state::assigned );
         currentVarName.clear();
+        currentIndexExpr = mlir::Value();
     }
 }    // namespace toy
 

@@ -13,11 +13,11 @@
 // - A print operation.
 // - A Function operation (for the implicit main, and any user defined functions.)
 //
-include "mlir/IR/DialectBase.td"
-include "mlir/IR/OpBase.td"
 include "mlir/IR/BuiltinTypes.td"
-include "mlir/IR/SymbolInterfaces.td"
 include "mlir/IR/BuiltinAttributes.td"
+include "mlir/IR/OpBase.td"
+include "mlir/IR/DialectBase.td"
+include "mlir/IR/SymbolInterfaces.td"
 include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/Dialect/LLVMIR/LLVMTypes.td"
 
@@ -72,11 +72,16 @@ def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
 
   let arguments = (ins
     SymbolRefAttr:$var_name,               // @t
-    OptionalAttr<I64Attr>:$index,          // static index like 2 in t[2], or none for scalar
+    Optional<Index>:$index,                // optional SSA value of index type (dynamic or none)
     AnyType:$value                         // the value being assigned
   );
 
   let results = (outs);
+
+  let hasCustomAssemblyFormat = 1;
+
+  let assemblyFormat =
+    "$var_name (`[` $index^ `]`)? `=` $value `:` type($value) attr-dict";
 }
 
 def Toy_LoadOp : Op<Toy_Dialect, "load"> {

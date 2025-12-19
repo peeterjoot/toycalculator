@@ -115,6 +115,8 @@ lhs
   ;
 
 indexExpression
+// probably want (allow: Now t[i+1] or t[someFunc()], ..., to parse correctly.)
+// ARRAY_START_TOKEN assignmentExpression ARRAY_END_TOKEN
   : ARRAY_START_TOKEN (IDENTIFIER | INTEGER_PATTERN) ARRAY_END_TOKEN
   ;
 

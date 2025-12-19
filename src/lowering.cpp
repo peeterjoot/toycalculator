@@ -1063,6 +1063,7 @@ namespace toy
             }
             else
             {
+                //fixme(); // bomb here (intarray.toy) -- because N != 1 is only handled for DefiningOp<toy::StringLiteralOp>
                 llvm_unreachable( "AssignOp lowering: expect only fixed size floating or integer types." );
             }
 

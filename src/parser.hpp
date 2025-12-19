@@ -196,6 +196,8 @@ namespace toy
 
         mlir::Value parsePredicate( mlir::Location loc, ToyParser::BooleanValueContext * ctx);
 
+        mlir::Value indexTypeCast( mlir::Location loc, mlir::Value val );
+
        public:
         MLIRListener( const std::string &_filename );
 
