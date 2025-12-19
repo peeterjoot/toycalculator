@@ -78,8 +78,6 @@ def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
 
   let results = (outs);
 
-  let hasCustomAssemblyFormat = 1;
-
   let assemblyFormat =
     "$var_name (`[` $index^ `]`)? `=` $value `:` type($value) attr-dict";
 }
