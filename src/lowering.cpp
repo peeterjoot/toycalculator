@@ -1318,9 +1318,12 @@ namespace toy
 
     class CallOpLowering : public ConversionPattern
     {
+       private:
+        loweringContext& lState;
+
        public:
-        explicit CallOpLowering( MLIRContext* context )
-            : ConversionPattern( toy::CallOp::getOperationName(), 1, context )
+        CallOpLowering( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
+            : ConversionPattern( toy::CallOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
@@ -1781,8 +1784,7 @@ namespace toy
                 target.addIllegalDialect<mlir::cf::ControlFlowDialect>();    // forces lowering
 
                 RewritePatternSet patterns( &getContext() );
-                patterns.add<CallOpLowering>( &getContext() );
-                patterns.add<ScopeOpLowering>( lState, &getContext(), 1 );
+                patterns.add<CallOpLowering, ScopeOpLowering>( lState, &getContext(), 1 );
 
                 // SCF -> CF
                 mlir::populateSCFToControlFlowConversionPatterns( patterns );
