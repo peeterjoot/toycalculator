@@ -1,3 +1,6 @@
 INT32 t[7];
+INT32 x;
 t[3] = 42;
+x = t[3];
+PRINT x;
 //PRINT t[3];
