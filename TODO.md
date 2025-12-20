@@ -73,11 +73,16 @@ enum class return_codes : int
 (vs. unknown_error which is returned for everything now.)
 
 * string literal tests for edge cases: shortstring.toy: two bugs unresolved.
-* array member assignment.  grammar now done.  Builder TODO.  Generating explicit error until ready:
+* array member assignment, done but need array element rvalues.  Also: attempt to put in constant array access range checking did not work.  Also want:
 
-    toycalculator: /home/pjoot/toycalculator/src/parser.cpp:1193: virtual void toy::MLIRListener::enterAssignment(ToyParser::AssignmentContext *): Assertion `indexExpr == nullptr' failed.
+    // allow: Now t[i+1] or t[someFunc()], ..., to parse correctly:
+    indexExpression
+      : ARRAY_START_TOKEN assignmentExpression ARRAY_END_TOKEN
+      ;
 
-until done.
+    but currently have much more limited index expressions:
+
+      : ARRAY_START_TOKEN (IDENTIFIER | INTEGER_PATTERN) ARRAY_END_TOKEN
 
 * NOT operator: add more comprehensive all types testing.
 * tests for all the type conversions (i.e.: binary and unary arith operators)

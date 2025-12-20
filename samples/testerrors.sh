@@ -5,6 +5,8 @@ set -x
 rm -rf out
 mkdir out
 
+# doesn't fail as desired: debug:
+#error_intarray_bad_constaccess.toy
 for i in \
 error_redeclare.toy \
 error_unassigned.toy \
