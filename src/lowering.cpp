@@ -772,8 +772,8 @@ namespace toy
             }
         }
 
-        mlir::Value castToElemType( mlir::Location loc, ConversionPatternRewriter& rewriter, mlir::Value value, mlir::Type valType,
-                                    mlir::Type elemType )
+        mlir::Value castToElemType( mlir::Location loc, ConversionPatternRewriter& rewriter, mlir::Value value,
+                                    mlir::Type valType, mlir::Type elemType )
         {
             if ( valType == tyF64 )
             {
@@ -1098,18 +1098,12 @@ namespace toy
                 // Cast index to i64 for LLVM dialect GEP indexing
                 Value idxI64 = rewriter.create<arith::IndexCastOp>( loc, lState.tyI64, indexVal );
 
-                // Compute element pointer: base_ptr[0, idx]
-                Value zero = rewriter.create<LLVM::ConstantOp>( loc, lState.tyI64, rewriter.getI64IntegerAttr( 0 ) );
-                Value indices[] = { zero, idxI64 };
-
                 Type elemPtrTy = destBasePtr.getType();
 
                 Value elemPtr = rewriter.create<LLVM::GEPOp>( loc,
-                                                              elemPtrTy,       // result type
-                                                              elemType,        // pointee type
-                                                              destBasePtr,
-                                                              ArrayRef<Value>( indices, 2 )
-                );
+                                                              elemPtrTy,    // result type
+                                                              elemType,     // pointee type
+                                                              destBasePtr, ValueRange{ idxI64 } );
 
                 // Nice to have (untested): Runtime bounds check -- make this a compile option?
                 // if (numElems > 0) {
