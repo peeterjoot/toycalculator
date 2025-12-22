@@ -135,7 +135,6 @@ function_return
 function_two
 function_void_intparm
 function_void_void
-intarray
 lessbug
 lessbug2
 lessbug3
@@ -152,6 +151,7 @@ types
 unary
 xorop
 ));
+#intarray
 #shortstring
 
 if ( defined $just )

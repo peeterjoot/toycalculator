@@ -221,8 +221,6 @@ namespace toy
                                                     tNode *stringNode, mlir::Location loc, mlir::Value &value,
                                                     std::string &s )
     {
-        tNode *variableNode = scalarOrArrayElement ? scalarOrArrayElement->IDENTIFIER() : nullptr;
-
         if ( booleanNode )
         {
             int val;
@@ -261,8 +259,9 @@ namespace toy
             // specific type (i.e.: size) associated with literals.
             value = builder.create<mlir::arith::ConstantFloatOp>( loc, tyF64, apVal );
         }
-        else if ( variableNode )
+        else if ( scalarOrArrayElement )
         {
+            tNode *variableNode = scalarOrArrayElement->IDENTIFIER();
             auto varName = variableNode->getText();
 
             auto varState = getVarState( varName );
@@ -285,7 +284,22 @@ namespace toy
 
             mlir::Type varType = declareOp.getTypeAttr().getValue();
             auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
-            value = builder.create<toy::LoadOp>( loc, varType, symRef, mlir::Value() );
+
+            mlir::Value indexValue = mlir::Value();
+
+            if ( ToyParser::IndexExpressionContext * indexExpr = scalarOrArrayElement->indexExpression() ) {
+                std::string s;
+                buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr, loc, indexValue,
+                                      s );
+                assert( s.length() == 0 );
+
+                auto i = indexTypeCast( loc, indexValue );
+
+                value = builder.create<toy::LoadOp>( loc, varType, symRef, i );
+            }
+            else {
+                value = builder.create<toy::LoadOp>( loc, varType, symRef, mlir::Value() );
+            }
         }
         else if ( stringNode )
         {
