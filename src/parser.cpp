@@ -282,7 +282,7 @@ namespace toy
 
             mlir::Type varType = declareOp.getTypeAttr().getValue();
             auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
-            value = builder.create<toy::LoadOp>( loc, varType, symRef );
+            value = builder.create<toy::LoadOp>( loc, varType, symRef, mlir::Value() );
         }
         else if ( stringNode )
         {
@@ -968,7 +968,7 @@ namespace toy
             }
 
             auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
-            auto value = builder.create<toy::LoadOp>( loc, varType, symRef );
+            auto value = builder.create<toy::LoadOp>( loc, varType, symRef, mlir::Value() );
             builder.create<toy::PrintOp>( loc, value );
         }
         else if ( auto theString = ctx->STRING_PATTERN() )

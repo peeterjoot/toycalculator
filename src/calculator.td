@@ -83,8 +83,12 @@ def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
 }
 
 def Toy_LoadOp : Op<Toy_Dialect, "load"> {
-  let summary = "Load a variable by symbol reference.";
-  let arguments = (ins SymbolRefAttr:$var_name);
+  let summary = "Load a variable (scalar or array element) by symbol reference.";
+  let arguments = (ins
+    SymbolRefAttr:$var_name,               // @t
+    Optional<Index>:$index                 // optional SSA value of index type (dynamic or none)
+  );
+
   let results = (outs AnyType:$result);
 }
 
