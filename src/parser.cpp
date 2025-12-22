@@ -578,7 +578,8 @@ namespace toy
 
                 std::string s;
                 buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                      lit ? lit->FLOAT_PATTERN() : nullptr, p->IDENTIFIER(),
+                                      lit ? lit->FLOAT_PATTERN() : nullptr,
+                                      p->scalarOrArrayElement() ? p->scalarOrArrayElement()->IDENTIFIER() : nullptr,
                                       lit ? lit->STRING_PATTERN() : nullptr, loc, value, s );
 
                 assert( s.length() == 0 );    // for StringNode.  Want to support passing string literals (not just to
@@ -707,10 +708,11 @@ namespace toy
             std::string s;
 
             auto lit = boolElement->booleanLiteral();
-            buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                  nullptr, boolElement->IDENTIFIER(),
-                                  nullptr,    // stringNode
-                                  loc, conditionPredicate, s );
+            buildUnaryExpression(
+                lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr, nullptr,
+                boolElement->scalarOrArrayElement() ? boolElement->scalarOrArrayElement()->IDENTIFIER() : nullptr,
+                nullptr,    // stringNode
+                loc, conditionPredicate, s );
             assert( s.length() == 0 );
         }
         else
@@ -729,7 +731,7 @@ namespace toy
                 auto llit = lhs->numericLiteral();
                 buildUnaryExpression( nullptr,    // booleanNode
                                       llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
-                                      lhs->IDENTIFIER(),
+                                      lhs->scalarOrArrayElement() ? lhs->scalarOrArrayElement()->IDENTIFIER() : nullptr,
                                       nullptr,    // stringNode
                                       loc, lhsValue, s );
                 assert( s.length() == 0 );
@@ -737,7 +739,7 @@ namespace toy
                 auto rlit = rhs->numericLiteral();
                 buildUnaryExpression( nullptr,    // booleanNode
                                       rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
-                                      lhs->IDENTIFIER(),
+                                      lhs->scalarOrArrayElement() ? lhs->scalarOrArrayElement()->IDENTIFIER() : nullptr,
                                       nullptr,    // stringNode
                                       loc, rhsValue, s );
                 assert( s.length() == 0 );
@@ -934,7 +936,7 @@ namespace toy
         } );
 #endif
 
-        auto varNameObject = ctx->IDENTIFIER();
+        auto varNameObject = ctx->scalarOrArrayElement() ? ctx->scalarOrArrayElement()->IDENTIFIER() : nullptr;
         if ( varNameObject )
         {
             auto varName = varNameObject->getText();
@@ -1165,7 +1167,7 @@ namespace toy
         setLastLoc( loc );
 
         auto lit = ctx->literal();
-        auto var = ctx->IDENTIFIER();
+        auto var = ctx->scalarOrArrayElement() ? ctx->scalarOrArrayElement()->IDENTIFIER() : nullptr;
 
         processReturnLike<ToyParser::LiteralContext>( loc, lit, var, lit ? lit->BOOLEAN_PATTERN() : nullptr );
     }
@@ -1177,7 +1179,7 @@ namespace toy
         setLastLoc( loc );
 
         auto lit = ctx->numericLiteral();
-        auto var = ctx->IDENTIFIER();
+        auto var = ctx->scalarOrArrayElement() ? ctx->scalarOrArrayElement()->IDENTIFIER() : nullptr;
 
         processReturnLike<ToyParser::NumericLiteralContext>( loc, lit, var, nullptr );
     }
@@ -1188,7 +1190,7 @@ namespace toy
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
         setLastLoc( loc );
-        auto lhs = ctx->lhs();
+        auto lhs = ctx->scalarOrArrayElement();
         currentVarName = lhs->IDENTIFIER()->getText();
 
         ToyParser::IndexExpressionContext *indexExpr = lhs->indexExpression();
@@ -1277,7 +1279,8 @@ namespace toy
             else
             {
                 buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                      lit ? lit->FLOAT_PATTERN() : nullptr, ctx->IDENTIFIER(),
+                                      lit ? lit->FLOAT_PATTERN() : nullptr,
+                                      ctx->scalarOrArrayElement() ? ctx->scalarOrArrayElement()->IDENTIFIER() : nullptr,
                                       lit ? lit->STRING_PATTERN() : nullptr, loc, lhsValue, s );
             }
 
@@ -1312,7 +1315,7 @@ namespace toy
             auto llit = lhs->numericLiteral();
             buildUnaryExpression( nullptr,    // booleanNode
                                   llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
-                                  lhs->IDENTIFIER(),
+                                  lhs->scalarOrArrayElement() ? lhs->scalarOrArrayElement()->IDENTIFIER() : nullptr,
                                   nullptr,    // stringNode
                                   loc, lhsValue, s );
             assert( s.length() == 0 );
@@ -1321,7 +1324,7 @@ namespace toy
             auto rlit = rhs->numericLiteral();
             buildUnaryExpression( nullptr,    // booleanNode
                                   rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
-                                  rhs->IDENTIFIER(),
+                                  rhs->scalarOrArrayElement() ? rhs->scalarOrArrayElement()->IDENTIFIER() : nullptr,
                                   nullptr,    // stringNode
                                   loc, rhsValue, s );
             assert( s.length() == 0 );
