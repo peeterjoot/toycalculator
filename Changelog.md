@@ -23,6 +23,9 @@ The language now supports functions, calls, parameters, returns, and basic condi
 * Updated README to note that IF/ELSE is now supported (but needs much more testing, especially nested IFs).
 * Reduced `samples/if.toy` to only the currently implemented subset; moved unimplemented parts to `if2.toy`.
 
+### 4. Array element assignment and access.
+* 
+
 ## tag: V4 (July 7, 2025)
 
 The big changes in this tag relative to V3 are:

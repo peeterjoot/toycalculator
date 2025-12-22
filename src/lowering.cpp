@@ -991,7 +991,7 @@ namespace toy
 
             // Get string (e.g., "x")
             auto varName = varNameAttr.getLeafReference().str();
-            LLVM_DEBUG( { llvm::dbgs() << "LoadOp variable name: " << varName << "\n"; } );
+            LLVM_DEBUG( { llvm::dbgs() << "AssignOp variable name: " << varName << "\n"; } );
 
             auto allocaOp = lState.lookupLocalSymbolReference( assignOp, varName );
 
@@ -1293,24 +1293,64 @@ namespace toy
 
             auto varName = loadOp.getVarNameAttr().getRootReference().getValue().str();
             auto allocaOp = lState.lookupLocalSymbolReference( loadOp, varName );
+            auto optIndex = loadOp.getIndex();    // std::optional<Value>
 
             LLVM_DEBUG( llvm::dbgs() << "varName: " << varName << '\n' );
 
             Type elemType = allocaOp.getElemType();
+            mlir::Value load;
 
             if ( loadOp.getResult().getType() == lState.tyPtr )
             {
-                // Return the allocated pointer
-                LLVM_DEBUG( llvm::dbgs() << "Loading array address: " << allocaOp.getResult() << '\n' );
-                rewriter.replaceOp( op, allocaOp.getResult() );
+                load = allocaOp.getResult();
             }
             else
             {
-                // Scalar load
-                auto load = rewriter.create<LLVM::LoadOp>( loc, elemType, allocaOp );
-                LLVM_DEBUG( llvm::dbgs() << "new load op: " << load << '\n' );
-                rewriter.replaceOp( op, load.getResult() );
+                if ( optIndex )
+                {
+                    Value indexVal = optIndex;
+                    Value basePtr = allocaOp.getResult();
+
+                    int64_t numElems = 0;
+                    if ( auto allocationBoundsConstOp = allocaOp.getArraySize().getDefiningOp<LLVM::ConstantOp>() )
+                    {
+                        auto intAttr = mlir::dyn_cast<IntegerAttr>( allocationBoundsConstOp.getValue() );
+                        numElems = intAttr.getInt();
+                    }
+
+                    assert( numElems );
+
+                    if ( auto constOp = indexVal.getDefiningOp<arith::ConstantIndexOp>() )
+                    {
+                        int64_t idx = constOp.value();
+                        if ( idx < 0 || idx >= numElems )
+                        {
+                            return loadOp.emitError() << "static out-of-bounds array access: index " << idx
+                                                      << " is out of bounds for array of size " << numElems;
+                        }
+                    }
+
+                    // Cast index to i64 for LLVM GEP
+                    Value idxI64 = rewriter.create<arith::IndexCastOp>( loc, lState.tyI64, indexVal );
+
+                    // GEP to element
+                    Value elemPtr = rewriter.create<LLVM::GEPOp>( loc,
+                                                                  basePtr.getType(),    // result type: ptr-to-elem
+                                                                  elemType,             // pointee type
+                                                                  basePtr, ValueRange{ idxI64 } );
+
+                    // Load array element
+                    load = rewriter.create<LLVM::LoadOp>( loc, elemType, elemPtr ).getResult();
+                }
+                else
+                {
+                    // Scalar load
+                    load = rewriter.create<LLVM::LoadOp>( loc, elemType, allocaOp ).getResult();
+                }
             }
+
+            LLVM_DEBUG( llvm::dbgs() << "new load op: " << load << '\n' );
+            rewriter.replaceOp( op, load );
 
             return success();
         }
