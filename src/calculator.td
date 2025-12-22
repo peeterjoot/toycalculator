@@ -90,6 +90,9 @@ def Toy_LoadOp : Op<Toy_Dialect, "load"> {
   );
 
   let results = (outs AnyType:$result);
+
+  let assemblyFormat =
+    "$var_name (`[` $index^ `]`)? `:` type($result) attr-dict";
 }
 
 def Toy_YieldOp : Op<Toy_Dialect, "yield"> {
