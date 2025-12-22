@@ -1,11 +1,32 @@
 ## tag: V5 (WIP)
 
-* Fix Location info for implicit returns, using the last function location info.
+The language now supports functions, calls, parameters, returns, and basic conditional blocks.
+
+### 1. Build / LLVM Version Updates
+
+* Updated build scripts (`bin/build`, `bin/env`) for LLVM path handling.
+* Switched project to LLVM/MLIR 21.x (`llvmorg-21.1.0-rc3` and later). Dropped support for ≤ 20.1.8.
+* Added a Flang-related patch (`llvm-patches/llvm21.flang.patch`).
+
+### 2. Return / Location Fixes
+
+* Improved location info for implicit/dummy returns (now uses last statement location instead of file start).
+* Introduced per-function parser state to track last location.
+
+### 3. Conditional Statements – IF / ELSE
+
+* Preliminary implementation of IF and ELSE grammar and lowering to `scf.if` / `scf.else`.
+* Split the old combined `ifelifelse` rule into separate `if`, `elif`, `else` rules (`ELIF` not yet implemented).
+* Added `CallOpLowering` (moved calls out of `ScopeOpLowering` because calls like implicit `PRINT` can now appear inside `if/else` blocks).
+* Integrated SCF lowering into the second lowering pass.
+* Generalized location helpers and predicate parsing in preparation for full conditional support.
+* Updated README to note that IF/ELSE is now supported (but needs much more testing, especially nested IFs).
+* Reduced `samples/if.toy` to only the currently implemented subset; moved unimplemented parts to `if2.toy`.
 
 ## tag: V4 (July 7, 2025)
 
 The big changes in this tag relative to V3 are:
-* Adds support (grammar, builder, lowering) for function declarations, and function calls.  Much of the work for this was done in branch use_mlir_funcop_with_scopeop, later squashed and merged as a big commit.
+* Adds support (grammar, builder, lowering) for function declarations, and function calls.  Much of the work for this was done in branch `use_mlir_funcop_with_scopeop`, later squashed and merged as a big commit.
 Here's an example
 
 ```
