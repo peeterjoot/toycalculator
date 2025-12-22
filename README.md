@@ -2,7 +2,14 @@
 
 This project uses an antlr4 grammar, an MLIR builder, and MLIR lowering to LLVM IR.
 
-It implements a toy calculator language that supports a few primitive linguistic elements:
+Initially the intent of this project was to implement a simple symbolic calculator, allowing for variable declarations, assignments, simple operations, and output display.  That implementation supported only `double`-like types, a print operation, assignments, and some arithmetic operations.
+
+I'd seen MLIR in action in prototype projects at work, but didn't get to play with it first hand.
+The point of the project wasn't really to calculate, but just to get some concrete first hand experience with the MLIR ecosystem for myself.
+Overall, it just makes sense to use a structured mechanism to generate an AST equivalent, instead of handcoding the parser to AST stage of the compiler.
+This can include built in semantic checking (not part of this toy compiler yet), and avoid the evil of premature lowering (as described by the MLIR white paper.)
+
+That initial implementation has morphed into a implementation of a toy language and compiler for that language, which now supports the following linguistic elements:
 
 * a DECLARE operation (implicit double type)
 * Fixed size integer declaration operations (INT8, INT16, INT32, INT64)
@@ -11,32 +18,29 @@ It implements a toy calculator language that supports a few primitive linguistic
 * a PRINT operation,
 * single line comments,
 * a EXIT operation,
-* boolean, integer and floating point constants.
+* boolean, integer and floating point constants, and expression evaluation.
 * an ASSIGNMENT operator `(=)` with unary `(+,-)` and binary operators `(+,-,*,/)`.
 * DWARF instrumentation support, sufficient to for line stepping, breakpoints, continue, and variable inspection (and probably modification: untested.)
 * comparison operators (<, <=, EQ, NE) yielding BOOL values.  These work for any combinations of floating and integer types (including BOOL.)
 * integer bitwise operators (OR, AND, XOR).  These only for for integer types (including BOOL.)
 * a NOT operator, yielding BOOL.
-* array declarations, using any of the types above.  STRING is available as an alias for INT8 array.  string literal ASSIGN and PRINT implemented.
-* User defined functions.  CALL function_name( p1, p2), or w/ assign; x = CALL function_name( p1, p2 ).  Declaration looks like: FUNCTION foo( type name, type name, ...) : RETURN-type { ... ; RETURN v;};  (where :RETURN-TYPE is optional.)
+* limited array support, restricted to declaration of the types above (array assignment is implemented in an unmerged branch, and array access is not implemented yet.)
+* A STRING type is available as an alias for INT8 array.  string literal ASSIGN and PRINT implemented.
+* User defined functions.  CALL `function_name( p1, p2)`, or w/ assign; `x = CALL function_name( p1, p2 )`.  Declaration looks like: `FUNCTION foo( type name, type name, ...) : RETURN-type { ... ; RETURN v;};`  (where `:RETURN-TYPE` is optional.)
 * IF/ELSE statement support.  The grammar has an ELIF construct too, but that isn't implemented yet.  AND and OR and XOR aren't supported in the predicates yet (just <, >, LE, GT, ...)  Complex predicates are also not supported ((a < b) AND (c < d)).  Nested IFs aren't tested yet, and may or may not work.
+
+I'd like to add enough language elements to the language and compiler to make it interesting.  The biggest missing pieces at this point are the lack of loops, no input mechanism, no array support (other than fixed size strings.)
 
 Computations occur in assignment operations, and any types are first promoted to the type of the variable.
 This means that 'x = 1.99 + 2.99' has the value 3, if x is an integer variable.
 
-The goal was to understand the MLIR ecosystem.
-I'd seen MLIR in action in prototype projects at work, but didn't get to play with it first hand.
-Overall, it just makes sense to use a structured mechanism to generate an AST equivalent, instead of handcoding the parser to AST stage of the compiler.
-This can include built in semantic checking (not part of this toy compiler yet), and avoid the evil of premature lowering (as described by the MLIR white paper.)
+## On the use of AI in this project.
 
-AI tools (Grok and ChatGPT) were used to generate some of the initial framework for this project.
-As of the time of this writing (Apr 2025), considerable effort is required to keep both Grok and ChatGPT from halucinating MLIR or LLVM APIs that don't exist,
-but the tools were invaluable for getting things started.
+AI tools (Grok and ChatGPT) were used to generate some of the initial framework for this project (April 2025 timeframe.)
+At that point in time, considerable effort was required to keep both Grok and ChatGPT from halucinating MLIR or LLVM APIs that don't exist,
+but both of those models were invaluable for getting things started.
 
 As an example of the pain of working with AI tools, here's a trivial example: I asked Grok to add comments to my grammar and fix the indenting, but it took 20 minutes to coerse it to use the grammar that I asked it to use (as it claims the ability to read internet content), but it kept making stuff up and injecting changes to the semantics and making changing grammar element name changes that would have broken my listener class.
-
-I'd like to add enough language elements to the project to make it interesting, and now that I have the basic framework, I should be able to
-do that without bothering with AI tools that can be more work to use than just doing it yourself.
 
 ## Interesting files
 
