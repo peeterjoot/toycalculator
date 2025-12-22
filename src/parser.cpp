@@ -217,9 +217,12 @@ namespace toy
 
     // \retval true if error
     inline void MLIRListener::buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
-                                                    tNode *variableNode, tNode *stringNode, mlir::Location loc,
-                                                    mlir::Value &value, std::string &s )
+                                                    ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
+                                                    tNode *stringNode, mlir::Location loc, mlir::Value &value,
+                                                    std::string &s )
     {
+        tNode *variableNode = scalarOrArrayElement ? scalarOrArrayElement->IDENTIFIER() : nullptr;
+
         if ( booleanNode )
         {
             int val;
@@ -578,8 +581,7 @@ namespace toy
 
                 std::string s;
                 buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                      lit ? lit->FLOAT_PATTERN() : nullptr,
-                                      p->scalarOrArrayElement() ? p->scalarOrArrayElement()->IDENTIFIER() : nullptr,
+                                      lit ? lit->FLOAT_PATTERN() : nullptr, p->scalarOrArrayElement(),
                                       lit ? lit->STRING_PATTERN() : nullptr, loc, value, s );
 
                 assert( s.length() == 0 );    // for StringNode.  Want to support passing string literals (not just to
@@ -708,11 +710,10 @@ namespace toy
             std::string s;
 
             auto lit = boolElement->booleanLiteral();
-            buildUnaryExpression(
-                lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr, nullptr,
-                boolElement->scalarOrArrayElement() ? boolElement->scalarOrArrayElement()->IDENTIFIER() : nullptr,
-                nullptr,    // stringNode
-                loc, conditionPredicate, s );
+            buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                  nullptr, boolElement->scalarOrArrayElement(),
+                                  nullptr,    // stringNode
+                                  loc, conditionPredicate, s );
             assert( s.length() == 0 );
         }
         else
@@ -731,7 +732,7 @@ namespace toy
                 auto llit = lhs->numericLiteral();
                 buildUnaryExpression( nullptr,    // booleanNode
                                       llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
-                                      lhs->scalarOrArrayElement() ? lhs->scalarOrArrayElement()->IDENTIFIER() : nullptr,
+                                      lhs->scalarOrArrayElement(),
                                       nullptr,    // stringNode
                                       loc, lhsValue, s );
                 assert( s.length() == 0 );
@@ -739,7 +740,7 @@ namespace toy
                 auto rlit = rhs->numericLiteral();
                 buildUnaryExpression( nullptr,    // booleanNode
                                       rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
-                                      lhs->scalarOrArrayElement() ? lhs->scalarOrArrayElement()->IDENTIFIER() : nullptr,
+                                      lhs->scalarOrArrayElement(),
                                       nullptr,    // stringNode
                                       loc, rhsValue, s );
                 assert( s.length() == 0 );
@@ -1059,7 +1060,9 @@ namespace toy
     }
 
     template <class Literal>
-    void MLIRListener::processReturnLike( mlir::Location loc, Literal *lit, tNode *var, tNode *boolNode )
+    void MLIRListener::processReturnLike( mlir::Location loc, Literal *lit,
+                                          ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
+                                          tNode *boolNode )
     {
         // Handle the dummy ReturnOp originally inserted in the FuncOp's block
         auto *currentBlock = builder.getInsertionBlock();
@@ -1098,11 +1101,11 @@ namespace toy
 
         // always regenerate the RETURN/EXIT so that we have the terminator location set properly (not the function body
         // start location that was used to create the dummy toy.ReturnOp that we rewrite here.)
-        if ( lit || var || boolNode )
+        if ( lit || scalarOrArrayElement || boolNode )
         {
             std::string s;
             buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                  lit ? lit->FLOAT_PATTERN() : nullptr, var,
+                                  lit ? lit->FLOAT_PATTERN() : nullptr, scalarOrArrayElement,
                                   nullptr,    // stringNode
                                   loc, value, s );
             assert( s.length() == 0 );
@@ -1167,9 +1170,8 @@ namespace toy
         setLastLoc( loc );
 
         auto lit = ctx->literal();
-        auto var = ctx->scalarOrArrayElement() ? ctx->scalarOrArrayElement()->IDENTIFIER() : nullptr;
-
-        processReturnLike<ToyParser::LiteralContext>( loc, lit, var, lit ? lit->BOOLEAN_PATTERN() : nullptr );
+        processReturnLike<ToyParser::LiteralContext>( loc, lit, ctx->scalarOrArrayElement(),
+                                                      lit ? lit->BOOLEAN_PATTERN() : nullptr );
     }
 
     void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )
@@ -1179,9 +1181,8 @@ namespace toy
         setLastLoc( loc );
 
         auto lit = ctx->numericLiteral();
-        auto var = ctx->scalarOrArrayElement() ? ctx->scalarOrArrayElement()->IDENTIFIER() : nullptr;
 
-        processReturnLike<ToyParser::NumericLiteralContext>( loc, lit, var, nullptr );
+        processReturnLike<ToyParser::NumericLiteralContext>( loc, lit, ctx->scalarOrArrayElement(), nullptr );
     }
 
     void MLIRListener::enterAssignment( ToyParser::AssignmentContext *ctx )
@@ -1200,8 +1201,8 @@ namespace toy
         if ( indexExpr )
         {
             std::string s;
-            buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, indexExpr->IDENTIFIER(), nullptr, loc,
-                                  currentIndexExpr, s );
+            buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, lhs, nullptr, loc, currentIndexExpr,
+                                  s );
             assert( s.length() == 0 );
         }
 
@@ -1279,8 +1280,7 @@ namespace toy
             else
             {
                 buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                      lit ? lit->FLOAT_PATTERN() : nullptr,
-                                      ctx->scalarOrArrayElement() ? ctx->scalarOrArrayElement()->IDENTIFIER() : nullptr,
+                                      lit ? lit->FLOAT_PATTERN() : nullptr, ctx->scalarOrArrayElement(),
                                       lit ? lit->STRING_PATTERN() : nullptr, loc, lhsValue, s );
             }
 
@@ -1315,7 +1315,7 @@ namespace toy
             auto llit = lhs->numericLiteral();
             buildUnaryExpression( nullptr,    // booleanNode
                                   llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
-                                  lhs->scalarOrArrayElement() ? lhs->scalarOrArrayElement()->IDENTIFIER() : nullptr,
+                                  lhs->scalarOrArrayElement(),
                                   nullptr,    // stringNode
                                   loc, lhsValue, s );
             assert( s.length() == 0 );
@@ -1324,7 +1324,7 @@ namespace toy
             auto rlit = rhs->numericLiteral();
             buildUnaryExpression( nullptr,    // booleanNode
                                   rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
-                                  rhs->scalarOrArrayElement() ? rhs->scalarOrArrayElement()->IDENTIFIER() : nullptr,
+                                  rhs->scalarOrArrayElement(),
                                   nullptr,    // stringNode
                                   loc, rhsValue, s );
             assert( s.length() == 0 );

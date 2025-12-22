@@ -90,7 +90,7 @@ namespace toy
         mlir::Location currentAssignLoc;
         std::string currentFuncName;
         mlir::FileLineColLoc lastLocation;
-        std::vector<mlir::OpBuilder::InsertPoint> insertionPointStack; ///< scf.if block stack
+        std::vector<mlir::OpBuilder::InsertPoint> insertionPointStack;    ///< scf.if block stack
         mlir::ModuleOp mod;
         std::string currentVarName;
         mlir::Value currentIndexExpr;
@@ -122,7 +122,8 @@ namespace toy
 
         inline std::string formatLocation( mlir::Location loc );
 
-        inline void buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode, tNode *variableNode,
+        inline void buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
+                                          ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
                                           tNode *stringNode, mlir::Location loc, mlir::Value &value, std::string &s );
 
         mlir::Value handleCall( ToyParser::CallContext *ctx );
@@ -166,13 +167,13 @@ namespace toy
             return mlir::cast<mlir::func::FuncOp>( f.funcOp );
         }
 
-        void markExplicitTerminator( )
+        void markExplicitTerminator()
         {
             auto &f = funcState( currentFuncName );
             f.terminatorWasExplcit = true;
         }
 
-        bool wasTerminatorExplicit( )
+        bool wasTerminatorExplicit()
         {
             auto &f = funcState( currentFuncName );
             return f.terminatorWasExplcit;
@@ -184,7 +185,7 @@ namespace toy
             f.lastLoc = loc;
         }
 
-        mlir::Location getLastLoc( )
+        mlir::Location getLastLoc()
         {
             auto &f = funcState( currentFuncName );
             return f.lastLoc;
@@ -194,7 +195,7 @@ namespace toy
 
         mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType );
 
-        mlir::Value parsePredicate( mlir::Location loc, ToyParser::BooleanValueContext * ctx);
+        mlir::Value parsePredicate( mlir::Location loc, ToyParser::BooleanValueContext *ctx );
 
         mlir::Value indexTypeCast( mlir::Location loc, mlir::Value val );
 
@@ -225,15 +226,16 @@ namespace toy
         }
 
         template <class Literal>
-        void processReturnLike( mlir::Location loc, Literal *lit, tNode *var, tNode *boolNode );
+        void processReturnLike( mlir::Location loc, Literal *lit,
+                                ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *boolNode );
 
         void enterStartRule( ToyParser::StartRuleContext *ctx ) override;
 
         void exitStartRule( ToyParser::StartRuleContext *ctx ) override;
 
-        void exitIfStatement(ToyParser::IfStatementContext *ctx) override;
+        void exitIfStatement( ToyParser::IfStatementContext *ctx ) override;
 
-        void exitElseStatement(ToyParser::ElseStatementContext *ctx) override;
+        void exitElseStatement( ToyParser::ElseStatementContext *ctx ) override;
 
         void mainFirstTime( mlir::Location loc );
 
