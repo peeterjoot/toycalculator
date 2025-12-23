@@ -1,4 +1,6 @@
-## tag: V5 (WIP)
+## tag: V6 (WIP)
+
+## tag: V5
 
 The language now supports functions, calls, parameters, returns, and basic conditional blocks.
 
