@@ -2,9 +2,9 @@
 
 ### 1. Get statement support.
 
-* GetOp: Grammar, builder, runtime, and prototype generator helper functions for lowering, and lowering implementation.
 * printOp lowering: Merge bulk of createToyPrintF64Prototype, createToyPrintI64Prototype functions into a single generic helper function.
-
+* GetOp: Grammar, builder, runtime, and prototype generator helper functions for lowering, and lowering implementation.  Supports BOOL, INT8, INT16, INT32, INT64, FLOAT32, FLOAT64.
+* Add test case coverage for each supported type.
 
 ## tag: V5 (Dec 22, 2025)
 

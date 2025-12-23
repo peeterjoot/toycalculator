@@ -5,8 +5,8 @@
  */
 #include <inttypes.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 extern "C"
 {
@@ -61,6 +61,18 @@ extern "C"
         return v;
     }
 
+    int8_t __toy_get_i1( void )
+    {
+        int8_t v = __toy_get_i8();
+
+        if ( ( v != 1 ) && ( v != 0 ) )
+        {
+            fprintf( stderr, "Fatal runtime error:%s: Boolean has unexpected value: %hhd\n", __func__, v );
+            abort();
+        }
+        return v;
+    }
+
     int16_t __toy_get_i16( void )
     {
         int16_t v;
@@ -68,7 +80,7 @@ extern "C"
         if ( n != 1 )
         {
             perror( "scanf failed for int16_t" );
-            fprintf( stderr, "Expected an signed 16-bit integer\n" );
+            fprintf( stderr, "Fatal runtime error:%s: Expected an signed 16-bit integer\n", __func__ );
             abort();
         }
         return v;
@@ -81,7 +93,7 @@ extern "C"
         if ( n != 1 )
         {
             perror( "scanf failed for int32_t" );
-            fprintf( stderr, "Expected an signed 32-bit integer\n" );
+            fprintf( stderr, "Fatal runtime error:%s: Expected an signed 32-bit integer\n", __func__ );
             abort();
         }
         return v;
@@ -94,7 +106,7 @@ extern "C"
         if ( n != 1 )
         {
             perror( "scanf failed for int64_t" );
-            fprintf( stderr, "Expected an signed 64-bit integer\n" );
+            fprintf( stderr, "Fatal runtime error:%s: Expected an signed 64-bit integer\n", __func__ );
             abort();
         }
         return v;
@@ -107,7 +119,7 @@ extern "C"
         if ( n != 1 )
         {
             perror( "scanf failed for float" );
-            fprintf( stderr, "Expected a floating-point number\n" );
+            fprintf( stderr, "Fatal runtime error:%s: Expected a floating-point number\n", __func__ );
             abort();
         }
         return v;
@@ -120,7 +132,7 @@ extern "C"
         if ( n != 1 )
         {
             perror( "scanf failed for double" );
-            fprintf( stderr, "Expected a double-precision floating-point number\n" );
+            fprintf( stderr, "Fatal runtime error:%s: Expected a double-precision floating-point number\n", __func__ );
             abort();
         }
         return v;

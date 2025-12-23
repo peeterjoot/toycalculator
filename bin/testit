@@ -136,6 +136,8 @@ function_two
 function_void_intparm
 function_void_void
 get
+getbool
+getboolfail
 if
 intarray
 lessbug
@@ -167,10 +169,13 @@ my %expectedRC = (
    'exit3' => 3,
    'exitx' => 3,
    'exitarrayelement' => 42,
+   'getboolfail' => '134', # abort
 );
 
 my %expectedInput = (
-    'get' => '6 7',
+    'get' => '6 7 1 2 3 4 5',
+    'getbool' => '0 1',
+    'getboolfail' => '2',
 );
 
 my @warnings = ();

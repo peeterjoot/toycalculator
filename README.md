@@ -53,6 +53,7 @@ This means that `x = 1.99 + 2.99` has the value `3`, if `x` is an integer variab
 `EXIT` without a numeric value is equivalent to `EXIT 0`, as is a program with no explicit `EXIT`.
 * The RETURN statement has to be at the end of a function.  It is currently mandatory.
 * See TODO.md for a long list of nice to have features that I haven't gotten around to yet, and may never.
+* `GET` into a `BOOL` value will abort if the value isn't one of 0, or 1.  This is inconsistent with assignment to a BOOL variable, which will truncate and not raise a runtime error.
 
 ## On the use of AI in this project.
 

@@ -9,3 +9,21 @@ PRINT y[0];
 INT32 z;
 z = x * y[0];
 PRINT z;
+
+INT8 v8;
+INT16 v16;
+INT64 v64;
+FLOAT32 f32;
+FLOAT64 f64;
+
+GET v8;
+GET v16;
+GET v64;
+GET f32;
+GET f64;
+
+PRINT v8;
+PRINT v16;
+PRINT v64;
+PRINT f32;
+PRINT f64;

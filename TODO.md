@@ -6,6 +6,7 @@
 
 ----------------------------------
 
+* GET into a BOOL should logically support TRUE/FALSE values, and not just 0/1.
 * Write a MLIR walker to see how to answer code questions about a given program.
 * MLIR has considerable capability for semantic checking, but I'm not exploiting that here, and have very little in custom verifiers.
 * Add integer literal support to PRINT, so that I can do a program as simple as:

@@ -80,6 +80,7 @@ namespace toy
         mlir::func::FuncOp pr_printFuncF64;
         mlir::func::FuncOp pr_printFuncI64;
         mlir::func::FuncOp pr_printFuncString;
+        mlir::func::FuncOp pr_getFuncI1;
         mlir::func::FuncOp pr_getFuncI8;
         mlir::func::FuncOp pr_getFuncI16;
         mlir::func::FuncOp pr_getFuncI32;
@@ -296,6 +297,12 @@ namespace toy
                 getOp = pr_builder.create<mlir::func::FuncOp>( pr_module.getLoc(), name, funcType );
                 getOp.setVisibility( mlir::SymbolTable::Visibility::Private );
             }
+        }
+
+        void createToyGetI1Prototype()
+        {
+            // returns int8_t, but checks input to verify 0/1 value.
+            createToyGetPrototype( pr_getFuncI1, tyI8, "__toy_get_i1" );
         }
 
         void createToyGetI8Prototype()
@@ -775,9 +782,10 @@ namespace toy
             return result;
         }
 
-        toy::CallOp createGetCall( ConversionPatternRewriter& rewriter, mlir::Location loc, mlir::Type inputType )
+        mlir::Value createGetCall( ConversionPatternRewriter& rewriter, mlir::Location loc, mlir::Type inputType )
         {
-            const char * name = nullptr;
+            const char* name = nullptr;
+            bool isBool{};
 
             if ( auto inputi = mlir::dyn_cast<IntegerType>( inputType ) )
             {
@@ -787,7 +795,10 @@ namespace toy
                 {
                     case 1:
                     {
-                        assert( 0 && "BOOL get not supported yet" );
+                        name = "__toy_get_i1";
+                        createToyGetI1Prototype();
+                        inputType = tyI8;
+                        isBool = true;
                         break;
                     }
                     case 8:
@@ -825,7 +836,7 @@ namespace toy
                 if ( inputType == tyF32 )
                 {
                     name = "__toy_get_f32";
-                    createToyGetF64Prototype();
+                    createToyGetF32Prototype();
                 }
                 else if ( inputType == tyF64 )
                 {
@@ -842,7 +853,13 @@ namespace toy
                 assert( 0 && "Error: unsupported type" );
             }
 
-            toy::CallOp result = rewriter.create<toy::CallOp>( loc, TypeRange{ inputType }, name, ValueRange{} );
+            toy::CallOp callOp = rewriter.create<toy::CallOp>( loc, TypeRange{ inputType }, name, ValueRange{} );
+            mlir::Value result = *callOp.getResult().begin();
+
+            if ( isBool )
+            {
+                result = rewriter.create<mlir::LLVM::TruncOp>( loc, tyI1, result );
+            }
 
             return result;
         }
@@ -1646,7 +1663,7 @@ namespace toy
 
             mlir::Type inputType = getOp.getValue().getType();
 
-            toy::CallOp result = lState.createGetCall( rewriter, loc, inputType );
+            mlir::Value result = lState.createGetCall( rewriter, loc, inputType );
 
             rewriter.replaceOp( op, result );
 
@@ -1915,8 +1932,8 @@ namespace toy
                 target.addLegalDialect<LLVM::LLVMDialect, toy::ToyDialect, mlir::scf::SCFDialect>();
                 target.addIllegalOp<arith::ConstantOp, toy::AddOp, toy::AndOp, toy::AssignOp, toy::DeclareOp,
                                     toy::DivOp, toy::EqualOp, toy::LessEqualOp, toy::LessOp, toy::LoadOp, toy::MulOp,
-                                    toy::NegOp, toy::NotEqualOp, toy::OrOp, toy::PrintOp, toy::GetOp, toy::StringLiteralOp,
-                                    toy::SubOp, toy::XorOp>();
+                                    toy::NegOp, toy::NotEqualOp, toy::OrOp, toy::PrintOp, toy::GetOp,
+                                    toy::StringLiteralOp, toy::SubOp, toy::XorOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
                                   toy::ScopeOp, toy::YieldOp, toy::ReturnOp, toy::CallOp, mlir::func::CallOp,
                                   mlir::scf::IfOp, mlir::scf::YieldOp>();
@@ -1924,8 +1941,9 @@ namespace toy
                 RewritePatternSet patterns( &getContext() );
                 patterns.add<AddOpLowering, AndOpLowering, AssignOpLowering, ConstantOpLowering, DeclareOpLowering,
                              DivOpLowering, EqualOpLowering, LessEqualOpLowering, LessOpLowering, LoadOpLowering,
-                             MulOpLowering, NegOpLowering, NotEqualOpLowering, OrOpLowering, PrintOpLowering, GetOpLowering,
-                             StringLiteralOpLowering, SubOpLowering, XorOpLowering>( lState, &getContext(), 1 );
+                             MulOpLowering, NegOpLowering, NotEqualOpLowering, OrOpLowering, PrintOpLowering,
+                             GetOpLowering, StringLiteralOpLowering, SubOpLowering, XorOpLowering>( lState,
+                                                                                                    &getContext(), 1 );
                 arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns );
 
                 if ( failed( applyFullConversion( module, target, std::move( patterns ) ) ) )

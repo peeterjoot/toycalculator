@@ -3,6 +3,7 @@ TOY_V1.0.0 {
 __toy_print_string;
 __toy_print_f64;
 __toy_print_i64;
+__toy_get_i1;
 __toy_get_i8;
 __toy_get_i16;
 __toy_get_i32;
