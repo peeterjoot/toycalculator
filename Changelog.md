@@ -1,6 +1,6 @@
 ## tag: V6 (WIP)
 
-## tag: V5
+## tag: V5 (Dec 22, 2025)
 
 The language now supports functions, calls, parameters, returns, and basic conditional blocks.
 

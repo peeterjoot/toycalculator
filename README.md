@@ -1,55 +1,53 @@
 ## Motivation
 
-The point of this project was to get some concrete first hand experience with the MLIR ecosystem.
-This project uses an antlr4 grammar, an MLIR builder, and MLIR lowering to LLVM IR, using a custom dialect (toy) and a few existing MLIR dialects (scf, arith, memref, ...)
+The goal of this project was to gain concrete, hands-on experience with the MLIR ecosystem.
+It uses an ANTLR4 grammar, an MLIR builder, and MLIR lowering to LLVM IR, incorporating a custom dialect (toy) along with several existing MLIR dialects (scf, arith, memref, etc.).
 
-I'd seen MLIR in action in a prototype project at work, but didn't get to play with it first hand.
-It appeared to me that MLIR provided a structured mechanism that avoided the requirement to hand craft an AST, allowing for built in semantic checking, and a robust description of a set of sources that could be used for transformations.
-The MLIR white paper describes the evils of premature lowering.
-It's my recollection that this was primarily with respect to lowering to object code was in mind.
-However, a good high level representation of a program can also facilitate high level transformations, even transformations between languages, and also code query tasks.
+I had seen MLIR in action in a prototype project at work but had not worked with it directly.
+It appeared to provide a structured mechanism that avoids the need to hand-craft an AST, while offering built-in semantic checking and a robust representation of source code that can serve as the basis for transformations.
+The MLIR white paper discusses the pitfalls of premature lowering, which I recall focused primarily on lowering to object code.
+However, a good high-level program representation can also enable high-level transformations, including those between languages, as well as code query tasks.
+I have used the Clang AST API for querying code, generating code, and performing transformations, including in very large codebases where automating large structural changes is challenging.
 
-I've used the clang AST API to query code, generate code, and make transformations.
-Some of those applications were in very large codebases where it is difficult to automate large structural changes.
-I've also used proprietary AST walkers in commercial compilers, where infrastructure of that sort can be used to extend the compiler itself, supplying user defined semantics that are appropriate to the customer base.
-Such tools are immensely powerful and can be very useful, so having a structured representation of sources and a language has a lot of appeal.
-The power of such an approach seems clear, and exciting enough to try out for myself, even if I did not have a work justification to do so.
+I have also worked with proprietary AST walkers in commercial compilers, where such infrastructure can extend the compiler itself by adding user-defined semantics tailored to a specific customer base.
+These tools are immensely powerful and valuable.
+Having a structured representation of source code with an associated language therefore has strong appeal.
+The potential of this approach is clear and exciting enough to explore personally, even without a work-related justification.
 
 ## What is this project?
 
-Initially, I used MLIR to build a simple symbolic calculator.
-This calculator supported `double`-like variable declarations, assignments, arithmetic unary and binary operations, and output display.
-As indicated above, the point of the project wasn't really to calculate, but just to get some concrete first hand experience with the MLIR ecosystem for myself.
+Initially, I used MLIR to build a simple symbolic calculator that supported double-like variable declarations, assignments, unary and binary arithmetic operations, and output display.
 
-That initial implementation has morphed into a implementation of a toy language and compiler for that language, which now supports the following linguistic elements:
+As noted earlier, the primary goal of the project was not calculation itself, but to gain concrete, hands-on experience with the MLIR ecosystem.
 
+That initial implementation has evolved into a toy language and its compiler, which now supports the following features:
 
-* a DECLARE operation (implicit double type)
-* Fixed size integer declaration operations (INT8, INT16, INT32, INT64)
-* Floating point declaration operations (FLOAT32, FLOAT64)
-* Boolean declaration operation (BOOL)
-* a PRINT operation,
-* single line comments,
-* a EXIT operation,
-* boolean, integer and floating point constants, and expression evaluation.
-* an ASSIGNMENT operator `(=)` with unary `(+,-)` and binary operators `(+,-,*,/)`.
-* DWARF instrumentation support, sufficient to for line stepping, breakpoints, continue, and variable inspection (and probably modification: untested.)
-* comparison operators (<, <=, EQ, NE) yielding BOOL values.  These work for any combinations of floating and integer types (including BOOL.)
-* integer bitwise operators (OR, AND, XOR).  These only for for integer types (including BOOL.)
-* a NOT operator, yielding BOOL.
-* array support, declaration, assignment, print, return, exit and access of an array variable.
-* A STRING type is available as an alias for INT8 array.  string literal ASSIGN and PRINT implemented.
-* User defined functions.  CALL `function_name( p1, p2)`, or w/ assign; `x = CALL function_name( p1, p2 )`.  Declaration looks like: `FUNCTION foo( type name, type name, ...) : RETURN-type { ... ; RETURN v;};`  (where `:RETURN-TYPE` is optional.)
-* IF/ELSE statement support.  The grammar has an ELIF construct too, but that isn't implemented yet.  AND and OR and XOR aren't supported in the predicates yet (just <, >, LE, GT, ...)  Complex predicates are also not supported ((a < b) AND (c < d)).  Nested IFs aren't tested yet, and may or may not work.
+* A DECLARE operation (implicit double type).
+* Fixed-size integer declarations (INT8, INT16, INT32, INT64).
+* Floating-point declarations (FLOAT32, FLOAT64).
+* Boolean declaration (BOOL).
+* A PRINT operation.
+* Single-line comments.
+* An EXIT operation.
+* Boolean, integer, and floating-point constants, along with expression evaluation.
+* An ASSIGNMENT operator (`=`) with unary (`+`, `-`) and binary operators (`+`, `-`, `*`, `/`).
+* DWARF instrumentation sufficient for line stepping, breakpoints, continue, and variable inspection (variable modification is likely supported but untested).
+* Comparison operators (`<`, `<=`, `==`, `!=`) yielding BOOL values. These work across any combinations of floating-point and integer types (including BOOL).
+* Integer bitwise operators (OR, AND, XOR), applicable only to integer types (including BOOL).
+* A NOT operator yielding BOOL.
+* Array support, including declaration, assignment, printing, returning, exiting, and element access.
+* A STRING type as an alias for INT8 arrays, with string literal assignment and PRINT implemented.
+* User-defined functions. Calls use the form `CALL function_name(p1, p2)` or with assignment `x = CALL function_name(p1, p2)`. Declarations use: `FUNCTION foo(type name, type name, ...) : RETURN-type { ... ; RETURN v; };` (where : `RETURN-type` is optional).
+* IF/ELSE statement support. The grammar includes an ELIF construct, but it is not yet implemented. Logical operators (AND, OR, XOR) are not supported in predicates (only comparisons like `<`, `>`, `<=`, `>=`, etc.). Complex predicates (e.g., `(a < b) AND (c < d)`) are not supported. Nested IFs are untested and may or may not work.
 
-I'd like to add enough language elements to the language and compiler to make it interesting.  The biggest missing pieces at this point are the lack of loops, no input mechanism (i.e.: to do something interesting in loops, once implemented.)
+I plan to add further language elements to make it more interesting. The most significant missing features at this point are loops and an input mechanism (the latter so that a program doesn't just get optimized away into a set of print statements.)
 
 ## Language Quirks.
 
 * Like scripted languages, there is an implicit `main` in this toy language.
 * Functions can be defined anywhere, but must be defined before use.
 * Computations occur in assignment operations, and any types are first promoted to the type of the variable.
-This means that 'x = 1.99 + 2.99' has the value 3, if x is an integer variable, but 4.98 if x is a FLOAT32 or FLOAT64.
+This means that `x = 1.99 + 2.99` has the value 3, if x is an integer variable, but 4.98 if x is a FLOAT32 or FLOAT64.
 * The EXIT statement currently has to be at the end of the program.  EXIT without a numeric value is equivalent to EXIT 0, as is a program with no explicit EXIT.
 * The RETURN statement has to be at the end of a function.  It is currently mandatory.
 * See TODO for a long list of nice to have features that I haven't gotten around to yet, and may never.

@@ -1,15 +1,21 @@
 ## TODO
 
+* Implement SCF loop builder/lowering.
+* Symbol lookup when outside of a scope isn't working: ifdcl.toy -- find enclosing toy.scope and do symbol resolution there?
+* Test a whole range of statements in if-then and if-else blocks (dcl, assignment, call, ...)
+* An input mechanism, so that a program doesn't get optimized away into a set of `__toy_print` calls.
+
+----------------------------------
+
 * Write a MLIR walker to see how to answer code questions about a given program.
 * MLIR has considerable capability for semantic checking, but I'm not exploiting that here, and have very little in custom verifiers.
-* Test a whole range of statements in if-then and if-else blocks (dcl, assignment, call, ...)
-* Symbol lookup when outside of a scope isn't working: ifdcl.toy -- find enclosing toy.scope and do symbol resolution there?
 * Add integer literal support to PRINT, so that I can do a program as simple as:
     PRINT 42;
 * t/c: function.toy:
 
     line stepping behaves wrong after CALL, showing the wrong line after some calls:
 
+```
         (gdb) n
         main () at function.toy:38
         38      v = CALL add( 42, 0 );
@@ -36,9 +42,11 @@
         (gdb) n
         42
         40      v = CALL zero();
+```
 
     sequence should have been:
 
+```
      37 INT32 v;
      38 v = CALL add( 42, 0 );
      39 PRINT v;
@@ -46,7 +54,7 @@
      41 PRINT v;
      42 v = CALL plus3( 39 );
      43 PRINT v;
-
+```
 
 * remove the mandatory RETURN in the FUNCTION grammar, and mirror the exitHandled
 * allow return at other places in a function to the function prematurely.
@@ -55,15 +63,18 @@
 * Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
 * grok suggests:
 
+```cpp
 class syntax_error_exception : public exception_with_context
 {
 public:
     syntax_error_exception(const char *file, int line, const char *func, const std::string &msg)
         : exception_with_context(file, line, func, msg) {}
 };
+```
 
-and return_codes specialization:
+and `return_codes` specialization:
 
+```cpp
 enum class return_codes : int
 {
     success,          // 0
@@ -72,8 +83,9 @@ enum class return_codes : int
     syntax_error,     // 3
     unknown_error     // 4
 };
+```
 
-(vs. unknown_error which is returned for everything now.)
+(vs. `unknown_error` which is returned for everything now.)
 
 * string literal tests for edge cases: shortstring.toy: two bugs unresolved.
 * arrays:
@@ -99,6 +111,7 @@ enum class return_codes : int
 * Allow EXIT at more than the end of program (that restriction is currently enforced in the grammar.)
 * Don't have any traits defined for my MLIR operations (initially caused compile errors, and I just commented-out or omitted after that.)
 * gdb session for simpleless.toy is not behaving right with respect to 'next'.  Suspect that this is due to my cachine of the one/zero constants, reusing previous location info inappropriately.  Try not caching that and see if it fixes it -- nope.
+```
 Breakpoint 1, main () at simpleless.toy:4
 4       i1 = TRUE;
 (gdb) n
@@ -130,8 +143,9 @@ Breakpoint 1, main () at simpleless.toy:4
 1
 __libc_start_call_main (main=main@entry=0x400470 <main>, argc=argc@entry=1, argv=argv@entry=0x7fffffffdc08) at ../sysdeps/nptl/libc_start_call_main.h:74
 74        exit (result);
+```
 
--- see the line numbers jump around.  probably want getLocation(, true) for ctx->getStop() in some places (like end of program.)
+-- see the line numbers jump around.  probably want getLocation(, true) for `ctx->getStop()` in some places (like end of program.)
 
 Trickier, but would be fun:
 * Implement a JIT so that the "language" has an interpretor mode, as well as static compilation.
