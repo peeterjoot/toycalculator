@@ -37,12 +37,12 @@ That initial implementation has morphed into a implementation of a toy language 
 * comparison operators (<, <=, EQ, NE) yielding BOOL values.  These work for any combinations of floating and integer types (including BOOL.)
 * integer bitwise operators (OR, AND, XOR).  These only for for integer types (including BOOL.)
 * a NOT operator, yielding BOOL.
-* array support, declaration, assignment, and access of an array variable.  Direct PRINT of array elements is not supported yet.
+* array support, declaration, assignment, print, return, exit and access of an array variable.
 * A STRING type is available as an alias for INT8 array.  string literal ASSIGN and PRINT implemented.
 * User defined functions.  CALL `function_name( p1, p2)`, or w/ assign; `x = CALL function_name( p1, p2 )`.  Declaration looks like: `FUNCTION foo( type name, type name, ...) : RETURN-type { ... ; RETURN v;};`  (where `:RETURN-TYPE` is optional.)
 * IF/ELSE statement support.  The grammar has an ELIF construct too, but that isn't implemented yet.  AND and OR and XOR aren't supported in the predicates yet (just <, >, LE, GT, ...)  Complex predicates are also not supported ((a < b) AND (c < d)).  Nested IFs aren't tested yet, and may or may not work.
 
-I'd like to add enough language elements to the language and compiler to make it interesting.  The biggest missing pieces at this point are the lack of loops, no input mechanism, and incomplete array support (i.e.: to do something interesting in loops, once implemented.)
+I'd like to add enough language elements to the language and compiler to make it interesting.  The biggest missing pieces at this point are the lack of loops, no input mechanism (i.e.: to do something interesting in loops, once implemented.)
 
 ## Language Quirks.
 

@@ -38,9 +38,12 @@ The language now supports functions, calls, parameters, returns, and basic condi
 
 * Parser and frontend changes:
   - Introduced `scalarOrArrayElement` and `indexExpression` grammar rules.
-  - Extended unary expression handling and many statement types (PRINT, RETURN, EXIT, call arguments, etc.) to accept array element references.
+  - Grammar: Extended unary expression handling and many statement types (PRINT, RETURN, EXIT, call arguments, etc.) to accept array element references.
+  - PRINT/RETURN/EXIT of array elements is supported and tested, but lots more testing should be done in other contexts (call arguments, ...).  It is possible that additional builder/lowering work will show up from such testing.
   - Added `indexTypeCast` helper for converting parsed index values to `index` type.
-  - Updated `intarray.toy` sample to demonstrate full round-trip (declare → assign element → load element → print).
+  - Updated `intarray.toy` sample to demonstrate full round-trip (declare → assign element → load element → print).  Also added rudimentary test for unary and binary expressions with array elements, and exit.
+  - Updated `function_intret_void.toy` with return of array element.
+  - New test `exitarrayelement.toy` to test exit with non-zero array element (zero tested in `intarray.toy`)
 
 * Lowering improvements:
   - Factored out `castToElemType` helper for consistent type conversion during stores/loads.

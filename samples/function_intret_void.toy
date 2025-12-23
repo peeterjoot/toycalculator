@@ -2,3 +2,17 @@ FUNCTION zero( ) : INT32
 {
     RETURN 0;
 };
+
+FUNCTION zero2( ) : INT32
+{
+    INT32 i[2];
+    i[1] = 1;
+    RETURN i[1];
+};
+
+INT32 x;
+x = CALL zero();
+PRINT x;
+
+x = CALL zero2();
+PRINT x;
