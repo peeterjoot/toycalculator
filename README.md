@@ -1,15 +1,28 @@
+## Motivation
+
+The point of this project was to get some concrete first hand experience with the MLIR ecosystem.
+This project uses an antlr4 grammar, an MLIR builder, and MLIR lowering to LLVM IR, using a custom dialect (toy) and a few existing MLIR dialects (scf, arith, memref, ...)
+
+I'd seen MLIR in action in a prototype project at work, but didn't get to play with it first hand.
+It appeared to me that MLIR provided a structured mechanism that avoided the requirement to hand craft an AST, allowing for built in semantic checking, and a robust description of a set of sources that could be used for transformations.
+The MLIR white paper describes the evils of premature lowering.
+It's my recollection that this was primarily with respect to lowering to object code was in mind.
+However, a good high level representation of a program can also facilitate high level transformations, even transformations between languages, and also code query tasks.
+
+I've used the clang AST API to query code, generate code, and make transformations.
+Some of those applications were in very large codebases where it is difficult to automate large structural changes.
+I've also used proprietary AST walkers in commercial compilers, where infrastructure of that sort can be used to extend the compiler itself, supplying user defined semantics that are appropriate to the customer base.
+Such tools are immensely powerful and can be very useful, so having a structured representation of sources and a language has a lot of appeal.
+The power of such an approach seems clear, and exciting enough to try out for myself, even if I did not have a work justification to do so.
+
 ## What is this project?
 
-This project uses an antlr4 grammar, an MLIR builder, and MLIR lowering to LLVM IR.
-
-Initially the intent of this project was to implement a simple symbolic calculator, allowing for variable declarations, assignments, simple operations, and output display.  That implementation supported only `double`-like types, a print operation, assignments, and some arithmetic operations.
-
-I'd seen MLIR in action in prototype projects at work, but didn't get to play with it first hand.
-The point of the project wasn't really to calculate, but just to get some concrete first hand experience with the MLIR ecosystem for myself.
-Overall, it just makes sense to use a structured mechanism to generate an AST equivalent, instead of handcoding the parser to AST stage of the compiler.
-This can include built in semantic checking (not part of this toy compiler yet), and avoid the evil of premature lowering (as described by the MLIR white paper.)
+Initially, I used MLIR to build a simple symbolic calculator.
+This calculator supported `double`-like variable declarations, assignments, arithmetic unary and binary operations, and output display.
+As indicated above, the point of the project wasn't really to calculate, but just to get some concrete first hand experience with the MLIR ecosystem for myself.
 
 That initial implementation has morphed into a implementation of a toy language and compiler for that language, which now supports the following linguistic elements:
+
 
 * a DECLARE operation (implicit double type)
 * Fixed size integer declaration operations (INT8, INT16, INT32, INT64)
@@ -33,16 +46,21 @@ I'd like to add enough language elements to the language and compiler to make it
 
 ## Language Quirks.
 
-Computations occur in assignment operations, and any types are first promoted to the type of the variable.
-This means that 'x = 1.99 + 2.99' has the value 3, if x is an integer variable.
+* Like scripted languages, there is an implicit `main` in this toy language.
+* Functions can be defined anywhere, but must be defined before use.
+* Computations occur in assignment operations, and any types are first promoted to the type of the variable.
+This means that 'x = 1.99 + 2.99' has the value 3, if x is an integer variable, but 4.98 if x is a FLOAT32 or FLOAT64.
+* The EXIT statement currently has to be at the end of the program.  EXIT without a numeric value is equivalent to EXIT 0, as is a program with no explicit EXIT.
+* The RETURN statement has to be at the end of a function.  It is currently mandatory.
+* See TODO for a long list of nice to have features that I haven't gotten around to yet, and may never.
 
 ## On the use of AI in this project.
 
 AI tools (Grok and ChatGPT) were used to generate some of the initial framework for this project (April 2025 timeframe.)
-At that point in time, considerable effort was required to keep both Grok and ChatGPT from halucinating MLIR or LLVM APIs that don't exist,
+At that point in time, considerable effort was required to keep both Grok and ChatGPT from hallucinating MLIR or LLVM APIs that don't exist,
 but both of those models were invaluable for getting things started.
 
-As an example of the pain of working with AI tools, here's a trivial example: I asked Grok to add comments to my grammar and fix the indenting, but it took 20 minutes to coerse it to use the grammar that I asked it to use (as it claims the ability to read internet content), but it kept making stuff up and injecting changes to the semantics and making changing grammar element name changes that would have broken my listener class.
+As an example of the pain of working with AI tools, here's a trivial example: I asked Grok to add comments to my grammar and fix the indenting, but it took 20 minutes to coerce it to use the grammar that I asked it to use (as it claims the ability to read internet content), but it kept making stuff up and injecting changes to the semantics and making changing grammar element name changes that would have broken my listener class.
 
 ## Interesting files
 
@@ -96,7 +114,7 @@ sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-
 
 ### Building MLIR
 
-On both ubuntu and fedora, I needed a custom build of llvm/mlir, as I didn't find a package that had the MLIR tablegen files.
+On both ubuntu and fedora, I needed a custom build of llvm/mlir, as I didn't find a package that had the MLIR tblgen files.
 As it turned out, a custom llvm/mlir build was also required to specifically enable rtti, as altlr4 uses `dynamic_cast<>`.
 The -fno-rtti that is required by default to avoid typeinfo symbol link errors, explicitly breaks the antlr4 header files.
 That could be avoided if I separated out the antlr4 listener class from the MLIR builder, but the MLIR builder effectively

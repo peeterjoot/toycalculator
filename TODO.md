@@ -1,5 +1,7 @@
 ## TODO
 
+* Write a MLIR walker to see how to answer code questions about a given program.
+* MLIR has considerable capability for semantic checking, but I'm not exploiting that here, and have very little in custom verifiers.
 * Test a whole range of statements in if-then and if-else blocks (dcl, assignment, call, ...)
 * Symbol lookup when outside of a scope isn't working: ifdcl.toy -- find enclosing toy.scope and do symbol resolution there?
 * Add integer literal support to PRINT, so that I can do a program as simple as:
@@ -47,6 +49,7 @@
 
 
 * remove the mandatory RETURN in the FUNCTION grammar, and mirror the exitHandled
+* allow return at other places in a function to the function prematurely.
 
 * Switch to CamelCase uniformly.
 * Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
