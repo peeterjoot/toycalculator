@@ -63,7 +63,7 @@ As an example of the pain of working with AI tools, here's a trivial example: I 
 
 ## Interesting files
 
-* `Toy.g4`           -- The Antlr4 grammar for the calculator.
+* `Toy.g4`           -- The Antlr4 grammar.
 * `src/driver.cpp`   -- This is the compiler driver, handles command line options, opens output files, and orchestrates all the lower level actions (parse tree walk + MLIR builder, lowering to LLVM-IR, assembly printer, and calls the linker.)
 * `src/calculator.td` -- This is the MLIR dialect that defines the compiler eye view of all the grammar elements.
 * `src/parser.cpp`   -- This is the Antlr4 parse tree walker and the MLIR builder.
@@ -174,31 +174,6 @@ but that may not be any more illuminating.  Old fashioned printf style debugging
 ```
 
 In particular, the dump() function can be used for many mlir objects.  That coupled with `--debug` in the driver is the primary debug mechanism that I have used developing this compiler.
-
-## Build timings:
-
-Fedora 42 ; antlr4-4.13.2
-```
-real    0m2.034s
-user    0m2.654s
-sys     0m0.688s
-```
-
-Windows-11 w/ WSL2 ubuntu-24 ; antlr4 4.10 (same machine as above, a dual boot windows/fedora system.)
-```
-real    0m42.288s
-user    1m17.337s
-sys     0m8.481s
-```
-
-Raspberry PI (ubuntu) ; antlr4 4.9.2
-```
-real    0m54.584s
-user    2m9.977s
-sys     0m9.730s
-```
-
-Interesting that the little PI is almost as fast as the WSL2 ubuntu instance.  Not much justification to keep Windows booted as the primary OS.  Wonder how a Linux VM on Windows would fare compared to WSL2?
 
 ## Experimenting with symbol tables.
 
