@@ -22,23 +22,23 @@ As noted earlier, the primary goal of the project was not calculation itself, bu
 
 That initial implementation has evolved into a toy language and its compiler, which now supports the following features:
 
-* A DECLARE operation (implicit double type).
-* Fixed-size integer declarations (INT8, INT16, INT32, INT64).
-* Floating-point declarations (FLOAT32, FLOAT64).
-* Boolean declaration (BOOL).
-* A PRINT operation.
+* A `DECLARE` operation (implicit double type).
+* Fixed-size integer declarations (`INT8`, `INT16`, `INT32`, `INT64`).
+* Floating-point declarations (`FLOAT32`, `FLOAT64`).
+* Boolean declaration (`BOOL`).
+* A `PRINT` operation.
 * Single-line comments.
-* An EXIT operation.
+* An `EXIT` operation.
 * Boolean, integer, and floating-point constants, along with expression evaluation.
 * An ASSIGNMENT operator (`=`) with unary (`+`, `-`) and binary operators (`+`, `-`, `*`, `/`).
 * DWARF instrumentation sufficient for line stepping, breakpoints, continue, and variable inspection (variable modification is likely supported but untested).
-* Comparison operators (`<`, `<=`, `==`, `!=`) yielding BOOL values. These work across any combinations of floating-point and integer types (including BOOL).
-* Integer bitwise operators (OR, AND, XOR), applicable only to integer types (including BOOL).
-* A NOT operator yielding BOOL.
+* Comparison operators (`<`, `<=`, `==`, `!=`) yielding `BOOL` values. These work across any combinations of floating-point and integer types (including `BOOL`).
+* Integer bitwise operators (`OR`, `AND`, `XOR`), applicable only to integer types (including `BOOL`).
+* A `NOT` operator yielding `BOOL`.
 * Array support, including declaration, assignment, printing, returning, exiting, and element access.
-* A STRING type as an alias for INT8 arrays, with string literal assignment and PRINT implemented.
+* A `STRING` type as an alias for `INT8` arrays, with string literal assignment and `PRINT` implemented.
 * User-defined functions. Calls use the form `CALL function_name(p1, p2)` or with assignment `x = CALL function_name(p1, p2)`. Declarations use: `FUNCTION foo(type name, type name, ...) : RETURN-type { ... ; RETURN v; };` (where : `RETURN-type` is optional).
-* IF/ELSE statement support. The grammar includes an ELIF construct, but it is not yet implemented. Logical operators (AND, OR, XOR) are not supported in predicates (only comparisons like `<`, `>`, `<=`, `>=`, etc.). Complex predicates (e.g., `(a < b) AND (c < d)`) are not supported. Nested IFs are untested and may or may not work.
+* `IF`/`ELSE` statement support. The grammar includes an `ELIF` construct, but it is not yet implemented. Logical operators (`AND`, `OR`, `XOR`) are not supported in predicates (only comparisons like `<`, `>`, `<=`, `>=`, etc.). Complex predicates (e.g., `(a < b) AND (c < d)`) are not supported. Nested `IF`s are untested and may or may not work.
 
 I plan to add further language elements to make it more interesting. The most significant missing features at this point are loops and an input mechanism (the latter so that a program doesn't just get optimized away into a set of print statements.)
 
@@ -47,10 +47,11 @@ I plan to add further language elements to make it more interesting. The most si
 * Like scripted languages, there is an implicit `main` in this toy language.
 * Functions can be defined anywhere, but must be defined before use.
 * Computations occur in assignment operations, and any types are first promoted to the type of the variable.
-This means that `x = 1.99 + 2.99` has the value 3, if x is an integer variable, but 4.98 if x is a FLOAT32 or FLOAT64.
-* The EXIT statement currently has to be at the end of the program.  EXIT without a numeric value is equivalent to EXIT 0, as is a program with no explicit EXIT.
+This means that `x = 1.99 + 2.99` has the value `3`, if `x` is an integer variable, but `4.98` if x is a `FLOAT32` or `FLOAT64`.
+* The `EXIT` statement currently has to be at the end of the program.
+`EXIT` without a numeric value is equivalent to `EXIT 0`, as is a program with no explicit `EXIT`.
 * The RETURN statement has to be at the end of a function.  It is currently mandatory.
-* See TODO for a long list of nice to have features that I haven't gotten around to yet, and may never.
+* See TODO.md for a long list of nice to have features that I haven't gotten around to yet, and may never.
 
 ## On the use of AI in this project.
 
@@ -62,30 +63,30 @@ As an example of the pain of working with AI tools, here's a trivial example: I 
 
 ## Interesting files
 
-* Toy.g4            -- The Antlr4 grammar for the calculator.
-* src/driver.cpp    -- This is the compiler driver, handles command line options, opens output files, and orchestrates all the lower level actions (parse tree walk + MLIR builder, lowering to LLVM-IR, assembly printer, and calls the linker.)
-* src/calculator.td -- This is the MLIR dialect that defines the compiler eye view of all the grammar elements.
-* src/parser.cpp    -- This is the Antlr4 parse tree walker and the MLIR builder.
-* src/lowering.cpp  -- LLVM-IR lowering classes.
-* prototypes/simplest.cpp  -- A MWE w/ working DWARF instrumentation.  Just emits LLVM-IR and has no assembly printing pass like the toy compiler.
-* prototypes/hibye.cpp  -- A MWE w/ working DWARF instrumentation.  This one emits LLVM-IR for a program that includes an IF statement.
+* `Toy.g4`           -- The Antlr4 grammar for the calculator.
+* `src/driver.cpp`   -- This is the compiler driver, handles command line options, opens output files, and orchestrates all the lower level actions (parse tree walk + MLIR builder, lowering to LLVM-IR, assembly printer, and calls the linker.)
+* `src/calculator.td` -- This is the MLIR dialect that defines the compiler eye view of all the grammar elements.
+* `src/parser.cpp`   -- This is the Antlr4 parse tree walker and the MLIR builder.
+* `src/lowering.cpp` -- LLVM-IR lowering classes.
+* `prototypes/simplest.cpp`  -- A MWE w/ working DWARF instrumentation.  Just emits LLVM-IR and has no assembly printing pass like the toy compiler.
+* `prototypes/hibye.cpp` -- A MWE w/ working DWARF instrumentation.  This one emits LLVM-IR for a program that includes an `IF` statement.
 * `samples/*.toy` and `bin/testit` -- sample programs and a rudimentary regression test suite based on them.
-* bin/build, bin/rebuild -- build scripts (first runs cmake and ninja and sets compiler override if required), second just ninja with some teeing and grepping.
+* `bin/build`, `bin/rebuild` -- build scripts (first runs cmake and ninja and sets compiler override if required), second just ninja with some teeing and grepping.
 
 ## Command line options
 
-* --output-directory
-* --emit-llvm
-* --emit-mlir
-* --debug (built in MLIR option.)
-* -debug-only=toy-driver
-* -debug-only=toy-lowering
-* --debug-mlir
-* -g (show MLIR location info in the dump, and lowered LLVM-IR.)
-* -O[0123] -- the usual.
-* --stdout.  MLIR and LLVM-IR output to stdout instead of to files.
-* --no-emit-object
-* -c (compile only, and don't link.)
+* `--output-directory`
+* `--emit-llvm`
+* `--emit-mlir`
+* `--debug` (built in MLIR option.)
+* `-debug-only=toy-driver`
+* `-debug-only=toy-lowering`
+* `--debug-mlir`
+* `-g` (show MLIR location info in the dump, and lowered LLVM-IR.)
+* `-O[0123]` -- the usual.
+* `--stdout`.  MLIR and LLVM-IR output to stdout instead of to files.
+* `--no-emit-object`
+* `-c` (compile only, and don't link.)
 
 ## Building
 
@@ -150,7 +151,7 @@ Depending on what I currently have booted, this project has been built on only a
 
 ### Peeking into LLVM object internals
 
-LLVM uses it's own internal dynamic\_cast<> mechanism, so many types appear opaque.  Example:
+LLVM uses it's own internal `dynamic_cast<>` mechanism, so many types appear opaque.  Example:
 
 ```
 (gdb) p loc
@@ -172,7 +173,7 @@ but that may not be any more illuminating.  Old fashioned printf style debugging
                          << "Lowering toy.program: " << *op << '\n' << loc << '\n' );
 ```
 
-In particular, the dump() function can be used for many mlir objects.
+In particular, the dump() function can be used for many mlir objects.  That coupled with `--debug` in the driver is the primary debug mechanism that I have used developing this compiler.
 
 ## Build timings:
 
@@ -201,6 +202,6 @@ Interesting that the little PI is almost as fast as the WSL2 ubuntu instance.  N
 
 ## Experimenting with symbol tables.
 
-Now using symbol tables instead of hashing in parser/builder, but not in lowering.  An attempt to do so can be found in the branch symbol-table-tryII.
+Now using symbol tables instead of hashing in parser/builder, but not in lowering.  An attempt to do so can be found in the branch `peeter/old/symbol-table-tryII`.
 
-Everything in that branch was merged to master in one big commit that wipes out all the false starts in that branch (that merge also includes the if-else branch.)
+Everything in that branch was merged to master in one big commit that wipes out all the false starts in that branch (that merge also includes the `peeter/old/if-else` branch.)

@@ -60,7 +60,7 @@ The language now supports functions, calls, parameters, returns, and basic condi
 ## tag: V4 (July 7, 2025)
 
 The big changes in this tag relative to V3 are:
-* Adds support (grammar, builder, lowering) for function declarations, and function calls.  Much of the work for this was done in branch `use_mlir_funcop_with_scopeop`, later squashed and merged as a big commit.
+* Adds support (grammar, builder, lowering) for function declarations, and function calls.  Much of the work for this was done in branch `peeter/old/use_mlir_funcop_with_scopeop`, later squashed and merged as a big commit.
 Here's an example
 
 ```
