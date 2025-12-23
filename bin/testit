@@ -109,7 +109,6 @@ system( qq(rm -rf out) );
 my %tests = map { $_ => 1 } (qw(
 0minus
 addi
-if
 andop
 array
 bin
@@ -122,6 +121,7 @@ dcl
 empty
 eqop
 exit3
+exitarrayelement
 exitx
 foo
 function
@@ -135,6 +135,7 @@ function_return
 function_two
 function_void_intparm
 function_void_void
+if
 intarray
 lessbug
 lessbug2
@@ -164,6 +165,7 @@ my %expectedRC = (
    'boolr' => 1,
    'exit3' => 3,
    'exitx' => 3,
+   'exitarrayelement' => 42,
 );
 
 my @warnings = ();

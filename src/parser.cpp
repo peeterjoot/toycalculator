@@ -951,9 +951,10 @@ namespace toy
         } );
 #endif
 
-        auto varNameObject = ctx->scalarOrArrayElement() ? ctx->scalarOrArrayElement()->IDENTIFIER() : nullptr;
-        if ( varNameObject )
+        ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement = ctx->scalarOrArrayElement();
+        if ( scalarOrArrayElement )
         {
+            auto varNameObject = scalarOrArrayElement->IDENTIFIER();
             auto varName = varNameObject->getText();
             auto varState = getVarState( varName );
             if ( varState == variable_state::undeclared )
@@ -972,10 +973,19 @@ namespace toy
             auto declareOp = lookupDeclareForVar( varName );
 
             mlir::Type elemType = declareOp.getTypeAttr().getValue();
+            mlir::Value optIndexValue{};
+            if ( ToyParser::IndexExpressionContext * indexExpr = scalarOrArrayElement->indexExpression() ) {
+                std::string s;
+                mlir::Value indexValue{};
+                buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr, loc, indexValue, s );
+                assert( s.length() == 0 );
 
-            if ( declareOp.getSizeAttr() )    // Check if size attribute exists
+                optIndexValue = indexTypeCast( loc, indexValue );
+                varType = elemType;
+            }
+            else if ( declareOp.getSizeAttr() )    // Check if size attribute exists
             {
-                // Array: load a generic pointer
+                // Array: load a generic pointer (print a string literal)
                 varType = tyPtr;
             }
             else
@@ -985,7 +995,7 @@ namespace toy
             }
 
             auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
-            auto value = builder.create<toy::LoadOp>( loc, varType, symRef, mlir::Value() );
+            auto value = builder.create<toy::LoadOp>( loc, varType, symRef, optIndexValue );
             builder.create<toy::PrintOp>( loc, value );
         }
         else if ( auto theString = ctx->STRING_PATTERN() )

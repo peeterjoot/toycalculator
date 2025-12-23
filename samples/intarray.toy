@@ -1,6 +1,14 @@
 INT32 t[7];
 INT32 x;
+t[1] = 6;
+t[2] = 7;
 t[3] = 42;
 x = t[3];
 PRINT x;
-//PRINT t[3];
+PRINT t[3];
+x = t[1] * t[2];
+PRINT x;
+x = -t[3];
+PRINT x;
+t[0] = 0;
+EXIT t[0];
