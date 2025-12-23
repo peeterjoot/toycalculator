@@ -328,25 +328,6 @@ namespace toy
                     mlir::LLVM::DINameTableKind::Default );
             }
 
-            // Set data_layout,ident,target_triple:
-#if 0    // Oops: don't really need these.  Already doing this in driver.cpp for the assembly printer (at the LLVM level
-         // after all lowering and translation)
-            std::string targetTriple = llvm::sys::getDefaultTargetTriple();
-            llvm::Triple triple( targetTriple );
-            assert( triple.isArch64Bit() && triple.isOSLinux() );
-
-            std::string error;
-            const llvm::Target* target = llvm::TargetRegistry::lookupTarget( targetTriple, error );
-            assert( target );
-            llvm::TargetOptions options;
-            auto targetMachine = std::unique_ptr<llvm::TargetMachine>( target->createTargetMachine(
-                targetTriple, "generic", "", options, std::optional<llvm::Reloc::Model>( llvm::Reloc::PIC_ ) ) );
-            assert( targetMachine );
-            std::string dataLayoutStr = targetMachine->createDataLayout().getStringRepresentation();
-
-            pr_module->setAttr( "llvm.data_layout", pr_builder.getStringAttr( dataLayoutStr ) );
-            pr_module->setAttr( "llvm.target_triple", pr_builder.getStringAttr( targetTriple ) );
-#endif
             pr_module->setAttr( "llvm.ident", pr_builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
         }
 
@@ -896,12 +877,7 @@ namespace toy
                 unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
                 // unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
 
-#if 0    // FIXME: could pack array creation for i1 types.  For now, just use a separate byte for each.
-            if ( elemType.isInteger( 1 ) )
-            {
-                ...
-            }
-#endif
+                // FIXME: could pack array creation for i1 types (elemType.isInteger( 1 )).  For now, just use a separate byte for each.
                 unsigned alignment = lState.preferredTypeAlignment( op, elemType );
 
                 mlir::Value sizeVal;

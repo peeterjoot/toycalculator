@@ -59,12 +59,10 @@ namespace toy
         }
 
         assert( scopeOp );
-#if 1
         LLVM_DEBUG( {
             llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
             scopeOp->dump();
         } );
-#endif
 
         auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
         if ( !symbolOp )
