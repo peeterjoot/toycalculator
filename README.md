@@ -26,7 +26,8 @@ That initial implementation has evolved into a toy language and its compiler, wh
 * Fixed-size integer declarations (`INT8`, `INT16`, `INT32`, `INT64`).
 * Floating-point declarations (`FLOAT32`, `FLOAT64`).
 * Boolean declaration (`BOOL`).
-* A `PRINT` operation.
+* A `PRINT` operation for printing to standard output.
+* A `GET` operation for reading from standard input.
 * Single-line comments.
 * An `EXIT` operation.
 * Boolean, integer, and floating-point constants, along with expression evaluation.
@@ -40,7 +41,7 @@ That initial implementation has evolved into a toy language and its compiler, wh
 * User-defined functions. Calls use the form `CALL function_name(p1, p2)` or with assignment `x = CALL function_name(p1, p2)`. Declarations use: `FUNCTION foo(type name, type name, ...) : RETURN-type { ... ; RETURN v; };` (where : `RETURN-type` is optional).
 * `IF`/`ELSE` statement support. The grammar includes an `ELIF` construct, but it is not yet implemented. Logical operators (`AND`, `OR`, `XOR`) are not supported in predicates (only comparisons like `<`, `>`, `<=`, `>=`, etc.). Complex predicates (e.g., `(a < b) AND (c < d)`) are not supported. Nested `IF`s are untested and may or may not work.
 
-I plan to add further language elements to make it more interesting. The most significant missing features at this point are loops and an input mechanism (the latter so that a program doesn't just get optimized away into a set of print statements.)
+I plan to add further language elements to make it more interesting. The most significant missing feature at this point is loops.
 
 ## Language Quirks.
 

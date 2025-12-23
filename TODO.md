@@ -3,7 +3,6 @@
 * Implement SCF loop builder/lowering.
 * Symbol lookup when outside of a scope isn't working: ifdcl.toy -- find enclosing toy.scope and do symbol resolution there?
 * Test a whole range of statements in if-then and if-else blocks (dcl, assignment, call, ...)
-* An input mechanism, so that a program doesn't get optimized away into a set of `__toy_print` calls.
 
 ----------------------------------
 

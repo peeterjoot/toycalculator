@@ -135,6 +135,7 @@ function_return
 function_two
 function_void_intparm
 function_void_void
+get
 if
 intarray
 lessbug
@@ -166,6 +167,10 @@ my %expectedRC = (
    'exit3' => 3,
    'exitx' => 3,
    'exitarrayelement' => 42,
+);
+
+my %expectedInput = (
+    'get' => '6 7',
 );
 
 my @warnings = ();
@@ -200,7 +205,12 @@ foreach my $stem (sort keys %tests)
         verbose_system( qq(cat out/${stem}.s) );
     }
 
-    my $rc = verbose_system( qq(./out/${stem} > out/${stem}.out) );
+    my $rc;
+    if ( defined $expectedInput{${stem}} ) {
+        $rc = verbose_system( qq(echo "$expectedInput{${stem}}" | ./out/${stem} > out/${stem}.out) );
+    } else {
+        $rc = verbose_system( qq(./out/${stem} > out/${stem}.out) );
+    }
     verbose_system( qq(cat out/${stem}.out) );
 
     print "${stem}: RC = $rc\n\n\n\n\n";

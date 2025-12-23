@@ -161,10 +161,26 @@ def Toy_StringLiteralOp : Op<Toy_Dialect, "string_literal"> {
 }
 
 def Toy_PrintOp : Op<Toy_Dialect, "print"> {
-  let summary = "Print a variable or string literal";
+  let summary = "Print a variable or string literal to standard output";
   let arguments = (ins AnyType:$input);
   let results = (outs);
   let assemblyFormat = "$input `:` type($input) attr-dict";
+}
+
+def Toy_GetOp : Op<Toy_Dialect, "get"> {
+  let summary = "Read a scalar value from standard input";
+  let description = [{
+    Reads a single scalar value (integer or floating-point) from standard input
+    The result type determines the format.
+  }];
+
+  let arguments = (ins);
+
+  // Single result, restricted to integer or float types
+  let results = (outs Toy_IntOrFloat:$value);
+
+  // op name, with type inferred from result
+  let assemblyFormat = "attr-dict `:` type(results)";
 }
 
 def Toy_NegOp : Op<Toy_Dialect, "negate"> {

@@ -1013,6 +1013,63 @@ namespace toy
         }
     }
 
+    void MLIRListener::enterGet( ToyParser::GetContext *ctx )
+    {
+        auto loc = getLocation( ctx );
+        mainFirstTime( loc );
+        setLastLoc( loc );
+
+        ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement = ctx->scalarOrArrayElement();
+        if ( scalarOrArrayElement )
+        {
+            auto varNameObject = scalarOrArrayElement->IDENTIFIER();
+            auto varName = varNameObject->getText();
+            auto varState = getVarState( varName );
+            if ( varState == variable_state::undeclared )
+            {
+                throw exception_with_context(
+                    __FILE__, __LINE__, __func__,
+                    std::format( "{}error: Variable {} not declared in GET\n", formatLocation( loc ), varName ) );
+            }
+
+            auto declareOp = lookupDeclareForVar( varName );
+
+            mlir::Type elemType = declareOp.getTypeAttr().getValue();
+            mlir::Value optIndexValue{};
+            if ( ToyParser::IndexExpressionContext * indexExpr = scalarOrArrayElement->indexExpression() ) {
+                std::string s;
+                mlir::Value indexValue{};
+                buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr, loc, indexValue, s );
+                assert( s.length() == 0 );
+
+                optIndexValue = indexTypeCast( loc, indexValue );
+            }
+            else if ( declareOp.getSizeAttr() )
+            {
+                throw exception_with_context(
+                    __FILE__, __LINE__, __func__,
+                    std::format( "{}error: attempted GET to string literal?{}\n", formatLocation( loc ), ctx->getText() ) );
+            }
+            else
+            {
+                // Scalar: load the value
+            }
+
+            auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+
+            auto resultValue = builder.create<toy::GetOp>( loc, elemType );
+            builder.create<toy::AssignOp>( loc, symRef, optIndexValue, resultValue );
+
+            setVarState( currentFuncName, varName, variable_state::assigned );
+        }
+        else
+        {
+            throw exception_with_context(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}error: unexpected get context {}\n", formatLocation( loc ), ctx->getText() ) );
+        }
+    }
+
     // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
     // uses arith dialect operations instead of LLVM dialect
     mlir::Value MLIRListener::castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType )

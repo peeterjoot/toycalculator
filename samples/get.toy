@@ -1,0 +1,11 @@
+INT32 x;
+GET x;
+PRINT x;
+
+INT32 y[1];
+GET y[0];
+PRINT y[0];
+
+INT32 z;
+z = x * y[0];
+PRINT z;

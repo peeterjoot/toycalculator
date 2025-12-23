@@ -261,6 +261,8 @@ namespace toy
 
         void enterPrint( ToyParser::PrintContext *ctx ) override;
 
+        void enterGet( ToyParser::GetContext *ctx ) override;
+
         void enterAssignment( ToyParser::AssignmentContext *ctx ) override;
 
         void exitAssignment( ToyParser::AssignmentContext *ctx ) override;

@@ -80,6 +80,12 @@ namespace toy
         mlir::func::FuncOp pr_printFuncF64;
         mlir::func::FuncOp pr_printFuncI64;
         mlir::func::FuncOp pr_printFuncString;
+        mlir::func::FuncOp pr_getFuncI8;
+        mlir::func::FuncOp pr_getFuncI16;
+        mlir::func::FuncOp pr_getFuncI32;
+        mlir::func::FuncOp pr_getFuncI64;
+        mlir::func::FuncOp pr_getFuncF32;
+        mlir::func::FuncOp pr_getFuncF64;
 
         const toy::driverState& pr_driverState;
         ModuleOp& pr_module;
@@ -239,31 +245,28 @@ namespace toy
             }
         };
 
-        void createToyPrintF64Prototype()
+        template <class Ty>
+        void createToyPrintPrototype( mlir::func::FuncOp& printOp, Ty type, const char* name )
         {
-            if ( !pr_printFuncF64 )
+            if ( !printOp )
             {
                 useModuleInsertionPoint ip( pr_module, pr_builder );
 
-                auto funcType = mlir::FunctionType::get( pr_builder.getContext(), { tyF64 }, {} );
+                auto funcType = mlir::FunctionType::get( pr_builder.getContext(), { type }, {} );
 
-                pr_printFuncF64 =
-                    pr_builder.create<mlir::func::FuncOp>( pr_module.getLoc(), "__toy_print_f64", funcType );
-                pr_printFuncF64.setVisibility( mlir::SymbolTable::Visibility::Private );
+                printOp = pr_builder.create<mlir::func::FuncOp>( pr_module.getLoc(), name, funcType );
+                printOp.setVisibility( mlir::SymbolTable::Visibility::Private );
             }
+        }
+
+        void createToyPrintF64Prototype()
+        {
+            createToyPrintPrototype( pr_printFuncF64, tyF64, "__toy_print_f64" );
         }
 
         void createToyPrintI64Prototype()
         {
-            if ( !pr_printFuncI64 )
-            {
-                useModuleInsertionPoint ip( pr_module, pr_builder );
-
-                auto funcType = mlir::FunctionType::get( pr_builder.getContext(), { tyI64 }, {} );
-                pr_printFuncI64 =
-                    pr_builder.create<mlir::func::FuncOp>( pr_module.getLoc(), "__toy_print_i64", funcType );
-                pr_printFuncI64.setVisibility( mlir::SymbolTable::Visibility::Private );
-            }
+            createToyPrintPrototype( pr_printFuncI64, tyI64, "__toy_print_i64" );
         }
 
         void createToyPrintStringPrototype()
@@ -277,6 +280,52 @@ namespace toy
                     pr_builder.create<mlir::func::FuncOp>( pr_module.getLoc(), "__toy_print_string", funcType );
                 pr_printFuncString.setVisibility( mlir::SymbolTable::Visibility::Private );
             }
+        }
+
+        template <class RetTy>
+        void createToyGetPrototype( mlir::func::FuncOp& getOp, RetTy retType, const char* name )
+        {
+            if ( !getOp )
+            {
+                useModuleInsertionPoint ip( pr_module, pr_builder );
+
+                auto funcType = mlir::FunctionType::get( pr_builder.getContext(), {},    // no arguments
+                                                         { retType }                     // single return type
+                );
+
+                getOp = pr_builder.create<mlir::func::FuncOp>( pr_module.getLoc(), name, funcType );
+                getOp.setVisibility( mlir::SymbolTable::Visibility::Private );
+            }
+        }
+
+        void createToyGetI8Prototype()
+        {
+            createToyGetPrototype( pr_getFuncI8, tyI8, "__toy_get_i8" );
+        }
+
+        void createToyGetI16Prototype()
+        {
+            createToyGetPrototype( pr_getFuncI16, tyI16, "__toy_get_i16" );
+        }
+
+        void createToyGetI32Prototype()
+        {
+            createToyGetPrototype( pr_getFuncI32, tyI32, "__toy_get_i32" );
+        }
+
+        void createToyGetI64Prototype()
+        {
+            createToyGetPrototype( pr_getFuncI64, tyI64, "__toy_get_i64" );
+        }
+
+        void createToyGetF32Prototype()
+        {
+            createToyGetPrototype( pr_getFuncF32, tyF32, "__toy_get_f32" );
+        }
+
+        void createToyGetF64Prototype()
+        {
+            createToyGetPrototype( pr_getFuncF64, tyF64, "__toy_get_f64" );
         }
 
         void createDICompileUnit()
@@ -726,6 +775,78 @@ namespace toy
             return result;
         }
 
+        toy::CallOp createGetCall( ConversionPatternRewriter& rewriter, mlir::Location loc, mlir::Type inputType )
+        {
+            const char * name = nullptr;
+
+            if ( auto inputi = mlir::dyn_cast<IntegerType>( inputType ) )
+            {
+                auto width = inputi.getWidth();
+
+                switch ( width )
+                {
+                    case 1:
+                    {
+                        assert( 0 && "BOOL get not supported yet" );
+                        break;
+                    }
+                    case 8:
+                    {
+                        name = "__toy_get_i8";
+                        createToyGetI8Prototype();
+                        break;
+                    }
+                    case 16:
+                    {
+                        name = "__toy_get_i16";
+                        createToyGetI16Prototype();
+                        break;
+                    }
+                    case 32:
+                    {
+                        name = "__toy_get_i32";
+                        createToyGetI32Prototype();
+                        break;
+                    }
+                    case 64:
+                    {
+                        name = "__toy_get_i64";
+                        createToyGetI64Prototype();
+                        break;
+                    }
+                    default:
+                    {
+                        assert( 0 && "Unexpected integer size" );
+                    }
+                }
+            }
+            else if ( auto inputf = mlir::dyn_cast<FloatType>( inputType ) )
+            {
+                if ( inputType == tyF32 )
+                {
+                    name = "__toy_get_f32";
+                    createToyGetF64Prototype();
+                }
+                else if ( inputType == tyF64 )
+                {
+                    name = "__toy_get_f64";
+                    createToyGetF64Prototype();
+                }
+                else
+                {
+                    assert( 0 && "Unexpected floating point type" );
+                }
+            }
+            else
+            {
+                assert( 0 && "Error: unsupported type" );
+            }
+
+            toy::CallOp result = rewriter.create<toy::CallOp>( loc, TypeRange{ inputType }, name, ValueRange{} );
+
+            return result;
+        }
+
         /// Emit debug info for parameter
         void constructParameterDI( mlir::FileLineColLoc loc, ConversionPatternRewriter& rewriter,
                                    const std::string& varName, mlir::LLVM::AllocaOp value, mlir::Type elemType,
@@ -877,7 +998,8 @@ namespace toy
                 unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
                 // unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
 
-                // FIXME: could pack array creation for i1 types (elemType.isInteger( 1 )).  For now, just use a separate byte for each.
+                // FIXME: could pack array creation for i1 types (elemType.isInteger( 1 )).  For now, just use a
+                // separate byte for each.
                 unsigned alignment = lState.preferredTypeAlignment( op, elemType );
 
                 mlir::Value sizeVal;
@@ -1503,6 +1625,35 @@ namespace toy
         }
     };
 
+    class GetOpLowering : public ConversionPattern
+    {
+       private:
+        loweringContext& lState;
+
+       public:
+        GetOpLowering( loweringContext& lState_, MLIRContext* context, PatternBenefit benefit )
+            : ConversionPattern( toy::GetOp::getOperationName(), benefit, context ), lState{ lState_ }
+        {
+        }
+
+        LogicalResult matchAndRewrite( Operation* op, ArrayRef<Value> operands,
+                                       ConversionPatternRewriter& rewriter ) const override
+        {
+            auto getOp = cast<toy::GetOp>( op );
+            auto loc = getOp.getLoc();
+
+            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.get: " << *op << '\n' );
+
+            mlir::Type inputType = getOp.getValue().getType();
+
+            toy::CallOp result = lState.createGetCall( rewriter, loc, inputType );
+
+            rewriter.replaceOp( op, result );
+
+            return success();
+        }
+    };
+
     // Lower toy.negate to LLVM arithmetic.
     class NegOpLowering : public ConversionPattern
     {
@@ -1764,7 +1915,7 @@ namespace toy
                 target.addLegalDialect<LLVM::LLVMDialect, toy::ToyDialect, mlir::scf::SCFDialect>();
                 target.addIllegalOp<arith::ConstantOp, toy::AddOp, toy::AndOp, toy::AssignOp, toy::DeclareOp,
                                     toy::DivOp, toy::EqualOp, toy::LessEqualOp, toy::LessOp, toy::LoadOp, toy::MulOp,
-                                    toy::NegOp, toy::NotEqualOp, toy::OrOp, toy::PrintOp, toy::StringLiteralOp,
+                                    toy::NegOp, toy::NotEqualOp, toy::OrOp, toy::PrintOp, toy::GetOp, toy::StringLiteralOp,
                                     toy::SubOp, toy::XorOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
                                   toy::ScopeOp, toy::YieldOp, toy::ReturnOp, toy::CallOp, mlir::func::CallOp,
@@ -1773,7 +1924,7 @@ namespace toy
                 RewritePatternSet patterns( &getContext() );
                 patterns.add<AddOpLowering, AndOpLowering, AssignOpLowering, ConstantOpLowering, DeclareOpLowering,
                              DivOpLowering, EqualOpLowering, LessEqualOpLowering, LessOpLowering, LoadOpLowering,
-                             MulOpLowering, NegOpLowering, NotEqualOpLowering, OrOpLowering, PrintOpLowering,
+                             MulOpLowering, NegOpLowering, NotEqualOpLowering, OrOpLowering, PrintOpLowering, GetOpLowering,
                              StringLiteralOpLowering, SubOpLowering, XorOpLowering>( lState, &getContext(), 1 );
                 arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns );
 

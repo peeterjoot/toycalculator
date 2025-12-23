@@ -8,9 +8,10 @@
 // This grammar implements a toy (calculator) language that has:
 // - a couple simple numeric operators (unary negation, binary +-*/),
 // - an exit operation,
-// - a declare operation, and typed declare operations (INT8, INT16, INT32, INT64, FLOAT32, FLOAT64, BOOL)
-// - an assignment operation, and
-// - a print operation.
+// - a declare operation, and typed declare operations (INT8, INT16, INT32, INT64, FLOAT32, FLOAT64, BOOL), plus array variants
+// - an assignment operation,
+// - a print operation, and
+// - a get operation.
 grammar Toy;
 
 // Parser Rules (start with lower case)
@@ -22,7 +23,7 @@ startRule
 
 // A statement can be a declaration, assignment, print, or comment.
 statement
-  : (call | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print) ENDOFSTATEMENT_TOKEN
+  : (call | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print | get) ENDOFSTATEMENT_TOKEN
   ;
 
 ifelifelse
@@ -103,6 +104,11 @@ returnStatement
 // A print statement that outputs a variable (e.g., 'PRINT x;').
 print
   : PRINT_TOKEN (scalarOrArrayElement | STRING_PATTERN)
+  ;
+
+// A get statement that inputs into a scalar variable (e.g., 'GET x;', 'GET x[1]').
+get
+  : GET_TOKEN scalarOrArrayElement
   ;
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
@@ -401,6 +407,11 @@ DECLARE_TOKEN
 // Matches the 'PRINT' keyword for print statements.
 PRINT_TOKEN
   : 'PRINT'
+  ;
+
+// Matches the 'GET' keyword for get statements.
+GET_TOKEN
+  : 'GET'
   ;
 
 // Matches the 'EXIT' keyword for print statements.
