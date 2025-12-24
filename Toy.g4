@@ -21,9 +21,9 @@ startRule
   : (statement|comment)* (exitStatement ENDOFSTATEMENT_TOKEN)? comment* EOF
   ;
 
-// A statement can be a declaration, assignment, print, or comment.
+// A statement can be a declaration, assignment, print, get, if, for, comment.
 statement
-  : (call | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print | get) ENDOFSTATEMENT_TOKEN
+  : (call | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print | get | for) ENDOFSTATEMENT_TOKEN
   ;
 
 ifelifelse
@@ -46,7 +46,7 @@ elseStatement
 
 // For now both return and parameters, can only be scalar types.
 function
-  : FUNCTION_TOKEN IDENTIFIER BRACE_START_TOKEN (parameterTypeAndName (COMMA_TOKEN parameterTypeAndName)*)? BRACE_END_TOKEN (COLON_TOKEN scalarType)? SCOPE_START_TOKEN statement* returnStatement ENDOFSTATEMENT_TOKEN SCOPE_END_TOKEN
+  : FUNCTION_TOKEN IDENTIFIER BRACE_START_TOKEN (variableTypeAndName (COMMA_TOKEN variableTypeAndName)*)? BRACE_END_TOKEN (COLON_TOKEN scalarType)? SCOPE_START_TOKEN statement* returnStatement ENDOFSTATEMENT_TOKEN SCOPE_END_TOKEN
   ;
 
 booleanValue
@@ -67,7 +67,36 @@ boolDeclare
   : BOOL_TOKEN IDENTIFIER (arrayBoundsExpression)?
   ;
 
-parameterTypeAndName
+// FOR ( x : (1, 10) ) { PRINT x; };
+// FOR ( x : (1, 10, 2) ) { PRINT x; };
+//
+// respectively equivalent to:
+//
+// for ( x = 1 ; x <= 10 ; x += 1 ) { ... }
+// for ( x = 1 ; x <= 10 ; x += 2 ) { ... }
+for
+  : FOR_TOKEN
+    BRACE_START_TOKEN IDENTIFIER COLON_TOKEN
+        BRACE_START_TOKEN
+            forStart COMMA_TOKEN forEnd (COMMA_TOKEN forStep)?
+        BRACE_END_TOKEN
+    BRACE_END_TOKEN
+    SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
+  ;
+
+forStart
+  : parameter
+  ;
+
+forEnd
+  : parameter
+  ;
+
+forStep
+  : parameter
+  ;
+
+variableTypeAndName
   //: IDENTIFIER COLON_TOKEN scalarType
   : scalarType IDENTIFIER
   ;
@@ -377,6 +406,10 @@ FLOAT64_TOKEN
 // Boolean tokens:
 BOOL_TOKEN
   : 'BOOL'
+  ;
+
+FOR_TOKEN
+  : 'FOR'
   ;
 
 IF_TOKEN

@@ -658,7 +658,7 @@ namespace toy
 
         std::vector<mlir::Type> paramTypes;
         std::vector<mlir::DictionaryAttr> paramAttrs;
-        for ( auto *paramCtx : ctx->parameterTypeAndName() )
+        for ( auto *paramCtx : ctx->variableTypeAndName() )
         {
             auto paramType = parseScalarType( paramCtx->scalarType()->getText() );
             auto paramName = paramCtx->IDENTIFIER()->getText();

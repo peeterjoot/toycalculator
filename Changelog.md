@@ -6,6 +6,30 @@
 * GetOp: Grammar, builder, runtime, and prototype generator helper functions for lowering, and lowering implementation.  Supports BOOL, INT8, INT16, INT32, INT64, FLOAT32, FLOAT64.
 * Add test case coverage for each supported type.
 
+### 2. For statement support (WIP -- just grammar so far).
+
+Example syntax:
+
+```
+    FOR ( x : (1, 10) )
+    {
+        PRINT x;
+    };
+
+    FOR ( x : (1, 10, 2) )
+    {
+        PRINT x;
+    };
+```
+
+these are equivalent, respectively, to C for loops like:
+
+```
+    for ( x = 1 ; x <= 10 ; x += 1 ) { ... }
+
+    for ( x = 1 ; x <= 10 ; x += 2 ) { ... }
+```
+
 ## tag: V5 (Dec 22, 2025)
 
 The language now supports functions, calls, parameters, returns, and basic conditional blocks.
