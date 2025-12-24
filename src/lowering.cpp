@@ -1936,7 +1936,7 @@ namespace toy
                                     toy::StringLiteralOp, toy::SubOp, toy::XorOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
                                   toy::ScopeOp, toy::YieldOp, toy::ReturnOp, toy::CallOp, mlir::func::CallOp,
-                                  mlir::scf::IfOp, mlir::scf::YieldOp>();
+                                  mlir::scf::IfOp, mlir::scf::ForOp, mlir::scf::YieldOp>();
 
                 RewritePatternSet patterns( &getContext() );
                 patterns.add<AddOpLowering, AndOpLowering, AssignOpLowering, ConstantOpLowering, DeclareOpLowering,
@@ -1973,6 +1973,8 @@ namespace toy
 
                 // SCF -> CF
                 mlir::populateSCFToControlFlowConversionPatterns( patterns );
+
+                arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns );
 
                 // CF -> LLVM
                 mlir::cf::populateControlFlowToLLVMConversionPatterns( lState.typeConverter, patterns );

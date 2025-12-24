@@ -67,8 +67,8 @@ boolDeclare
   : BOOL_TOKEN IDENTIFIER (arrayBoundsExpression)?
   ;
 
-// FOR ( x : (1, 10) ) { PRINT x; };
-// FOR ( x : (1, 10, 2) ) { PRINT x; };
+// FOR ( x : (1, 11) ) { PRINT x; };
+// FOR ( x : (1, 11, 2) ) { PRINT x; };
 //
 // respectively equivalent to:
 //

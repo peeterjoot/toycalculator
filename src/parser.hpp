@@ -263,6 +263,10 @@ namespace toy
 
         void enterGet( ToyParser::GetContext *ctx ) override;
 
+        void enterFor( ToyParser::ForContext *ctx ) override;
+
+        void exitFor( ToyParser::ForContext *ctx ) override;
+
         void enterAssignment( ToyParser::AssignmentContext *ctx ) override;
 
         void exitAssignment( ToyParser::AssignmentContext *ctx ) override;

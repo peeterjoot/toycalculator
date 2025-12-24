@@ -285,17 +285,19 @@ namespace toy
 
             mlir::Value indexValue = mlir::Value();
 
-            if ( ToyParser::IndexExpressionContext * indexExpr = scalarOrArrayElement->indexExpression() ) {
+            if ( ToyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
+            {
                 std::string s;
-                buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr, loc, indexValue,
-                                      s );
+                buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr,
+                                      loc, indexValue, s );
                 assert( s.length() == 0 );
 
                 auto i = indexTypeCast( loc, indexValue );
 
                 value = builder.create<toy::LoadOp>( loc, varType, symRef, i );
             }
-            else {
+            else
+            {
                 value = builder.create<toy::LoadOp>( loc, varType, symRef, mlir::Value() );
             }
         }
@@ -920,6 +922,103 @@ namespace toy
         // LLVM_DEBUG( { llvm::errs() << "exitElseStatement module dump:\n"; mod->dump(); } );
     }
 
+    void MLIRListener::enterFor( ToyParser::ForContext *ctx )
+    {
+        auto loc = getLocation( ctx, true );
+        mainFirstTime( loc );
+        setLastLoc( loc );
+
+        LLVM_DEBUG( { llvm::errs() << std::format( "For: {}\n", ctx->getText() ); } );
+
+        assert( ctx->forStart() );
+        assert( ctx->forEnd() );
+        ToyParser::ParameterContext *pStart = ctx->forStart()->parameter();
+        ToyParser::ParameterContext *pEnd = ctx->forEnd()->parameter();
+        ToyParser::ParameterContext *pStep{};
+        if ( auto st = ctx->forStep() )
+        {
+            pStep = st->parameter();
+        }
+
+        mlir::Value start;
+        mlir::Value end;
+        mlir::Value step;
+
+        if ( pStart )
+        {
+            auto lit = pStart->literal();
+            std::string s;
+            buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                  lit ? lit->FLOAT_PATTERN() : nullptr, pStart->scalarOrArrayElement(),
+                                  lit ? lit->STRING_PATTERN() : nullptr, loc, start, s );
+            assert( s.length() == 0 );
+        }
+        else
+        {
+            assert( 0 );
+        }
+
+        if ( pEnd )
+        {
+            auto lit = pEnd->literal();
+            std::string s;
+            buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                  lit ? lit->FLOAT_PATTERN() : nullptr, pEnd->scalarOrArrayElement(),
+                                  lit ? lit->STRING_PATTERN() : nullptr, loc, end, s );
+            assert( s.length() == 0 );
+        }
+        else
+        {
+            assert( 0 );
+        }
+
+        if ( pStep )
+        {
+            auto lit = pStep->literal();
+            std::string s;
+            buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+                                  lit ? lit->FLOAT_PATTERN() : nullptr, pStep->scalarOrArrayElement(),
+                                  lit ? lit->STRING_PATTERN() : nullptr, loc, step, s );
+            assert( s.length() == 0 );
+        } else {
+            //'scf.for' op failed to verify that all of {lowerBound, upperBound, step} have same type
+            //step = builder.create<mlir::arith::ConstantIndexOp>(loc, 1);
+            step = builder.create<mlir::arith::ConstantIntOp>( loc, 1, 64 );
+        }
+
+        insertionPointStack.push_back( builder.saveInsertionPoint() );
+
+        // Create the scf.if — it will be inserted at the current IP
+        auto forOp = builder.create<mlir::scf::ForOp>( loc, start, end, step);
+
+        mlir::Block &loopBody = forOp.getRegion().front();
+        builder.setInsertionPointToStart( &loopBody );
+
+        // emit an assignment to the variable as the first statement in the loop body, so that any existing references to that will work as-is:
+        auto varName = ctx->IDENTIFIER()->getText();
+        auto varState = getVarState( varName );
+        if ( varState == variable_state::undeclared )
+        {
+            throw exception_with_context(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}error: Variable {} not declared in PRINT\n", formatLocation( loc ), varName ) );
+        }
+
+        auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+        mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
+
+        mlir::Value inductionVar = loopBody.getArgument(0);
+        builder.create<toy::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ inductionVar },
+                                               llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+        setVarState( currentFuncName, varName, variable_state::assigned );
+    }
+
+    void MLIRListener::exitFor( ToyParser::ForContext *ctx )
+    {
+        builder.restoreInsertionPoint( insertionPointStack.back() );
+        insertionPointStack.pop_back();
+    }
+
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
     {
         auto loc = getLocation( ctx );
@@ -972,10 +1071,12 @@ namespace toy
 
             mlir::Type elemType = declareOp.getTypeAttr().getValue();
             mlir::Value optIndexValue{};
-            if ( ToyParser::IndexExpressionContext * indexExpr = scalarOrArrayElement->indexExpression() ) {
+            if ( ToyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
+            {
                 std::string s;
                 mlir::Value indexValue{};
-                buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr, loc, indexValue, s );
+                buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr,
+                                      loc, indexValue, s );
                 assert( s.length() == 0 );
 
                 optIndexValue = indexTypeCast( loc, indexValue );
@@ -1036,19 +1137,21 @@ namespace toy
 
             mlir::Type elemType = declareOp.getTypeAttr().getValue();
             mlir::Value optIndexValue{};
-            if ( ToyParser::IndexExpressionContext * indexExpr = scalarOrArrayElement->indexExpression() ) {
+            if ( ToyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
+            {
                 std::string s;
                 mlir::Value indexValue{};
-                buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr, loc, indexValue, s );
+                buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr,
+                                      loc, indexValue, s );
                 assert( s.length() == 0 );
 
                 optIndexValue = indexTypeCast( loc, indexValue );
             }
             else if ( declareOp.getSizeAttr() )
             {
-                throw exception_with_context(
-                    __FILE__, __LINE__, __func__,
-                    std::format( "{}error: attempted GET to string literal?{}\n", formatLocation( loc ), ctx->getText() ) );
+                throw exception_with_context( __FILE__, __LINE__, __func__,
+                                              std::format( "{}error: attempted GET to string literal?{}\n",
+                                                           formatLocation( loc ), ctx->getText() ) );
             }
             else
             {

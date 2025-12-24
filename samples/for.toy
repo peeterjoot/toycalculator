@@ -1,12 +1,11 @@
 INT32 x;
-x = 0;
 
-FOR ( x : (1, 10) )
+FOR ( x : (1, 11) )
 {
     PRINT x;
 };
 
-FOR ( x : (1, 10, 2) )
+FOR ( x : (1, 11, 2) )
 {
     PRINT x;
 };

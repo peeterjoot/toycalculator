@@ -40,8 +40,9 @@ That initial implementation has evolved into a toy language and its compiler, wh
 * A `STRING` type as an alias for `INT8` arrays, with string literal assignment and `PRINT` implemented.
 * User-defined functions. Calls use the form `CALL function_name(p1, p2)` or with assignment `x = CALL function_name(p1, p2)`. Declarations use: `FUNCTION foo(type name, type name, ...) : RETURN-type { ... ; RETURN v; };` (where : `RETURN-type` is optional).
 * `IF`/`ELSE` statement support. The grammar includes an `ELIF` construct, but it is not yet implemented. Logical operators (`AND`, `OR`, `XOR`) are not supported in predicates (only comparisons like `<`, `>`, `<=`, `>=`, etc.). Complex predicates (e.g., `(a < b) AND (c < d)`) are not supported. Nested `IF`s are untested and may or may not work.
+* A `FOR` loop (supporting start, end, and step-size params, and requiring a previously defined variable for the loop induction variable.)
 
-I plan to add further language elements to make it more interesting. The most significant missing feature at this point is loops.
+There is lots of room to add add further language elements to make the compiler and language more interesting.  Some ideas for improvements (as well as bug fixes) can be found in TODO.md
 
 ## Language Quirks.
 
