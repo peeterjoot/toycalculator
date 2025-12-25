@@ -930,6 +930,18 @@ namespace toy
 
         LLVM_DEBUG( { llvm::errs() << std::format( "For: {}\n", ctx->getText() ); } );
 
+        auto varName = ctx->IDENTIFIER()->getText();
+        auto varState = getVarState( varName );
+        if ( varState == variable_state::undeclared )
+        {
+            throw exception_with_context(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}error: Variable {} not declared in PRINT\n", formatLocation( loc ), varName ) );
+        }
+
+        auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+        mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
+
         assert( ctx->forStart() );
         assert( ctx->forEnd() );
         ToyParser::ParameterContext *pStart = ctx->forStart()->parameter();
@@ -944,6 +956,9 @@ namespace toy
         mlir::Value end;
         mlir::Value step;
 
+        auto declareOp = lookupDeclareForVar( varName );
+        mlir::Type elemType = declareOp.getTypeAttr().getValue();
+
         if ( pStart )
         {
             auto lit = pStart->literal();
@@ -952,6 +967,8 @@ namespace toy
                                   lit ? lit->FLOAT_PATTERN() : nullptr, pStart->scalarOrArrayElement(),
                                   lit ? lit->STRING_PATTERN() : nullptr, loc, start, s );
             assert( s.length() == 0 );
+
+            start = castOpIfRequired( loc, start, elemType );
         }
         else
         {
@@ -966,6 +983,8 @@ namespace toy
                                   lit ? lit->FLOAT_PATTERN() : nullptr, pEnd->scalarOrArrayElement(),
                                   lit ? lit->STRING_PATTERN() : nullptr, loc, end, s );
             assert( s.length() == 0 );
+
+            end = castOpIfRequired( loc, end, elemType );
         }
         else
         {
@@ -986,6 +1005,8 @@ namespace toy
             step = builder.create<mlir::arith::ConstantIntOp>( loc, 1, 64 );
         }
 
+        step = castOpIfRequired( loc, step, elemType );
+
         insertionPointStack.push_back( builder.saveInsertionPoint() );
 
         // Create the scf.if — it will be inserted at the current IP
@@ -995,18 +1016,6 @@ namespace toy
         builder.setInsertionPointToStart( &loopBody );
 
         // emit an assignment to the variable as the first statement in the loop body, so that any existing references to that will work as-is:
-        auto varName = ctx->IDENTIFIER()->getText();
-        auto varState = getVarState( varName );
-        if ( varState == variable_state::undeclared )
-        {
-            throw exception_with_context(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}error: Variable {} not declared in PRINT\n", formatLocation( loc ), varName ) );
-        }
-
-        auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
-        mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
-
         mlir::Value inductionVar = loopBody.getArgument(0);
         builder.create<toy::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ inductionVar },
                                                llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
