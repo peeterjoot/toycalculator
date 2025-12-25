@@ -203,6 +203,27 @@ With optimization, the loops end up fully unrolled:
  
 (which surprised me slightly, but the unrolling is "only" a 2x increase in code size, so I guess it's in the allowable range.)
 
+### 3. Temp switcheroo of the insertion point for all dcls to the begining of the enclosing scopeop.
+
+This fixes ifdcl.toy:
+
+```
+INT32 x;
+
+x = 3;
+
+IF ( x < 4 )
+{
+  INT32 y;
+  y = 42;
+  PRINT y;
+};
+
+PRINT "Done.";
+```
+
+which previously failed with y not declared at the assignment point (since the declaration needs the symbol table, which is associated with the ScopeOp)
+
 ## tag: V5 (Dec 22, 2025)
 
 The language now supports functions, calls, parameters, returns, and basic conditional blocks.

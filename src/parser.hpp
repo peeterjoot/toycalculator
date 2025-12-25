@@ -225,6 +225,8 @@ namespace toy
             return mod;
         }
 
+        toy::ScopeOp getEnclosingScopeOp( mlir::func::FuncOp funcOp ) const;
+
         template <class Literal>
         void processReturnLike( mlir::Location loc, Literal *lit,
                                 ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *boolNode );

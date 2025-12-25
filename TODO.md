@@ -1,10 +1,7 @@
 ## TODO
 
-* for loop implementation will not work when the bounds types aren't i64 (implicitly or explicitly).  They must match, and some sort
-  of casting logic will be required to ensure consistency (should use the type of the induction variable.)
 * should implement a break-like keyword for the FOR loop.  That would allow for a "poor man's while", with an effectively infinite very large loop bound.
-* Symbol insertion when outside of a scope isn't working: ifdcl.toy -- find enclosing toy.scope and do symbol resolution there?  Probably also doesn't work in FOR.
-* Test a whole range of statements in if-then and if-else blocks (dcl, assignment, call, ...)
+* Test a whole range of statements in IF-then and if-ELSE blocks, and FOR (dcl, assignment, call, ...)
 
 ----------------------------------
 

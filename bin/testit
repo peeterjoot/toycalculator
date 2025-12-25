@@ -139,6 +139,7 @@ get
 getbool
 getboolfail
 if
+ifdcl
 intarray
 lessbug
 lessbug2

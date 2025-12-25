@@ -35,30 +35,27 @@ namespace toy
         context.getOrLoadDialect<mlir::scf::SCFDialect>();
     }
 
+    toy::ScopeOp MLIRListener::getEnclosingScopeOp( mlir::func::FuncOp funcOp ) const
+    {
+        assert( funcOp );
+        // Single ScopeOp per function – iterate once to find it
+        for ( auto &op : funcOp.getBody().front() )
+        {
+            if ( auto scopeOp = dyn_cast<toy::ScopeOp>( &op ) )
+            {
+                return scopeOp;
+            }
+        }
+        return nullptr;
+    }
+
     toy::DeclareOp MLIRListener::lookupDeclareForVar( const std::string &varName )
     {
         mlir::func::FuncOp funcOp = getFuncOp( currentFuncName );
 
-        // Get the single block in the func::FuncOp's region
-        auto &funcBlock = funcOp.getBody().front();
-
-        toy::ScopeOp scopeOp{};
-        for ( auto &op : funcBlock )
-        {
-            if ( mlir::isa<toy::ScopeOp>( &op ) )
-            {
-                scopeOp = mlir::dyn_cast<toy::ScopeOp>( &op );
-#if 0
-                LLVM_DEBUG({
-                    llvm::errs() << std::format("Found toy::ScopeOp while looking for symbol {}\n", varName);
-                    scopeOp.dump();
-                });
-#endif
-                break;
-            }
-        }
-
+        toy::ScopeOp scopeOp = getEnclosingScopeOp( funcOp );
         assert( scopeOp );
+
         LLVM_DEBUG( {
             llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
             scopeOp->dump();
@@ -333,20 +330,38 @@ namespace toy
             arraySize = std::stoi( index->getText() );
         }
 
+        auto savedIP = builder.saveInsertionPoint();
+
+        // Get the single scope
+        mlir::func::FuncOp funcOp = getFuncOp( currentFuncName );
+
+        toy::ScopeOp scopeOp = getEnclosingScopeOp( funcOp );
+        assert( scopeOp );
+
+        // Scope has one block
+        mlir::Block *scopeBlock = &scopeOp.getBody().front();
+
+        // Insert declarations at the beginning of the scope block
+        // (all DeclareOps should appear before any scf.if/scf.for)
+        builder.setInsertionPointToStart(scopeBlock);
+
         auto strAttr = builder.getStringAttr( varName );
+        toy::DeclareOp dcl;
         if ( arraySize )
         {
             auto sizeAttr = builder.getI64IntegerAttr( arraySize );
-            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), sizeAttr, /*parameter=*/nullptr,
+            dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), sizeAttr, /*parameter=*/nullptr,
                                                        nullptr );
-            dcl->setAttr( "sym_name", strAttr );
         }
         else
         {
-            auto dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr, /*parameter=*/nullptr,
+            dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr, /*parameter=*/nullptr,
                                                        nullptr );
-            dcl->setAttr( "sym_name", strAttr );
         }
+        dcl->setAttr( "sym_name", strAttr );
+
+        // Restore original insertion point
+        builder.restoreInsertionPoint(savedIP);
 
         // For test purposes to verify that symbol lookup for varName worked right after the DeclareOp build call:
         // auto ddcl = lookupDeclareForVar( varName );
@@ -999,9 +1014,11 @@ namespace toy
                                   lit ? lit->FLOAT_PATTERN() : nullptr, pStep->scalarOrArrayElement(),
                                   lit ? lit->STRING_PATTERN() : nullptr, loc, step, s );
             assert( s.length() == 0 );
-        } else {
+        }
+        else
+        {
             //'scf.for' op failed to verify that all of {lowerBound, upperBound, step} have same type
-            //step = builder.create<mlir::arith::ConstantIndexOp>(loc, 1);
+            // step = builder.create<mlir::arith::ConstantIndexOp>(loc, 1);
             step = builder.create<mlir::arith::ConstantIntOp>( loc, 1, 64 );
         }
 
@@ -1010,15 +1027,16 @@ namespace toy
         insertionPointStack.push_back( builder.saveInsertionPoint() );
 
         // Create the scf.if — it will be inserted at the current IP
-        auto forOp = builder.create<mlir::scf::ForOp>( loc, start, end, step);
+        auto forOp = builder.create<mlir::scf::ForOp>( loc, start, end, step );
 
         mlir::Block &loopBody = forOp.getRegion().front();
         builder.setInsertionPointToStart( &loopBody );
 
-        // emit an assignment to the variable as the first statement in the loop body, so that any existing references to that will work as-is:
-        mlir::Value inductionVar = loopBody.getArgument(0);
+        // emit an assignment to the variable as the first statement in the loop body, so that any existing references
+        // to that will work as-is:
+        mlir::Value inductionVar = loopBody.getArgument( 0 );
         builder.create<toy::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ inductionVar },
-                                               llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+                                       llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
         setVarState( currentFuncName, varName, variable_state::assigned );
     }
 
