@@ -1,10 +1,39 @@
 ## TODO
 
-* should implement a break-like keyword for the FOR loop.  That would allow for a "poor man's while", with an effectively infinite very large loop bound.
 * Test a whole range of statements in IF-then and if-ELSE blocks, and FOR (dcl, assignment, call, ...)
 
 ----------------------------------
+* Clean up error handling, assertions, ... --- it's a total mess.
+* Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
+* grok suggests:
 
+```cpp
+class syntax_error_exception : public exception_with_context
+{
+public:
+    syntax_error_exception(const char *file, int line, const char *func, const std::string &msg)
+        : exception_with_context(file, line, func, msg) {}
+};
+```
+
+and `return_codes` specialization:
+
+```cpp
+enum class return_codes : int
+{
+    success,          // 0
+    cannot_open_file, // 1
+    semantic_error,   // 2
+    syntax_error,     // 3
+    unknown_error     // 4
+};
+```
+
+(vs. `unknown_error` which is returned for everything now.)
+
+----------------------------------
+
+* Should implement a break-like keyword for the FOR loop.  That would allow for a "poor man's while", with an effectively infinite very large loop bound.
 * GET into a BOOL should logically support TRUE/FALSE values, and not just 0/1.
 * Write a MLIR walker to see how to answer code questions about a given program.
 * MLIR has considerable capability for semantic checking, but I'm not exploiting that here, and have very little in custom verifiers.
@@ -59,33 +88,6 @@
 * allow return at other places in a function to the function prematurely.
 
 * Switch to CamelCase uniformly.
-* Error handling is pschizophrenic, in parser and elsewhere, mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
-* grok suggests:
-
-```cpp
-class syntax_error_exception : public exception_with_context
-{
-public:
-    syntax_error_exception(const char *file, int line, const char *func, const std::string &msg)
-        : exception_with_context(file, line, func, msg) {}
-};
-```
-
-and `return_codes` specialization:
-
-```cpp
-enum class return_codes : int
-{
-    success,          // 0
-    cannot_open_file, // 1
-    semantic_error,   // 2
-    syntax_error,     // 3
-    unknown_error     // 4
-};
-```
-
-(vs. `unknown_error` which is returned for everything now.)
-
 * string literal tests for edge cases: shortstring.toy: two bugs unresolved.
 * arrays:
     - implement runtime bounds checking (make it a compiler option?)
