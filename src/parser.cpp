@@ -118,16 +118,10 @@ namespace toy
         size_t col = 0;
         if ( ctx )
         {
-            if ( useStopLocation )
-            {
-                line = ctx->getStop()->getLine();
-                col = ctx->getStop()->getCharPositionInLine();
-            }
-            else
-            {
-                line = ctx->getStart()->getLine();
-                col = ctx->getStart()->getCharPositionInLine();
-            }
+            antlr4::Token * tok = useStopLocation ? ctx->getStop() : ctx->getStart();
+            assert(tok);
+            line = tok->getLine();
+            col = tok->getCharPositionInLine();
         }
 
         auto loc = mlir::FileLineColLoc::get( builder.getStringAttr( filename ), line, col + 1 );
@@ -164,6 +158,7 @@ namespace toy
         if ( arrayBounds )
         {
             auto index = arrayBounds->INTEGER_PATTERN();
+            assert(index);
             arraySize = std::stoi( index->getText() );
         }
 
@@ -245,6 +240,7 @@ namespace toy
         else if ( scalarOrArrayElement )
         {
             tNode *variableNode = scalarOrArrayElement->IDENTIFIER();
+            assert(variableNode);
             auto varName = variableNode->getText();
 
             auto varState = getVarState( varName );
@@ -522,6 +518,7 @@ namespace toy
 
     void MLIRListener::enterStartRule( ToyParser::StartRuleContext *ctx )
     {
+        assert(ctx);
         currentFuncName = ENTRY_SYMBOL_NAME;
         auto loc = getLocation( ctx );
         setLastLoc( loc );
@@ -529,6 +526,7 @@ namespace toy
 
     void MLIRListener::exitStartRule( ToyParser::StartRuleContext *ctx )
     {
+        assert(ctx);
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
 
@@ -547,12 +545,14 @@ namespace toy
 
     void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
     {
+        assert(ctx);
         auto loc = getLocation( ctx );
 
         mainIP = builder.saveInsertionPoint();
 
         builder.setInsertionPointToStart( mod.getBody() );
 
+        assert(ctx->IDENTIFIER());
         std::string funcName = ctx->IDENTIFIER()->getText();
 
         std::vector<mlir::Type> returns;
@@ -566,7 +566,9 @@ namespace toy
         std::vector<std::string> paramNames;
         for ( auto *paramCtx : ctx->variableTypeAndName() )
         {
+            assert(paramCtx->scalarType());
             auto paramType = parseScalarType( paramCtx->scalarType()->getText() );
+            assert(paramCtx->IDENTIFIER());
             auto paramName = paramCtx->IDENTIFIER()->getText();
             paramTypes.push_back( paramType );
             paramNames.push_back( paramName );
@@ -586,6 +588,7 @@ namespace toy
 
     void MLIRListener::exitFunction( ToyParser::FunctionContext *ctx )
     {
+        assert(ctx);
         auto lastLoc = getLastLoc();
 
         // This is in case the grammar enforcement of a RETURN at end of FUNCTION is removed (which would make sense,
@@ -652,6 +655,7 @@ namespace toy
 
     void MLIRListener::enterCall( ToyParser::CallContext *ctx )
     {
+        assert(ctx);
         if ( callIsHandled )
             return;
 
@@ -664,9 +668,11 @@ namespace toy
 
     void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
     {
+        assert(ctx);
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
         setLastLoc( loc );
+        assert(ctx->IDENTIFIER());
         auto varName = ctx->IDENTIFIER()->getText();
 
         registerDeclaration( loc, varName, tyF64, ctx->arrayBoundsExpression() );
@@ -674,6 +680,7 @@ namespace toy
 
     void MLIRListener::enterBoolDeclare( ToyParser::BoolDeclareContext *ctx )
     {
+        assert(ctx);
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
         setLastLoc( loc );
@@ -683,9 +690,11 @@ namespace toy
 
     void MLIRListener::enterIntDeclare( ToyParser::IntDeclareContext *ctx )
     {
+        assert(ctx);
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
         setLastLoc( loc );
+        assert(ctx->IDENTIFIER());
         auto varName = ctx->IDENTIFIER()->getText();
 
         if ( ctx->INT8_TOKEN() )
@@ -713,9 +722,11 @@ namespace toy
 
     void MLIRListener::enterFloatDeclare( ToyParser::FloatDeclareContext *ctx )
     {
+        assert(ctx);
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
         setLastLoc( loc );
+        assert(ctx->IDENTIFIER());
         auto varName = ctx->IDENTIFIER()->getText();
 
         if ( ctx->FLOAT32_TOKEN() )
@@ -735,9 +746,11 @@ namespace toy
 
     void MLIRListener::enterStringDeclare( ToyParser::StringDeclareContext *ctx )
     {
+        assert(ctx);
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
         setLastLoc( loc );
+        assert(ctx->IDENTIFIER());
         auto varName = ctx->IDENTIFIER()->getText();
         ToyParser::ArrayBoundsExpressionContext *arrayBounds = ctx->arrayBoundsExpression();
         assert( arrayBounds );
@@ -754,6 +767,7 @@ namespace toy
 
         mlir::Value conditionPredicate{};
 
+        assert(booleanValue);
         if ( auto boolElement = booleanValue->booleanElement() )
         {
             std::string s;
@@ -776,7 +790,9 @@ namespace toy
                 mlir::Value lhsValue;
                 mlir::Value rhsValue;
                 auto lhs = operands[0];
+                assert(lhs);
                 auto rhs = operands[1];
+                assert(rhs);
 
                 auto llit = lhs->numericLiteral();
                 buildUnaryExpression( loc, nullptr,    // booleanNode
@@ -794,7 +810,9 @@ namespace toy
                                       rhsValue, s );
                 assert( s.length() == 0 );
 
+                assert(booleanValue);
                 auto op = booleanValue->predicateOperator();
+                assert(op);
                 if ( op->LESSTHAN_TOKEN() )
                 {
                     conditionPredicate = builder.create<toy::LessOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
@@ -845,11 +863,14 @@ namespace toy
 
     void MLIRListener::enterIfelifelse( ToyParser::IfelifelseContext *ctx )
     {
+        assert(ctx);
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
 
         auto theIf = ctx->ifStatement();
+        assert(theIf);
         ToyParser::BooleanValueContext *booleanValue = theIf->booleanValue();
+        assert(booleanValue);
 
         LLVM_DEBUG( {
             auto statements = theIf->statement();
@@ -874,11 +895,13 @@ namespace toy
 
     void MLIRListener::exitIfStatement( ToyParser::IfStatementContext *ctx )
     {
+        assert(ctx);
         auto loc = getLocation( ctx );
         // All statements in the if-body have now been processed by their own enter/exit callbacks, accumulated
         // into an scf.if then region.
 
         antlr4::tree::ParseTree *parent = ctx->parent;
+        assert(parent);
         auto *ifElifElse = dynamic_cast<ToyParser::IfelifelseContext *>( parent );
 
         if ( !ifElifElse )
@@ -905,6 +928,7 @@ namespace toy
 
             // Now find the scf.if op that is just before the current insertion point
             mlir::Block *currentBlock = builder.getInsertionBlock();
+            assert(currentBlock);
             auto ip = builder.getInsertionPoint();
 
             // The insertion point is at the position where new ops would be inserted.
@@ -914,16 +938,6 @@ namespace toy
                 auto *prevOp = &*( --ip );    // the op immediately before the insertion point
                 ifOp = dyn_cast<mlir::scf::IfOp>( prevOp );
             }
-
-#if 0    // needed?
-         // Fallback: search backwards in the block if needed
-            if (!ifOp) {
-                for (auto &op : llvm::reverse(*currentBlock)) {
-                    ifOp = dyn_cast<mlir::scf::IfOp>(&op);
-                    if (ifOp) break;
-                }
-            }
-#endif
 
             assert( ifOp && "Could not find scf.if op corresponding to this if statement" );
 
@@ -948,6 +962,7 @@ namespace toy
 
     void MLIRListener::exitElseStatement( ToyParser::ElseStatementContext *ctx )
     {
+        assert(ctx);
         auto loc = getLocation( ctx, true );
         builder.create<mlir::scf::YieldOp>( loc );
 
@@ -959,12 +974,14 @@ namespace toy
 
     void MLIRListener::enterFor( ToyParser::ForContext *ctx )
     {
+        assert(ctx);
         auto loc = getLocation( ctx, true );
         mainFirstTime( loc );
         setLastLoc( loc );
 
         LLVM_DEBUG( { llvm::errs() << std::format( "For: {}\n", ctx->getText() ); } );
 
+        assert(ctx->IDENTIFIER());
         auto varName = ctx->IDENTIFIER()->getText();
         auto varState = getVarState( varName );
         if ( varState == variable_state::undeclared )
@@ -1062,12 +1079,14 @@ namespace toy
 
     void MLIRListener::exitFor( ToyParser::ForContext *ctx )
     {
+        assert(ctx);
         builder.restoreInsertionPoint( insertionPointStack.back() );
         insertionPointStack.pop_back();
     }
 
     void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
     {
+        assert(ctx);
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
         setLastLoc( loc );
@@ -1099,6 +1118,7 @@ namespace toy
         if ( scalarOrArrayElement )
         {
             auto varNameObject = scalarOrArrayElement->IDENTIFIER();
+            assert(varNameObject);
             auto varName = varNameObject->getText();
             auto varState = getVarState( varName );
             if ( varState == variable_state::undeclared )
@@ -1146,6 +1166,7 @@ namespace toy
         }
         else if ( auto theString = ctx->STRING_PATTERN() )
         {
+            assert(theString);
             auto s = stripQuotes( loc, theString->getText() );
             auto strAttr = builder.getStringAttr( s );
 
@@ -1163,6 +1184,7 @@ namespace toy
 
     void MLIRListener::enterGet( ToyParser::GetContext *ctx )
     {
+        assert(ctx);
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
         setLastLoc( loc );
@@ -1171,6 +1193,7 @@ namespace toy
         if ( scalarOrArrayElement )
         {
             auto varNameObject = scalarOrArrayElement->IDENTIFIER();
+            assert(varNameObject);
             auto varName = varNameObject->getText();
             auto varState = getVarState( varName );
             if ( varState == variable_state::undeclared )
@@ -1295,8 +1318,10 @@ namespace toy
     {
         // Handle the dummy ReturnOp originally inserted in the FuncOp's block
         auto *currentBlock = builder.getInsertionBlock();
+        assert(currentBlock);
         assert( !currentBlock->empty() );
         auto *parentOp = currentBlock->getParentOp();
+        assert(parentOp);
         if ( !isa<toy::ScopeOp>( parentOp ) )
         {
             throw exception_with_context(
@@ -1311,6 +1336,7 @@ namespace toy
 
         // Erase existing toy::ReturnOp and its constant
         mlir::Operation *existingExit = currentBlock->getTerminator();
+        assert(existingExit);
         mlir::Operation *constantOp{};
         if ( existingExit->getNumOperands() > 0 )
         {
@@ -1394,6 +1420,7 @@ namespace toy
 
     void MLIRListener::enterReturnStatement( ToyParser::ReturnStatementContext *ctx )
     {
+        assert(ctx);
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
         setLastLoc( loc );
@@ -1405,6 +1432,7 @@ namespace toy
 
     void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )
     {
+        assert(ctx);
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
         setLastLoc( loc );
@@ -1416,11 +1444,14 @@ namespace toy
 
     void MLIRListener::enterAssignment( ToyParser::AssignmentContext *ctx )
     {
+        assert(ctx);
         assignmentTargetValid = true;
         auto loc = getLocation( ctx );
         mainFirstTime( loc );
         setLastLoc( loc );
         auto lhs = ctx->scalarOrArrayElement();
+        assert(lhs);
+        assert(lhs->IDENTIFIER());
         currentVarName = lhs->IDENTIFIER()->getText();
 
         ToyParser::IndexExpressionContext *indexExpr = lhs->indexExpression();
@@ -1454,6 +1485,7 @@ namespace toy
 
     void MLIRListener::exitAssignment( ToyParser::AssignmentContext *ctx )
     {
+        assert(ctx);
         callIsHandled = false;
     }
 
@@ -1478,6 +1510,7 @@ namespace toy
 
     void MLIRListener::enterRhs( ToyParser::RhsContext *ctx )
     {
+        assert(ctx);
         if ( !assignmentTargetValid )
         {
             return;
@@ -1538,7 +1571,9 @@ namespace toy
             assert( bsz == 2 );
 
             auto lhs = ctx->binaryElement()[0];
+            assert(lhs);
             auto rhs = ctx->binaryElement()[1];
+            assert(rhs);
             auto opText = ctx->binaryOperator()->getText();
 
             auto llit = lhs->numericLiteral();
