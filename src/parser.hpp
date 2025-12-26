@@ -180,9 +180,12 @@ namespace toy
         /**
          * @brief Builds MLIR value from unary expression (literals/variables).
          */
-        void buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode, tNode *floatNode,
+        mlir::Value buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode, tNode *floatNode,
                                    ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *stringNode,
-                                   mlir::Value &value, std::string &s );
+                                   std::string &s );
+
+        mlir::Value buildNonStringUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode, tNode *floatNode,
+                                            ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *stringNode );
 
         /**
          * @brief Emits a toy::CallOp for a function call.
