@@ -8,6 +8,6 @@
 
 #define ENTRY_SYMBOL_NAME "main"
 #define COMPILER_NAME "toycalculator"
-#define COMPILER_VERSION " V2"
+#define COMPILER_VERSION " V6"
 
 // vim: et ts=4 sw=4

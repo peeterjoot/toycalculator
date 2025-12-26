@@ -13,6 +13,7 @@
 namespace mlir
 {
     void registerToyToLLVMLoweringPass( toy::driverState* pst = nullptr );
+
     inline void registerToyPasses( toy::driverState* pst = nullptr )
     {
         registerToyToLLVMLoweringPass( pst );

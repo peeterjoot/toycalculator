@@ -25,57 +25,71 @@
 
 namespace toy
 {
-    DialectCtx::DialectCtx()
+    inline std::string stripQuotes( const std::string &input )
     {
-        context.getOrLoadDialect<toy::ToyDialect>();
-        context.getOrLoadDialect<mlir::func::FuncDialect>();
-        context.getOrLoadDialect<mlir::arith::ArithDialect>();
-        context.getOrLoadDialect<mlir::memref::MemRefDialect>();
-        context.getOrLoadDialect<mlir::LLVM::LLVMDialect>();
-        context.getOrLoadDialect<mlir::scf::SCFDialect>();
+        assert( input.size() >= 2 );
+        assert( input.front() == '"' );
+        assert( input.back() == '"' );
+
+        return input.substr( 1, input.size() - 2 );
     }
 
-    toy::ScopeOp MLIRListener::getEnclosingScopeOp( mlir::func::FuncOp funcOp ) const
+    inline PerFunctionState &MLIRListener::funcState( const std::string &funcName )
     {
-        assert( funcOp );
-        // Single ScopeOp per function – iterate once to find it
-        for ( auto &op : funcOp.getBody().front() )
+        if ( !pr_funcState.contains( funcName ) )
         {
-            if ( auto scopeOp = dyn_cast<toy::ScopeOp>( &op ) )
-            {
-                return scopeOp;
-            }
+            pr_funcState[funcName] = std::make_unique<PerFunctionState>( builder.getUnknownLoc() );
         }
-        return nullptr;
+
+        return *pr_funcState[funcName];
     }
 
-    toy::DeclareOp MLIRListener::lookupDeclareForVar( const std::string &varName )
+    inline void MLIRListener::setVarState( const std::string &funcName, const std::string &varName, variable_state st )
     {
-        mlir::func::FuncOp funcOp = getFuncOp( currentFuncName );
+        auto &f = funcState( funcName );
+        f.varStates[varName] = st;
+    }
 
-        toy::ScopeOp scopeOp = getEnclosingScopeOp( funcOp );
-        assert( scopeOp );
+    inline variable_state MLIRListener::getVarState( const std::string &varName )
+    {
+        auto &f = funcState( currentFuncName );
+        return f.varStates[varName];
+    }
 
-        LLVM_DEBUG( {
-            llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
-            scopeOp->dump();
-        } );
+    inline void MLIRListener::setFuncOp( mlir::Operation *op )
+    {
+        auto &f = funcState( currentFuncName );
+        f.funcOp = op;
+    }
 
-        auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
-        if ( !symbolOp )
-        {
-            throw exception_with_context( __FILE__, __LINE__, __func__,
-                                          std::format( "Undeclared variable {}", varName ) );
-        }
+    inline mlir::func::FuncOp MLIRListener::getFuncOp( const std::string &funcName )
+    {
+        auto &f = funcState( funcName );
+        return mlir::cast<mlir::func::FuncOp>( f.funcOp );
+    }
 
-        auto declareOp = mlir::dyn_cast<toy::DeclareOp>( symbolOp );
-        if ( !declareOp )
-        {
-            throw exception_with_context( __FILE__, __LINE__, __func__,
-                                          std::format( "Undeclared variable {}", varName ) );
-        }
+    inline void MLIRListener::markExplicitTerminator()
+    {
+        auto &f = funcState( currentFuncName );
+        f.terminatorWasExplcit = true;
+    }
 
-        return declareOp;
+    inline bool MLIRListener::wasTerminatorExplicit()
+    {
+        auto &f = funcState( currentFuncName );
+        return f.terminatorWasExplcit;
+    }
+
+    inline void MLIRListener::setLastLoc( mlir::Location loc )
+    {
+        auto &f = funcState( currentFuncName );
+        f.lastLoc = loc;
+    }
+
+    inline mlir::Location MLIRListener::getLastLoc()
+    {
+        auto &f = funcState( currentFuncName );
+        return f.lastLoc;
     }
 
     inline mlir::Location MLIRListener::getLocation( antlr4::ParserRuleContext *ctx, bool useStopLocation )
@@ -111,110 +125,79 @@ namespace toy
         return "";
     }
 
-    inline theTypes getCompilerType( mlir::Type mtype )
+    DialectCtx::DialectCtx()
     {
-        theTypes ty = theTypes::unknown;
-
-        if ( auto intType = mlir::dyn_cast<mlir::IntegerType>( mtype ) )
-        {
-            switch ( intType.getWidth() )
-            {
-                case 1:
-                    ty = theTypes::boolean;
-                    break;
-                case 8:
-                    ty = theTypes::integer8;
-                    break;
-                case 16:
-                    ty = theTypes::integer16;
-                    break;
-                case 32:
-                    ty = theTypes::integer32;
-                    break;
-                case 64:
-                    ty = theTypes::integer64;
-                    break;
-                default:
-                    throw exception_with_context( __FILE__, __LINE__, __func__,
-                                                  "internal error: unexpected integer width" );
-            }
-        }
-        else if ( auto floatType = mlir::dyn_cast<mlir::FloatType>( mtype ) )
-        {
-            switch ( floatType.getWidth() )
-            {
-                case 32:
-                    ty = theTypes::float32;
-                    break;
-                case 64:
-                    ty = theTypes::float64;
-                    break;
-                default:
-                    throw exception_with_context( __FILE__, __LINE__, __func__,
-                                                  "internal error: unexpected float width" );
-            }
-        }
-        else
-        // if ( auto stringType = mlir::dyn_cast<mlir::StringAttr>( mtype ) ) // hack
-        {
-            ty = theTypes::string;
-        }
-
-        if ( ty == theTypes::unknown )
-        {
-            throw exception_with_context( __FILE__, __LINE__, __func__, "internal error: unhandled type" );
-        }
-
-        return ty;
-    }
-
-    inline std::string stripQuotes( const std::string &input )
-    {
-        assert( input.size() >= 2 );
-        assert( input.front() == '"' );
-        assert( input.back() == '"' );
-
-        return input.substr( 1, input.size() - 2 );
-    }
-
-    mlir::Type MLIRListener::parseScalarType( const std::string &ty )
-    {
-        if ( ty == "BOOL" )
-        {
-            return tyI1;
-        }
-        if ( ty == "INT8" )
-        {
-            return tyI8;
-        }
-        if ( ty == "INT16" )
-        {
-            return tyI16;
-        }
-        if ( ty == "INT32" )
-        {
-            return tyI32;
-        }
-        if ( ty == "INT64" )
-        {
-            return tyI64;
-        }
-        if ( ty == "FLOAT32" )
-        {
-            return tyF32;
-        }
-        if ( ty == "FLOAT64" )
-        {
-            return tyF64;
-        }
-        return nullptr;
+        context.getOrLoadDialect<toy::ToyDialect>();
+        context.getOrLoadDialect<mlir::func::FuncDialect>();
+        context.getOrLoadDialect<mlir::arith::ArithDialect>();
+        context.getOrLoadDialect<mlir::memref::MemRefDialect>();
+        context.getOrLoadDialect<mlir::LLVM::LLVMDialect>();
+        context.getOrLoadDialect<mlir::scf::SCFDialect>();
     }
 
     // \retval true if error
-    inline void MLIRListener::buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
-                                                    ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
-                                                    tNode *stringNode, mlir::Location loc, mlir::Value &value,
-                                                    std::string &s )
+    void MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
+                                            ToyParser::ArrayBoundsExpressionContext *arrayBounds )
+    {
+        auto varState = getVarState( varName );
+        if ( varState != variable_state::undeclared )
+        {
+            throw exception_with_context(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}error: Variable {} already declared\n", formatLocation( loc ), varName ) );
+        }
+
+        setVarState( currentFuncName, varName, variable_state::declared );
+
+        size_t arraySize{};
+        if ( arrayBounds )
+        {
+            auto index = arrayBounds->INTEGER_PATTERN();
+            arraySize = std::stoi( index->getText() );
+        }
+
+        auto savedIP = builder.saveInsertionPoint();
+
+        // Get the single scope
+        mlir::func::FuncOp funcOp = getFuncOp( currentFuncName );
+
+        toy::ScopeOp scopeOp = getEnclosingScopeOp( funcOp );
+        assert( scopeOp );
+
+        // Scope has one block
+        mlir::Block *scopeBlock = &scopeOp.getBody().front();
+
+        // Insert declarations at the beginning of the scope block
+        // (all DeclareOps should appear before any scf.if/scf.for)
+        builder.setInsertionPointToStart( scopeBlock );
+
+        auto strAttr = builder.getStringAttr( varName );
+        toy::DeclareOp dcl;
+        if ( arraySize )
+        {
+            auto sizeAttr = builder.getI64IntegerAttr( arraySize );
+            dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), sizeAttr, /*parameter=*/nullptr,
+                                                  nullptr );
+        }
+        else
+        {
+            dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr, /*parameter=*/nullptr,
+                                                  nullptr );
+        }
+        dcl->setAttr( "sym_name", strAttr );
+
+        // Restore original insertion point
+        builder.restoreInsertionPoint( savedIP );
+
+        // For test purposes to verify that symbol lookup for varName worked right after the DeclareOp build call:
+        // auto ddcl = lookupDeclareForVar( varName );
+    }
+
+    // \retval true if error
+    void MLIRListener::buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
+                                             ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
+                                             tNode *stringNode, mlir::Location loc, mlir::Value &value,
+                                             std::string &s )
     {
         if ( booleanNode )
         {
@@ -309,62 +292,90 @@ namespace toy
         }
     }
 
-    // \retval true if error
-    inline void MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
-                                                   ToyParser::ArrayBoundsExpressionContext *arrayBounds )
+    void MLIRListener::syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
+                                    size_t charPositionInLine, const std::string &msg, std::exception_ptr e )
     {
-        auto varState = getVarState( varName );
-        if ( varState != variable_state::undeclared )
+        hasErrors = true;
+        std::string tokenText = offendingSymbol ? offendingSymbol->getText() : "<none>";
+        throw exception_with_context( __FILE__, __LINE__, __func__,
+                                      std::format( "Syntax error in {}:{}:{}: {} (token: {} )", filename, line,
+                                                   charPositionInLine, msg, tokenText ) );
+    }
+
+    toy::ScopeOp MLIRListener::getEnclosingScopeOp( mlir::func::FuncOp funcOp ) const
+    {
+        assert( funcOp );
+        // Single ScopeOp per function – iterate once to find it
+        for ( auto &op : funcOp.getBody().front() )
         {
-            throw exception_with_context(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}error: Variable {} already declared\n", formatLocation( loc ), varName ) );
+            if ( auto scopeOp = dyn_cast<toy::ScopeOp>( &op ) )
+            {
+                return scopeOp;
+            }
         }
+        return nullptr;
+    }
 
-        setVarState( currentFuncName, varName, variable_state::declared );
-
-        size_t arraySize{};
-        if ( arrayBounds )
-        {
-            auto index = arrayBounds->INTEGER_PATTERN();
-            arraySize = std::stoi( index->getText() );
-        }
-
-        auto savedIP = builder.saveInsertionPoint();
-
-        // Get the single scope
+    toy::DeclareOp MLIRListener::lookupDeclareForVar( const std::string &varName )
+    {
         mlir::func::FuncOp funcOp = getFuncOp( currentFuncName );
 
         toy::ScopeOp scopeOp = getEnclosingScopeOp( funcOp );
         assert( scopeOp );
 
-        // Scope has one block
-        mlir::Block *scopeBlock = &scopeOp.getBody().front();
+        LLVM_DEBUG( {
+            llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
+            scopeOp->dump();
+        } );
 
-        // Insert declarations at the beginning of the scope block
-        // (all DeclareOps should appear before any scf.if/scf.for)
-        builder.setInsertionPointToStart(scopeBlock);
-
-        auto strAttr = builder.getStringAttr( varName );
-        toy::DeclareOp dcl;
-        if ( arraySize )
+        auto *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
+        if ( !symbolOp )
         {
-            auto sizeAttr = builder.getI64IntegerAttr( arraySize );
-            dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), sizeAttr, /*parameter=*/nullptr,
-                                                       nullptr );
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          std::format( "Undeclared variable {}", varName ) );
         }
-        else
+
+        auto declareOp = mlir::dyn_cast<toy::DeclareOp>( symbolOp );
+        if ( !declareOp )
         {
-            dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr, /*parameter=*/nullptr,
-                                                       nullptr );
+            throw exception_with_context( __FILE__, __LINE__, __func__,
+                                          std::format( "Undeclared variable {}", varName ) );
         }
-        dcl->setAttr( "sym_name", strAttr );
 
-        // Restore original insertion point
-        builder.restoreInsertionPoint(savedIP);
+        return declareOp;
+    }
 
-        // For test purposes to verify that symbol lookup for varName worked right after the DeclareOp build call:
-        // auto ddcl = lookupDeclareForVar( varName );
+    mlir::Type MLIRListener::parseScalarType( const std::string &ty )
+    {
+        if ( ty == "BOOL" )
+        {
+            return tyI1;
+        }
+        if ( ty == "INT8" )
+        {
+            return tyI8;
+        }
+        if ( ty == "INT16" )
+        {
+            return tyI16;
+        }
+        if ( ty == "INT32" )
+        {
+            return tyI32;
+        }
+        if ( ty == "INT64" )
+        {
+            return tyI64;
+        }
+        if ( ty == "FLOAT32" )
+        {
+            return tyF32;
+        }
+        if ( ty == "FLOAT64" )
+        {
+            return tyF64;
+        }
+        return nullptr;
     }
 
     MLIRListener::MLIRListener( const std::string &_filename )

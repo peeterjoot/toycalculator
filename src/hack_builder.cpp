@@ -101,63 +101,6 @@ namespace toy
         return "";
     }
 
-    inline theTypes getCompilerType( mlir::Type mtype )
-    {
-        theTypes ty = theTypes::unknown;
-
-        if ( auto intType = mlir::dyn_cast<mlir::IntegerType>( mtype ) )
-        {
-            switch ( intType.getWidth() )
-            {
-                case 1:
-                    ty = theTypes::boolean;
-                    break;
-                case 8:
-                    ty = theTypes::integer8;
-                    break;
-                case 16:
-                    ty = theTypes::integer16;
-                    break;
-                case 32:
-                    ty = theTypes::integer32;
-                    break;
-                case 64:
-                    ty = theTypes::integer64;
-                    break;
-                default:
-                    throw exception_with_context( __FILE__, __LINE__, __func__,
-                                                  "internal error: unexpected integer width" );
-            }
-        }
-        else if ( auto floatType = mlir::dyn_cast<mlir::FloatType>( mtype ) )
-        {
-            switch ( floatType.getWidth() )
-            {
-                case 32:
-                    ty = theTypes::float32;
-                    break;
-                case 64:
-                    ty = theTypes::float64;
-                    break;
-                default:
-                    throw exception_with_context( __FILE__, __LINE__, __func__,
-                                                  "internal error: unexpected float width" );
-            }
-        }
-        else
-        // if ( auto stringType = mlir::dyn_cast<mlir::StringAttr>( mtype ) ) // hack
-        {
-            ty = theTypes::string;
-        }
-
-        if ( ty == theTypes::unknown )
-        {
-            throw exception_with_context( __FILE__, __LINE__, __func__, "internal error: unhandled type" );
-        }
-
-        return ty;
-    }
-
     inline std::string stripQuotes( const std::string &input )
     {
         assert( input.size() >= 2 );
