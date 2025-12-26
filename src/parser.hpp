@@ -139,18 +139,18 @@ namespace toy
         bool callIsHandled{};
         bool mainScopeGenerated{};
 
-        inline toy::DeclareOp lookupDeclareForVar( const std::string &varName );
+        toy::DeclareOp lookupDeclareForVar( mlir::Location loc, const std::string &varName );
 
         inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx, bool useStopLocation = false );
 
         void createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName,
                           const std::vector<std::string> &paramNames );
 
-        inline std::string formatLocation( mlir::Location loc );
+        inline std::string formatLocation( mlir::Location loc ) const;
 
-        void buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
+        void buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode, tNode *floatNode,
                                    ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *stringNode,
-                                   mlir::Location loc, mlir::Value &value, std::string &s );
+                                   mlir::Value &value, std::string &s );
 
         mlir::Value handleCall( ToyParser::CallContext *ctx );
 
@@ -167,7 +167,7 @@ namespace toy
 
         inline void setFuncOp( mlir::Operation *op );
 
-        inline mlir::func::FuncOp getFuncOp( const std::string &funcName );
+        inline mlir::func::FuncOp getFuncOp( mlir::Location loc, const std::string &funcName );
 
         inline void markExplicitTerminator();
 
@@ -185,7 +185,7 @@ namespace toy
 
         mlir::Value indexTypeCast( mlir::Location loc, mlir::Value val );
 
-        toy::ScopeOp getEnclosingScopeOp( mlir::func::FuncOp funcOp ) const;
+        toy::ScopeOp getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp ) const;
 
         template <class Literal>
         void processReturnLike( mlir::Location loc, Literal *lit,

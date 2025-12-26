@@ -62,10 +62,27 @@ namespace toy
         f.funcOp = op;
     }
 
-    inline mlir::func::FuncOp MLIRListener::getFuncOp( const std::string &funcName )
+    inline std::string MLIRListener::formatLocation( mlir::Location loc ) const
+    {
+        if ( auto fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc ) )
+        {
+            return std::format( "{}:{}:{}: ", fileLoc.getFilename().str(), fileLoc.getLine(), fileLoc.getColumn() );
+        }
+        return "";
+    }
+
+    inline mlir::func::FuncOp MLIRListener::getFuncOp( mlir::Location loc, const std::string &funcName )
     {
         auto &f = funcState( funcName );
-        return mlir::cast<mlir::func::FuncOp>( f.funcOp );
+        mlir::func::FuncOp op = mlir::cast<mlir::func::FuncOp>( f.funcOp );
+
+        if (op == nullptr)
+        {
+            throw exception_with_context(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}error: Unable to find FuncOp for function {}\n", formatLocation( loc ), funcName ) );
+        }
+        return op;
     }
 
     inline void MLIRListener::markExplicitTerminator()
@@ -116,15 +133,6 @@ namespace toy
         return loc;
     }
 
-    inline std::string MLIRListener::formatLocation( mlir::Location loc )
-    {
-        if ( auto fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc ) )
-        {
-            return std::format( "{}:{}:{}: ", fileLoc.getFilename().str(), fileLoc.getLine(), fileLoc.getColumn() );
-        }
-        return "";
-    }
-
     DialectCtx::DialectCtx()
     {
         context.getOrLoadDialect<toy::ToyDialect>();
@@ -159,10 +167,9 @@ namespace toy
         auto savedIP = builder.saveInsertionPoint();
 
         // Get the single scope
-        mlir::func::FuncOp funcOp = getFuncOp( currentFuncName );
+        mlir::func::FuncOp funcOp = getFuncOp( loc, currentFuncName );
 
-        toy::ScopeOp scopeOp = getEnclosingScopeOp( funcOp );
-        assert( scopeOp );
+        toy::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
 
         // Scope has one block
         mlir::Block *scopeBlock = &scopeOp.getBody().front();
@@ -188,17 +195,12 @@ namespace toy
 
         // Restore original insertion point
         builder.restoreInsertionPoint( savedIP );
-
-        // For test purposes to verify that symbol lookup for varName worked right after the DeclareOp build call:
-        // auto ddcl = lookupDeclareForVar( varName );
     }
 
     // \retval true if error
-    void MLIRListener::buildUnaryExpression( tNode *booleanNode, tNode *integerNode, tNode *floatNode,
+    void MLIRListener::buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode, tNode *floatNode,
                                              ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
-                                             tNode *stringNode, mlir::Location loc, mlir::Value &value,
-                                             std::string &s )
-    {
+                                             tNode *stringNode, mlir::Value &value, std::string &s ) {
         if ( booleanNode )
         {
             int val;
@@ -258,7 +260,7 @@ namespace toy
                     std::format( "{}error: Variable {} not assigned in expr\n", formatLocation( loc ), varName ) );
             }
 
-            auto declareOp = lookupDeclareForVar( varName );
+            auto declareOp = lookupDeclareForVar( loc, varName );
 
             mlir::Type varType = declareOp.getTypeAttr().getValue();
             auto symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
@@ -268,8 +270,8 @@ namespace toy
             if ( ToyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
             {
                 std::string s;
-                buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr,
-                                      loc, indexValue, s );
+                buildUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr,
+                                      indexValue, s );
                 assert( s.length() == 0 );
 
                 auto i = indexTypeCast( loc, indexValue );
@@ -302,9 +304,8 @@ namespace toy
                                                    charPositionInLine, msg, tokenText ) );
     }
 
-    toy::ScopeOp MLIRListener::getEnclosingScopeOp( mlir::func::FuncOp funcOp ) const
+    toy::ScopeOp MLIRListener::getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp ) const
     {
-        assert( funcOp );
         // Single ScopeOp per function – iterate once to find it
         for ( auto &op : funcOp.getBody().front() )
         {
@@ -313,15 +314,19 @@ namespace toy
                 return scopeOp;
             }
         }
+
+        throw exception_with_context(
+            __FILE__, __LINE__, __func__,
+            std::format( "{}error: Unable to find Enclosing ScopeOp for currentFunction {}\n", formatLocation( loc ), currentFuncName ) );
+
         return nullptr;
     }
 
-    toy::DeclareOp MLIRListener::lookupDeclareForVar( const std::string &varName )
+    toy::DeclareOp MLIRListener::lookupDeclareForVar( mlir::Location loc, const std::string &varName )
     {
-        mlir::func::FuncOp funcOp = getFuncOp( currentFuncName );
+        mlir::func::FuncOp funcOp = getFuncOp( loc, currentFuncName );
 
-        toy::ScopeOp scopeOp = getEnclosingScopeOp( funcOp );
-        assert( scopeOp );
+        toy::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
 
         LLVM_DEBUG( {
             llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
@@ -600,7 +605,7 @@ namespace toy
         auto id = ctx->IDENTIFIER();
         assert( id );
         auto funcName = id->getText();
-        mlir::func::FuncOp funcOp = getFuncOp( funcName );
+        mlir::func::FuncOp funcOp = getFuncOp( loc, funcName );
         auto funcType = funcOp.getFunctionType();
         std::vector<mlir::Value> parameters;
         if ( auto params = ctx->parameterList() )
@@ -620,9 +625,9 @@ namespace toy
                 auto lit = p->literal();
 
                 std::string s;
-                buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+                buildUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
                                       lit ? lit->FLOAT_PATTERN() : nullptr, p->scalarOrArrayElement(),
-                                      lit ? lit->STRING_PATTERN() : nullptr, loc, value, s );
+                                      lit ? lit->STRING_PATTERN() : nullptr, value, s );
 
                 assert( s.length() == 0 );    // for StringNode.  Want to support passing string literals (not just to
                                               // PRINT builtin), but not now.
@@ -750,10 +755,10 @@ namespace toy
             std::string s;
 
             auto lit = boolElement->booleanLiteral();
-            buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+            buildUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
                                   nullptr, boolElement->scalarOrArrayElement(),
                                   nullptr,    // stringNode
-                                  loc, conditionPredicate, s );
+                                  conditionPredicate, s );
             assert( s.length() == 0 );
         }
         else
@@ -770,19 +775,19 @@ namespace toy
                 auto rhs = operands[1];
 
                 auto llit = lhs->numericLiteral();
-                buildUnaryExpression( nullptr,    // booleanNode
+                buildUnaryExpression( loc, nullptr,    // booleanNode
                                       llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
                                       lhs->scalarOrArrayElement(),
                                       nullptr,    // stringNode
-                                      loc, lhsValue, s );
+                                      lhsValue, s );
                 assert( s.length() == 0 );
 
                 auto rlit = rhs->numericLiteral();
-                buildUnaryExpression( nullptr,    // booleanNode
+                buildUnaryExpression( loc, nullptr,    // booleanNode
                                       rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
                                       lhs->scalarOrArrayElement(),
                                       nullptr,    // stringNode
-                                      loc, rhsValue, s );
+                                      rhsValue, s );
                 assert( s.length() == 0 );
 
                 auto op = booleanValue->predicateOperator();
@@ -982,16 +987,16 @@ namespace toy
         mlir::Value end;
         mlir::Value step;
 
-        auto declareOp = lookupDeclareForVar( varName );
+        auto declareOp = lookupDeclareForVar( loc, varName );
         mlir::Type elemType = declareOp.getTypeAttr().getValue();
 
         if ( pStart )
         {
             auto lit = pStart->literal();
             std::string s;
-            buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+            buildUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
                                   lit ? lit->FLOAT_PATTERN() : nullptr, pStart->scalarOrArrayElement(),
-                                  lit ? lit->STRING_PATTERN() : nullptr, loc, start, s );
+                                  lit ? lit->STRING_PATTERN() : nullptr, start, s );
             assert( s.length() == 0 );
 
             start = castOpIfRequired( loc, start, elemType );
@@ -1005,9 +1010,9 @@ namespace toy
         {
             auto lit = pEnd->literal();
             std::string s;
-            buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+            buildUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
                                   lit ? lit->FLOAT_PATTERN() : nullptr, pEnd->scalarOrArrayElement(),
-                                  lit ? lit->STRING_PATTERN() : nullptr, loc, end, s );
+                                  lit ? lit->STRING_PATTERN() : nullptr, end, s );
             assert( s.length() == 0 );
 
             end = castOpIfRequired( loc, end, elemType );
@@ -1021,9 +1026,9 @@ namespace toy
         {
             auto lit = pStep->literal();
             std::string s;
-            buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+            buildUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
                                   lit ? lit->FLOAT_PATTERN() : nullptr, pStep->scalarOrArrayElement(),
-                                  lit ? lit->STRING_PATTERN() : nullptr, loc, step, s );
+                                  lit ? lit->STRING_PATTERN() : nullptr, step, s );
             assert( s.length() == 0 );
         }
         else
@@ -1105,7 +1110,7 @@ namespace toy
                     std::format( "{}error: Variable {} not assigned in PRINT\n", formatLocation( loc ), varName ) );
             }
 
-            auto declareOp = lookupDeclareForVar( varName );
+            auto declareOp = lookupDeclareForVar( loc, varName );
 
             mlir::Type elemType = declareOp.getTypeAttr().getValue();
             mlir::Value optIndexValue{};
@@ -1113,8 +1118,8 @@ namespace toy
             {
                 std::string s;
                 mlir::Value indexValue{};
-                buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr,
-                                      loc, indexValue, s );
+                buildUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr,
+                                      indexValue, s );
                 assert( s.length() == 0 );
 
                 optIndexValue = indexTypeCast( loc, indexValue );
@@ -1171,7 +1176,7 @@ namespace toy
                     std::format( "{}error: Variable {} not declared in GET\n", formatLocation( loc ), varName ) );
             }
 
-            auto declareOp = lookupDeclareForVar( varName );
+            auto declareOp = lookupDeclareForVar( loc, varName );
 
             mlir::Type elemType = declareOp.getTypeAttr().getValue();
             mlir::Value optIndexValue{};
@@ -1179,8 +1184,8 @@ namespace toy
             {
                 std::string s;
                 mlir::Value indexValue{};
-                buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr,
-                                      loc, indexValue, s );
+                buildUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr, scalarOrArrayElement, nullptr,
+                                      indexValue, s );
                 assert( s.length() == 0 );
 
                 optIndexValue = indexTypeCast( loc, indexValue );
@@ -1324,10 +1329,10 @@ namespace toy
         if ( lit || scalarOrArrayElement || boolNode )
         {
             std::string s;
-            buildUnaryExpression( boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
+            buildUnaryExpression( loc, boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
                                   lit ? lit->FLOAT_PATTERN() : nullptr, scalarOrArrayElement,
                                   nullptr,    // stringNode
-                                  loc, value, s );
+                                  value, s );
             assert( s.length() == 0 );
 
             // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
@@ -1421,7 +1426,7 @@ namespace toy
         if ( indexExpr )
         {
             std::string s;
-            buildUnaryExpression( nullptr, indexExpr->INTEGER_PATTERN(), nullptr, lhs, nullptr, loc, currentIndexExpr,
+            buildUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr, lhs, nullptr, currentIndexExpr,
                                   s );
             assert( s.length() == 0 );
         }
@@ -1478,7 +1483,7 @@ namespace toy
         setLastLoc( loc );
         mlir::Value resultValue;
 
-        auto declareOp = lookupDeclareForVar( currentVarName );
+        auto declareOp = lookupDeclareForVar( loc, currentVarName );
         mlir::TypeAttr typeAttr = declareOp.getTypeAttr();
         mlir::Type opType = typeAttr.getValue();
 
@@ -1499,9 +1504,9 @@ namespace toy
             }
             else
             {
-                buildUnaryExpression( lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
+                buildUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
                                       lit ? lit->FLOAT_PATTERN() : nullptr, ctx->scalarOrArrayElement(),
-                                      lit ? lit->STRING_PATTERN() : nullptr, loc, lhsValue, s );
+                                      lit ? lit->STRING_PATTERN() : nullptr, lhsValue, s );
             }
 
             resultValue = lhsValue;
@@ -1533,20 +1538,20 @@ namespace toy
             auto opText = ctx->binaryOperator()->getText();
 
             auto llit = lhs->numericLiteral();
-            buildUnaryExpression( nullptr,    // booleanNode
+            buildUnaryExpression( loc, nullptr,    // booleanNode
                                   llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
                                   lhs->scalarOrArrayElement(),
                                   nullptr,    // stringNode
-                                  loc, lhsValue, s );
+                                  lhsValue, s );
             assert( s.length() == 0 );
 
             mlir::Value rhsValue;
             auto rlit = rhs->numericLiteral();
-            buildUnaryExpression( nullptr,    // booleanNode
+            buildUnaryExpression( loc, nullptr,    // booleanNode
                                   rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
                                   rhs->scalarOrArrayElement(),
                                   nullptr,    // stringNode
-                                  loc, rhsValue, s );
+                                  rhsValue, s );
             assert( s.length() == 0 );
 
             // Create the binary operator (supports +, -, *, /)
