@@ -162,6 +162,11 @@ namespace toy
         inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx, bool useStopLocation = false );
 
         /**
+         * Strip double quotes off of a string.
+         */
+        inline std::string stripQuotes( mlir::Location loc, const std::string &input ) const;
+
+        /**
          * @brief Creates a toy::ScopeOp and initializes function state.
          */
         void createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName,

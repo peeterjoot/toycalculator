@@ -25,15 +25,6 @@
 
 namespace toy
 {
-    inline std::string stripQuotes( const std::string &input )
-    {
-        assert( input.size() >= 2 );
-        assert( input.front() == '"' );
-        assert( input.back() == '"' );
-
-        return input.substr( 1, input.size() - 2 );
-    }
-
     inline PerFunctionState &MLIRListener::funcState( const std::string &funcName )
     {
         if ( !pr_funcState.contains( funcName ) )
@@ -69,6 +60,18 @@ namespace toy
             return std::format( "{}:{}:{}: ", fileLoc.getFilename().str(), fileLoc.getLine(), fileLoc.getColumn() );
         }
         return "";
+    }
+
+    inline std::string MLIRListener::stripQuotes( mlir::Location loc, const std::string &input ) const
+    {
+        if ( (input.size() < 2) || ( input.front() != '"' ) || ( input.back() != '"' ) )
+        {
+            throw exception_with_context(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}internal error: String '{}' was not double quotes enclosed as expected.\n", formatLocation( loc ), input ) );
+        }
+
+        return input.substr( 1, input.size() - 2 );
     }
 
     inline mlir::func::FuncOp MLIRListener::getFuncOp( mlir::Location loc, const std::string &funcName )
@@ -285,7 +288,7 @@ namespace toy
         }
         else if ( stringNode )
         {
-            s = stripQuotes( stringNode->getText() );
+            s = stripQuotes( loc, stringNode->getText() );
         }
         else
         {
@@ -600,8 +603,8 @@ namespace toy
 
     mlir::Value MLIRListener::handleCall( ToyParser::CallContext *ctx )
     {
-        auto loc = getLocation( ctx );
         assert( ctx );
+        auto loc = getLocation( ctx );
         auto id = ctx->IDENTIFIER();
         assert( id );
         auto funcName = id->getText();
@@ -612,6 +615,7 @@ namespace toy
         {
             int i = 0;
 
+            assert(params);
             auto psz = params->parameter().size();
             auto fsz = funcType.getInputs().size();
             assert( psz == fsz );
@@ -1142,7 +1146,7 @@ namespace toy
         }
         else if ( auto theString = ctx->STRING_PATTERN() )
         {
-            auto s = stripQuotes( theString->getText() );
+            auto s = stripQuotes( loc, theString->getText() );
             auto strAttr = builder.getStringAttr( s );
 
             auto stringLiteral = builder.create<toy::StringLiteralOp>( loc, tyPtr, strAttr );
