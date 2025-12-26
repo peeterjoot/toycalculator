@@ -112,18 +112,12 @@ set(DRIVER_SOURCE_FILES
   src/ToyDialect.cpp
   src/ToyPasses.cpp
   src/lowering.cpp
+  src/parser.cpp
   ${ANTLR_OUTPUT_DIR}/ToyBaseListener.cpp
   ${ANTLR_OUTPUT_DIR}/ToyListener.cpp
   ${ANTLR_OUTPUT_DIR}/ToyParser.cpp
   ${ANTLR_OUTPUT_DIR}/ToyLexer.cpp
 )
-
-# Conditionally append the appropriate source file
-if(HACK_BUILDER)
-  list(APPEND DRIVER_SOURCE_FILES src/hack_builder.cpp)
-else()
-  list(APPEND DRIVER_SOURCE_FILES src/parser.cpp)
-endif()
 
 add_executable(toycalculator
   ${DRIVER_SOURCE_FILES}
@@ -186,10 +180,6 @@ endif()
 
 target_compile_options(toy_runtime PRIVATE ${COMMON_COMPILE_OPTIONS})
 target_compile_options(toycalculator PRIVATE ${COMMON_COMPILE_OPTIONS})
-
-if(HACK_BUILDER)
-    target_compile_definitions(toycalculator PRIVATE HACK_BUILDER)
-endif()
 
 #------------------------------------------------------------------------------
 # Link rules for the toycalculator target:
