@@ -1,8 +1,6 @@
-/**
- * @file    ToyPasses.hpp
- * @author  Peeter Joot <peeterjoot@pm.me>
- * @brief   Pass for MLIR lowering to LLVM-IR.
- */
+/// @file    ToyPasses.hpp
+/// @author  Peeter Joot <peeterjoot@pm.me>
+/// @brief   Pass for MLIR lowering to LLVM-IR.
 #pragma once
 
 #include <mlir/Pass/Pass.h>

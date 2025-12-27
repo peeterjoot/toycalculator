@@ -1,8 +1,6 @@
-/**
- * @file    ToyDialect.hpp
- * @author  Peeter Joot <peeterjoot@pm.me>
- * @brief   Include the ToyDialect.md generated include files and their MLIR dependencies.
- */
+/// @file    ToyDialect.hpp
+/// @author  Peeter Joot <peeterjoot@pm.me>
+/// @brief   Include the ToyDialect.md generated include files and their MLIR dependencies.
 #pragma once
 
 #include <mlir/IR/Builders.h>

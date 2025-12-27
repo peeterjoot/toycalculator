@@ -1,8 +1,8 @@
-/**
- * @file    parser.cpp
- * @author  Peeter Joot <peeterjoot@pm.me>
- * @brief   altlr4 parse tree listener and MLIR builder.
- */
+///
+/// @file    parser.cpp
+/// @author  Peeter Joot <peeterjoot@pm.me>
+/// @brief   altlr4 parse tree listener and MLIR builder.
+///
 #include <llvm/Support/Debug.h>
 #include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>

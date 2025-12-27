@@ -1,8 +1,8 @@
-/**
- * @file    lowering.cpp
- * @author  Peeter Joot <peeterjoot@pm.me>
- * @brief   This file implements the LLVM-IR lowering pattern matching operators
- */
+///
+/// @file    lowering.cpp
+/// @author  Peeter Joot <peeterjoot@pm.me>
+/// @brief   This file implements the LLVM-IR lowering pattern matching operators
+///
 #include <llvm/ADT/StringRef.h>
 #include <llvm/BinaryFormat/Dwarf.h>    // For DW_LANG_C, DW_ATE_*
 #include <llvm/IR/DebugInfoMetadata.h>

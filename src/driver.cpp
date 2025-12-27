@@ -1,17 +1,15 @@
-/**
- * @file    driver.cpp
- * @author  Peeter Joot <peeterjoot@pm.me>
- * @brief   This is the compiler driver for the toy calculator compiler.
- *
- * @description
- *
- * This file orchestrates all the compiler actions:
- *
- * - command line options handling,
- * - runs the antlr4 parse tree listener (w/ MLIR builder),
- * - runs the LLVM-IR lowering pass, and
- * - runs the assembly printer.
- */
+/// @file    driver.cpp
+/// @author  Peeter Joot <peeterjoot@pm.me>
+/// @brief   This is the compiler driver for the toy (originally "calculator") compiler.
+///
+/// @description
+///
+/// This file orchestrates all the compiler actions:
+///
+/// - command line options handling,
+/// - runs the antlr4 parse tree listener (w/ MLIR builder),
+/// - runs the LLVM-IR lowering pass, and
+/// - runs the assembly printer.
 #include <assert.h>
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/StringRef.h>
