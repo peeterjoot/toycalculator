@@ -242,8 +242,8 @@ int main( int argc, char** argv )
             }
         }
 
-        auto module = listener.getModule();
-        auto context = module.getContext();
+        mlir::ModuleOp & module = listener.getModule();
+        mlir::MLIRContext * context = module.getContext();
 
         // Register dialect translations
         mlir::registerLLVMDialectTranslation( *context );
@@ -312,7 +312,7 @@ int main( int argc, char** argv )
             throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to translate to LLVM IR" );
         }
 
-        auto emitObject = !noEmitObject;
+        bool emitObject = !noEmitObject;
         if ( emitLLVM || emitObject )
         {
             // Verify the module to ensure debug info is valid
@@ -432,8 +432,8 @@ void invokeLinker( const char* argv0, llvm::SmallString<128>& exePath, llvm::Sma
     LLVM_DEBUG( { llvm::outs() << "Compiler driver path: " << driverPath << '\n'; } );
 
     // Find the linker (gcc)
-    auto linker = "gcc";
-    auto linkerPath = llvm::sys::findProgramByName( linker );
+    const char * linker = "gcc";
+    llvm::ErrorOr<std::string> linkerPath = llvm::sys::findProgramByName( linker );
     if ( !linkerPath )
     {
         std::error_code ec = linkerPath.getError();

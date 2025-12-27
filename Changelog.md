@@ -252,12 +252,15 @@ which previously failed with y not declared at the assignment point (since the d
     - parser.hpp: move inlines out of class dcl for clarity and put public first.
     - parser.cpp: put all the inlines first.  Uninline a few things.
     - remove a bunch of old if-0'd out `LLVM_DEBUG` code.
-    - throw `user_error` for syntax errors, and `exception_with_context` only for internal errors. all the enter/exit callbacks catch user_error (all for consistency, even if they don't need to, settting hasErrors and calling mlir::emitError(loc) to bubble the error up to the user.)
+    - throw `user_error` for syntax errors, and `exception_with_context` only for internal errors. all the enter/exit callbacks catch `user_error` (all for consistency, even if they don't need to, settting hasErrors and calling mlir::emitError(loc) to bubble the error up to the user.)
 
 * Remove `HACK_BUILDER` code.
 * Remove constants.hpp.
 * bump `COMPILER_VERSION` to V6, matching WIP TAG
 * Split out shortstring2.toy and longstring.toy from shortstring.toy.  Added longstring.toy to regression test.
+* driver: remove autos
+* lowering: remove most autos
+* lowering: remove `using namespace mlir` (was using mlir:: qualified variables in some places, but not others, and it was confusing looking.)
 
 ## tag: V5 (Dec 22, 2025)
 
