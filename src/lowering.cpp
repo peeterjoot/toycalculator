@@ -40,10 +40,15 @@
 
 #include "ToyDialect.hpp"
 #include "ToyExceptions.hpp"
-#include "constants.hpp"
 #include "lowering.hpp"
 
 #define DEBUG_TYPE "toy-lowering"
+
+// for llvm.ident and DICompileUnitAttr
+#define COMPILER_NAME "toycalculator"
+
+/// For llvm.ident
+#define COMPILER_VERSION " V6"
 
 using namespace mlir;
 

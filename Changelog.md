@@ -254,7 +254,8 @@ which previously failed with y not declared at the assignment point (since the d
     - remove a bunch of old if-0'd out `LLVM_DEBUG` code.
 
 * Remove `HACK_BUILDER` code.
-* constants.hpp: bump `COMPILER_VERSION` to V6, matching WIP TAG (Changelog.txt)
+* Remove constants.hpp.
+* bump `COMPILER_VERSION` to V6, matching WIP TAG
 
 ## tag: V5 (Dec 22, 2025)
 

@@ -18,10 +18,11 @@
 #include <format>
 
 #include "ToyExceptions.hpp"
-#include "constants.hpp"
 #include "parser.hpp"
 
 #define DEBUG_TYPE "toy-parser"
+
+#define ENTRY_SYMBOL_NAME "main"
 
 namespace toy
 {
