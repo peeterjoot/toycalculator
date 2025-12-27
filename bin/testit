@@ -146,6 +146,7 @@ lessbug2
 lessbug3
 lesseqop
 lessop
+longstring
 neg
 neqop
 orop
@@ -158,6 +159,7 @@ unary
 xorop
 ));
 #shortstring
+#shortstring2
 
 if ( defined $just )
 {
