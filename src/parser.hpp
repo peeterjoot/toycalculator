@@ -215,6 +215,8 @@ namespace toy
 
         /**
          * @brief Casts value to desired type if needed.
+         *
+         * This is adapted from AssignOpLowering, but uses arith dialect operations instead of LLVM dialect.
          */
         mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType );
 

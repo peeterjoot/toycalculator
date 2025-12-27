@@ -141,7 +141,6 @@ namespace toy
         context.getOrLoadDialect<mlir::scf::SCFDialect>();
     }
 
-    // \retval true if error
     void MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                             ToyParser::ArrayBoundsExpressionContext *arrayBounds )
     {
@@ -192,11 +191,9 @@ namespace toy
         }
         dcl->setAttr( "sym_name", strAttr );
 
-        // Restore original insertion point
         builder.restoreInsertionPoint( savedIP );
     }
 
-    // \retval true if error
     mlir::Value MLIRListener::buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode,
                                                     tNode *floatNode,
                                                     ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
@@ -435,7 +432,7 @@ namespace toy
         mlir::Block &block = *funcOp.addEntryBlock();
         builder.setInsertionPointToStart( &block );
 
-        // Create Toy::ScopeOp with empty operands and results
+        // initially with empty operands and results
         toy::ScopeOp scopeOp = builder.create<toy::ScopeOp>( loc, mlir::TypeRange{}, mlir::ValueRange{} );
         builder.create<toy::YieldOp>( loc );
 
@@ -743,7 +740,6 @@ namespace toy
         registerDeclaration( loc, varName, tyI8, arrayBounds );
     }
 
-    // Lower a preciate condition to an i1 Value
     mlir::Value MLIRListener::parsePredicate( mlir::Location loc, ToyParser::BooleanValueContext *booleanValue )
     {
         // booleanValue
@@ -871,7 +867,6 @@ namespace toy
 
         insertionPointStack.push_back( builder.saveInsertionPoint() );
 
-        // Create the scf.if — it will be inserted at the current IP
         mlir::scf::IfOp ifOp = builder.create<mlir::scf::IfOp>( loc, conditionPredicate );
 
         mlir::Block &thenBlock = ifOp.getThenRegion().front();
@@ -1052,7 +1047,6 @@ namespace toy
         else
         {
             //'scf.for' op failed to verify that all of {lowerBound, upperBound, step} have same type
-            // step = builder.create<mlir::arith::ConstantIndexOp>(loc, 1);
             step = builder.create<mlir::arith::ConstantIntOp>( loc, 1, 64 );
         }
 
@@ -1060,7 +1054,6 @@ namespace toy
 
         insertionPointStack.push_back( builder.saveInsertionPoint() );
 
-        // Create the scf.if — it will be inserted at the current IP
         mlir::scf::ForOp forOp = builder.create<mlir::scf::ForOp>( loc, start, end, step );
 
         mlir::Block &loopBody = forOp.getRegion().front();
@@ -1215,8 +1208,6 @@ namespace toy
         }
     }
 
-    // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
-    // uses arith dialect operations instead of LLVM dialect
     mlir::Value MLIRListener::castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType )
     {
         if ( value.getType() != desiredType )
@@ -1261,7 +1252,6 @@ namespace toy
                 }
                 else if ( mlir::IntegerType miType = mlir::cast<mlir::IntegerType>( desiredType ) )
                 {
-                    // boolr: mwidth == 32, vwidth == 1
                     unsigned mwidth = miType.getWidth();
                     if ( ( vwidth == 1 ) && ( mwidth != 1 ) )
                     {
@@ -1350,7 +1340,6 @@ namespace toy
         {
             if ( !returnType.empty() )
             {
-                // FIXME: factor this out into a generateZeroMatchingType() function.
                 if ( mlir::IntegerType intType = mlir::dyn_cast<mlir::IntegerType>( returnType[0] ) )
                 {
                     unsigned width = intType.getWidth();
@@ -1476,17 +1465,16 @@ namespace toy
         if ( valTy == indexTy )
             return val;
 
-        // If it's i64, convert
-        if ( valTy.isSignlessInteger( 64 ) )
+        // Only support i64 for now
+        if ( !valTy.isSignlessInteger( 64 ) )
         {
-            return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
+            // If it's a non-i64 IntegerType, we could cast up to i64, and then cast that to index.
+            throw exception_with_context(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}NYI: indexTypeCast for types other than i64\n", formatLocation( loc ) ) );
         }
 
-        throw exception_with_context(
-            __FILE__, __LINE__, __func__,
-            std::format( "{}NYI: indexTypeCast for types other than i64\n", formatLocation( loc ) ) );
-
-        return nullptr;
+        return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
     }
 
     void MLIRListener::enterRhs( ToyParser::RhsContext *ctx )
