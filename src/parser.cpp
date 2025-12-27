@@ -478,49 +478,7 @@ namespace toy
             funcOp.dump();
         } );
 
-#if 0
-        LLVM_DEBUG( {
-            llvm::errs() << "============================\nCREATE SCOPE I:\n";
-            builder.getInsertionBlock()->getParentOp()->dump();
-
-            llvm::errs() << "Current insertion block:\n";
-            builder.getInsertionBlock()->dump();
-
-            mlir::OpBuilder::InsertPoint insertionPoint = builder.getInsertionPoint();
-            if ( insertionPoint != builder.getInsertionBlock()->end() )
-            {
-                llvm::errs() << "Insertion point is after operation:\n";
-                ( *insertionPoint ).dump();    // Dereference the iterator to get the Operation*
-            }
-            else
-            {
-                llvm::errs() << "Insertion point is at the end of the block\n";
-            }
-        } );
-#endif
-
         builder.setInsertionPoint( returnOp );    // Set insertion point *before* the saved toy::ReturnOp
-
-#if 0
-        LLVM_DEBUG( {
-            llvm::errs() << "============================\nCREATE SCOPE II:\n";
-            builder.getInsertionBlock()->getParentOp()->dump();
-
-            llvm::errs() << "Current insertion block:\n";
-            builder.getInsertionBlock()->dump();
-
-            mlir::OpBuilder::InsertPoint insertionPoint = builder.getInsertionPoint();
-            if ( insertionPoint != builder.getInsertionBlock()->end() )
-            {
-                llvm::errs() << "Insertion point is after operation:\n";
-                ( *insertionPoint ).dump();    // Dereference the iterator to get the Operation*
-            }
-            else
-            {
-                llvm::errs() << "Insertion point is at the end of the block\n";
-            }
-        } );
-#endif
 
         currentFuncName = funcName;
         setFuncOp( funcOp );
@@ -1131,27 +1089,6 @@ namespace toy
         setLastLoc( loc );
 
         mlir::Type varType;
-
-#if 0
-        LLVM_DEBUG( {
-            llvm::errs() << "Scope IR before toy::PrintOp creation:\n";
-            builder.getInsertionBlock()->getParentOp()->dump();
-
-            llvm::errs() << "Current insertion block:\n";
-            builder.getInsertionBlock()->dump();
-
-            mlir::OpBuilder::InsertPoint insertionPoint = builder.getInsertionPoint();
-            if ( insertionPoint != builder.getInsertionBlock()->end() )
-            {
-                llvm::errs() << "Insertion point is after operation:\n";
-                ( *insertionPoint ).dump();    // Dereference the iterator to get the Operation*
-            }
-            else
-            {
-                llvm::errs() << "Insertion point is at the end of the block\n";
-            }
-        } );
-#endif
 
         ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement = ctx->scalarOrArrayElement();
         if ( scalarOrArrayElement )

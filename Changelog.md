@@ -224,6 +224,38 @@ PRINT "Done.";
 
 which previously failed with y not declared at the assignment point (since the declaration needs the symbol table, which is associated with the ScopeOp)
 
+### 4. Maintainance:
+* test:
+    samples/testerrors.sh -> bin/testerrors
+
+    ci/cd is now effectively:
+```
+    cd samples
+    testit
+    testerrors
+```
+
+* parser:
+    - switch to `throw exception_with_context` exclusively for errors (no more asserts other than null pointer checks before dereferences.)
+    - buildUnaryExpression.  return the value, instead of pass by reference.
+    - buildNonStringUnaryExpression.  New helper function.  Just does the no-string-liternal assertion like check (now throw.)
+    - various: add formatLocation( loc ) into the thrown error message where possible.
+    - purge auto usage.
+    - add asserts before any pointer dereferences
+    - convert parser:stripQuotes asserts into throw with context
+    - doxygen for parser.hpp
+    - make formatLocation const.
+    - pass loc down to getFuncOp, getEnclosingScopeOp, and lookupDeclareForVar.
+    - getFuncOp/getEnclosingScopeOp: throw if not found.
+    - buildUnaryExpression: pass loc as first arg, like most other places.
+    - Remove dead code: theTypes, getCompilerType, isBoolean, isInteger, isFloat
+    - parser.hpp: move inlines out of class dcl for clarity and put public first.
+    - parser.cpp: put all the inlines first.  Uninline a few things.
+    - remove a bunch of old if-0'd out `LLVM_DEBUG` code.
+
+* Remove `HACK_BUILDER` code.
+* constants.hpp: bump `COMPILER_VERSION` to V6, matching WIP TAG (Changelog.txt)
+
 ## tag: V5 (Dec 22, 2025)
 
 The language now supports functions, calls, parameters, returns, and basic conditional blocks.
