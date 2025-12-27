@@ -1,5 +1,2 @@
-STRING s[20];
-s = "hi";
-PRINT s;
 // kills the compiler:
 PRINT "";

@@ -257,6 +257,7 @@ which previously failed with y not declared at the assignment point (since the d
 * Remove `HACK_BUILDER` code.
 * Remove constants.hpp.
 * bump `COMPILER_VERSION` to V6, matching WIP TAG
+* Split out shortstring2.toy and longstring.toy from shortstring.toy.  Added longstring.toy to regression test.
 
 ## tag: V5 (Dec 22, 2025)
 
