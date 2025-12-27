@@ -149,7 +149,6 @@ namespace toy
             return alignment;
         }
 
-        // Note for future: c++-14 now allows auto-return for a simple function like this.
         mlir::MLIRContext* getContext()
         {
             return pr_builder.getContext();
