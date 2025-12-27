@@ -38,6 +38,28 @@ namespace toy
         assigned
     };
 
+    /// Surface a user error.
+    class user_error : public std::exception
+    {
+       public:
+
+        user_error( mlir::Location iloc, const std::string& imessage ) : loc{iloc}, message{imessage} {}
+
+        /// Fetch the message text from the throw point.
+        const char* what() const noexcept override
+        {
+            return message.c_str();
+        }
+
+        mlir::Location getLocation() const
+        {
+            return loc;
+        }
+
+       private:
+        mlir::Location loc;
+        std::string message;
+    };
 
     /// Context for MLIR dialect registration.
     class DialectCtx
