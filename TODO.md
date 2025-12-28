@@ -1,8 +1,5 @@
 ## TODO
 
-next:
-  - Switch to CamelCase uniformly.
-
 ----------------------------------
 * Test:
 
@@ -13,10 +10,8 @@ next:
 ----------------------------------
 * Maintainance:
   - lowering error handling is pschizophrenic: mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
-  - Switch to CamelCase uniformly.
   - Move scf lowering into 1st pass?  arith pass lowering shouldn't be in both.
   - Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
-  - Purge rest of the auto usage in lowering.cpp (just a couple touchy ones left.)
 
 ----------------------------------
 
