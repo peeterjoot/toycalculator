@@ -3,6 +3,8 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   altlr4 parse tree listener and MLIR builder.
 ///
+#include "parser.hpp"
+
 #include <llvm/Support/Debug.h>
 #include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
@@ -18,7 +20,6 @@
 #include <format>
 
 #include "SillyExceptions.hpp"
-#include "parser.hpp"
 
 #define DEBUG_TYPE "silly-parser"
 
@@ -186,14 +187,14 @@ namespace silly
         silly::DeclareOp dcl;
         if ( arraySize )
         {
-            dcl =
-                builder.create<silly::DeclareOp>( loc, mlir::TypeAttr::get( ty ), builder.getI64IntegerAttr( arraySize ),
-                                                /*parameter=*/nullptr, nullptr );
+            dcl = builder.create<silly::DeclareOp>( loc, mlir::TypeAttr::get( ty ),
+                                                    builder.getI64IntegerAttr( arraySize ),
+                                                    /*parameter=*/nullptr, nullptr );
         }
         else
         {
             dcl = builder.create<silly::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr, /*parameter=*/nullptr,
-                                                  nullptr );
+                                                    nullptr );
         }
         dcl->setAttr( "sym_name", strAttr );
 
@@ -449,7 +450,7 @@ namespace silly
             mlir::StringAttr strAttr = builder.getStringAttr( paramNames[i] );
             silly::DeclareOp dcl =
                 builder.create<silly::DeclareOp>( loc, mlir::TypeAttr::get( argType ), /*size=*/nullptr,
-                                                builder.getUnitAttr(), builder.getI64IntegerAttr( i ) );
+                                                  builder.getUnitAttr(), builder.getI64IntegerAttr( i ) );
             dcl->setAttr( "sym_name", strAttr );
         }
 
@@ -816,11 +817,13 @@ namespace silly
                 }
                 else if ( op->LESSEQUAL_TOKEN() )
                 {
-                    conditionPredicate = builder.create<silly::LessEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
+                    conditionPredicate =
+                        builder.create<silly::LessEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
                 }
                 else if ( op->GREATEREQUAL_TOKEN() )
                 {
-                    conditionPredicate = builder.create<silly::LessEqualOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
+                    conditionPredicate =
+                        builder.create<silly::LessEqualOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
                 }
                 else if ( op->EQUALITY_TOKEN() )
                 {
@@ -1091,7 +1094,7 @@ namespace silly
         // to that will work as-is:
         mlir::Value inductionVar = loopBody.getArgument( 0 );
         builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ inductionVar },
-                                       llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+                                         llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
         setVarState( currentFuncName, varName, VariableState::assigned );
     }
     CATCH_USER_ERROR
@@ -1313,9 +1316,10 @@ namespace silly
         assert( parentOp );
         if ( !isa<silly::ScopeOp>( parentOp ) )
         {
-            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                        std::format( "{}internal error: RETURN statement must be inside a silly.scope\n",
-                                                     formatLocation( loc ) ) );
+            throw ExceptionWithContext(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}internal error: RETURN statement must be inside a silly.scope\n",
+                             formatLocation( loc ) ) );
         }
 
         mlir::func::FuncOp func = parentOp->getParentOfType<mlir::func::FuncOp>();
@@ -1426,7 +1430,7 @@ namespace silly
 
         SillyParser::LiteralContext *lit = ctx->literal();
         processReturnLike<SillyParser::LiteralContext>( loc, lit, ctx->scalarOrArrayElement(),
-                                                      lit ? lit->BOOLEAN_PATTERN() : nullptr );
+                                                        lit ? lit->BOOLEAN_PATTERN() : nullptr );
     }
     CATCH_USER_ERROR
 
@@ -1703,7 +1707,7 @@ namespace silly
             mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
 
             builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ stringLiteral },
-                                           llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+                                             llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
         }
         else
         {
@@ -1726,7 +1730,7 @@ namespace silly
                 mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
 
                 builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ resultValue },
-                                               llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+                                                 llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
             }
         }
 

@@ -19,6 +19,6 @@ namespace silly
         /// Source file name passed to the driver.
         std::string filename;
     };
-}
+}    // namespace silly
 
 // vim: et ts=4 sw=4

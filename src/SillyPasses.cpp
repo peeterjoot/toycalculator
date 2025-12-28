@@ -4,6 +4,7 @@
 /// @brief   Glue code for the LLVM-IR lowering pass.
 ///
 #include "SillyPasses.hpp"
+
 #include <mlir/Pass/PassManager.h>
 
 namespace mlir

@@ -4,12 +4,13 @@
 #pragma once
 
 #include <mlir/Pass/Pass.h>
+
 #include "driver.hpp"
 
 namespace mlir
 {
     /// Glue state that allows for passing DriverState to the lowering pass
-    std::unique_ptr<Pass> createSillyToLLVMLoweringPass( silly::DriverState * pst = nullptr );
+    std::unique_ptr<Pass> createSillyToLLVMLoweringPass( silly::DriverState* pst = nullptr );
 }    // namespace mlir
 
 // vim: et ts=4 sw=4

@@ -3,6 +3,8 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   This file implements the LLVM-IR lowering pattern matching operators
 ///
+#include "lowering.hpp"
+
 #include <llvm/ADT/StringRef.h>
 #include <llvm/BinaryFormat/Dwarf.h>    // For DW_LANG_C, DW_ATE_*
 #include <llvm/IR/DebugInfoMetadata.h>
@@ -40,7 +42,6 @@
 
 #include "SillyDialect.hpp"
 #include "SillyExceptions.hpp"
-#include "lowering.hpp"
 
 #define DEBUG_TYPE "silly-lowering"
 

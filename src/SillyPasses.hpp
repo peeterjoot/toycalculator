@@ -5,8 +5,8 @@
 
 #include <mlir/Pass/Pass.h>
 
-#include "lowering.hpp"
 #include "driver.hpp"
+#include "lowering.hpp"
 
 namespace mlir
 {

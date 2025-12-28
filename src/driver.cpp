@@ -10,6 +10,8 @@
 /// - runs the antlr4 parse tree listener (w/ MLIR builder),
 /// - runs the LLVM-IR lowering pass, and
 /// - runs the assembly printer.
+#include "driver.hpp"
+
 #include <assert.h>
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/StringRef.h>
@@ -41,7 +43,6 @@
 #include "SillyExceptions.hpp"
 #include "SillyLexer.h"
 #include "SillyPasses.hpp"
-#include "driver.hpp"
 #include "lowering.hpp"
 #include "parser.hpp"
 
