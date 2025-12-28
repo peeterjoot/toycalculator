@@ -74,37 +74,37 @@ namespace silly
         return nullptr;
     }
 
-    class loweringContext
+    class LoweringContext
     {
        private:
-        mlir::LLVM::DIFileAttr pr_fileAttr;
-        std::unordered_map<std::string, mlir::LLVM::DISubprogramAttr> pr_subprogramAttr;
-        std::unordered_map<std::string, mlir::LLVM::GlobalOp> pr_stringLiterals;
-        mlir::func::FuncOp pr_printFuncF64;
-        mlir::func::FuncOp pr_printFuncI64;
-        mlir::func::FuncOp pr_printFuncString;
-        mlir::func::FuncOp pr_getFuncI1;
-        mlir::func::FuncOp pr_getFuncI8;
-        mlir::func::FuncOp pr_getFuncI16;
-        mlir::func::FuncOp pr_getFuncI32;
-        mlir::func::FuncOp pr_getFuncI64;
-        mlir::func::FuncOp pr_getFuncF32;
-        mlir::func::FuncOp pr_getFuncF64;
+        mlir::LLVM::DIFileAttr fileAttr;
+        std::unordered_map<std::string, mlir::LLVM::DISubprogramAttr> subprogramAttr;
+        std::unordered_map<std::string, mlir::LLVM::GlobalOp> stringLiterals;
+        mlir::func::FuncOp printFuncF64;
+        mlir::func::FuncOp printFuncI64;
+        mlir::func::FuncOp printFuncString;
+        mlir::func::FuncOp getFuncI1;
+        mlir::func::FuncOp getFuncI8;
+        mlir::func::FuncOp getFuncI16;
+        mlir::func::FuncOp getFuncI32;
+        mlir::func::FuncOp getFuncI64;
+        mlir::func::FuncOp getFuncF32;
+        mlir::func::FuncOp getFuncF64;
 
-        const silly::DriverState& pr_driverState;
-        mlir::ModuleOp& pr_module;
-        mlir::OpBuilder pr_builder;
-        std::unordered_map<std::string, mlir::Operation*> pr_symbolToAlloca;
+        const silly::DriverState& driverState;
+        mlir::ModuleOp& mod;
+        mlir::OpBuilder builder;
+        std::unordered_map<std::string, mlir::Operation*> symbolToAlloca;
 
-        mlir::LLVM::DICompileUnitAttr pr_compileUnitAttr;
-        mlir::LLVM::DITypeAttr pr_diI8;
-        mlir::LLVM::DITypeAttr pr_diI16;
-        mlir::LLVM::DITypeAttr pr_diI32;
-        mlir::LLVM::DITypeAttr pr_diI64;
-        mlir::LLVM::DITypeAttr pr_diF32;
-        mlir::LLVM::DITypeAttr pr_diF64;
-        mlir::LLVM::DITypeAttr pr_diVOID;
-        mlir::LLVM::DITypeAttr pr_diUNKNOWN;
+        mlir::LLVM::DICompileUnitAttr compileUnitAttr;
+        mlir::LLVM::DITypeAttr diI8;
+        mlir::LLVM::DITypeAttr diI16;
+        mlir::LLVM::DITypeAttr diI32;
+        mlir::LLVM::DITypeAttr diI64;
+        mlir::LLVM::DITypeAttr diF32;
+        mlir::LLVM::DITypeAttr diF64;
+        mlir::LLVM::DITypeAttr diVOID;
+        mlir::LLVM::DITypeAttr diUNKNOWN;
 
        public:
         mlir::IntegerType tyI1;
@@ -118,22 +118,22 @@ namespace silly
         mlir::LLVM::LLVMVoidType tyVoid;
         mlir::LLVMTypeConverter typeConverter;
 
-        loweringContext( mlir::ModuleOp& module, const silly::DriverState& driverState )
-            : pr_driverState{ driverState },
-              pr_module{ module },
-              pr_builder{ module.getRegion() },
-              typeConverter{ pr_builder.getContext() }
+        LoweringContext( mlir::ModuleOp& moduleOp, const silly::DriverState& driverState )
+            : driverState{ driverState },
+              mod{ moduleOp },
+              builder{ mod.getRegion() },
+              typeConverter{ builder.getContext() }
         {
-            tyI1 = pr_builder.getI1Type();
-            tyI8 = pr_builder.getI8Type();
-            tyI16 = pr_builder.getI16Type();
-            tyI32 = pr_builder.getI32Type();
-            tyI64 = pr_builder.getI64Type();
+            tyI1 = builder.getI1Type();
+            tyI8 = builder.getI8Type();
+            tyI16 = builder.getI16Type();
+            tyI32 = builder.getI32Type();
+            tyI64 = builder.getI64Type();
 
-            tyF32 = pr_builder.getF32Type();
-            tyF64 = pr_builder.getF64Type();
+            tyF32 = builder.getF32Type();
+            tyF64 = builder.getF64Type();
 
-            mlir::MLIRContext* context = pr_builder.getContext();
+            mlir::MLIRContext* context = builder.getContext();
             tyPtr = mlir::LLVM::LLVMPointerType::get( context );
 
             tyVoid = mlir::LLVM::LLVMVoidType::get( context );
@@ -141,9 +141,9 @@ namespace silly
 
         unsigned preferredTypeAlignment( mlir::Operation* op, mlir::Type elemType )
         {
-            mlir::ModuleOp module = op->getParentOfType<mlir::ModuleOp>();
-            assert( module );
-            mlir::DataLayout dataLayout( module );
+            mlir::ModuleOp mod = op->getParentOfType<mlir::ModuleOp>();
+            assert( mod );
+            mlir::DataLayout dataLayout( mod );
             unsigned alignment = dataLayout.getTypePreferredAlignment( elemType );
 
             return alignment;
@@ -151,7 +151,7 @@ namespace silly
 
         mlir::MLIRContext* getContext()
         {
-            return pr_builder.getContext();
+            return builder.getContext();
         }
 
         bool isTypeFloat( mlir::Type ty ) const
@@ -179,7 +179,7 @@ namespace silly
             return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( 0 ) );
         }
 
-        /// Returns a cached zero constant for the given integer width (i8, i16, i32, i64).
+        /// Returns a zero constant for the given integer width (i8, i16, i32, i64).
         /// Throws an exception for unsupported widths.
         mlir::LLVM::ConstantOp getIzero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter, unsigned width )
         {
@@ -209,8 +209,6 @@ namespace silly
             return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyF32, rewriter.getF32FloatAttr( 0 ) );
         }
 
-        /// Returns a cached zero constant for the given float width (f32, f64).
-        /// Throws an exception for unsupported widths.
         mlir::LLVM::ConstantOp getF64zero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter )
         {
             return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyF64, rewriter.getF64FloatAttr( 0 ) );
@@ -236,10 +234,10 @@ namespace silly
             mlir::OpBuilder::InsertPoint oldIP;
 
            public:
-            useModuleInsertionPoint( mlir::ModuleOp& module, mlir::OpBuilder& builder_ )
-                : builder{ builder_ }, oldIP{ builder.saveInsertionPoint() }
+            useModuleInsertionPoint( mlir::ModuleOp& mod, mlir::OpBuilder& opBuilder )
+                : builder{ opBuilder }, oldIP{ builder.saveInsertionPoint() }
             {
-                builder.setInsertionPointToStart( module.getBody() );
+                builder.setInsertionPointToStart( mod.getBody() );
             }
 
             ~useModuleInsertionPoint()
@@ -253,35 +251,34 @@ namespace silly
         {
             if ( !printOp )
             {
-                useModuleInsertionPoint ip( pr_module, pr_builder );
+                useModuleInsertionPoint ip( mod, builder );
 
-                mlir::FunctionType funcType = mlir::FunctionType::get( pr_builder.getContext(), { type }, {} );
+                mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), { type }, {} );
 
-                printOp = pr_builder.create<mlir::func::FuncOp>( pr_module.getLoc(), name, funcType );
+                printOp = builder.create<mlir::func::FuncOp>( mod.getLoc(), name, funcType );
                 printOp.setVisibility( mlir::SymbolTable::Visibility::Private );
             }
         }
 
         void createSillyPrintF64Prototype()
         {
-            createSillyPrintPrototype( pr_printFuncF64, tyF64, "__silly_print_f64" );
+            createSillyPrintPrototype( printFuncF64, tyF64, "__silly_print_f64" );
         }
 
         void createSillyPrintI64Prototype()
         {
-            createSillyPrintPrototype( pr_printFuncI64, tyI64, "__silly_print_i64" );
+            createSillyPrintPrototype( printFuncI64, tyI64, "__silly_print_i64" );
         }
 
         void createSillyPrintStringPrototype()
         {
-            if ( !pr_printFuncString )
+            if ( !printFuncString )
             {
-                useModuleInsertionPoint ip( pr_module, pr_builder );
+                useModuleInsertionPoint ip( mod, builder );
 
-                mlir::FunctionType funcType = mlir::FunctionType::get( pr_builder.getContext(), { tyI64, tyPtr }, {} );
-                pr_printFuncString =
-                    pr_builder.create<mlir::func::FuncOp>( pr_module.getLoc(), "__silly_print_string", funcType );
-                pr_printFuncString.setVisibility( mlir::SymbolTable::Visibility::Private );
+                mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), { tyI64, tyPtr }, {} );
+                printFuncString = builder.create<mlir::func::FuncOp>( mod.getLoc(), "__silly_print_string", funcType );
+                printFuncString.setVisibility( mlir::SymbolTable::Visibility::Private );
             }
         }
 
@@ -290,13 +287,13 @@ namespace silly
         {
             if ( !getOp )
             {
-                useModuleInsertionPoint ip( pr_module, pr_builder );
+                useModuleInsertionPoint ip( mod, builder );
 
-                mlir::FunctionType funcType = mlir::FunctionType::get( pr_builder.getContext(), {},    // no arguments
+                mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), {},    // no arguments
                                                                        { retType }    // single return type
                 );
 
-                getOp = pr_builder.create<mlir::func::FuncOp>( pr_module.getLoc(), name, funcType );
+                getOp = builder.create<mlir::func::FuncOp>( mod.getLoc(), name, funcType );
                 getOp.setVisibility( mlir::SymbolTable::Visibility::Private );
             }
         }
@@ -304,124 +301,123 @@ namespace silly
         void createSillyGetI1Prototype()
         {
             // returns int8_t, but checks input to verify 0/1 value.
-            createSillyGetPrototype( pr_getFuncI1, tyI8, "__silly_get_i1" );
+            createSillyGetPrototype( getFuncI1, tyI8, "__silly_get_i1" );
         }
 
         void createSillyGetI8Prototype()
         {
-            createSillyGetPrototype( pr_getFuncI8, tyI8, "__silly_get_i8" );
+            createSillyGetPrototype( getFuncI8, tyI8, "__silly_get_i8" );
         }
 
         void createSillyGetI16Prototype()
         {
-            createSillyGetPrototype( pr_getFuncI16, tyI16, "__silly_get_i16" );
+            createSillyGetPrototype( getFuncI16, tyI16, "__silly_get_i16" );
         }
 
         void createSillyGetI32Prototype()
         {
-            createSillyGetPrototype( pr_getFuncI32, tyI32, "__silly_get_i32" );
+            createSillyGetPrototype( getFuncI32, tyI32, "__silly_get_i32" );
         }
 
         void createSillyGetI64Prototype()
         {
-            createSillyGetPrototype( pr_getFuncI64, tyI64, "__silly_get_i64" );
+            createSillyGetPrototype( getFuncI64, tyI64, "__silly_get_i64" );
         }
 
         void createSillyGetF32Prototype()
         {
-            createSillyGetPrototype( pr_getFuncF32, tyF32, "__silly_get_f32" );
+            createSillyGetPrototype( getFuncF32, tyF32, "__silly_get_f32" );
         }
 
         void createSillyGetF64Prototype()
         {
-            createSillyGetPrototype( pr_getFuncF64, tyF64, "__silly_get_f64" );
+            createSillyGetPrototype( getFuncF64, tyF64, "__silly_get_f64" );
         }
 
         void createDICompileUnit()
         {
-            if ( pr_driverState.wantDebug )
+            if ( driverState.wantDebug )
             {
-                useModuleInsertionPoint ip( pr_module, pr_builder );
+                useModuleInsertionPoint ip( mod, builder );
 
-                mlir::MLIRContext* context = pr_builder.getContext();
-
-
-                pr_diVOID = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
-                                                              pr_builder.getStringAttr( "void" ), 0, 0 );
-
-                pr_diF32 = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
-                                                             pr_builder.getStringAttr( "float" ), 32,
-                                                             llvm::dwarf::DW_ATE_float );
-
-                pr_diF64 = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
-                                                             pr_builder.getStringAttr( "double" ), 64,
-                                                             llvm::dwarf::DW_ATE_float );
-
-                pr_diUNKNOWN = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
-                                                                 pr_builder.getStringAttr( "unknown" ), 0, 0 );
+                mlir::MLIRContext* context = builder.getContext();
 
 
-                pr_diI8 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
-                                                            pr_builder.getStringAttr( "char" ), 8,
-                                                            (unsigned)llvm::dwarf::DW_ATE_signed );
+                diVOID = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
+                                                           builder.getStringAttr( "void" ), 0, 0 );
 
-                pr_diI16 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
-                                                             pr_builder.getStringAttr( "short" ), 16,
-                                                             (unsigned)llvm::dwarf::DW_ATE_signed );
+                diF32 =
+                    mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
+                                                      builder.getStringAttr( "float" ), 32, llvm::dwarf::DW_ATE_float );
 
-                pr_diI32 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
-                                                             pr_builder.getStringAttr( "int" ), 32,
-                                                             (unsigned)llvm::dwarf::DW_ATE_signed );
+                diF64 = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
+                                                          builder.getStringAttr( "double" ), 64,
+                                                          llvm::dwarf::DW_ATE_float );
 
-                pr_diI64 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
-                                                             pr_builder.getStringAttr( "long" ), 64,
-                                                             (unsigned)llvm::dwarf::DW_ATE_signed );
+                diUNKNOWN = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
+                                                              builder.getStringAttr( "unknown" ), 0, 0 );
 
-                // Construct pr_module level DI state:
-                pr_fileAttr = mlir::LLVM::DIFileAttr::get( context, pr_driverState.filename, "." );
-                mlir::DistinctAttr distinctAttr = mlir::DistinctAttr::create( pr_builder.getUnitAttr() );
-                pr_compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
-                    context, distinctAttr, llvm::dwarf::DW_LANG_C, pr_fileAttr,
-                    pr_builder.getStringAttr( COMPILER_NAME ), false, mlir::LLVM::DIEmissionKind::Full,
-                    mlir::LLVM::DINameTableKind::Default );
+
+                diI8 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                         builder.getStringAttr( "char" ), 8,
+                                                         (unsigned)llvm::dwarf::DW_ATE_signed );
+
+                diI16 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                          builder.getStringAttr( "short" ), 16,
+                                                          (unsigned)llvm::dwarf::DW_ATE_signed );
+
+                diI32 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                          builder.getStringAttr( "int" ), 32,
+                                                          (unsigned)llvm::dwarf::DW_ATE_signed );
+
+                diI64 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                          builder.getStringAttr( "long" ), 64,
+                                                          (unsigned)llvm::dwarf::DW_ATE_signed );
+
+                // Construct module level DI state:
+                fileAttr = mlir::LLVM::DIFileAttr::get( context, driverState.filename, "." );
+                mlir::DistinctAttr distinctAttr = mlir::DistinctAttr::create( builder.getUnitAttr() );
+                compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
+                    context, distinctAttr, llvm::dwarf::DW_LANG_C, fileAttr, builder.getStringAttr( COMPILER_NAME ),
+                    false, mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
             }
 
-            pr_module->setAttr( "llvm.ident", pr_builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
+            mod->setAttr( "llvm.ident", builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
         }
 
         mlir::LLVM::DITypeAttr getDIType( mlir::Type type )
         {
             if ( !type )
             {
-                return pr_diVOID;
+                return diVOID;
             }
             else if ( type.isF32() )
             {
-                return pr_diF32;
+                return diF32;
             }
             else if ( type.isF64() )
             {
-                return pr_diF64;
+                return diF64;
             }
             else if ( type.isInteger( 8 ) || type.isInteger( 1 ) )
             {
-                return pr_diI8;
+                return diI8;
             }
             else if ( type.isInteger( 16 ) )
             {
-                return pr_diI16;
+                return diI16;
             }
             else if ( type.isInteger( 32 ) )
             {
-                return pr_diI32;
+                return diI32;
             }
             else if ( type.isInteger( 64 ) )
             {
-                return pr_diI64;
+                return diI64;
             }
             else
             {
-                return pr_diUNKNOWN;
+                return diUNKNOWN;
             }
         }
 
@@ -440,25 +436,25 @@ namespace silly
                 paramTypes.push_back( getDIType( argType ) );
             }
 
-            mlir::MLIRContext* context = pr_builder.getContext();
+            mlir::MLIRContext* context = builder.getContext();
 
             return mlir::LLVM::DISubroutineTypeAttr::get( context, llvm::DINode::FlagZero, paramTypes );
         }
 
         void createFuncDebug( mlir::func::FuncOp funcOp )
         {
-            if ( pr_driverState.wantDebug )
+            if ( driverState.wantDebug )
             {
-                useModuleInsertionPoint ip( pr_module, pr_builder );
+                useModuleInsertionPoint ip( mod, builder );
 
-                mlir::MLIRContext* context = pr_builder.getContext();
+                mlir::MLIRContext* context = builder.getContext();
                 std::string funcName = funcOp.getSymName().str();
 
                 mlir::LLVM::DISubroutineTypeAttr subprogramType = createDISubroutineType( funcOp );
 
                 mlir::LLVM::DISubprogramAttr sub = mlir::LLVM::DISubprogramAttr::get(
-                    context, mlir::DistinctAttr::create( pr_builder.getUnitAttr() ), pr_compileUnitAttr, pr_fileAttr,
-                    pr_builder.getStringAttr( funcName ), pr_builder.getStringAttr( funcName ), pr_fileAttr, 1, 1,
+                    context, mlir::DistinctAttr::create( builder.getUnitAttr() ), compileUnitAttr, fileAttr,
+                    builder.getStringAttr( funcName ), builder.getStringAttr( funcName ), fileAttr, 1, 1,
                     mlir::LLVM::DISubprogramFlags::Definition, subprogramType, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{},
                     llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
 
@@ -466,9 +462,9 @@ namespace silly
 
                 // This is the key to ensure that translateModuleToLLVMIR does not strip the location info (instead
                 // converts loc's into !dbg's)
-                funcOp->setLoc( pr_builder.getFusedLoc( { pr_module.getLoc() }, sub ) );
+                funcOp->setLoc( builder.getFusedLoc( { mod.getLoc() }, sub ) );
 
-                pr_subprogramAttr[funcName] = sub;
+                subprogramAttr[funcName] = sub;
             }
         }
 
@@ -492,7 +488,7 @@ namespace silly
 
             std::string funcNameAndVarName = funcName + "::" + varName;
 
-            mlir::Operation* alloca = pr_symbolToAlloca[funcNameAndVarName];
+            mlir::Operation* alloca = symbolToAlloca[funcNameAndVarName];
             return mlir::dyn_cast<mlir::LLVM::AllocaOp>( alloca );
         }
 
@@ -503,17 +499,17 @@ namespace silly
 
             std::string funcNameAndVarName = funcName + "::" + varName;
 
-            pr_symbolToAlloca[funcNameAndVarName] = allocaOp;
+            symbolToAlloca[funcNameAndVarName] = allocaOp;
         }
 
         void constructVariableDI( llvm::StringRef varName, mlir::Type& elemType, mlir::FileLineColLoc loc,
                                   unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp, int64_t arraySize = 1 )
         {
-            if ( pr_driverState.wantDebug )
+            if ( driverState.wantDebug )
             {
-                mlir::MLIRContext* context = pr_builder.getContext();
+                mlir::MLIRContext* context = builder.getContext();
 
-                allocaOp->setAttr( "bindc_name", pr_builder.getStringAttr( varName ) );
+                allocaOp->setAttr( "bindc_name", builder.getStringAttr( varName ) );
 
                 mlir::LLVM::DILocalVariableAttr diVar;
                 mlir::LLVM::DITypeAttr diType;
@@ -535,7 +531,7 @@ namespace silly
                         }
                         case 8:
                         {
-                            typeName = "char";    // Use "char" for STRING arrays
+                            typeName = "char";    // Using "char" for STRING arrays
                             dwType = llvm::dwarf::DW_ATE_signed_char;
                             break;
                         }
@@ -587,7 +583,7 @@ namespace silly
                 }
 
                 std::string funcName = lookupFuncNameForOp( allocaOp );
-                mlir::LLVM::DISubprogramAttr sub = pr_subprogramAttr[funcName];
+                mlir::LLVM::DISubprogramAttr sub = subprogramAttr[funcName];
                 assert( sub );
 
                 unsigned totalSizeInBits = elemStorageSizeInBits * arraySize;
@@ -595,7 +591,7 @@ namespace silly
                 {
                     // Create base type for array elements
                     mlir::LLVM::DIBasicTypeAttr baseType = mlir::LLVM::DIBasicTypeAttr::get(
-                        context, llvm::dwarf::DW_TAG_base_type, pr_builder.getStringAttr( typeName ),
+                        context, llvm::dwarf::DW_TAG_base_type, builder.getStringAttr( typeName ),
                         elemStorageSizeInBits, dwType );
 
                     // Create subrange for array (count = arraySize, lowerBound = 0)
@@ -608,7 +604,7 @@ namespace silly
                     // Create array type
                     unsigned alignInBits = elemStorageSizeInBits;    // Alignment matches element size
                     diType = mlir::LLVM::DICompositeTypeAttr::get(
-                        context, llvm::dwarf::DW_TAG_array_type, pr_builder.getStringAttr( "" ), pr_fileAttr,
+                        context, llvm::dwarf::DW_TAG_array_type, builder.getStringAttr( "" ), fileAttr,
                         /*line=*/0, sub, baseType, mlir::LLVM::DIFlags::Zero, totalSizeInBits, alignInBits,
                         llvm::ArrayRef<mlir::LLVM::DINodeAttr>{ subrange },
                         /*dataLocation=*/nullptr, /*rank=*/nullptr, /*allocated=*/nullptr, /*associated=*/nullptr );
@@ -617,16 +613,16 @@ namespace silly
                 {
                     // Scalar type
                     diType = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
-                                                               pr_builder.getStringAttr( typeName ),
-                                                               elemStorageSizeInBits, dwType );
+                                                               builder.getStringAttr( typeName ), elemStorageSizeInBits,
+                                                               dwType );
                 }
 
                 diVar = mlir::LLVM::DILocalVariableAttr::get(
-                    context, sub, pr_builder.getStringAttr( varName ), pr_fileAttr, loc.getLine(),
+                    context, sub, builder.getStringAttr( varName ), fileAttr, loc.getLine(),
                     /*argNo=*/0, totalSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
 
-                pr_builder.setInsertionPointAfter( allocaOp );
-                pr_builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
+                builder.setInsertionPointAfter( allocaOp );
+                builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
             }
 
             createLocalSymbolReference( allocaOp, varName.str() );
@@ -635,8 +631,8 @@ namespace silly
         mlir::LLVM::GlobalOp lookupGlobalOp( mlir::StringAttr& stringLit )
         {
             mlir::LLVM::GlobalOp globalOp;
-            auto it = pr_stringLiterals.find( stringLit.str() );
-            if ( it != pr_stringLiterals.end() )
+            auto it = stringLiterals.find( stringLit.str() );
+            if ( it != stringLiterals.end() )
             {
                 globalOp = it->second;
                 LLVM_DEBUG( llvm::dbgs() << std::format( "Found global: {} for string literal '{}'\n",
@@ -650,8 +646,8 @@ namespace silly
                                                      mlir::StringAttr& stringLit, mlir::Location loc, size_t strLen )
         {
             mlir::LLVM::GlobalOp globalOp;
-            auto it = pr_stringLiterals.find( stringLit.str() );
-            if ( it != pr_stringLiterals.end() )
+            auto it = stringLiterals.find( stringLit.str() );
+            if ( it != stringLiterals.end() )
             {
                 globalOp = it->second;
                 LLVM_DEBUG( llvm::dbgs() << "Reusing global: " << globalOp.getSymName() << '\n' );
@@ -659,7 +655,7 @@ namespace silly
             else
             {
                 mlir::OpBuilder::InsertPoint savedIP = rewriter.saveInsertionPoint();
-                rewriter.setInsertionPointToStart( pr_module.getBody() );
+                rewriter.setInsertionPointToStart( mod.getBody() );
 
                 mlir::LLVM::LLVMArrayType arrayType = mlir::LLVM::LLVMArrayType::get( tyI8, strLen );
 
@@ -668,12 +664,12 @@ namespace silly
                     mlir::RankedTensorType::get( { static_cast<int64_t>( strLen ) }, tyI8 ),
                     mlir::ArrayRef<char>( stringData ) );
 
-                std::string globalName = "str_" + std::to_string( pr_stringLiterals.size() );
+                std::string globalName = "str_" + std::to_string( stringLiterals.size() );
                 globalOp = rewriter.create<mlir::LLVM::GlobalOp>( loc, arrayType, true, mlir::LLVM::Linkage::Private,
                                                                   globalName, denseAttr );
                 globalOp->setAttr( "unnamed_addr", rewriter.getUnitAttr() );
 
-                pr_stringLiterals[stringLit.str()] = globalOp;
+                stringLiterals[stringLit.str()] = globalOp;
                 LLVM_DEBUG( llvm::dbgs() << "Created global: " << globalName << '\n' );
 
                 rewriter.restoreInsertionPoint( savedIP );
@@ -682,7 +678,8 @@ namespace silly
             return globalOp;
         }
 
-        silly::CallOp createPrintCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc, mlir::Value input )
+        silly::CallOp createPrintCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
+                                       mlir::Value input )
         {
             mlir::Type inputType = input.getType();
             silly::CallOp result;
@@ -702,7 +699,7 @@ namespace silly
 
                 createSillyPrintI64Prototype();
                 result = rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, "__silly_print_i64",
-                                                       mlir::ValueRange{ input } );
+                                                         mlir::ValueRange{ input } );
             }
             else if ( mlir::FloatType inputf = mlir::dyn_cast<mlir::FloatType>( inputType ) )
             {
@@ -717,7 +714,7 @@ namespace silly
 
                 createSillyPrintF64Prototype();
                 result = rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, "__silly_print_f64",
-                                                       mlir::ValueRange{ input } );
+                                                         mlir::ValueRange{ input } );
             }
             else if ( inputType == tyPtr )
             {
@@ -759,8 +756,8 @@ namespace silly
                     LLVM_DEBUG( {
                         llvm::errs() << "why am I here?\n";
                         input.dump();
-                        // mlir::ModuleOp module = input.getParentOfType<mlir::ModuleOp>();
-                        // module.dump();
+                        // mlir::ModuleOp mod = input.getParentOfType<mlir::ModuleOp>();
+                        // mod.dump();
                     } );
 
                     assert( 0 );    // should not get here.
@@ -772,8 +769,8 @@ namespace silly
 
                 createSillyPrintStringPrototype();
                 const char* name = "__silly_print_string";
-                result =
-                    rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, name, mlir::ValueRange{ sizeConst, input } );
+                result = rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, name,
+                                                         mlir::ValueRange{ sizeConst, input } );
             }
             else
             {
@@ -782,9 +779,9 @@ namespace silly
 
 #if 0
             LLVM_DEBUG( {
-                llvm::errs() << "######################### module dump after print lowering\n";
-                mlir::ModuleOp module = result->getParentOfType<mlir::ModuleOp>();
-                module.dump();
+                llvm::errs() << "######################### mod dump after print lowering\n";
+                mlir::ModuleOp mod = result->getParentOfType<mlir::ModuleOp>();
+                mod.dump();
             } );
 #endif
 
@@ -879,22 +876,22 @@ namespace silly
                                    const std::string& varName, mlir::LLVM::AllocaOp value, mlir::Type elemType,
                                    int paramIndex, const std::string& funcName )
         {
-            if ( pr_driverState.wantDebug )
+            if ( driverState.wantDebug )
             {
                 // Create debug type for basic types (e.g., i32, f32)
                 mlir::MLIRContext* context = rewriter.getContext();
                 mlir::LLVM::DITypeAttr diType = getDIType( elemType );
 
-                // Get DISubprogram from pr_subprogramAttr
-                mlir::LLVM::DISubprogramAttr sub = pr_subprogramAttr[funcName];
+                // Get DISubprogram from subprogramAttr
+                mlir::LLVM::DISubprogramAttr sub = subprogramAttr[funcName];
                 assert( sub );
 
                 unsigned bitWidth = elemType.getIntOrFloatBitWidth();
 
                 // Create debug variable
                 mlir::LLVM::DILocalVariableAttr diVar = mlir::LLVM::DILocalVariableAttr::get(
-                    context, sub, rewriter.getStringAttr( varName ), pr_fileAttr, loc.getLine(), paramIndex + 1,
-                    bitWidth, diType, mlir::LLVM::DIFlags::Zero );
+                    context, sub, rewriter.getStringAttr( varName ), fileAttr, loc.getLine(), paramIndex + 1, bitWidth,
+                    diType, mlir::LLVM::DIFlags::Zero );
 
                 // Emit llvm.dbg.declare
                 rewriter.create<mlir::LLVM::DbgDeclareOp>( loc, value, diVar );
@@ -961,11 +958,11 @@ namespace silly
     class DeclareOpLowering : public mlir::ConversionPattern
     {
        private:
-        loweringContext& lState;
+        LoweringContext& lState;
 
        public:
-        DeclareOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( silly::DeclareOp::getOperationName(), benefit, context ), lState{ lState_ }
+        DeclareOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( silly::DeclareOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
@@ -977,7 +974,8 @@ namespace silly
             bool param = declareOp.isParameter();
 
             //   silly.declare "x" : i32
-            LLVM_DEBUG( llvm::dbgs() << std::format( "Lowering silly.declare: param: {}", param ) << declareOp << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << std::format( "Lowering silly.declare: param: {}", param ) << declareOp
+                                     << '\n' );
 
             rewriter.setInsertionPoint( op );
 
@@ -1062,11 +1060,13 @@ namespace silly
     class StringLiteralOpLowering : public mlir::ConversionPattern
     {
        private:
-        loweringContext& lState;
+        LoweringContext& lState;
 
        public:
-        StringLiteralOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( silly::StringLiteralOp::getOperationName(), benefit, context ), lState( lState_ )
+        StringLiteralOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context,
+                                 mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( silly::StringLiteralOp::getOperationName(), benefit, context ),
+              lState( loweringState )
         {
         }
 
@@ -1095,11 +1095,11 @@ namespace silly
     class AssignOpLowering : public mlir::ConversionPattern
     {
        private:
-        loweringContext& lState;
+        LoweringContext& lState;
 
        public:
-        AssignOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( silly::AssignOp::getOperationName(), benefit, context ), lState{ lState_ }
+        AssignOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( silly::AssignOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
@@ -1268,11 +1268,11 @@ namespace silly
     class ComparisonOpLowering : public mlir::ConversionPattern
     {
        private:
-        loweringContext& lState;
+        LoweringContext& lState;
 
        public:
-        ComparisonOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( SillyOp::getOperationName(), benefit, context ), lState{ lState_ }
+        ComparisonOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( SillyOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
@@ -1402,11 +1402,11 @@ namespace silly
     class LoadOpLowering : public mlir::ConversionPattern
     {
        private:
-        loweringContext& lState;
+        LoweringContext& lState;
 
        public:
-        LoadOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( silly::LoadOp::getOperationName(), benefit, context ), lState{ lState_ }
+        LoadOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( silly::LoadOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
@@ -1490,11 +1490,11 @@ namespace silly
     class CallOpLowering : public mlir::ConversionPattern
     {
        private:
-        loweringContext& lState;
+        LoweringContext& lState;
 
        public:
-        CallOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( silly::CallOp::getOperationName(), benefit, context ), lState{ lState_ }
+        CallOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( silly::CallOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
@@ -1534,11 +1534,11 @@ namespace silly
     class ScopeOpLowering : public mlir::ConversionPattern
     {
        private:
-        loweringContext& lState;
+        LoweringContext& lState;
 
        public:
-        ScopeOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( silly::ScopeOp::getOperationName(), benefit, context ), lState{ lState_ }
+        ScopeOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( silly::ScopeOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
@@ -1600,11 +1600,11 @@ namespace silly
     class LowerByDeletion : public mlir::ConversionPattern
     {
        private:
-        loweringContext& lState;
+        LoweringContext& lState;
 
        public:
-        LowerByDeletion( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( SillOpType::getOperationName(), benefit, context ), lState{ lState_ }
+        LowerByDeletion( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( SillOpType::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
@@ -1621,11 +1621,11 @@ namespace silly
     class PrintOpLowering : public mlir::ConversionPattern
     {
        private:
-        loweringContext& lState;
+        LoweringContext& lState;
 
        public:
-        PrintOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( silly::PrintOp::getOperationName(), benefit, context ), lState{ lState_ }
+        PrintOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( silly::PrintOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
@@ -1633,7 +1633,7 @@ namespace silly
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
 #if 0
-            mlir::ModuleOp module = op->getParentOfType<mlir::ModuleOp>();
+            mlir::ModuleOp mod = op->getParentOfType<mlir::ModuleOp>();
 #endif
 
             silly::PrintOp printOp = cast<silly::PrintOp>( op );
@@ -1650,8 +1650,8 @@ namespace silly
 
 #if 0
             LLVM_DEBUG( {
-                llvm::errs() << "######################### module dump after PrintOpLowering::matchAndRewrite replaceOp\n";
-                module.dump();
+                llvm::errs() << "######################### mod dump after PrintOpLowering::matchAndRewrite replaceOp\n";
+                mod.dump();
             } );
 #endif
 
@@ -1662,11 +1662,11 @@ namespace silly
     class GetOpLowering : public mlir::ConversionPattern
     {
        private:
-        loweringContext& lState;
+        LoweringContext& lState;
 
        public:
-        GetOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( silly::GetOp::getOperationName(), benefit, context ), lState{ lState_ }
+        GetOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( silly::GetOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
@@ -1692,11 +1692,11 @@ namespace silly
     class NegOpLowering : public mlir::ConversionPattern
     {
        private:
-        loweringContext& lState;
+        LoweringContext& lState;
 
        public:
-        NegOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( silly::NegOp::getOperationName(), benefit, context ), lState{ lState_ }
+        NegOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( silly::NegOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
@@ -1743,11 +1743,12 @@ namespace silly
     class BinaryOpLowering : public mlir::ConversionPattern
     {
        private:
-        loweringContext& lState;
+        LoweringContext& lState;
 
        public:
-        BinaryOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( SillyBinaryOpType::getOperationName(), benefit, context ), lState{ lState_ }
+        BinaryOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( SillyBinaryOpType::getOperationName(), benefit, context ),
+              lState{ loweringState }
         {
         }
 
@@ -1875,12 +1876,12 @@ namespace silly
     class ConstantOpLowering : public mlir::ConversionPattern
     {
        private:
-        loweringContext& lState;
+        LoweringContext& lState;
 
        public:
-        ConstantOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+        ConstantOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
             : mlir::ConversionPattern( mlir::arith::ConstantOp::getOperationName(), benefit, context ),
-              lState{ lState_ }
+              lState{ loweringState }
         {
         }
 
@@ -1910,12 +1911,13 @@ namespace silly
         }
     };
 
-    class SillyToLLVMLoweringPass : public mlir::PassWrapper<SillyToLLVMLoweringPass, mlir::OperationPass<mlir::ModuleOp>>
+    class SillyToLLVMLoweringPass
+        : public mlir::PassWrapper<SillyToLLVMLoweringPass, mlir::OperationPass<mlir::ModuleOp>>
     {
        public:
         MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID( SillyToLLVMLoweringPass )
 
-        SillyToLLVMLoweringPass( silly::DriverState* pst_ ) : pDriverState{ pst_ }
+        SillyToLLVMLoweringPass( silly::DriverState* pst ) : pDriverState{ pst }
         {
         }
 
@@ -1926,16 +1928,16 @@ namespace silly
 
         void runOnOperation() override
         {
-            mlir::ModuleOp module = getOperation();
+            mlir::ModuleOp mod = getOperation();
             LLVM_DEBUG( {
                 llvm::dbgs() << "Starting SillyToLLVMLoweringPass on:\n";
-                module->dump();
+                mod->dump();
             } );
 
-            loweringContext lState( module, *pDriverState );
+            LoweringContext lState( mod, *pDriverState );
             lState.createDICompileUnit();
 
-            for ( mlir::func::FuncOp funcOp : module.getBodyRegion().getOps<mlir::func::FuncOp>() )
+            for ( mlir::func::FuncOp funcOp : mod.getBodyRegion().getOps<mlir::func::FuncOp>() )
             {
                 LLVM_DEBUG( {
                     llvm::dbgs() << "Generating !DISubroutineType() for mlir::func::FuncOp: " << funcOp.getSymName()
@@ -1948,10 +1950,10 @@ namespace silly
             {
                 mlir::ConversionTarget target( getContext() );
                 target.addLegalDialect<mlir::LLVM::LLVMDialect, silly::SillyDialect, mlir::scf::SCFDialect>();
-                target.addIllegalOp<mlir::arith::ConstantOp, silly::AddOp, silly::AndOp, silly::AssignOp, silly::DeclareOp,
-                                    silly::DivOp, silly::EqualOp, silly::LessEqualOp, silly::LessOp, silly::LoadOp, silly::MulOp,
-                                    silly::NegOp, silly::NotEqualOp, silly::OrOp, silly::PrintOp, silly::GetOp,
-                                    silly::StringLiteralOp, silly::SubOp, silly::XorOp>();
+                target.addIllegalOp<mlir::arith::ConstantOp, silly::AddOp, silly::AndOp, silly::AssignOp,
+                                    silly::DeclareOp, silly::DivOp, silly::EqualOp, silly::LessEqualOp, silly::LessOp,
+                                    silly::LoadOp, silly::MulOp, silly::NegOp, silly::NotEqualOp, silly::OrOp,
+                                    silly::PrintOp, silly::GetOp, silly::StringLiteralOp, silly::SubOp, silly::XorOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
                                   silly::ScopeOp, silly::YieldOp, silly::ReturnOp, silly::CallOp, mlir::func::CallOp,
                                   mlir::scf::IfOp, mlir::scf::ForOp, mlir::scf::YieldOp>();
@@ -1964,7 +1966,7 @@ namespace silly
                                                                                                     &getContext(), 1 );
                 mlir::arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns );
 
-                if ( failed( applyFullConversion( module, target, std::move( patterns ) ) ) )
+                if ( failed( applyFullConversion( mod, target, std::move( patterns ) ) ) )
                 {
                     LLVM_DEBUG( llvm::dbgs() << "Silly Lowering: First phase failed\n" );
                     signalPassFailure();
@@ -1973,7 +1975,7 @@ namespace silly
 
                 LLVM_DEBUG( {
                     llvm::dbgs() << "After first phase (silly ops lowered):\n";
-                    module->dump();
+                    mod->dump();
                 } );
             }
 
@@ -1997,7 +1999,7 @@ namespace silly
                 // CF -> LLVM
                 mlir::cf::populateControlFlowToLLVMConversionPatterns( lState.typeConverter, patterns );
 
-                if ( failed( applyFullConversion( module, target, std::move( patterns ) ) ) )
+                if ( failed( applyFullConversion( mod, target, std::move( patterns ) ) ) )
                 {
                     LLVM_DEBUG( llvm::dbgs() << "Silly Lowering: Second phase failed\n" );
                     signalPassFailure();
@@ -2007,7 +2009,7 @@ namespace silly
 
             LLVM_DEBUG( {
                 llvm::dbgs() << "After successful SillyToLLVMLoweringPass:\n";
-                for ( mlir::Operation& op : module->getRegion( 0 ).front() )
+                for ( mlir::Operation& op : mod->getRegion( 0 ).front() )
                 {
                     op.dump();
                 }
