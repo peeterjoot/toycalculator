@@ -8,5 +8,5 @@ set -x
 
 rm -f output.ll
 ../build/mlirtest #--debug-info
-clang -g -o output output.ll -Wl,-rpath,`pwd`/../build -L`pwd`/../build -l toy_runtime -Wno-override-module
+clang -g -o output output.ll -Wl,-rpath,`pwd`/../build -L`pwd`/../build -l silly_runtime -Wno-override-module
 #objdump --dwarf output

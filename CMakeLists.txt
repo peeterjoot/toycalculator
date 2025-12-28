@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(toycalculator)
+project(sillycompiler)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -21,25 +21,24 @@ include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src)
-#include_directories(${CMAKE_BINARY_DIR}/ToyParser) # seems to be implied.
 
 #------------------------------------------------------------------------------
 # antlr4 related rules:
 #
-set(GRAMMAR_FILE "${CMAKE_CURRENT_SOURCE_DIR}/Toy.g4")
-set(ANTLR_OUTPUT_DIR "${CMAKE_BINARY_DIR}/ToyParser")
+set(GRAMMAR_FILE "${CMAKE_CURRENT_SOURCE_DIR}/Silly.g4")
+set(ANTLR_OUTPUT_DIR "${CMAKE_BINARY_DIR}/SillyParser")
 
 # Ensure output directory exists
 file(MAKE_DIRECTORY ${ANTLR_OUTPUT_DIR})
 
 add_custom_command(
 OUTPUT
-    ${ANTLR_OUTPUT_DIR}/ToyBaseListener.cpp
-    ${ANTLR_OUTPUT_DIR}/ToyListener.cpp
-    ${ANTLR_OUTPUT_DIR}/ToyParser.cpp
-    ${ANTLR_OUTPUT_DIR}/ToyLexer.cpp
+    ${ANTLR_OUTPUT_DIR}/SillyBaseListener.cpp
+    ${ANTLR_OUTPUT_DIR}/SillyListener.cpp
+    ${ANTLR_OUTPUT_DIR}/SillyParser.cpp
+    ${ANTLR_OUTPUT_DIR}/SillyLexer.cpp
 COMMAND
-    ${CMAKE_CURRENT_SOURCE_DIR}/bin/runantlr --grammar Toy.g4 --outdir ${ANTLR_OUTPUT_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/bin/runantlr --grammar Silly.g4 --outdir ${ANTLR_OUTPUT_DIR}
 DEPENDS
     ${GRAMMAR_FILE}
     ${ANTLR4_LOCAL}
@@ -55,10 +54,10 @@ include_directories(/usr/include/antlr4-runtime)
 add_custom_target(
     GenerateANTLR
     DEPENDS
-        ${ANTLR_OUTPUT_DIR}/ToyBaseListener.cpp
-        ${ANTLR_OUTPUT_DIR}/ToyListener.cpp
-        ${ANTLR_OUTPUT_DIR}/ToyParser.cpp
-        ${ANTLR_OUTPUT_DIR}/ToyLexer.cpp
+        ${ANTLR_OUTPUT_DIR}/SillyBaseListener.cpp
+        ${ANTLR_OUTPUT_DIR}/SillyListener.cpp
+        ${ANTLR_OUTPUT_DIR}/SillyParser.cpp
+        ${ANTLR_OUTPUT_DIR}/SillyLexer.cpp
 )
 #------------------------------------------------------------------------------
 # mostly tablegen rules:
@@ -68,58 +67,58 @@ link_directories(${LLVM_BUILD_LIBRARY_DIR})
 add_definitions(${LLVM_DEFINITIONS})
 
 # TableGen for dialect
-set(LLVM_TARGET_DEFINITIONS src/calculator.td)
+set(LLVM_TARGET_DEFINITIONS src/silly.td)
 
 # Generate dialect declarations
-mlir_tablegen(ToyDialectDecls.hpp.inc -gen-dialect-decls -dialect toy)
+mlir_tablegen(SillyDialectDecls.hpp.inc -gen-dialect-decls -dialect silly)
 
 # Generate dialect definitions
-mlir_tablegen(ToyDialectDefs.cpp.inc -gen-dialect-defs -dialect toy)
+mlir_tablegen(SillyDialectDefs.cpp.inc -gen-dialect-defs -dialect silly)
 
 # Generate operation declarations
-mlir_tablegen(ToyDialect.hpp.inc -gen-op-decls -dialect toy)
+mlir_tablegen(SillyDialect.hpp.inc -gen-op-decls -dialect silly)
 
 # Generate operation definitions
-mlir_tablegen(ToyDialect.cpp.inc -gen-op-defs -dialect toy)
+mlir_tablegen(SillyDialect.cpp.inc -gen-op-defs -dialect silly)
 
 # Create a single TableGen target for all generated files
-add_public_tablegen_target(ToyDialectIncGen
+add_public_tablegen_target(SillyDialectIncGen
   DEPENDS
-    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialectDecls.hpp.inc
-    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialectDefs.cpp.inc
-    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialect.hpp.inc
-    ${CMAKE_CURRENT_BINARY_DIR}/ToyDialect.cpp.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/SillyDialectDecls.hpp.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/SillyDialectDefs.cpp.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/SillyDialect.hpp.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/SillyDialect.cpp.inc
 )
 
 # TableGen for passes
-set(LLVM_TARGET_DEFINITIONS src/ToyPasses.td)
-mlir_tablegen(ToyPasses.hpp.inc --gen-pass-decls -name Toy -I ${CMAKE_SOURCE_DIR}/src -I ${MLIR_INCLUDE_DIRS})
+set(LLVM_TARGET_DEFINITIONS src/SillyPasses.td)
+mlir_tablegen(SillyPasses.hpp.inc --gen-pass-decls -name Silly -I ${CMAKE_SOURCE_DIR}/src -I ${MLIR_INCLUDE_DIRS})
 
-add_public_tablegen_target(ToyPassesIncGen
+add_public_tablegen_target(SillyPassesIncGen
   DEPENDS
-    ${CMAKE_CURRENT_BINARY_DIR}/ToyPasses.hpp.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/SillyPasses.hpp.inc
 )
 #------------------------------------------------------------------------------
 # Targets:
 
 # Add runtime library as a shared object
-add_library(toy_runtime SHARED runtime/Toy_runtime.cpp)
-set_target_properties(toy_runtime PROPERTIES OUTPUT_NAME "toy_runtime")
-target_link_options(toy_runtime PRIVATE -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/runtime/version_script.map)
+add_library(silly_runtime SHARED runtime/Silly_runtime.cpp)
+set_target_properties(silly_runtime PROPERTIES OUTPUT_NAME "silly_runtime")
+target_link_options(silly_runtime PRIVATE -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/runtime/version_script.map)
 
 set(DRIVER_SOURCE_FILES
   src/driver.cpp
-  src/ToyDialect.cpp
-  src/ToyPasses.cpp
+  src/SillyDialect.cpp
+  src/SillyPasses.cpp
   src/lowering.cpp
   src/parser.cpp
-  ${ANTLR_OUTPUT_DIR}/ToyBaseListener.cpp
-  ${ANTLR_OUTPUT_DIR}/ToyListener.cpp
-  ${ANTLR_OUTPUT_DIR}/ToyParser.cpp
-  ${ANTLR_OUTPUT_DIR}/ToyLexer.cpp
+  ${ANTLR_OUTPUT_DIR}/SillyBaseListener.cpp
+  ${ANTLR_OUTPUT_DIR}/SillyListener.cpp
+  ${ANTLR_OUTPUT_DIR}/SillyParser.cpp
+  ${ANTLR_OUTPUT_DIR}/SillyLexer.cpp
 )
 
-add_executable(toycalculator
+add_executable(silly
   ${DRIVER_SOURCE_FILES}
 )
 
@@ -139,10 +138,10 @@ add_executable(hibye
 # compile options (and target dependencies)
 
 # Include the output directory for header files
-target_include_directories(toycalculator PRIVATE ${ANTLR_OUTPUT_DIR})
+target_include_directories(silly PRIVATE ${ANTLR_OUTPUT_DIR})
 
 # Ensure the ANTLR and TableGen generation runs before building the project
-add_dependencies(toycalculator hibye simplest mlirtest toy_runtime GenerateANTLR ToyDialectIncGen ToyPassesIncGen)
+add_dependencies(silly hibye simplest mlirtest silly_runtime GenerateANTLR SillyDialectIncGen SillyPassesIncGen)
 
 set(COMMON_COMPILE_OPTIONS
   -Wall
@@ -178,11 +177,11 @@ endif()
 # an attempt to suppress all the rhs == lhs ambiguous messages from the mlir headers:
 #  -Wno-c++20-compat
 
-target_compile_options(toy_runtime PRIVATE ${COMMON_COMPILE_OPTIONS})
-target_compile_options(toycalculator PRIVATE ${COMMON_COMPILE_OPTIONS})
+target_compile_options(silly_runtime PRIVATE ${COMMON_COMPILE_OPTIONS})
+target_compile_options(silly PRIVATE ${COMMON_COMPILE_OPTIONS})
 
 #------------------------------------------------------------------------------
-# Link rules for the toycalculator target:
+# Link rules for the silly target:
 
 # Check the target architecture
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
@@ -247,7 +246,7 @@ target_link_libraries(hibye
   MLIRMemRefToLLVM
 )
 
-target_link_libraries(toycalculator
+target_link_libraries(silly
   PRIVATE
   antlr4-runtime
   LLVMSupport

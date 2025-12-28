@@ -18,7 +18,7 @@ Options:
 
 =over 4
 
-=item --grammar Toy.g4
+=item --grammar Silly.g4
 
 The grammar file.
 
@@ -69,7 +69,7 @@ GetOptions (
    'outdir=s'           => \$outdir,
 ) or pod2usage(-verbose => 0) ;
 
-die "required argument: --grammar Toy.g4" unless ( $grammar );
+die "required argument: --grammar Silly.g4" unless ( $grammar );
 die "required argument: --outdir dir" unless ( $outdir );
 
 my @jar = <"$ENV{'HOME'}/toycalculator/antlr-*-complete.jar">;

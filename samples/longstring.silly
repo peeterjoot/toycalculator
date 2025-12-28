@@ -2,7 +2,7 @@ STRING s[20];
 
 // verified in the debugger that this doesn't trigger memory overwrite:
 //
-// Breakpoint 2, main () at shortstring.toy:10
+// Breakpoint 2, main () at shortstring.silly:10
 // 10      s = "a much longer string than should be allowed.  what will this do?";
 // (gdb) x/21xb s
 // 0x7fffffffdac0: 0x68    0x69    0x00    0x00    0x00    0x00    0x00    0x00

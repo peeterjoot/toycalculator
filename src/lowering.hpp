@@ -8,8 +8,8 @@
 
 namespace mlir
 {
-    /// Glue state that allows for passing driverState to the lowering pass
-    std::unique_ptr<Pass> createToyToLLVMLoweringPass( toy::driverState * pst = nullptr );
+    /// Glue state that allows for passing DriverState to the lowering pass
+    std::unique_ptr<Pass> createSillyToLLVMLoweringPass( silly::DriverState * pst = nullptr );
 }    // namespace mlir
 
 // vim: et ts=4 sw=4

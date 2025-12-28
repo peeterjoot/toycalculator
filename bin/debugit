@@ -1,1 +1,1 @@
-gdb -q -x ../b ../build/toycalculator
+gdb -q -x ../b ../build/silly

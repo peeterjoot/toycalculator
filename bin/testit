@@ -24,7 +24,7 @@ Warn, insted of die, on error.
 
 =item --just testname
 
-Run only testname.  Given full source test.toy, say, this is the test file stem test.
+Run only testname.  Given full source test.silly, say, this is the test file stem test.
 
 =item --no-debug
 
@@ -89,7 +89,7 @@ GetOptions (
 # normalize input:
 if ( defined $just )
 {
-    $just =~ s/\.toy$//;
+    $just =~ s/\.silly$//;
 }
 
 my $flags = '';
@@ -214,20 +214,20 @@ foreach my $stem (sort @alltests)
     next if ( defined $just and $just ne $stem );
 
     print "##########################################################################\n";
-    verbose_system( qq(cat $stem.toy) );
+    verbose_system( qq(cat $stem.silly) );
 
     print "##########################################################################\n";
-    my $cmd = qq(../build/toycalculator --output-directory out $stem.toy $flags --emit-llvm --emit-mlir);
+    my $cmd = qq(../build/silly --output-directory out $stem.silly $flags --emit-llvm --emit-mlir);
     my $crc = verbose_system( $cmd );
     if ( defined $failuretests{$stem} )
     {
         if ($crc)
         {
-            print "TEST: $stem.toy failed as expected: rc = $crc\n";
+            print "TEST: $stem.silly failed as expected: rc = $crc\n";
         }
         else
         {
-            die "Expected failure running $stem.toy";
+            die "Expected failure running $stem.silly";
         }
 
         next;

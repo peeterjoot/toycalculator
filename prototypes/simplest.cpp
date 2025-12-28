@@ -123,7 +123,7 @@ int main( int argc, char **argv )
     auto moduleLoc = mlir::FileLineColLoc::get( builder.getStringAttr( "test.c" ), MODULE_LINE, 1 );
     auto module = mlir::ModuleOp::create( moduleLoc );
     module->setAttr( "llvm.data_layout", builder.getStringAttr( dataLayoutStr ) );
-    module->setAttr( "llvm.ident", builder.getStringAttr( "toycompiler 0.0" ) );
+    module->setAttr( "llvm.ident", builder.getStringAttr( "sillycompiler 0.0" ) );
     module->setAttr( "llvm.target_triple", builder.getStringAttr( targetTriple ) );
 
     // Create global string constant

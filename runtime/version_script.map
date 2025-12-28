@@ -1,14 +1,14 @@
-TOY_V1.0.0 {
+SILLY_V1.0.0 {
      global:
-__toy_print_string;
-__toy_print_f64;
-__toy_print_i64;
-__toy_get_i1;
-__toy_get_i8;
-__toy_get_i16;
-__toy_get_i32;
-__toy_get_i64;
-__toy_get_f32;
-__toy_get_f64;
+__silly_print_string;
+__silly_print_f64;
+__silly_print_i64;
+__silly_get_i1;
+__silly_get_i8;
+__silly_get_i16;
+__silly_get_i32;
+__silly_get_i64;
+__silly_get_f32;
+__silly_get_f64;
      local; *;
    };

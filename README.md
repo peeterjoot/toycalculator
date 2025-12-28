@@ -1,7 +1,7 @@
 ## Motivation
 
 The goal of this project was to gain concrete, hands-on experience with the MLIR ecosystem.
-It uses an ANTLR4 grammar, an MLIR builder, and MLIR lowering to LLVM IR, incorporating a custom dialect (toy) along with several existing MLIR dialects (scf, arith, memref, etc.).
+It uses an ANTLR4 grammar, an MLIR builder, and MLIR lowering to LLVM IR, incorporating a custom dialect (silly) along with several existing MLIR dialects (scf, arith, memref, etc.).
 
 I had seen MLIR in action in a prototype project at work but had not worked with it directly.
 It appeared to provide a structured mechanism that avoids the need to hand-craft an AST, while offering built-in semantic checking and a robust representation of source code that can serve as the basis for transformations.
@@ -16,11 +16,11 @@ The potential of this approach is clear and exciting enough to explore personall
 
 ## What is this project?
 
-Initially, I used MLIR to build a simple symbolic calculator that supported double-like variable declarations, assignments, unary and binary arithmetic operations, and output display.
+Initially, I used MLIR to build a simple symbolic calculator that supported double-like variable declarations, assignments, unary and binary arithmetic operations, and output display.  This used a dialect initially called toy, but renamed to silly to avoid confusion with the mlir tutorial toy dialect.
 
 As noted earlier, the primary goal of the project was not calculation itself, but to gain concrete, hands-on experience with the MLIR ecosystem.
 
-That initial implementation has evolved into a toy language and its compiler, which now supports the following features:
+That initial implementation has evolved into a silly language and its compiler.  There's no good reason to use this language, nor the compiler, but it was fun to build.  The language and compiler now support the following features:
 
 * A `DECLARE` operation (implicit double type).
 * Fixed-size integer declarations (`INT8`, `INT16`, `INT32`, `INT64`).
@@ -46,7 +46,7 @@ There is lots of room to add add further language elements to make the compiler 
 
 ## Language Quirks.
 
-* Like scripted languages, there is an implicit `main` in this toy language.
+* Like scripted languages, there is an implicit `main` in this silly language.
 * Functions can be defined anywhere, but must be defined before use.
 * Computations occur in assignment operations, and any types are first promoted to the type of the variable.
 This means that `x = 1.99 + 2.99` has the value `3`, if `x` is an integer variable, but `4.98` if x is a `FLOAT32` or `FLOAT64`.
@@ -66,14 +66,14 @@ As an example of the pain of working with AI tools, here's a trivial example: I 
 
 ## Interesting files
 
-* `Toy.g4`           -- The Antlr4 grammar.
+* `Silly.g4`           -- The Antlr4 grammar.
 * `src/driver.cpp`   -- This is the compiler driver, handles command line options, opens output files, and orchestrates all the lower level actions (parse tree walk + MLIR builder, lowering to LLVM-IR, assembly printer, and calls the linker.)
-* `src/calculator.td` -- This is the MLIR dialect that defines the compiler eye view of all the grammar elements.
+* `src/silly.td` -- This is the MLIR dialect that defines the compiler eye view of all the grammar elements.
 * `src/parser.cpp`   -- This is the Antlr4 parse tree walker and the MLIR builder.
 * `src/lowering.cpp` -- LLVM-IR lowering classes.
-* `prototypes/simplest.cpp`  -- A MWE w/ working DWARF instrumentation.  Just emits LLVM-IR and has no assembly printing pass like the toy compiler.
+* `prototypes/simplest.cpp`  -- A MWE w/ working DWARF instrumentation.  Just emits LLVM-IR and has no assembly printing pass like the silly compiler.
 * `prototypes/hibye.cpp` -- A MWE w/ working DWARF instrumentation.  This one emits LLVM-IR for a program that includes an `IF` statement.
-* `samples/*.toy` and `bin/testit` -- sample programs and a rudimentary regression test suite based on them.
+* `samples/*.silly` and `bin/testit` -- sample programs and a rudimentary regression test suite based on them.
 * `bin/build`, `bin/rebuild` -- build scripts (first runs cmake and ninja and sets compiler override if required), second just ninja with some teeing and grepping.
 
 ## Command line options
@@ -82,8 +82,8 @@ As an example of the pain of working with AI tools, here's a trivial example: I 
 * `--emit-llvm`
 * `--emit-mlir`
 * `--debug` (built in MLIR option.)
-* `-debug-only=toy-driver`
-* `-debug-only=toy-lowering`
+* `-debug-only=silly-driver`
+* `-debug-only=silly-lowering`
 * `--debug-mlir`
 * `-g` (show MLIR location info in the dump, and lowered LLVM-IR.)
 * `-O[0123]` -- the usual.
@@ -173,7 +173,7 @@ but that may not be any more illuminating.  Old fashioned printf style debugging
 
 ```
              LLVM_DEBUG( llvm::dbgs()
-                         << "Lowering toy.program: " << *op << '\n' << loc << '\n' );
+                         << "Lowering silly.program: " << *op << '\n' << loc << '\n' );
 ```
 
 In particular, the dump() function can be used for many mlir objects.  That coupled with `--debug` in the driver is the primary debug mechanism that I have used developing this compiler.

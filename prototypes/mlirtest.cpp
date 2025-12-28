@@ -100,7 +100,7 @@ void buildAssignmentAndPrint( mlir::OpBuilder &builder, mlir::MLIRContext *conte
     builder.create<mlir::LLVM::StoreOp>( varLoc, constantValue, ptr );
 
     mlir::Value val = builder.create<mlir::LLVM::LoadOp>( printLoc, int64Type, ptr );
-    builder.create<mlir::func::CallOp>( printLoc, "__toy_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val } );
+    builder.create<mlir::func::CallOp>( printLoc, "__silly_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val } );
 }
 
 int main( int argc, char **argv )
@@ -125,7 +125,7 @@ int main( int argc, char **argv )
     auto module = mlir::ModuleOp::create( loc );
 
     auto printType = builder.getFunctionType( builder.getI64Type(), {} );
-    mlir::func::FuncOp print = builder.create<mlir::func::FuncOp>( loc, "__toy_print_i64", printType,
+    mlir::func::FuncOp print = builder.create<mlir::func::FuncOp>( loc, "__silly_print_i64", printType,
                                                                    llvm::ArrayRef<mlir::NamedAttribute>{} );    //
     print.setPrivate();    // External linkage
     module.push_back( print );

@@ -1,7 +1,7 @@
 //
-// @file    calculator.md
+// @file    silly.md
 // @author  Peeter Joot <peeterjoot@pm.me>
-// @brief   This implements the Toy compiler dialect.
+// @brief   This implements the Silly compiler dialect.
 //
 // @description
 //
@@ -21,13 +21,13 @@ include "mlir/IR/SymbolInterfaces.td"
 include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/Dialect/LLVMIR/LLVMTypes.td"
 
-def Toy_Dialect : Dialect {
-  let name = "toy";
-  let summary = "A compiler MLIR dialect for a simple calculator with variables";
-  let cppNamespace = "toy";
+def Silly_Dialect : Dialect {
+  let name = "silly";
+  let summary = "An MLIR dialect for a silly simple language";
+  let cppNamespace = "silly";
 }
 
-def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
+def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
   let summary = "Declare a parameter, variable or array, type (integer or float), and optional size.";
   let description = [{
     Declares a variable (scalar or array) or function parameter with a name and type.
@@ -57,17 +57,17 @@ def Toy_DeclareOp : Op<Toy_Dialect, "declare"> {
   }];
 }
 
-def Toy_IntOrFloat : TypeConstraint<
+def Silly_IntOrFloat : TypeConstraint<
   CPred<"mlir::isa<mlir::IntegerType>($_self) || mlir::isa<mlir::FloatType>($_self)">,
   "integer or float type">;
 
-def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
+def Silly_AssignOp : Op<Silly_Dialect, "assign"> {
   let summary = "Assign a value to a variable (scalar or array element).";
 
   let description = [{
     Assigns `value` to the variable referenced by `var_name`.
     If `index` is present, the assignment targets the array element at that index.
-    The target variable must have been declared with a matching `toy.declare`.
+    The target variable must have been declared with a matching `silly.declare`.
   }];
 
   let arguments = (ins
@@ -82,7 +82,7 @@ def Toy_AssignOp : Op<Toy_Dialect, "assign"> {
     "$var_name (`[` $index^ `]`)? `=` $value `:` type($value) attr-dict";
 }
 
-def Toy_LoadOp : Op<Toy_Dialect, "load"> {
+def Silly_LoadOp : Op<Silly_Dialect, "load"> {
   let summary = "Load a variable (scalar or array element) by symbol reference.";
   let arguments = (ins
     SymbolRefAttr:$var_name,               // @t
@@ -95,10 +95,10 @@ def Toy_LoadOp : Op<Toy_Dialect, "load"> {
     "$var_name (`[` $index^ `]`)? `:` type($result) attr-dict";
 }
 
-def Toy_YieldOp : Op<Toy_Dialect, "yield"> {
-  let summary = "Terminator for toy.scope blocks";
+def Silly_YieldOp : Op<Silly_Dialect, "yield"> {
+  let summary = "Terminator for silly.scope blocks";
   let description = [{
-    A no-op terminator operation for `toy.scope` blocks to satisfy MLIR's block
+    A no-op terminator operation for `silly.scope` blocks to satisfy MLIR's block
     termination requirement. It carries no semantic meaning and is removed during
     lowering.
   }];
@@ -107,8 +107,8 @@ def Toy_YieldOp : Op<Toy_Dialect, "yield"> {
   let traits = [Terminator];
 }
 
-def Toy_ScopeOp : Op<Toy_Dialect, "scope"> {
-  let summary = "A scoping construct for local variables in the Toy dialect";
+def Silly_ScopeOp : Op<Silly_Dialect, "scope"> {
+  let summary = "A scoping construct for local variables in the Silly dialect";
   let description = "A scope operation that defines a region with a symbol table for local variables, nested within a function.";
   let arguments = (ins Variadic<AnyType>:$operands);
   let results = (outs Variadic<AnyType>:$results);
@@ -126,11 +126,11 @@ def Toy_ScopeOp : Op<Toy_Dialect, "scope"> {
   }];
 }
 
-def Toy_CallOp : Op<Toy_Dialect, "call"> {
-  let summary = "A call operation in the Toy dialect to invoke runtime functions.";
+def Silly_CallOp : Op<Silly_Dialect, "call"> {
+  let summary = "A call operation in the Silly dialect to invoke runtime functions.";
   let description = [{
-    The `toy.call` operation represents a call to a runtime function, such as `__toy_print_string`.
-    It is used as an intermediate operation during lowering from `toy.print` to `func.call`.
+    The `silly.call` operation represents a call to a runtime function, such as `__silly_print_string`.
+    It is used as an intermediate operation during lowering from `silly.print` to `func.call`.
     The operation takes a callee name as a `FlatSymbolRefAttr` and a variadic list of operands.
   }];
 
@@ -143,10 +143,10 @@ def Toy_CallOp : Op<Toy_Dialect, "call"> {
   //let assemblyFormat = "$callee `(` type($operands) $operands `)` attr-dict";
 }
 
-def Toy_ReturnOp : Op<Toy_Dialect, "return"> {
-  let summary = "Return operation for toy.scope blocks";
+def Silly_ReturnOp : Op<Silly_Dialect, "return"> {
+  let summary = "Return operation for silly.scope blocks";
   let description = [{
-    A return operation within a `toy.scope` that returns a value to the parent function.
+    A return operation within a `silly.scope` that returns a value to the parent function.
     It is lowered to a `func.return` during `ScopeOp` lowering.
   }];
   let arguments = (ins Variadic<AnyType>:$operands);
@@ -154,20 +154,20 @@ def Toy_ReturnOp : Op<Toy_Dialect, "return"> {
   let traits = [Terminator];
 }
 
-def Toy_StringLiteralOp : Op<Toy_Dialect, "string_literal"> {
+def Silly_StringLiteralOp : Op<Silly_Dialect, "string_literal"> {
   let summary = "String literal operation";
   let arguments = (ins StrAttr:$value);
   let results = (outs AnyType:$result);
 }
 
-def Toy_PrintOp : Op<Toy_Dialect, "print"> {
+def Silly_PrintOp : Op<Silly_Dialect, "print"> {
   let summary = "Print a variable or string literal to standard output";
   let arguments = (ins AnyType:$input);
   let results = (outs);
   let assemblyFormat = "$input `:` type($input) attr-dict";
 }
 
-def Toy_GetOp : Op<Toy_Dialect, "get"> {
+def Silly_GetOp : Op<Silly_Dialect, "get"> {
   let summary = "Read a scalar value from standard input";
   let description = [{
     Reads a single scalar value (integer or floating-point) from standard input
@@ -177,93 +177,93 @@ def Toy_GetOp : Op<Toy_Dialect, "get"> {
   let arguments = (ins);
 
   // Single result, restricted to integer or float types
-  let results = (outs Toy_IntOrFloat:$value);
+  let results = (outs Silly_IntOrFloat:$value);
 
   // op name, with type inferred from result
   let assemblyFormat = "attr-dict `:` type(results)";
 }
 
-def Toy_NegOp : Op<Toy_Dialect, "negate"> {
+def Silly_NegOp : Op<Silly_Dialect, "negate"> {
   let summary = "Negation operation (e.g., -x)";
-  let arguments = (ins Toy_IntOrFloat:$lhs);
-  let results = (outs Toy_IntOrFloat:$result);
+  let arguments = (ins Silly_IntOrFloat:$lhs);
+  let results = (outs Silly_IntOrFloat:$result);
   //let assemblyFormat = "`-` $lhs `:` type($lhs) attr-dict";
 }
 
-def Toy_AddOp : Op<Toy_Dialect, "add"> {
+def Silly_AddOp : Op<Silly_Dialect, "add"> {
   let summary = "Addition operation (e.g., x + y)";
-  let arguments = (ins Toy_IntOrFloat:$lhs, Toy_IntOrFloat:$rhs);
-  let results = (outs Toy_IntOrFloat:$result);
+  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
+  let results = (outs Silly_IntOrFloat:$result);
   //let assemblyFormat = "$lhs `+` $rhs `:` type($result) attr-dict";
 }
 
-def Toy_SubOp : Op<Toy_Dialect, "sub"> {
+def Silly_SubOp : Op<Silly_Dialect, "sub"> {
   let summary = "Subtraction operation (e.g., x - y)";
-  let arguments = (ins Toy_IntOrFloat:$lhs, Toy_IntOrFloat:$rhs);
-  let results = (outs Toy_IntOrFloat:$result);
+  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
+  let results = (outs Silly_IntOrFloat:$result);
   //let assemblyFormat = "$lhs `-` $rhs `:` type($result) attr-dict";
 }
 
-def Toy_MulOp : Op<Toy_Dialect, "mul"> {
+def Silly_MulOp : Op<Silly_Dialect, "mul"> {
   let summary = "Multiplication operation (e.g., x * y)";
-  let arguments = (ins Toy_IntOrFloat:$lhs, Toy_IntOrFloat:$rhs);
-  let results = (outs Toy_IntOrFloat:$result);
+  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
+  let results = (outs Silly_IntOrFloat:$result);
   //let assemblyFormat = "$lhs `*` $rhs `:` type($result) attr-dict";
 }
 
-def Toy_DivOp : Op<Toy_Dialect, "div"> {
+def Silly_DivOp : Op<Silly_Dialect, "div"> {
   let summary = "Division operation (e.g., x / y)";
-  let arguments = (ins Toy_IntOrFloat:$lhs, Toy_IntOrFloat:$rhs);
-  let results = (outs Toy_IntOrFloat:$result);
+  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
+  let results = (outs Silly_IntOrFloat:$result);
   //let assemblyFormat = "$lhs `/` $rhs `:` type($result) attr-dict";
 }
 
-def Toy_LessOp : Op<Toy_Dialect, "less"> {
+def Silly_LessOp : Op<Silly_Dialect, "less"> {
   let summary = "Less than operation (e.g., x < y)";
-  let arguments = (ins Toy_IntOrFloat:$lhs, Toy_IntOrFloat:$rhs);
+  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
   let results = (outs I1:$result);
   //let assemblyFormat = "$lhs `<` $rhs `:` type($result) attr-dict";
 }
 
-def Toy_LessEqualOp : Op<Toy_Dialect, "less_eq"> {
+def Silly_LessEqualOp : Op<Silly_Dialect, "less_eq"> {
   let summary = "Less than or equal operation (e.g., x <= y)";
-  let arguments = (ins Toy_IntOrFloat:$lhs, Toy_IntOrFloat:$rhs);
+  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
   let results = (outs I1:$result);
   //let assemblyFormat = "$lhs `<=` $rhs `:` type($result) attr-dict";
 }
 
-def Toy_EqualOp : Op<Toy_Dialect, "eq"> {
+def Silly_EqualOp : Op<Silly_Dialect, "eq"> {
   let summary = "Equal operation (e.g., x EQ y)";
-  let arguments = (ins Toy_IntOrFloat:$lhs, Toy_IntOrFloat:$rhs);
+  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
   let results = (outs I1:$result);
   //let assemblyFormat = "$lhs `==` $rhs `:` type($result) attr-dict";
 }
 
-def Toy_NotEqualOp : Op<Toy_Dialect, "neq"> {
+def Silly_NotEqualOp : Op<Silly_Dialect, "neq"> {
   let summary = "Not equal operation (e.g., x NE y)";
-  let arguments = (ins Toy_IntOrFloat:$lhs, Toy_IntOrFloat:$rhs);
+  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
   let results = (outs I1:$result);
   //let assemblyFormat = "$lhs `!=` $rhs `:` type($result) attr-dict";
 }
 
-def Toy_OrOp : Op<Toy_Dialect, "or"> {
+def Silly_OrOp : Op<Silly_Dialect, "or"> {
   let summary = "Bitwise or boolean OR operation (e.g., x OR y)";
-  let arguments = (ins Toy_IntOrFloat:$lhs, Toy_IntOrFloat:$rhs);
-  let results = (outs Toy_IntOrFloat:$result);
+  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
+  let results = (outs Silly_IntOrFloat:$result);
   //let assemblyFormat = "$lhs `|` $rhs `:` type($result) attr-dict";
 }
 
-def Toy_AndOp : Op<Toy_Dialect, "and"> {
+def Silly_AndOp : Op<Silly_Dialect, "and"> {
   let summary = "Bitwise or boolean AND operation (e.g., x AND y)";
-  let arguments = (ins Toy_IntOrFloat:$lhs, Toy_IntOrFloat:$rhs);
-  let results = (outs Toy_IntOrFloat:$result);
+  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
+  let results = (outs Silly_IntOrFloat:$result);
   //let assemblyFormat = "$lhs `&` $rhs `:` type($result) attr-dict";
 }
 
-def Toy_XorOp : Op<Toy_Dialect, "xor"> {
+def Silly_XorOp : Op<Silly_Dialect, "xor"> {
   let summary = "Bitwise or boolean XOR operation (e.g., x XOR y)";
-  let arguments = (ins Toy_IntOrFloat:$lhs, Toy_IntOrFloat:$rhs);
-  let results = (outs Toy_IntOrFloat:$result);
+  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
+  let results = (outs Silly_IntOrFloat:$result);
   //let assemblyFormat = "$lhs `^` $rhs `:` type($result) attr-dict";
 }
 

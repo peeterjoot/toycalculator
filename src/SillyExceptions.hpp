@@ -1,12 +1,12 @@
-/// @file    ToyExceptions.hpp
+/// @file    SillyExceptions.hpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
-/// @brief   Exception handling classes for the toy compiler.
+/// @brief   Exception handling classes for the silly compiler.
 #pragma once
 
 #include <exception>
 #include <format>
 
-namespace toy
+namespace silly
 {
     /// An exception class for internal errors that builds a file:line:func triplet along with the reason.
     class ExceptionWithContext : public std::exception
@@ -31,6 +31,6 @@ namespace toy
        private:
         std::string message;
     };
-}    // namespace toy
+}    // namespace silly
 
 // vim: et ts=4 sw=4

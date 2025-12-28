@@ -1,7 +1,7 @@
 /**
- * @file    Toy_runtime.cpp
+ * @file    Silly_runtime.cpp
  * @author  Peeter Joot <peeterjoot@pm.me>
- * @brief   Runtime functions for the toy compiler language.
+ * @brief   Runtime functions for the silly compiler and language.
  */
 #include <inttypes.h>
 #include <stdint.h>
@@ -10,45 +10,45 @@
 
 extern "C"
 {
-    void __toy_print_string( size_t len, const char* str )
+    void __silly_print_string( size_t len, const char* str )
     {
         printf( "%.*s\n", (int)len, str );
     }
 
-    void __toy_print_f64( double value )
+    void __silly_print_f64( double value )
     {
         printf( "%f\n", value );
     }
 
 
-    void __toy_print_i64( int64_t value )
+    void __silly_print_i64( int64_t value )
     {
         printf( "%" PRId64 "\n", value );
     }
 
 #if 0
-    void __toy_print_f32( float value )
+    void __silly_print_f32( float value )
     {
         printf( "%f\n", value );
     }
 
-    void __toy_print_i32( int32_t value )
+    void __silly_print_i32( int32_t value )
     {
         printf( "%d\n", value );
     }
 
-    void __toy_print_i16( int16_t value )
+    void __silly_print_i16( int16_t value )
     {
         printf( "%hd\n", value );
     }
 
-    void __toy_print_i8( int8_t value )
+    void __silly_print_i8( int8_t value )
     {
         printf( "%d\n", (int)value );
     }
 #endif
 
-    int8_t __toy_get_i8( void )
+    int8_t __silly_get_i8( void )
     {
         int8_t v;
         int n = scanf( "%" SCNi8, &v );
@@ -61,9 +61,9 @@ extern "C"
         return v;
     }
 
-    int8_t __toy_get_i1( void )
+    int8_t __silly_get_i1( void )
     {
-        int8_t v = __toy_get_i8();
+        int8_t v = __silly_get_i8();
 
         if ( ( v != 1 ) && ( v != 0 ) )
         {
@@ -73,7 +73,7 @@ extern "C"
         return v;
     }
 
-    int16_t __toy_get_i16( void )
+    int16_t __silly_get_i16( void )
     {
         int16_t v;
         int n = scanf( "%" SCNi16, &v );
@@ -86,7 +86,7 @@ extern "C"
         return v;
     }
 
-    int32_t __toy_get_i32( void )
+    int32_t __silly_get_i32( void )
     {
         int32_t v;
         int n = scanf( "%" SCNi32, &v );
@@ -99,7 +99,7 @@ extern "C"
         return v;
     }
 
-    int64_t __toy_get_i64( void )
+    int64_t __silly_get_i64( void )
     {
         int64_t v;
         int n = scanf( "%" SCNi64, &v );
@@ -112,7 +112,7 @@ extern "C"
         return v;
     }
 
-    float __toy_get_f32( void )
+    float __silly_get_f32( void )
     {
         float v;
         int n = scanf( "%f", &v );
@@ -125,7 +125,7 @@ extern "C"
         return v;
     }
 
-    double __toy_get_f64( void )
+    double __silly_get_f64( void )
     {
         double v;
         int n = scanf( "%lf", &v );

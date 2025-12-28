@@ -1,16 +1,16 @@
 ///
-/// @file    ToyPasses.cpp
+/// @file    SillyPasses.cpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Glue code for the LLVM-IR lowering pass.
 ///
-#include "ToyPasses.hpp"
+#include "SillyPasses.hpp"
 #include <mlir/Pass/PassManager.h>
 
 namespace mlir
 {
-    void registerToyPasses()
+    void registerSillyPasses()
     {
-        ::registerToyPasses();    // Call the generated inline function
+        ::registerSillyPasses();    // Call the generated inline function
     }
 }    // namespace mlir
 

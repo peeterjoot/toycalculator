@@ -117,10 +117,10 @@ my %v2 = (
    'j64' => 10000000000,
 );
 
-open my $toy, ">${name}op.toy" or die;
-open my $etoy, ">expected/${name}op.out" or die;
+open my $silly, ">${name}op.silly" or die;
+open my $esilly, ">expected/${name}op.out" or die;
 
-print $toy qq(//THIS IS A GENERATED TEST CASE (./$myName @origARGV).  DO NOT EDIT\n
+print $silly qq(//THIS IS A GENERATED TEST CASE (./$myName @origARGV).  DO NOT EDIT\n
 INT64 r;\n);
 
 my @symbols = sort keys %v1;
@@ -132,17 +132,17 @@ foreach my $v ( @symbols )
     $type =~ s/^[ij]/INT/;
     $type =~ s/INT1$/BOOL/;
 
-    print $toy "$type $v;\n";
+    print $silly "$type $v;\n";
 }
 
 foreach my $v ( sort keys %v1 )
 {
-    print $toy "$v = $v1{$v};\n";
+    print $silly "$v = $v1{$v};\n";
 }
 
 foreach my $v ( sort keys %v2 )
 {
-    print $toy "$v = $v2{$v};\n";
+    print $silly "$v = $v2{$v};\n";
 }
 
 foreach my $v1 ( sort keys %v1 )
@@ -173,12 +173,12 @@ foreach my $v1 ( sort keys %v1 )
             $e = ( $a ^ $b );
         }
 
-        print $etoy "$v1 ${op} $v2\n$e\n";
-        print $toy "PRINT \"$v1 ${op} $v2\";\nr = $v1 ${op} $v2;\nPRINT r;\n";
+        print $esilly "$v1 ${op} $v2\n$e\n";
+        print $silly "PRINT \"$v1 ${op} $v2\";\nr = $v1 ${op} $v2;\nPRINT r;\n";
     }
 }
 
-close $toy;
-close $etoy;
+close $silly;
+close $esilly;
 
 # vim: et ts=4 sw=4

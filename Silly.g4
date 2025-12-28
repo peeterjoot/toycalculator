@@ -1,18 +1,18 @@
 //
-// @file    Toy.g4
+// @file    Silly.g4
 // @author  Peeter Joot <peeterjoot@pm.me>
-// @brief   This is the antlr4 grammar for the Toy compiler project.
+// @brief   This is the antlr4 grammar for the silly compiler and language.
 //
 // @description
 //
-// This grammar implements a toy (calculator) language that has:
+// This grammar implements a silly language that has:
 // - a couple simple numeric operators (unary negation, binary +-*/),
 // - an exit operation,
 // - a declare operation, and typed declare operations (INT8, INT16, INT32, INT64, FLOAT32, FLOAT64, BOOL), plus array variants
 // - an assignment operation,
 // - a print operation, and
 // - a get operation.
-grammar Toy;
+grammar Silly;
 
 // Parser Rules (start with lower case)
 // ====================================
@@ -469,7 +469,7 @@ CALL_TOKEN
   ;
 
 // Matches variable names (e.g., 'x', 'foo', 'my_var'), consisting of letters (any case), numbers and underscores, but starting with a letter.
-// This rule must be after the TOKENs above to prohibit variables like 'INT32 INT32;' (error_keyword_declare.toy)
+// This rule must be after the TOKENs above to prohibit variables like 'INT32 INT32;' (error_keyword_declare.silly)
 IDENTIFIER
   : [a-zA-Z][a-zA-Z0-9_]*
   ;

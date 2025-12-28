@@ -38,19 +38,19 @@
 #include <format>
 #include <numeric>
 
-#include "ToyDialect.hpp"
-#include "ToyExceptions.hpp"
+#include "SillyDialect.hpp"
+#include "SillyExceptions.hpp"
 #include "lowering.hpp"
 
-#define DEBUG_TYPE "toy-lowering"
+#define DEBUG_TYPE "silly-lowering"
 
 // for llvm.ident and DICompileUnitAttr
-#define COMPILER_NAME "toycalculator"
+#define COMPILER_NAME "silly"
 
 /// For llvm.ident
 #define COMPILER_VERSION " V6"
 
-namespace toy
+namespace silly
 {
     mlir::FileLineColLoc getLocation( mlir::Location loc )
     {
@@ -91,7 +91,7 @@ namespace toy
         mlir::func::FuncOp pr_getFuncF32;
         mlir::func::FuncOp pr_getFuncF64;
 
-        const toy::driverState& pr_driverState;
+        const silly::DriverState& pr_driverState;
         mlir::ModuleOp& pr_module;
         mlir::OpBuilder pr_builder;
         std::unordered_map<std::string, mlir::Operation*> pr_symbolToAlloca;
@@ -118,7 +118,7 @@ namespace toy
         mlir::LLVM::LLVMVoidType tyVoid;
         mlir::LLVMTypeConverter typeConverter;
 
-        loweringContext( mlir::ModuleOp& module, const toy::driverState& driverState )
+        loweringContext( mlir::ModuleOp& module, const silly::DriverState& driverState )
             : pr_driverState{ driverState },
               pr_module{ module },
               pr_builder{ module.getRegion() },
@@ -249,7 +249,7 @@ namespace toy
         };
 
         template <class Ty>
-        void createToyPrintPrototype( mlir::func::FuncOp& printOp, Ty type, const char* name )
+        void createSillyPrintPrototype( mlir::func::FuncOp& printOp, Ty type, const char* name )
         {
             if ( !printOp )
             {
@@ -262,17 +262,17 @@ namespace toy
             }
         }
 
-        void createToyPrintF64Prototype()
+        void createSillyPrintF64Prototype()
         {
-            createToyPrintPrototype( pr_printFuncF64, tyF64, "__toy_print_f64" );
+            createSillyPrintPrototype( pr_printFuncF64, tyF64, "__silly_print_f64" );
         }
 
-        void createToyPrintI64Prototype()
+        void createSillyPrintI64Prototype()
         {
-            createToyPrintPrototype( pr_printFuncI64, tyI64, "__toy_print_i64" );
+            createSillyPrintPrototype( pr_printFuncI64, tyI64, "__silly_print_i64" );
         }
 
-        void createToyPrintStringPrototype()
+        void createSillyPrintStringPrototype()
         {
             if ( !pr_printFuncString )
             {
@@ -280,13 +280,13 @@ namespace toy
 
                 mlir::FunctionType funcType = mlir::FunctionType::get( pr_builder.getContext(), { tyI64, tyPtr }, {} );
                 pr_printFuncString =
-                    pr_builder.create<mlir::func::FuncOp>( pr_module.getLoc(), "__toy_print_string", funcType );
+                    pr_builder.create<mlir::func::FuncOp>( pr_module.getLoc(), "__silly_print_string", funcType );
                 pr_printFuncString.setVisibility( mlir::SymbolTable::Visibility::Private );
             }
         }
 
         template <class RetTy>
-        void createToyGetPrototype( mlir::func::FuncOp& getOp, RetTy retType, const char* name )
+        void createSillyGetPrototype( mlir::func::FuncOp& getOp, RetTy retType, const char* name )
         {
             if ( !getOp )
             {
@@ -301,40 +301,40 @@ namespace toy
             }
         }
 
-        void createToyGetI1Prototype()
+        void createSillyGetI1Prototype()
         {
             // returns int8_t, but checks input to verify 0/1 value.
-            createToyGetPrototype( pr_getFuncI1, tyI8, "__toy_get_i1" );
+            createSillyGetPrototype( pr_getFuncI1, tyI8, "__silly_get_i1" );
         }
 
-        void createToyGetI8Prototype()
+        void createSillyGetI8Prototype()
         {
-            createToyGetPrototype( pr_getFuncI8, tyI8, "__toy_get_i8" );
+            createSillyGetPrototype( pr_getFuncI8, tyI8, "__silly_get_i8" );
         }
 
-        void createToyGetI16Prototype()
+        void createSillyGetI16Prototype()
         {
-            createToyGetPrototype( pr_getFuncI16, tyI16, "__toy_get_i16" );
+            createSillyGetPrototype( pr_getFuncI16, tyI16, "__silly_get_i16" );
         }
 
-        void createToyGetI32Prototype()
+        void createSillyGetI32Prototype()
         {
-            createToyGetPrototype( pr_getFuncI32, tyI32, "__toy_get_i32" );
+            createSillyGetPrototype( pr_getFuncI32, tyI32, "__silly_get_i32" );
         }
 
-        void createToyGetI64Prototype()
+        void createSillyGetI64Prototype()
         {
-            createToyGetPrototype( pr_getFuncI64, tyI64, "__toy_get_i64" );
+            createSillyGetPrototype( pr_getFuncI64, tyI64, "__silly_get_i64" );
         }
 
-        void createToyGetF32Prototype()
+        void createSillyGetF32Prototype()
         {
-            createToyGetPrototype( pr_getFuncF32, tyF32, "__toy_get_f32" );
+            createSillyGetPrototype( pr_getFuncF32, tyF32, "__silly_get_f32" );
         }
 
-        void createToyGetF64Prototype()
+        void createSillyGetF64Prototype()
         {
-            createToyGetPrototype( pr_getFuncF64, tyF64, "__toy_get_f64" );
+            createSillyGetPrototype( pr_getFuncF64, tyF64, "__silly_get_f64" );
         }
 
         void createDICompileUnit()
@@ -682,10 +682,10 @@ namespace toy
             return globalOp;
         }
 
-        toy::CallOp createPrintCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc, mlir::Value input )
+        silly::CallOp createPrintCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc, mlir::Value input )
         {
             mlir::Type inputType = input.getType();
-            toy::CallOp result;
+            silly::CallOp result;
 
             if ( mlir::IntegerType inputi = mlir::dyn_cast<mlir::IntegerType>( inputType ) )
             {
@@ -700,8 +700,8 @@ namespace toy
                     input = rewriter.create<mlir::LLVM::SExtOp>( loc, tyI64, input );
                 }
 
-                createToyPrintI64Prototype();
-                result = rewriter.create<toy::CallOp>( loc, mlir::TypeRange{}, "__toy_print_i64",
+                createSillyPrintI64Prototype();
+                result = rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, "__silly_print_i64",
                                                        mlir::ValueRange{ input } );
             }
             else if ( mlir::FloatType inputf = mlir::dyn_cast<mlir::FloatType>( inputType ) )
@@ -715,15 +715,15 @@ namespace toy
                     assert( inputType == tyF64 );
                 }
 
-                createToyPrintF64Prototype();
-                result = rewriter.create<toy::CallOp>( loc, mlir::TypeRange{}, "__toy_print_f64",
+                createSillyPrintF64Prototype();
+                result = rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, "__silly_print_f64",
                                                        mlir::ValueRange{ input } );
             }
             else if ( inputType == tyPtr )
             {
                 // Find AllocaOp for size and element type
                 int64_t numElems = 0;
-                if ( toy::LoadOp loadOp = input.getDefiningOp<toy::LoadOp>() )
+                if ( silly::LoadOp loadOp = input.getDefiningOp<silly::LoadOp>() )
                 {
                     mlir::SymbolRefAttr varNameAttr = loadOp.getVarName();
                     assert( varNameAttr );
@@ -745,7 +745,7 @@ namespace toy
                         numElems = intAttr.getInt();
                     }
                 }
-                else if ( toy::StringLiteralOp stringLitOp = input.getDefiningOp<toy::StringLiteralOp>() )
+                else if ( silly::StringLiteralOp stringLitOp = input.getDefiningOp<silly::StringLiteralOp>() )
                 {
                     mlir::StringAttr strAttr = stringLitOp.getValueAttr();
                     llvm::StringRef strValue = strAttr.getValue();
@@ -770,10 +770,10 @@ namespace toy
                 mlir::LLVM::ConstantOp sizeConst =
                     rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( numElems ) );
 
-                createToyPrintStringPrototype();
-                const char* name = "__toy_print_string";
+                createSillyPrintStringPrototype();
+                const char* name = "__silly_print_string";
                 result =
-                    rewriter.create<toy::CallOp>( loc, mlir::TypeRange{}, name, mlir::ValueRange{ sizeConst, input } );
+                    rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, name, mlir::ValueRange{ sizeConst, input } );
             }
             else
             {
@@ -804,34 +804,34 @@ namespace toy
                 {
                     case 1:
                     {
-                        name = "__toy_get_i1";
-                        createToyGetI1Prototype();
+                        name = "__silly_get_i1";
+                        createSillyGetI1Prototype();
                         inputType = tyI8;
                         isBool = true;
                         break;
                     }
                     case 8:
                     {
-                        name = "__toy_get_i8";
-                        createToyGetI8Prototype();
+                        name = "__silly_get_i8";
+                        createSillyGetI8Prototype();
                         break;
                     }
                     case 16:
                     {
-                        name = "__toy_get_i16";
-                        createToyGetI16Prototype();
+                        name = "__silly_get_i16";
+                        createSillyGetI16Prototype();
                         break;
                     }
                     case 32:
                     {
-                        name = "__toy_get_i32";
-                        createToyGetI32Prototype();
+                        name = "__silly_get_i32";
+                        createSillyGetI32Prototype();
                         break;
                     }
                     case 64:
                     {
-                        name = "__toy_get_i64";
-                        createToyGetI64Prototype();
+                        name = "__silly_get_i64";
+                        createSillyGetI64Prototype();
                         break;
                     }
                     default:
@@ -844,13 +844,13 @@ namespace toy
             {
                 if ( inputType == tyF32 )
                 {
-                    name = "__toy_get_f32";
-                    createToyGetF32Prototype();
+                    name = "__silly_get_f32";
+                    createSillyGetF32Prototype();
                 }
                 else if ( inputType == tyF64 )
                 {
-                    name = "__toy_get_f64";
-                    createToyGetF64Prototype();
+                    name = "__silly_get_f64";
+                    createSillyGetF64Prototype();
                 }
                 else
                 {
@@ -862,8 +862,8 @@ namespace toy
                 assert( 0 && "Error: unsupported type" );
             }
 
-            toy::CallOp callOp =
-                rewriter.create<toy::CallOp>( loc, mlir::TypeRange{ inputType }, name, mlir::ValueRange{} );
+            silly::CallOp callOp =
+                rewriter.create<silly::CallOp>( loc, mlir::TypeRange{ inputType }, name, mlir::ValueRange{} );
             mlir::Value result = *callOp.getResult().begin();
 
             if ( isBool )
@@ -965,19 +965,19 @@ namespace toy
 
        public:
         DeclareOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( toy::DeclareOp::getOperationName(), benefit, context ), lState{ lState_ }
+            : mlir::ConversionPattern( silly::DeclareOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            toy::DeclareOp declareOp = cast<toy::DeclareOp>( op );
+            silly::DeclareOp declareOp = cast<silly::DeclareOp>( op );
             mlir::Location loc = declareOp.getLoc();
             bool param = declareOp.isParameter();
 
-            //   toy.declare "x" : i32
-            LLVM_DEBUG( llvm::dbgs() << std::format( "Lowering toy.declare: param: {}", param ) << declareOp << '\n' );
+            //   silly.declare "x" : i32
+            LLVM_DEBUG( llvm::dbgs() << std::format( "Lowering silly.declare: param: {}", param ) << declareOp << '\n' );
 
             rewriter.setInsertionPoint( op );
 
@@ -1066,14 +1066,14 @@ namespace toy
 
        public:
         StringLiteralOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( toy::StringLiteralOp::getOperationName(), benefit, context ), lState( lState_ )
+            : mlir::ConversionPattern( silly::StringLiteralOp::getOperationName(), benefit, context ), lState( lState_ )
         {
         }
 
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            toy::StringLiteralOp stringLiteralOp = cast<toy::StringLiteralOp>( op );
+            silly::StringLiteralOp stringLiteralOp = cast<silly::StringLiteralOp>( op );
             mlir::Location loc = stringLiteralOp.getLoc();
 
             mlir::StringAttr strAttr = stringLiteralOp.getValueAttr();
@@ -1099,18 +1099,18 @@ namespace toy
 
        public:
         AssignOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( toy::AssignOp::getOperationName(), benefit, context ), lState{ lState_ }
+            : mlir::ConversionPattern( silly::AssignOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            toy::AssignOp assignOp = cast<toy::AssignOp>( op );
+            silly::AssignOp assignOp = cast<silly::AssignOp>( op );
             mlir::Location loc = assignOp.getLoc();
 
             // (ins StrAttr:$name, AnyType:$value);
-            // toy.assign "x", %0 : i32
+            // silly.assign "x", %0 : i32
             LLVM_DEBUG( llvm::dbgs() << "Lowering AssignOp: " << *op << '\n' );
 
             mlir::SymbolRefAttr varNameAttr = assignOp.getVarName();
@@ -1152,7 +1152,7 @@ namespace toy
                 unsigned alignment = lState.preferredTypeAlignment( op, elemType );
                 rewriter.create<mlir::LLVM::StoreOp>( loc, value, allocaOp, alignment );
             }
-            else if ( toy::StringLiteralOp stringLitOp = value.getDefiningOp<toy::StringLiteralOp>() )
+            else if ( silly::StringLiteralOp stringLitOp = value.getDefiningOp<silly::StringLiteralOp>() )
             {
                 if ( elemType != lState.tyI8 )
                 {
@@ -1263,7 +1263,7 @@ namespace toy
     };
 
     // Lower LessOp, ... (after type conversions, if required)
-    template <class ToyOp, class IOpType, class FOpType, mlir::LLVM::ICmpPredicate ICmpPredS,
+    template <class SillyOp, class IOpType, class FOpType, mlir::LLVM::ICmpPredicate ICmpPredS,
               mlir::LLVM::ICmpPredicate ICmpPredU, mlir::LLVM::FCmpPredicate FCmpPred>
     class ComparisonOpLowering : public mlir::ConversionPattern
     {
@@ -1272,14 +1272,14 @@ namespace toy
 
        public:
         ComparisonOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( ToyOp::getOperationName(), benefit, context ), lState{ lState_ }
+            : mlir::ConversionPattern( SillyOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            ToyOp compareOp = cast<ToyOp>( op );
+            SillyOp compareOp = cast<SillyOp>( op );
             mlir::Location loc = compareOp.getLoc();
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering ComparisonOp: " << *op << '\n' );
@@ -1384,19 +1384,19 @@ namespace toy
     };
 
     using LessOpLowering =
-        ComparisonOpLowering<toy::LessOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, mlir::LLVM::ICmpPredicate::slt,
+        ComparisonOpLowering<silly::LessOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, mlir::LLVM::ICmpPredicate::slt,
                              mlir::LLVM::ICmpPredicate::ult, mlir::LLVM::FCmpPredicate::olt>;
 
     using LessEqualOpLowering =
-        ComparisonOpLowering<toy::LessEqualOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, mlir::LLVM::ICmpPredicate::sle,
+        ComparisonOpLowering<silly::LessEqualOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, mlir::LLVM::ICmpPredicate::sle,
                              mlir::LLVM::ICmpPredicate::ule, mlir::LLVM::FCmpPredicate::ole>;
 
     using EqualOpLowering =
-        ComparisonOpLowering<toy::EqualOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, mlir::LLVM::ICmpPredicate::eq,
+        ComparisonOpLowering<silly::EqualOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, mlir::LLVM::ICmpPredicate::eq,
                              mlir::LLVM::ICmpPredicate::eq, mlir::LLVM::FCmpPredicate::oeq>;
 
     using NotEqualOpLowering =
-        ComparisonOpLowering<toy::NotEqualOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, mlir::LLVM::ICmpPredicate::ne,
+        ComparisonOpLowering<silly::NotEqualOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, mlir::LLVM::ICmpPredicate::ne,
                              mlir::LLVM::ICmpPredicate::ne, mlir::LLVM::FCmpPredicate::one>;
 
     class LoadOpLowering : public mlir::ConversionPattern
@@ -1406,18 +1406,18 @@ namespace toy
 
        public:
         LoadOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( toy::LoadOp::getOperationName(), benefit, context ), lState{ lState_ }
+            : mlir::ConversionPattern( silly::LoadOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            toy::LoadOp loadOp = cast<toy::LoadOp>( op );
+            silly::LoadOp loadOp = cast<silly::LoadOp>( op );
             mlir::Location loc = loadOp.getLoc();
 
-            // %0 = toy.load "i1v" : i1
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.load: " << *op << '\n' );
+            // %0 = silly.load "i1v" : i1
+            LLVM_DEBUG( llvm::dbgs() << "Lowering silly.load: " << *op << '\n' );
 
             std::string varName = loadOp.getVarNameAttr().getRootReference().getValue().str();
             mlir::LLVM::AllocaOp allocaOp = lState.lookupLocalSymbolReference( loadOp, varName );
@@ -1494,14 +1494,14 @@ namespace toy
 
        public:
         CallOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( toy::CallOp::getOperationName(), benefit, context ), lState{ lState_ }
+            : mlir::ConversionPattern( silly::CallOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            toy::CallOp callOp = cast<toy::CallOp>( op );
+            silly::CallOp callOp = cast<silly::CallOp>( op );
             mlir::Location loc = callOp.getLoc();
 
             // Get the callee symbol reference (stored as "callee" attribute)
@@ -1538,14 +1538,14 @@ namespace toy
 
        public:
         ScopeOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( toy::ScopeOp::getOperationName(), benefit, context ), lState{ lState_ }
+            : mlir::ConversionPattern( silly::ScopeOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            toy::ScopeOp scopeOp = cast<toy::ScopeOp>( op );
+            silly::ScopeOp scopeOp = cast<silly::ScopeOp>( op );
             mlir::Region* funcRegion = scopeOp->getParentRegion();
             if ( !funcRegion || !isa<mlir::func::FuncOp>( scopeOp->getParentOp() ) )
             {
@@ -1556,9 +1556,9 @@ namespace toy
             mlir::Operation* funcTerminator = entryBlock->getTerminator();
 
             // Verify that the terminator is a YieldOp
-            if ( !isa<toy::YieldOp>( funcTerminator ) )
+            if ( !isa<silly::YieldOp>( funcTerminator ) )
             {
-                return rewriter.notifyMatchFailure( op, "Expected func::FuncOp terminator to be toy::YieldOp" );
+                return rewriter.notifyMatchFailure( op, "Expected func::FuncOp terminator to be silly::YieldOp" );
             }
 
             // Erase the YieldOp first to ensure only one terminator will exist
@@ -1575,9 +1575,9 @@ namespace toy
                 // Process operations in the scope block
                 for ( mlir::Operation& op : llvm::make_early_inc_range( scopeBlock ) )
                 {
-                    if ( isa<toy::ReturnOp>( op ) )
+                    if ( isa<silly::ReturnOp>( op ) )
                     {
-                        // Replace toy::ReturnOp with func::ReturnOp
+                        // Replace silly::ReturnOp with func::ReturnOp
                         rewriter.create<mlir::func::ReturnOp>( op.getLoc(), op.getOperands() );
                         rewriter.eraseOp( &op );
                     }
@@ -1596,7 +1596,7 @@ namespace toy
     };
 
     // Now unused (again)
-    template <class toyOpType>
+    template <class SillOpType>
     class LowerByDeletion : public mlir::ConversionPattern
     {
        private:
@@ -1604,7 +1604,7 @@ namespace toy
 
        public:
         LowerByDeletion( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( toyOpType::getOperationName(), benefit, context ), lState{ lState_ }
+            : mlir::ConversionPattern( SillOpType::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
@@ -1617,7 +1617,7 @@ namespace toy
         }
     };
 
-    // Lower toy.print to a call to __toy_print.
+    // Lower silly.print to a call to __silly_print.
     class PrintOpLowering : public mlir::ConversionPattern
     {
        private:
@@ -1625,7 +1625,7 @@ namespace toy
 
        public:
         PrintOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( toy::PrintOp::getOperationName(), benefit, context ), lState{ lState_ }
+            : mlir::ConversionPattern( silly::PrintOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
@@ -1636,15 +1636,15 @@ namespace toy
             mlir::ModuleOp module = op->getParentOfType<mlir::ModuleOp>();
 #endif
 
-            toy::PrintOp printOp = cast<toy::PrintOp>( op );
+            silly::PrintOp printOp = cast<silly::PrintOp>( op );
             mlir::Location loc = printOp.getLoc();
 
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.print: " << *op << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "Lowering silly.print: " << *op << '\n' );
 
             mlir::Value input = printOp.getInput();
             LLVM_DEBUG( llvm::dbgs() << "input: " << input << '\n' );
 
-            toy::CallOp result = lState.createPrintCall( rewriter, loc, input );
+            silly::CallOp result = lState.createPrintCall( rewriter, loc, input );
 
             rewriter.replaceOp( op, result );
 
@@ -1666,17 +1666,17 @@ namespace toy
 
        public:
         GetOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( toy::GetOp::getOperationName(), benefit, context ), lState{ lState_ }
+            : mlir::ConversionPattern( silly::GetOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            toy::GetOp getOp = cast<toy::GetOp>( op );
+            silly::GetOp getOp = cast<silly::GetOp>( op );
             mlir::Location loc = getOp.getLoc();
 
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.get: " << *op << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "Lowering silly.get: " << *op << '\n' );
 
             mlir::Type inputType = getOp.getValue().getType();
 
@@ -1688,7 +1688,7 @@ namespace toy
         }
     };
 
-    // Lower toy.negate to LLVM arithmetic.
+    // Lower silly.negate to LLVM arithmetic.
     class NegOpLowering : public mlir::ConversionPattern
     {
        private:
@@ -1696,18 +1696,18 @@ namespace toy
 
        public:
         NegOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( toy::NegOp::getOperationName(), benefit, context ), lState{ lState_ }
+            : mlir::ConversionPattern( silly::NegOp::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            toy::NegOp negOp = cast<toy::NegOp>( op );
+            silly::NegOp negOp = cast<silly::NegOp>( op );
             mlir::Location loc = negOp.getLoc();
             mlir::Value result = operands[0];
 
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.negate: " << *op << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "Lowering silly.negate: " << *op << '\n' );
 
             if ( mlir::IntegerType resulti = mlir::dyn_cast<mlir::IntegerType>( result.getType() ) )
             {
@@ -1738,8 +1738,8 @@ namespace toy
         }
     };
 
-    // Lower toy.binary to LLVM arithmetic.
-    template <class ToyBinaryOpType, class llvmIOpType, class llvmFOpType, bool allowFloat>
+    // Lower silly.binary to LLVM arithmetic.
+    template <class SillyBinaryOpType, class llvmIOpType, class llvmFOpType, bool allowFloat>
     class BinaryOpLowering : public mlir::ConversionPattern
     {
        private:
@@ -1747,17 +1747,17 @@ namespace toy
 
        public:
         BinaryOpLowering( loweringContext& lState_, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( ToyBinaryOpType::getOperationName(), benefit, context ), lState{ lState_ }
+            : mlir::ConversionPattern( SillyBinaryOpType::getOperationName(), benefit, context ), lState{ lState_ }
         {
         }
 
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            ToyBinaryOpType binaryOp = cast<ToyBinaryOpType>( op );
+            SillyBinaryOpType binaryOp = cast<SillyBinaryOpType>( op );
             mlir::Location loc = binaryOp.getLoc();
 
-            LLVM_DEBUG( llvm::dbgs() << "Lowering toy.binary: " << *op << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "Lowering silly.binary: " << *op << '\n' );
 
             mlir::Type resultType = binaryOp.getResult().getType();
 
@@ -1861,15 +1861,15 @@ namespace toy
         }
     };
 
-    using AddOpLowering = BinaryOpLowering<toy::AddOp, mlir::LLVM::AddOp, mlir::LLVM::FAddOp, true>;
-    using SubOpLowering = BinaryOpLowering<toy::SubOp, mlir::LLVM::SubOp, mlir::LLVM::FSubOp, true>;
-    using MulOpLowering = BinaryOpLowering<toy::MulOp, mlir::LLVM::MulOp, mlir::LLVM::FMulOp, true>;
-    using DivOpLowering = BinaryOpLowering<toy::DivOp, mlir::LLVM::SDivOp, mlir::LLVM::FDivOp, true>;
+    using AddOpLowering = BinaryOpLowering<silly::AddOp, mlir::LLVM::AddOp, mlir::LLVM::FAddOp, true>;
+    using SubOpLowering = BinaryOpLowering<silly::SubOp, mlir::LLVM::SubOp, mlir::LLVM::FSubOp, true>;
+    using MulOpLowering = BinaryOpLowering<silly::MulOp, mlir::LLVM::MulOp, mlir::LLVM::FMulOp, true>;
+    using DivOpLowering = BinaryOpLowering<silly::DivOp, mlir::LLVM::SDivOp, mlir::LLVM::FDivOp, true>;
 
     // mlir::LLVM::FAddOp is a dummy operation here, knowing that it will not ever be used:
-    using XorOpLowering = BinaryOpLowering<toy::XorOp, mlir::LLVM::XOrOp, mlir::LLVM::FAddOp, false>;
-    using AndOpLowering = BinaryOpLowering<toy::AndOp, mlir::LLVM::AndOp, mlir::LLVM::FAddOp, false>;
-    using OrOpLowering = BinaryOpLowering<toy::OrOp, mlir::LLVM::OrOp, mlir::LLVM::FAddOp, false>;
+    using XorOpLowering = BinaryOpLowering<silly::XorOp, mlir::LLVM::XOrOp, mlir::LLVM::FAddOp, false>;
+    using AndOpLowering = BinaryOpLowering<silly::AndOp, mlir::LLVM::AndOp, mlir::LLVM::FAddOp, false>;
+    using OrOpLowering = BinaryOpLowering<silly::OrOp, mlir::LLVM::OrOp, mlir::LLVM::FAddOp, false>;
 
     // Lower arith.constant to LLVM constant.
     class ConstantOpLowering : public mlir::ConversionPattern
@@ -1910,12 +1910,12 @@ namespace toy
         }
     };
 
-    class ToyToLLVMLoweringPass : public mlir::PassWrapper<ToyToLLVMLoweringPass, mlir::OperationPass<mlir::ModuleOp>>
+    class SillyToLLVMLoweringPass : public mlir::PassWrapper<SillyToLLVMLoweringPass, mlir::OperationPass<mlir::ModuleOp>>
     {
        public:
-        MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID( ToyToLLVMLoweringPass )
+        MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID( SillyToLLVMLoweringPass )
 
-        ToyToLLVMLoweringPass( toy::driverState* pst_ ) : pDriverState{ pst_ }
+        SillyToLLVMLoweringPass( silly::DriverState* pst_ ) : pDriverState{ pst_ }
         {
         }
 
@@ -1928,7 +1928,7 @@ namespace toy
         {
             mlir::ModuleOp module = getOperation();
             LLVM_DEBUG( {
-                llvm::dbgs() << "Starting ToyToLLVMLoweringPass on:\n";
+                llvm::dbgs() << "Starting SillyToLLVMLoweringPass on:\n";
                 module->dump();
             } );
 
@@ -1944,16 +1944,16 @@ namespace toy
                 lState.createFuncDebug( funcOp );
             }
 
-            // First phase: Lower toy operations except ScopeOp and YieldOp
+            // First phase: Lower silly operations except ScopeOp and YieldOp
             {
                 mlir::ConversionTarget target( getContext() );
-                target.addLegalDialect<mlir::LLVM::LLVMDialect, toy::ToyDialect, mlir::scf::SCFDialect>();
-                target.addIllegalOp<mlir::arith::ConstantOp, toy::AddOp, toy::AndOp, toy::AssignOp, toy::DeclareOp,
-                                    toy::DivOp, toy::EqualOp, toy::LessEqualOp, toy::LessOp, toy::LoadOp, toy::MulOp,
-                                    toy::NegOp, toy::NotEqualOp, toy::OrOp, toy::PrintOp, toy::GetOp,
-                                    toy::StringLiteralOp, toy::SubOp, toy::XorOp>();
+                target.addLegalDialect<mlir::LLVM::LLVMDialect, silly::SillyDialect, mlir::scf::SCFDialect>();
+                target.addIllegalOp<mlir::arith::ConstantOp, silly::AddOp, silly::AndOp, silly::AssignOp, silly::DeclareOp,
+                                    silly::DivOp, silly::EqualOp, silly::LessEqualOp, silly::LessOp, silly::LoadOp, silly::MulOp,
+                                    silly::NegOp, silly::NotEqualOp, silly::OrOp, silly::PrintOp, silly::GetOp,
+                                    silly::StringLiteralOp, silly::SubOp, silly::XorOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
-                                  toy::ScopeOp, toy::YieldOp, toy::ReturnOp, toy::CallOp, mlir::func::CallOp,
+                                  silly::ScopeOp, silly::YieldOp, silly::ReturnOp, silly::CallOp, mlir::func::CallOp,
                                   mlir::scf::IfOp, mlir::scf::ForOp, mlir::scf::YieldOp>();
 
                 mlir::RewritePatternSet patterns( &getContext() );
@@ -1966,13 +1966,13 @@ namespace toy
 
                 if ( failed( applyFullConversion( module, target, std::move( patterns ) ) ) )
                 {
-                    LLVM_DEBUG( llvm::dbgs() << "Toy Lowering: First phase failed\n" );
+                    LLVM_DEBUG( llvm::dbgs() << "Silly Lowering: First phase failed\n" );
                     signalPassFailure();
                     return;
                 }
 
                 LLVM_DEBUG( {
-                    llvm::dbgs() << "After first phase (toy ops lowered):\n";
+                    llvm::dbgs() << "After first phase (silly ops lowered):\n";
                     module->dump();
                 } );
             }
@@ -1981,7 +1981,7 @@ namespace toy
             {
                 mlir::ConversionTarget target( getContext() );
                 target.addLegalDialect<mlir::LLVM::LLVMDialect>();
-                target.addIllegalOp<toy::ScopeOp, toy::YieldOp, toy::ReturnOp, toy::CallOp>();
+                target.addIllegalOp<silly::ScopeOp, silly::YieldOp, silly::ReturnOp, silly::CallOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
                 target.addIllegalDialect<mlir::scf::SCFDialect>();
                 target.addIllegalDialect<mlir::cf::ControlFlowDialect>();    // forces lowering
@@ -1999,14 +1999,14 @@ namespace toy
 
                 if ( failed( applyFullConversion( module, target, std::move( patterns ) ) ) )
                 {
-                    LLVM_DEBUG( llvm::dbgs() << "Toy Lowering: Second phase failed\n" );
+                    LLVM_DEBUG( llvm::dbgs() << "Silly Lowering: Second phase failed\n" );
                     signalPassFailure();
                     return;
                 }
             }
 
             LLVM_DEBUG( {
-                llvm::dbgs() << "After successful ToyToLLVMLoweringPass:\n";
+                llvm::dbgs() << "After successful SillyToLLVMLoweringPass:\n";
                 for ( mlir::Operation& op : module->getRegion( 0 ).front() )
                 {
                     op.dump();
@@ -2015,30 +2015,30 @@ namespace toy
         }
 
        private:
-        toy::driverState* pDriverState;
+        silly::DriverState* pDriverState;
     };
 
-}    // namespace toy
+}    // namespace silly
 
 namespace mlir
 {
     // Parameterless version for TableGen
-    std::unique_ptr<Pass> createToyToLLVMLoweringPass()
+    std::unique_ptr<Pass> createSillyToLLVMLoweringPass()
     {
-        return createToyToLLVMLoweringPass( nullptr );    // Default to no optimization
+        return createSillyToLLVMLoweringPass( nullptr );    // Default to no optimization
     }
 
     // Parameterized version
-    std::unique_ptr<Pass> createToyToLLVMLoweringPass( toy::driverState* pst )
+    std::unique_ptr<Pass> createSillyToLLVMLoweringPass( silly::DriverState* pst )
     {
-        return std::make_unique<toy::ToyToLLVMLoweringPass>( pst );
+        return std::make_unique<silly::SillyToLLVMLoweringPass>( pst );
     }
 
     // Custom registration with bool parameter
-    void registerToyToLLVMLoweringPass( toy::driverState* pst )
+    void registerSillyToLLVMLoweringPass( silly::DriverState* pst )
     {
         ::mlir::registerPass( [pst]() -> std::unique_ptr<::mlir::Pass>
-                              { return mlir::createToyToLLVMLoweringPass( pst ); } );
+                              { return mlir::createSillyToLLVMLoweringPass( pst ); } );
     }
 }    // namespace mlir
 

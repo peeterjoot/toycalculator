@@ -17,10 +17,10 @@
 
 #include <format>
 
-#include "ToyExceptions.hpp"
+#include "SillyExceptions.hpp"
 #include "parser.hpp"
 
-#define DEBUG_TYPE "toy-parser"
+#define DEBUG_TYPE "silly-parser"
 
 #define ENTRY_SYMBOL_NAME "main"
 
@@ -31,7 +31,7 @@
         hasErrors = true;                               \
     }
 
-namespace toy
+namespace silly
 {
     inline PerFunctionState &MLIRListener::funcState( const std::string &funcName )
     {
@@ -141,7 +141,7 @@ namespace toy
 
     DialectCtx::DialectCtx()
     {
-        context.getOrLoadDialect<toy::ToyDialect>();
+        context.getOrLoadDialect<silly::SillyDialect>();
         context.getOrLoadDialect<mlir::func::FuncDialect>();
         context.getOrLoadDialect<mlir::arith::ArithDialect>();
         context.getOrLoadDialect<mlir::memref::MemRefDialect>();
@@ -150,7 +150,7 @@ namespace toy
     }
 
     void MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
-                                            ToyParser::ArrayBoundsExpressionContext *arrayBounds )
+                                            SillyParser::ArrayBoundsExpressionContext *arrayBounds )
     {
         VariableState varState = getVarState( varName );
         if ( varState != VariableState::undeclared )
@@ -173,7 +173,7 @@ namespace toy
         // Get the single scope
         mlir::func::FuncOp funcOp = getFuncOp( loc, currentFuncName );
 
-        toy::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
+        silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
 
         // Scope has one block
         mlir::Block *scopeBlock = &scopeOp.getBody().front();
@@ -183,16 +183,16 @@ namespace toy
         builder.setInsertionPointToStart( scopeBlock );
 
         mlir::StringAttr strAttr = builder.getStringAttr( varName );
-        toy::DeclareOp dcl;
+        silly::DeclareOp dcl;
         if ( arraySize )
         {
             dcl =
-                builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), builder.getI64IntegerAttr( arraySize ),
+                builder.create<silly::DeclareOp>( loc, mlir::TypeAttr::get( ty ), builder.getI64IntegerAttr( arraySize ),
                                                 /*parameter=*/nullptr, nullptr );
         }
         else
         {
-            dcl = builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr, /*parameter=*/nullptr,
+            dcl = builder.create<silly::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr, /*parameter=*/nullptr,
                                                   nullptr );
         }
         dcl->setAttr( "sym_name", strAttr );
@@ -202,7 +202,7 @@ namespace toy
 
     mlir::Value MLIRListener::buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode,
                                                     tNode *floatNode,
-                                                    ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
+                                                    SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
                                                     tNode *stringNode, std::string &s )
     {
         mlir::Value value{};
@@ -263,25 +263,25 @@ namespace toy
                 throw UserError( loc, std::format( "Variable {} not assigned in expr", varName ) );
             }
 
-            toy::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+            silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
 
             mlir::Type varType = declareOp.getTypeAttr().getValue();
             mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
 
             mlir::Value indexValue = mlir::Value();
 
-            if ( ToyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
+            if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
             {
                 indexValue = buildNonStringUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr,
                                                             scalarOrArrayElement, nullptr );
 
                 mlir::Value i = indexTypeCast( loc, indexValue );
 
-                value = builder.create<toy::LoadOp>( loc, varType, symRef, i );
+                value = builder.create<silly::LoadOp>( loc, varType, symRef, i );
             }
             else
             {
-                value = builder.create<toy::LoadOp>( loc, varType, symRef, mlir::Value() );
+                value = builder.create<silly::LoadOp>( loc, varType, symRef, mlir::Value() );
             }
         }
         else if ( stringNode )
@@ -299,7 +299,7 @@ namespace toy
 
     mlir::Value MLIRListener::buildNonStringUnaryExpression(
         mlir::Location loc, tNode *booleanNode, tNode *integerNode, tNode *floatNode,
-        ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *stringNode )
+        SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *stringNode )
     {
         mlir::Value value{};
         std::string s;
@@ -324,12 +324,12 @@ namespace toy
                                                  charPositionInLine, msg, tokenText ) );
     }
 
-    toy::ScopeOp MLIRListener::getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp ) const
+    silly::ScopeOp MLIRListener::getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp ) const
     {
         // Single ScopeOp per function – iterate once to find it
         for ( mlir::Operation &op : funcOp.getBody().front() )
         {
-            if ( toy::ScopeOp scopeOp = dyn_cast<toy::ScopeOp>( &op ) )
+            if ( silly::ScopeOp scopeOp = dyn_cast<silly::ScopeOp>( &op ) )
             {
                 return scopeOp;
             }
@@ -343,11 +343,11 @@ namespace toy
         return nullptr;
     }
 
-    toy::DeclareOp MLIRListener::lookupDeclareForVar( mlir::Location loc, const std::string &varName )
+    silly::DeclareOp MLIRListener::lookupDeclareForVar( mlir::Location loc, const std::string &varName )
     {
         mlir::func::FuncOp funcOp = getFuncOp( loc, currentFuncName );
 
-        toy::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
+        silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
 
         LLVM_DEBUG( {
             llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
@@ -360,7 +360,7 @@ namespace toy
             throw UserError( loc, std::format( "Undeclared variable {} (symbol lookup failed.)", varName ) );
         }
 
-        toy::DeclareOp declareOp = mlir::dyn_cast<toy::DeclareOp>( symbolOp );
+        silly::DeclareOp declareOp = mlir::dyn_cast<silly::DeclareOp>( symbolOp );
         if ( !declareOp )
         {
             throw UserError( loc, std::format( "Undeclared variable {} (DeclareOp not found)", varName ) );
@@ -432,8 +432,8 @@ namespace toy
         builder.setInsertionPointToStart( &block );
 
         // initially with empty operands and results
-        toy::ScopeOp scopeOp = builder.create<toy::ScopeOp>( loc, mlir::TypeRange{}, mlir::ValueRange{} );
-        builder.create<toy::YieldOp>( loc );
+        silly::ScopeOp scopeOp = builder.create<silly::ScopeOp>( loc, mlir::TypeRange{}, mlir::ValueRange{} );
+        builder.create<silly::YieldOp>( loc );
 
         mlir::Block &scopeBlock = scopeOp.getBody().emplaceBlock();
 
@@ -447,14 +447,14 @@ namespace toy
                 funcOp.getArgument( i ).dump();
             } );
             mlir::StringAttr strAttr = builder.getStringAttr( paramNames[i] );
-            toy::DeclareOp dcl =
-                builder.create<toy::DeclareOp>( loc, mlir::TypeAttr::get( argType ), /*size=*/nullptr,
+            silly::DeclareOp dcl =
+                builder.create<silly::DeclareOp>( loc, mlir::TypeAttr::get( argType ), /*size=*/nullptr,
                                                 builder.getUnitAttr(), builder.getI64IntegerAttr( i ) );
             dcl->setAttr( "sym_name", strAttr );
         }
 
-        // Insert a default toy::ReturnOp terminator (with no operands, or default zero return for scalar return
-        // functions, like main). This will be replaced later with an toy::ReturnOp with the actual return code if
+        // Insert a default silly::ReturnOp terminator (with no operands, or default zero return for scalar return
+        // functions, like main). This will be replaced later with an silly::ReturnOp with the actual return code if
         // desired.
         mlir::TypeRange returnType = funcOp.getFunctionType().getResults();
         mlir::Operation *returnOp = nullptr;
@@ -462,11 +462,11 @@ namespace toy
         {
             mlir::arith::ConstantOp zero = builder.create<mlir::arith::ConstantOp>(
                 loc, returnType[0], builder.getIntegerAttr( returnType[0], 0 ) );
-            returnOp = builder.create<toy::ReturnOp>( loc, mlir::ValueRange{ zero } );
+            returnOp = builder.create<silly::ReturnOp>( loc, mlir::ValueRange{ zero } );
         }
         else
         {
-            returnOp = builder.create<toy::ReturnOp>( loc, mlir::ValueRange{} );
+            returnOp = builder.create<silly::ReturnOp>( loc, mlir::ValueRange{} );
         }
 
 
@@ -475,7 +475,7 @@ namespace toy
             funcOp.dump();
         } );
 
-        builder.setInsertionPoint( returnOp );    // Set insertion point *before* the saved toy::ReturnOp
+        builder.setInsertionPoint( returnOp );    // Set insertion point *before* the saved silly::ReturnOp
 
         currentFuncName = funcName;
         setFuncOp( funcOp );
@@ -495,7 +495,7 @@ namespace toy
         }
     }
 
-    void MLIRListener::enterStartRule( ToyParser::StartRuleContext *ctx )
+    void MLIRListener::enterStartRule( SillyParser::StartRuleContext *ctx )
     try
     {
         assert( ctx );
@@ -505,7 +505,7 @@ namespace toy
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::exitStartRule( ToyParser::StartRuleContext *ctx )
+    void MLIRListener::exitStartRule( SillyParser::StartRuleContext *ctx )
     try
     {
         assert( ctx );
@@ -517,7 +517,7 @@ namespace toy
         // LLVM_DEBUG( { llvm::errs() << "exitStartRule module dump before return rewrite:\n"; mod->dump(); } );
         if ( !wasTerminatorExplicit() )
         {
-            processReturnLike<ToyParser::NumericLiteralContext>( lastLoc, nullptr, nullptr, nullptr );
+            processReturnLike<SillyParser::NumericLiteralContext>( lastLoc, nullptr, nullptr, nullptr );
         }
 
         LLVM_DEBUG( {
@@ -527,7 +527,7 @@ namespace toy
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterFunction( ToyParser::FunctionContext *ctx )
+    void MLIRListener::enterFunction( SillyParser::FunctionContext *ctx )
     try
     {
         assert( ctx );
@@ -541,7 +541,7 @@ namespace toy
         std::string funcName = ctx->IDENTIFIER()->getText();
 
         std::vector<mlir::Type> returns;
-        if ( ToyParser::ScalarTypeContext *rt = ctx->scalarType() )
+        if ( SillyParser::ScalarTypeContext *rt = ctx->scalarType() )
         {
             mlir::Type returnType = parseScalarType( rt->getText() );
             returns.push_back( returnType );
@@ -549,7 +549,7 @@ namespace toy
 
         std::vector<mlir::Type> paramTypes;
         std::vector<std::string> paramNames;
-        for ( ToyParser::VariableTypeAndNameContext *paramCtx : ctx->variableTypeAndName() )
+        for ( SillyParser::VariableTypeAndNameContext *paramCtx : ctx->variableTypeAndName() )
         {
             assert( paramCtx->scalarType() );
             mlir::Type paramType = parseScalarType( paramCtx->scalarType()->getText() );
@@ -572,7 +572,7 @@ namespace toy
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::exitFunction( ToyParser::FunctionContext *ctx )
+    void MLIRListener::exitFunction( SillyParser::FunctionContext *ctx )
     try
     {
         assert( ctx );
@@ -583,7 +583,7 @@ namespace toy
         // function-end in the grammar.
         if ( !wasTerminatorExplicit() )
         {
-            processReturnLike<ToyParser::LiteralContext>( lastLoc, nullptr, nullptr, nullptr );
+            processReturnLike<SillyParser::LiteralContext>( lastLoc, nullptr, nullptr, nullptr );
         }
 
         builder.restoreInsertionPoint( mainIP );
@@ -592,7 +592,7 @@ namespace toy
     }
     CATCH_USER_ERROR
 
-    mlir::Value MLIRListener::handleCall( ToyParser::CallContext *ctx )
+    mlir::Value MLIRListener::handleCall( SillyParser::CallContext *ctx )
     {
         assert( ctx );
         mlir::Location loc = getLocation( ctx );
@@ -602,7 +602,7 @@ namespace toy
         mlir::func::FuncOp funcOp = getFuncOp( loc, funcName );
         mlir::FunctionType funcType = funcOp.getFunctionType();
         std::vector<mlir::Value> parameters;
-        if ( ToyParser::ParameterListContext *params = ctx->parameterList() )
+        if ( SillyParser::ParameterListContext *params = ctx->parameterList() )
         {
             int i = 0;
 
@@ -611,13 +611,13 @@ namespace toy
             size_t fsz = funcType.getInputs().size();
             assert( psz == fsz );
 
-            for ( ToyParser::ParameterContext *p : params->parameter() )
+            for ( SillyParser::ParameterContext *p : params->parameter() )
             {
                 std::string paramText = p->getText();
                 std::cout << std::format( "CALL function {}: param: {}\n", funcName, paramText );
 
                 mlir::Value value;
-                ToyParser::LiteralContext *lit = p->literal();
+                SillyParser::LiteralContext *lit = p->literal();
 
                 // Want to support passing string literals (not just to PRINT builtin), but not now.
                 value = buildNonStringUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
@@ -636,13 +636,13 @@ namespace toy
 
         mlir::TypeRange resultTypes = funcType.getResults();
 
-        toy::CallOp callOp = builder.create<toy::CallOp>( loc, resultTypes, funcName, parameters );
+        silly::CallOp callOp = builder.create<silly::CallOp>( loc, resultTypes, funcName, parameters );
 
         // Return the first result (or null for void calls)
         return resultTypes.empty() ? mlir::Value{} : callOp.getResults()[0];
     }
 
-    void MLIRListener::enterCall( ToyParser::CallContext *ctx )
+    void MLIRListener::enterCall( SillyParser::CallContext *ctx )
     try
     {
         assert( ctx );
@@ -657,7 +657,7 @@ namespace toy
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterDeclare( ToyParser::DeclareContext *ctx )
+    void MLIRListener::enterDeclare( SillyParser::DeclareContext *ctx )
     try
     {
         assert( ctx );
@@ -671,7 +671,7 @@ namespace toy
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterBoolDeclare( ToyParser::BoolDeclareContext *ctx )
+    void MLIRListener::enterBoolDeclare( SillyParser::BoolDeclareContext *ctx )
     try
     {
         assert( ctx );
@@ -683,7 +683,7 @@ namespace toy
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterIntDeclare( ToyParser::IntDeclareContext *ctx )
+    void MLIRListener::enterIntDeclare( SillyParser::IntDeclareContext *ctx )
     try
     {
         assert( ctx );
@@ -718,7 +718,7 @@ namespace toy
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterFloatDeclare( ToyParser::FloatDeclareContext *ctx )
+    void MLIRListener::enterFloatDeclare( SillyParser::FloatDeclareContext *ctx )
     try
     {
         assert( ctx );
@@ -745,7 +745,7 @@ namespace toy
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterStringDeclare( ToyParser::StringDeclareContext *ctx )
+    void MLIRListener::enterStringDeclare( SillyParser::StringDeclareContext *ctx )
     try
     {
         assert( ctx );
@@ -754,14 +754,14 @@ namespace toy
         setLastLoc( loc );
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
-        ToyParser::ArrayBoundsExpressionContext *arrayBounds = ctx->arrayBoundsExpression();
+        SillyParser::ArrayBoundsExpressionContext *arrayBounds = ctx->arrayBoundsExpression();
         assert( arrayBounds );
 
         registerDeclaration( loc, varName, tyI8, arrayBounds );
     }
     CATCH_USER_ERROR
 
-    mlir::Value MLIRListener::parsePredicate( mlir::Location loc, ToyParser::BooleanValueContext *booleanValue )
+    mlir::Value MLIRListener::parsePredicate( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue )
     {
         // booleanValue
         //   : booleanElement | (binaryElement predicateOperator binaryElement)
@@ -770,9 +770,9 @@ namespace toy
         mlir::Value conditionPredicate{};
 
         assert( booleanValue );
-        if ( ToyParser::BooleanElementContext *boolElement = booleanValue->booleanElement() )
+        if ( SillyParser::BooleanElementContext *boolElement = booleanValue->booleanElement() )
         {
-            ToyParser::BooleanLiteralContext *lit = boolElement->booleanLiteral();
+            SillyParser::BooleanLiteralContext *lit = boolElement->booleanLiteral();
             conditionPredicate = buildNonStringUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
                                                                 lit ? lit->INTEGER_PATTERN() : nullptr, nullptr,
                                                                 boolElement->scalarOrArrayElement(), nullptr );
@@ -781,54 +781,54 @@ namespace toy
         {
             // binaryElement : numericLiteral | unaryOperator? IDENTIFIER
 
-            std::vector<ToyParser::BinaryElementContext *> operands = booleanValue->binaryElement();
+            std::vector<SillyParser::BinaryElementContext *> operands = booleanValue->binaryElement();
             if ( operands.size() == 2 )
             {
                 mlir::Value lhsValue;
                 mlir::Value rhsValue;
-                ToyParser::BinaryElementContext *lhs = operands[0];
+                SillyParser::BinaryElementContext *lhs = operands[0];
                 assert( lhs );
-                ToyParser::BinaryElementContext *rhs = operands[1];
+                SillyParser::BinaryElementContext *rhs = operands[1];
                 assert( rhs );
 
-                ToyParser::NumericLiteralContext *llit = lhs->numericLiteral();
+                SillyParser::NumericLiteralContext *llit = lhs->numericLiteral();
                 lhsValue = buildNonStringUnaryExpression( loc, nullptr,    // booleanNode
                                                           llit ? llit->INTEGER_PATTERN() : nullptr,
                                                           llit ? llit->FLOAT_PATTERN() : nullptr,
                                                           lhs->scalarOrArrayElement(), nullptr );
 
-                ToyParser::NumericLiteralContext *rlit = rhs->numericLiteral();
+                SillyParser::NumericLiteralContext *rlit = rhs->numericLiteral();
                 rhsValue = buildNonStringUnaryExpression( loc, nullptr,    // booleanNode
                                                           rlit ? rlit->INTEGER_PATTERN() : nullptr,
                                                           rlit ? rlit->FLOAT_PATTERN() : nullptr,
                                                           lhs->scalarOrArrayElement(), nullptr );
 
                 assert( booleanValue );
-                ToyParser::PredicateOperatorContext *op = booleanValue->predicateOperator();
+                SillyParser::PredicateOperatorContext *op = booleanValue->predicateOperator();
                 assert( op );
                 if ( op->LESSTHAN_TOKEN() )
                 {
-                    conditionPredicate = builder.create<toy::LessOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
+                    conditionPredicate = builder.create<silly::LessOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
                 }
                 else if ( op->GREATERTHAN_TOKEN() )
                 {
-                    conditionPredicate = builder.create<toy::LessOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
+                    conditionPredicate = builder.create<silly::LessOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
                 }
                 else if ( op->LESSEQUAL_TOKEN() )
                 {
-                    conditionPredicate = builder.create<toy::LessEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
+                    conditionPredicate = builder.create<silly::LessEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
                 }
                 else if ( op->GREATEREQUAL_TOKEN() )
                 {
-                    conditionPredicate = builder.create<toy::LessEqualOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
+                    conditionPredicate = builder.create<silly::LessEqualOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
                 }
                 else if ( op->EQUALITY_TOKEN() )
                 {
-                    conditionPredicate = builder.create<toy::EqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
+                    conditionPredicate = builder.create<silly::EqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
                 }
                 else if ( op->NOTEQUAL_TOKEN() )
                 {
-                    conditionPredicate = builder.create<toy::NotEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
+                    conditionPredicate = builder.create<silly::NotEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
                 }
                 else
                 {
@@ -863,22 +863,22 @@ namespace toy
         return conditionPredicate;
     }
 
-    void MLIRListener::enterIfelifelse( ToyParser::IfelifelseContext *ctx )
+    void MLIRListener::enterIfelifelse( SillyParser::IfelifelseContext *ctx )
     try
     {
         assert( ctx );
         mlir::Location loc = getLocation( ctx );
         mainFirstTime( loc );
 
-        ToyParser::IfStatementContext *theIf = ctx->ifStatement();
+        SillyParser::IfStatementContext *theIf = ctx->ifStatement();
         assert( theIf );
-        ToyParser::BooleanValueContext *booleanValue = theIf->booleanValue();
+        SillyParser::BooleanValueContext *booleanValue = theIf->booleanValue();
         assert( booleanValue );
 
         LLVM_DEBUG( {
-            std::vector<ToyParser::StatementContext *> statements = theIf->statement();
+            std::vector<SillyParser::StatementContext *> statements = theIf->statement();
             std::cout << std::format( "IF: ({})", booleanValue->getText() );
-            for ( ToyParser::StatementContext *s : statements )
+            for ( SillyParser::StatementContext *s : statements )
             {
                 std::cout << std::format( " STATEMENT: {}", s->getText() );
             }
@@ -896,7 +896,7 @@ namespace toy
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::exitIfStatement( ToyParser::IfStatementContext *ctx )
+    void MLIRListener::exitIfStatement( SillyParser::IfStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -906,7 +906,7 @@ namespace toy
 
         antlr4::tree::ParseTree *parent = ctx->parent;
         assert( parent );
-        ToyParser::IfelifelseContext *ifElifElse = dynamic_cast<ToyParser::IfelifelseContext *>( parent );
+        SillyParser::IfelifelseContext *ifElifElse = dynamic_cast<SillyParser::IfelifelseContext *>( parent );
 
         if ( !ifElifElse )
         {
@@ -916,7 +916,7 @@ namespace toy
                              formatLocation( loc ), ctx->getText() ) );
         }
 
-        std::vector<ToyParser::ElifStatementContext *> elifs = ifElifElse->elifStatement();
+        std::vector<SillyParser::ElifStatementContext *> elifs = ifElifElse->elifStatement();
         if ( elifs.size() )
         {
             throw ExceptionWithContext(
@@ -924,7 +924,7 @@ namespace toy
                 std::format( "{}internal error: ELIF NYI: {}\n", formatLocation( loc ), ctx->getText() ) );
         }
 
-        ToyParser::ElseStatementContext *elseCtx = ifElifElse->elseStatement();
+        SillyParser::ElseStatementContext *elseCtx = ifElifElse->elseStatement();
         if ( elseCtx )
         {
             mlir::scf::IfOp ifOp;
@@ -978,7 +978,7 @@ namespace toy
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::exitElseStatement( ToyParser::ElseStatementContext *ctx )
+    void MLIRListener::exitElseStatement( SillyParser::ElseStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -992,7 +992,7 @@ namespace toy
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterFor( ToyParser::ForContext *ctx )
+    void MLIRListener::enterFor( SillyParser::ForContext *ctx )
     try
     {
         assert( ctx );
@@ -1015,10 +1015,10 @@ namespace toy
 
         assert( ctx->forStart() );
         assert( ctx->forEnd() );
-        ToyParser::ParameterContext *pStart = ctx->forStart()->parameter();
-        ToyParser::ParameterContext *pEnd = ctx->forEnd()->parameter();
-        ToyParser::ParameterContext *pStep{};
-        if ( ToyParser::ForStepContext *st = ctx->forStep() )
+        SillyParser::ParameterContext *pStart = ctx->forStart()->parameter();
+        SillyParser::ParameterContext *pEnd = ctx->forEnd()->parameter();
+        SillyParser::ParameterContext *pStep{};
+        if ( SillyParser::ForStepContext *st = ctx->forStep() )
         {
             pStep = st->parameter();
         }
@@ -1027,12 +1027,12 @@ namespace toy
         mlir::Value end;
         mlir::Value step;
 
-        toy::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+        silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
         mlir::Type elemType = declareOp.getTypeAttr().getValue();
 
         if ( pStart )
         {
-            ToyParser::LiteralContext *lit = pStart->literal();
+            SillyParser::LiteralContext *lit = pStart->literal();
             start = buildNonStringUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
                                                    lit ? lit->INTEGER_PATTERN() : nullptr,
                                                    lit ? lit->FLOAT_PATTERN() : nullptr, pStart->scalarOrArrayElement(),
@@ -1049,7 +1049,7 @@ namespace toy
 
         if ( pEnd )
         {
-            ToyParser::LiteralContext *lit = pEnd->literal();
+            SillyParser::LiteralContext *lit = pEnd->literal();
             end = buildNonStringUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
                                                  lit ? lit->INTEGER_PATTERN() : nullptr,
                                                  lit ? lit->FLOAT_PATTERN() : nullptr, pEnd->scalarOrArrayElement(),
@@ -1066,7 +1066,7 @@ namespace toy
 
         if ( pStep )
         {
-            ToyParser::LiteralContext *lit = pStep->literal();
+            SillyParser::LiteralContext *lit = pStep->literal();
             step = buildNonStringUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
                                                   lit ? lit->INTEGER_PATTERN() : nullptr,
                                                   lit ? lit->FLOAT_PATTERN() : nullptr, pStep->scalarOrArrayElement(),
@@ -1090,13 +1090,13 @@ namespace toy
         // emit an assignment to the variable as the first statement in the loop body, so that any existing references
         // to that will work as-is:
         mlir::Value inductionVar = loopBody.getArgument( 0 );
-        builder.create<toy::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ inductionVar },
+        builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ inductionVar },
                                        llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
         setVarState( currentFuncName, varName, VariableState::assigned );
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::exitFor( ToyParser::ForContext *ctx )
+    void MLIRListener::exitFor( SillyParser::ForContext *ctx )
     try
     {
         assert( ctx );
@@ -1105,7 +1105,7 @@ namespace toy
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterPrint( ToyParser::PrintContext *ctx )
+    void MLIRListener::enterPrint( SillyParser::PrintContext *ctx )
     try
     {
         assert( ctx );
@@ -1115,7 +1115,7 @@ namespace toy
 
         mlir::Type varType;
 
-        ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement = ctx->scalarOrArrayElement();
+        SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = ctx->scalarOrArrayElement();
         if ( scalarOrArrayElement )
         {
             tNode *varNameObject = scalarOrArrayElement->IDENTIFIER();
@@ -1131,11 +1131,11 @@ namespace toy
                 throw UserError( loc, std::format( "Variable {} not assigned in PRINT", varName ) );
             }
 
-            toy::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+            silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
 
             mlir::Type elemType = declareOp.getTypeAttr().getValue();
             mlir::Value optIndexValue{};
-            if ( ToyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
+            if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
             {
                 mlir::Value indexValue{};
                 indexValue = buildNonStringUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr,
@@ -1156,8 +1156,8 @@ namespace toy
             }
 
             mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
-            toy::LoadOp value = builder.create<toy::LoadOp>( loc, varType, symRef, optIndexValue );
-            builder.create<toy::PrintOp>( loc, value );
+            silly::LoadOp value = builder.create<silly::LoadOp>( loc, varType, symRef, optIndexValue );
+            builder.create<silly::PrintOp>( loc, value );
         }
         else if ( tNode *theString = ctx->STRING_PATTERN() )
         {
@@ -1165,9 +1165,9 @@ namespace toy
             std::string s = stripQuotes( loc, theString->getText() );
             mlir::StringAttr strAttr = builder.getStringAttr( s );
 
-            toy::StringLiteralOp stringLiteral = builder.create<toy::StringLiteralOp>( loc, tyPtr, strAttr );
+            silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
 
-            builder.create<toy::PrintOp>( loc, stringLiteral );
+            builder.create<silly::PrintOp>( loc, stringLiteral );
         }
         else
         {
@@ -1178,7 +1178,7 @@ namespace toy
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterGet( ToyParser::GetContext *ctx )
+    void MLIRListener::enterGet( SillyParser::GetContext *ctx )
     try
     {
         assert( ctx );
@@ -1186,7 +1186,7 @@ namespace toy
         mainFirstTime( loc );
         setLastLoc( loc );
 
-        ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement = ctx->scalarOrArrayElement();
+        SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = ctx->scalarOrArrayElement();
         if ( scalarOrArrayElement )
         {
             tNode *varNameObject = scalarOrArrayElement->IDENTIFIER();
@@ -1198,11 +1198,11 @@ namespace toy
                 throw UserError( loc, std::format( "Variable {} not declared in GET", varName ) );
             }
 
-            toy::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+            silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
 
             mlir::Type elemType = declareOp.getTypeAttr().getValue();
             mlir::Value optIndexValue{};
-            if ( ToyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
+            if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
             {
                 mlir::Value indexValue{};
                 indexValue = buildNonStringUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr,
@@ -1221,8 +1221,8 @@ namespace toy
 
             mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
 
-            toy::GetOp resultValue = builder.create<toy::GetOp>( loc, elemType );
-            builder.create<toy::AssignOp>( loc, symRef, optIndexValue, resultValue );
+            silly::GetOp resultValue = builder.create<silly::GetOp>( loc, elemType );
+            builder.create<silly::AssignOp>( loc, symRef, optIndexValue, resultValue );
 
             setVarState( currentFuncName, varName, VariableState::assigned );
         }
@@ -1302,7 +1302,7 @@ namespace toy
 
     template <class Literal>
     void MLIRListener::processReturnLike( mlir::Location loc, Literal *lit,
-                                          ToyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
+                                          SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
                                           tNode *boolNode )
     {
         // Handle the dummy ReturnOp originally inserted in the FuncOp's block
@@ -1311,24 +1311,24 @@ namespace toy
         assert( !currentBlock->empty() );
         mlir::Operation *parentOp = currentBlock->getParentOp();
         assert( parentOp );
-        if ( !isa<toy::ScopeOp>( parentOp ) )
+        if ( !isa<silly::ScopeOp>( parentOp ) )
         {
             throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                        std::format( "{}internal error: RETURN statement must be inside a toy.scope\n",
+                                        std::format( "{}internal error: RETURN statement must be inside a silly.scope\n",
                                                      formatLocation( loc ) ) );
         }
 
         mlir::func::FuncOp func = parentOp->getParentOfType<mlir::func::FuncOp>();
         llvm::ArrayRef<mlir::Type> returnType = func.getFunctionType().getResults();
 
-        if ( !isa<toy::ReturnOp>( currentBlock->getTerminator() ) )
+        if ( !isa<silly::ReturnOp>( currentBlock->getTerminator() ) )
         {
             throw ExceptionWithContext(
                 __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: Expected toy::ReturnOp terminator\n", formatLocation( loc ) ) );
+                std::format( "{}internal error: Expected silly::ReturnOp terminator\n", formatLocation( loc ) ) );
         }
 
-        // Erase existing toy::ReturnOp and its constant
+        // Erase existing silly::ReturnOp and its constant
         mlir::Operation *existingExit = currentBlock->getTerminator();
         assert( existingExit );
         mlir::Operation *constantOp{};
@@ -1349,7 +1349,7 @@ namespace toy
         mlir::Value value{};
 
         // always regenerate the RETURN/EXIT so that we have the terminator location set properly (not the function body
-        // start location that was used to create the dummy toy.ReturnOp that we rewrite here.)
+        // start location that was used to create the dummy silly.ReturnOp that we rewrite here.)
         if ( lit || scalarOrArrayElement || boolNode )
         {
             value =
@@ -1406,17 +1406,17 @@ namespace toy
         // Create new ReturnOp with user specified value:
         if ( value )
         {
-            builder.create<toy::ReturnOp>( loc, mlir::ValueRange{ value } );
+            builder.create<silly::ReturnOp>( loc, mlir::ValueRange{ value } );
         }
         else
         {
-            builder.create<toy::ReturnOp>( loc, mlir::ValueRange{} );
+            builder.create<silly::ReturnOp>( loc, mlir::ValueRange{} );
         }
 
         markExplicitTerminator();
     }
 
-    void MLIRListener::enterReturnStatement( ToyParser::ReturnStatementContext *ctx )
+    void MLIRListener::enterReturnStatement( SillyParser::ReturnStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1424,13 +1424,13 @@ namespace toy
         mainFirstTime( loc );
         setLastLoc( loc );
 
-        ToyParser::LiteralContext *lit = ctx->literal();
-        processReturnLike<ToyParser::LiteralContext>( loc, lit, ctx->scalarOrArrayElement(),
+        SillyParser::LiteralContext *lit = ctx->literal();
+        processReturnLike<SillyParser::LiteralContext>( loc, lit, ctx->scalarOrArrayElement(),
                                                       lit ? lit->BOOLEAN_PATTERN() : nullptr );
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterExitStatement( ToyParser::ExitStatementContext *ctx )
+    void MLIRListener::enterExitStatement( SillyParser::ExitStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1438,13 +1438,13 @@ namespace toy
         mainFirstTime( loc );
         setLastLoc( loc );
 
-        ToyParser::NumericLiteralContext *lit = ctx->numericLiteral();
+        SillyParser::NumericLiteralContext *lit = ctx->numericLiteral();
 
-        processReturnLike<ToyParser::NumericLiteralContext>( loc, lit, ctx->scalarOrArrayElement(), nullptr );
+        processReturnLike<SillyParser::NumericLiteralContext>( loc, lit, ctx->scalarOrArrayElement(), nullptr );
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterAssignment( ToyParser::AssignmentContext *ctx )
+    void MLIRListener::enterAssignment( SillyParser::AssignmentContext *ctx )
     try
     {
         assert( ctx );
@@ -1452,12 +1452,12 @@ namespace toy
         mlir::Location loc = getLocation( ctx );
         mainFirstTime( loc );
         setLastLoc( loc );
-        ToyParser::ScalarOrArrayElementContext *lhs = ctx->scalarOrArrayElement();
+        SillyParser::ScalarOrArrayElementContext *lhs = ctx->scalarOrArrayElement();
         assert( lhs );
         assert( lhs->IDENTIFIER() );
         currentVarName = lhs->IDENTIFIER()->getText();
 
-        ToyParser::IndexExpressionContext *indexExpr = lhs->indexExpression();
+        SillyParser::IndexExpressionContext *indexExpr = lhs->indexExpression();
 
         currentIndexExpr = mlir::Value();
 
@@ -1482,7 +1482,7 @@ namespace toy
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::exitAssignment( ToyParser::AssignmentContext *ctx )
+    void MLIRListener::exitAssignment( SillyParser::AssignmentContext *ctx )
     try
     {
         assert( ctx );
@@ -1510,7 +1510,7 @@ namespace toy
         return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
     }
 
-    void MLIRListener::enterRhs( ToyParser::RhsContext *ctx )
+    void MLIRListener::enterRhs( SillyParser::RhsContext *ctx )
     try
     {
         assert( ctx );
@@ -1523,7 +1523,7 @@ namespace toy
         setLastLoc( loc );
         mlir::Value resultValue;
 
-        toy::DeclareOp declareOp = lookupDeclareForVar( loc, currentVarName );
+        silly::DeclareOp declareOp = lookupDeclareForVar( loc, currentVarName );
         mlir::TypeAttr typeAttr = declareOp.getTypeAttr();
         mlir::Type opType = typeAttr.getValue();
 
@@ -1535,9 +1535,9 @@ namespace toy
         {
             mlir::Value lhsValue;
 
-            ToyParser::LiteralContext *lit = ctx->literal();
+            SillyParser::LiteralContext *lit = ctx->literal();
 
-            if ( ToyParser::CallContext *call = ctx->call() )
+            if ( SillyParser::CallContext *call = ctx->call() )
             {
                 callIsHandled = true;
                 lhsValue = handleCall( call );
@@ -1551,12 +1551,12 @@ namespace toy
             }
 
             resultValue = lhsValue;
-            if ( ToyParser::UnaryOperatorContext *unaryOp = ctx->unaryOperator() )
+            if ( SillyParser::UnaryOperatorContext *unaryOp = ctx->unaryOperator() )
             {
                 std::string opText = unaryOp->getText();
                 if ( opText == "-" )
                 {
-                    toy::NegOp op = builder.create<toy::NegOp>( loc, opType, lhsValue );
+                    silly::NegOp op = builder.create<silly::NegOp>( loc, opType, lhsValue );
                     resultValue = op.getResult();
 
                     if ( s.length() )
@@ -1571,7 +1571,7 @@ namespace toy
                 {
                     mlir::arith::ConstantIntOp rhsValue = builder.create<mlir::arith::ConstantIntOp>( loc, 0, 64 );
 
-                    toy::EqualOp b = builder.create<toy::EqualOp>( loc, opType, lhsValue, rhsValue );
+                    silly::EqualOp b = builder.create<silly::EqualOp>( loc, opType, lhsValue, rhsValue );
                     resultValue = b.getResult();
 
                     if ( s.length() )
@@ -1593,20 +1593,20 @@ namespace toy
                     std::format( "{}internal error: binaryElement size != 2\n", formatLocation( loc ) ) );
             }
 
-            ToyParser::BinaryElementContext *lhs = ctx->binaryElement()[0];
+            SillyParser::BinaryElementContext *lhs = ctx->binaryElement()[0];
             assert( lhs );
-            ToyParser::BinaryElementContext *rhs = ctx->binaryElement()[1];
+            SillyParser::BinaryElementContext *rhs = ctx->binaryElement()[1];
             assert( rhs );
             std::string opText = ctx->binaryOperator()->getText();
 
-            ToyParser::NumericLiteralContext *llit = lhs->numericLiteral();
+            SillyParser::NumericLiteralContext *llit = lhs->numericLiteral();
             lhsValue = buildNonStringUnaryExpression( loc, nullptr,    // booleanNode
                                                       llit ? llit->INTEGER_PATTERN() : nullptr,
                                                       llit ? llit->FLOAT_PATTERN() : nullptr,
                                                       lhs->scalarOrArrayElement(), nullptr );
 
             mlir::Value rhsValue;
-            ToyParser::NumericLiteralContext *rlit = rhs->numericLiteral();
+            SillyParser::NumericLiteralContext *rlit = rhs->numericLiteral();
             rhsValue = buildNonStringUnaryExpression( loc, nullptr,    // booleanNode
                                                       rlit ? rlit->INTEGER_PATTERN() : nullptr,
                                                       rlit ? rlit->FLOAT_PATTERN() : nullptr,
@@ -1615,67 +1615,67 @@ namespace toy
             // Create the binary operator (supports +, -, *, /)
             if ( opText == "+" )
             {
-                toy::AddOp b = builder.create<toy::AddOp>( loc, opType, lhsValue, rhsValue );
+                silly::AddOp b = builder.create<silly::AddOp>( loc, opType, lhsValue, rhsValue );
                 resultValue = b.getResult();
             }
             else if ( opText == "-" )
             {
-                toy::SubOp b = builder.create<toy::SubOp>( loc, opType, lhsValue, rhsValue );
+                silly::SubOp b = builder.create<silly::SubOp>( loc, opType, lhsValue, rhsValue );
                 resultValue = b.getResult();
             }
             else if ( opText == "*" )
             {
-                toy::MulOp b = builder.create<toy::MulOp>( loc, opType, lhsValue, rhsValue );
+                silly::MulOp b = builder.create<silly::MulOp>( loc, opType, lhsValue, rhsValue );
                 resultValue = b.getResult();
             }
             else if ( opText == "/" )
             {
-                toy::DivOp b = builder.create<toy::DivOp>( loc, opType, lhsValue, rhsValue );
+                silly::DivOp b = builder.create<silly::DivOp>( loc, opType, lhsValue, rhsValue );
                 resultValue = b.getResult();
             }
             else if ( opText == "<" )
             {
-                toy::LessOp b = builder.create<toy::LessOp>( loc, opType, lhsValue, rhsValue );
+                silly::LessOp b = builder.create<silly::LessOp>( loc, opType, lhsValue, rhsValue );
                 resultValue = b.getResult();
             }
             else if ( opText == ">" )
             {
-                toy::LessOp b = builder.create<toy::LessOp>( loc, opType, rhsValue, lhsValue );
+                silly::LessOp b = builder.create<silly::LessOp>( loc, opType, rhsValue, lhsValue );
                 resultValue = b.getResult();
             }
             else if ( opText == "<=" )
             {
-                toy::LessEqualOp b = builder.create<toy::LessEqualOp>( loc, opType, lhsValue, rhsValue );
+                silly::LessEqualOp b = builder.create<silly::LessEqualOp>( loc, opType, lhsValue, rhsValue );
                 resultValue = b.getResult();
             }
             else if ( opText == ">=" )
             {
-                toy::LessEqualOp b = builder.create<toy::LessEqualOp>( loc, opType, rhsValue, lhsValue );
+                silly::LessEqualOp b = builder.create<silly::LessEqualOp>( loc, opType, rhsValue, lhsValue );
                 resultValue = b.getResult();
             }
             else if ( opText == "EQ" )
             {
-                toy::EqualOp b = builder.create<toy::EqualOp>( loc, opType, lhsValue, rhsValue );
+                silly::EqualOp b = builder.create<silly::EqualOp>( loc, opType, lhsValue, rhsValue );
                 resultValue = b.getResult();
             }
             else if ( opText == "NE" )
             {
-                toy::NotEqualOp b = builder.create<toy::NotEqualOp>( loc, opType, lhsValue, rhsValue );
+                silly::NotEqualOp b = builder.create<silly::NotEqualOp>( loc, opType, lhsValue, rhsValue );
                 resultValue = b.getResult();
             }
             else if ( opText == "AND" )
             {
-                toy::AndOp b = builder.create<toy::AndOp>( loc, opType, lhsValue, rhsValue );
+                silly::AndOp b = builder.create<silly::AndOp>( loc, opType, lhsValue, rhsValue );
                 resultValue = b.getResult();
             }
             else if ( opText == "OR" )
             {
-                toy::OrOp b = builder.create<toy::OrOp>( loc, opType, lhsValue, rhsValue );
+                silly::OrOp b = builder.create<silly::OrOp>( loc, opType, lhsValue, rhsValue );
                 resultValue = b.getResult();
             }
             else if ( opText == "XOR" )
             {
-                toy::XorOp b = builder.create<toy::XorOp>( loc, opType, lhsValue, rhsValue );
+                silly::XorOp b = builder.create<silly::XorOp>( loc, opType, lhsValue, rhsValue );
                 resultValue = b.getResult();
             }
             else
@@ -1698,11 +1698,11 @@ namespace toy
         {
             mlir::StringAttr strAttr = builder.getStringAttr( s );
 
-            toy::StringLiteralOp stringLiteral = builder.create<toy::StringLiteralOp>( loc, tyPtr, strAttr );
+            silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
 
             mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
 
-            builder.create<toy::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ stringLiteral },
+            builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ stringLiteral },
                                            llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
         }
         else
@@ -1711,7 +1711,7 @@ namespace toy
             {
                 mlir::Value i = indexTypeCast( loc, currentIndexExpr );
 
-                toy::AssignOp assign = builder.create<toy::AssignOp>( loc, symRef, i, resultValue );
+                silly::AssignOp assign = builder.create<silly::AssignOp>( loc, symRef, i, resultValue );
 
                 LLVM_DEBUG( {
                     mlir::OpPrintingFlags flags;
@@ -1725,7 +1725,7 @@ namespace toy
             {
                 mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
 
-                builder.create<toy::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ resultValue },
+                builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ resultValue },
                                                llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
             }
         }
@@ -1735,6 +1735,6 @@ namespace toy
         currentIndexExpr = mlir::Value();
     }
     CATCH_USER_ERROR
-}    // namespace toy
+}    // namespace silly
 
 // vim: et ts=4 sw=4

@@ -1,2 +1,2 @@
-../build/toycalculator --output-directory out -g test.toy
-clang -g -o out/test out/test.o -L ../build -l toy_runtime -Wl,-rpath,`pwd`/../build
+../build/silly --output-directory out -g test.silly
+clang -g -o out/test out/test.o -L ../build -l silly_runtime -Wl,-rpath,`pwd`/../build

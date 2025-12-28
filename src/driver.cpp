@@ -1,6 +1,6 @@
 /// @file    driver.cpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
-/// @brief   This is the compiler driver for the toy (originally "calculator") compiler.
+/// @brief   This is the compiler driver for the silly compiler (originally "toy calculator").
 ///
 /// @description
 ///
@@ -37,54 +37,54 @@
 #include <format>
 #include <fstream>
 
-#include "ToyDialect.hpp"
-#include "ToyExceptions.hpp"
-#include "ToyLexer.h"
-#include "ToyPasses.hpp"
+#include "SillyDialect.hpp"
+#include "SillyExceptions.hpp"
+#include "SillyLexer.h"
+#include "SillyPasses.hpp"
 #include "driver.hpp"
 #include "lowering.hpp"
 #include "parser.hpp"
 
-#define DEBUG_TYPE "toy-driver"
+#define DEBUG_TYPE "silly-driver"
 
-// Define a category for Toy Calculator options
-static llvm::cl::OptionCategory ToyCategory( "Toy Calculator Options" );
+// Define a category for silly compiler options
+static llvm::cl::OptionCategory SillyCategory( "Silly Compiler Options" );
 
 // Command-line option for input file
 static llvm::cl::opt<std::string> inputFilename( llvm::cl::Positional, llvm::cl::desc( "<input file>" ),
                                                  llvm::cl::init( "-" ), llvm::cl::value_desc( "filename" ),
-                                                 llvm::cl::cat( ToyCategory ), llvm::cl::NotHidden );
+                                                 llvm::cl::cat( SillyCategory ), llvm::cl::NotHidden );
 
 static llvm::cl::opt<bool> debugInfo( "g",
                                       llvm::cl::desc( "Enable location output in MLIR, and dwarf metadata "
                                                       "creation in the lowered LLVM IR)" ),
-                                      llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
+                                      llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<bool> compileOnly( "c", llvm::cl::desc( "Compile only and don't link." ), llvm::cl::init( false ),
-                                        llvm::cl::cat( ToyCategory ) );
+                                        llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<std::string> outDir(
     "output-directory", llvm::cl::desc( "Output directory for generated files (e.g., .mlir, .ll, .o)" ),
-    llvm::cl::value_desc( "directory" ), llvm::cl::init( "" ), llvm::cl::cat( ToyCategory ) );
+    llvm::cl::value_desc( "directory" ), llvm::cl::init( "" ), llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<bool> toStdout( "stdout", llvm::cl::desc( "LLVM and MLIR on stdout instead of to a file" ),
-                                     llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
+                                     llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 // Add command-line option for MLIR emission
 static llvm::cl::opt<bool> emitMLIR( "emit-mlir", llvm::cl::desc( "Emit MLIR IR" ), llvm::cl::init( false ),
-                                     llvm::cl::cat( ToyCategory ) );
+                                     llvm::cl::cat( SillyCategory ) );
 
 // Add command-line option for LLVM IR emission
 static llvm::cl::opt<bool> emitLLVM( "emit-llvm", llvm::cl::desc( "Emit LLVM IR" ), llvm::cl::init( false ),
-                                     llvm::cl::cat( ToyCategory ) );
+                                     llvm::cl::cat( SillyCategory ) );
 
 // Add command-line option for object file emission
 static llvm::cl::opt<bool> noEmitObject( "no-emit-object", llvm::cl::desc( "Skip emit object file (.o)" ),
-                                         llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
+                                         llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 // Noisy debugging output
 static llvm::cl::opt<bool> llvmDEBUG( "debug-llvm", llvm::cl::desc( "Include MLIR dump, and turn off multithreading" ),
-                                      llvm::cl::init( false ), llvm::cl::cat( ToyCategory ) );
+                                      llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 enum class OptLevel : int
 {
@@ -99,7 +99,7 @@ static llvm::cl::opt<OptLevel> optLevel( "O", llvm::cl::desc( "Optimization leve
                                                            clEnumValN( OptLevel::O1, "1", "Light optimization" ),
                                                            clEnumValN( OptLevel::O2, "2", "Moderate optimization" ),
                                                            clEnumValN( OptLevel::O3, "3", "Aggressive optimization" ) ),
-                                         llvm::cl::init( OptLevel::O0 ), llvm::cl::cat( ToyCategory ) );
+                                         llvm::cl::init( OptLevel::O0 ), llvm::cl::cat( SillyCategory ) );
 
 enum class return_codes : int
 {
@@ -125,14 +125,14 @@ static void writeLL( std::unique_ptr<llvm::Module>& llvmModule, llvm::SmallStrin
         llvm::raw_fd_ostream out( path.str(), EC, llvm::sys::fs::OF_Text );
         if ( EC )
         {
-            throw toy::ExceptionWithContext( __FILE__, __LINE__, __func__, "Failed to open file: " + EC.message() );
+            throw silly::ExceptionWithContext( __FILE__, __LINE__, __func__, "Failed to open file: " + EC.message() );
         }
 
         llvmModule->print( out, nullptr, debugInfo /* print debug info */ );
     }
 }
 
-using namespace toy;
+using namespace silly;
 
 int main( int argc, char** argv )
 {
@@ -162,7 +162,7 @@ int main( int argc, char** argv )
     }
     else
     {
-        filename = "<stdin>.toy";
+        filename = "<stdin>.silly";
         inputStream.basic_ios<char>::rdbuf( std::cin.rdbuf() );
     }
 
@@ -171,9 +171,9 @@ int main( int argc, char** argv )
         MLIRListener listener( filename );
 
         antlr4::ANTLRInputStream antlrInput( inputStream );
-        ToyLexer lexer( &antlrInput );
+        SillyLexer lexer( &antlrInput );
         antlr4::CommonTokenStream tokens( &lexer );
-        ToyParser parser( &tokens );
+        SillyParser parser( &tokens );
 
         // Remove default error listener and add MLIRListener for errors
         parser.removeErrorListeners();
@@ -260,7 +260,7 @@ int main( int argc, char** argv )
             pm.enableIRPrinting();
         }
 
-        driverState st;
+        DriverState st;
         st.isOptimized = optLevel != OptLevel::O0 ? true : false;
         st.wantDebug = debugInfo;
         st.filename = filename;
@@ -270,7 +270,7 @@ int main( int argc, char** argv )
             module->dump();
         } );
 
-        pm.addPass( mlir::createToyToLLVMLoweringPass( &st ) );
+        pm.addPass( mlir::createSillyToLLVMLoweringPass( &st ) );
         pm.addPass( mlir::createSCFToControlFlowPass() );
         pm.addPass( mlir::createFinalizeMemRefToLLVMConversionPass() );
         pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
@@ -460,7 +460,7 @@ void invokeLinker( const char* argv0, llvm::SmallString<128>& exePath, llvm::Sma
     argv.push_back( "-L" );
     argv.push_back( driverPath );
     argv.push_back( "-l" );
-    argv.push_back( "toy_runtime" );
+    argv.push_back( "silly_runtime" );
     argv.push_back( rpathOption );
 
     // Execute the linker

@@ -5,10 +5,10 @@
 
 #include <string>
 
-namespace toy
+namespace silly
 {
     /// State to pass from the driver to lowering
-    struct driverState
+    struct DriverState
     {
         /// True if not OptLevel::O0
         bool isOptimized;

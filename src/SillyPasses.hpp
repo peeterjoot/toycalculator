@@ -1,4 +1,4 @@
-/// @file    ToyPasses.hpp
+/// @file    SillyPasses.hpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Pass for MLIR lowering to LLVM-IR.
 #pragma once
@@ -10,15 +10,15 @@
 
 namespace mlir
 {
-    void registerToyToLLVMLoweringPass( toy::driverState* pst = nullptr );
+    void registerSillyToLLVMLoweringPass( silly::DriverState* pst = nullptr );
 
-    inline void registerToyPasses( toy::driverState* pst = nullptr )
+    inline void registerSillyPasses( silly::DriverState* pst = nullptr )
     {
-        registerToyToLLVMLoweringPass( pst );
+        registerSillyToLLVMLoweringPass( pst );
     }
 }    // namespace mlir
 
 #define GEN_PASS_REGISTRATION
-#include "ToyPasses.hpp.inc"
+#include "SillyPasses.hpp.inc"
 
 // vim: et ts=4 sw=4

@@ -29,12 +29,12 @@ next:
 ----------------------------------
 
 * String tests and behaviour:
-  - longstring.toy:
+  - longstring.silly:
    compiler truncates an assignment from a too long string literal.  Could implement safe vs. checked behaviour so that such an assignment would trigger an error instead.
-  - string literal tests for edge cases: shortstring.toy: two bugs unresolved.
-  - shortstring2.toy:
+  - string literal tests for edge cases: shortstring.silly: two bugs unresolved.
+  - shortstring2.silly:
 
-  `toycalculator: /home/pjoot/toycalculator/src/lowering.cpp:765: toy::CallOp toy::loweringContext::createPrintCall(ConversionPatternRewriter &, mlir::Location, mlir::Value): Assertion `numElems' failed.`
+  `silly: /home/pjoot/toycalculator/src/lowering.cpp:765: silly::CallOp silly::loweringContext::createPrintCall(ConversionPatternRewriter &, mlir::Location, mlir::Value): Assertion `numElems' failed.`
 
     -- might just want to remove that assertion?  Review the lowered code carefully if trying that.
 
@@ -81,16 +81,16 @@ next:
 ----------------------------------
 * Debugging:
 
-  - t/c: function.toy:
+  - t/c: function.silly:
 
     line stepping behaves wrong after CALL, showing the wrong line after some calls:
 
 ```
         (gdb) n
-        main () at function.toy:38
+        main () at function.silly:38
         38      v = CALL add( 42, 0 );
         (gdb) s
-        add (v=0, w=4196336) at function.toy:13
+        add (v=0, w=4196336) at function.silly:13
         13      FUNCTION add( INT32 v, INT32 w ) : INT32
         (gdb) n
         16          r = v + w;
@@ -103,7 +103,7 @@ next:
         (gdb) p w
         $3 = 0
         (gdb) n
-        main () at function.toy:39
+        main () at function.silly:39
         39      PRINT v;                    << OKAY
         (gdb) n
         38      v = CALL add( 42, 0 );      << WRONG, ALREADY DONE.
@@ -125,9 +125,9 @@ next:
      42 v = CALL plus3( 39 );
      43 PRINT v;
 ```
-  - gdb session for simpleless.toy is not behaving right with respect to 'next'.  Suspect that this is due to my cachine of the one/zero constants, reusing previous location info inappropriately.  Try not caching that and see if it fixes it -- nope.
+  - gdb session for simpleless.silly is not behaving right with respect to 'next'.  Suspect that this is due to my cachine of the one/zero constants, reusing previous location info inappropriately.  Try not caching that and see if it fixes it -- nope.
 ```
-Breakpoint 1, main () at simpleless.toy:4
+Breakpoint 1, main () at simpleless.silly:4
 4       i1 = TRUE;
 (gdb) n
 5       j1 = FALSE;
