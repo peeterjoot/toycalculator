@@ -1,4 +1,8 @@
-## tag: V6 (WIP)
+## tag: V7 (WIP)
+
+* ...
+
+## tag: V6 (Dec 28, 2025)
 
 ### 1. Get statement support.
 
