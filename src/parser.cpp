@@ -25,7 +25,7 @@
 #define ENTRY_SYMBOL_NAME "main"
 
 #define CATCH_USER_ERROR                                \
-    catch ( const user_error &e )                       \
+    catch ( const UserError &e )                        \
     {                                                   \
         mlir::emitError( e.getLocation() ) << e.what(); \
         hasErrors = true;                               \
@@ -43,13 +43,13 @@ namespace toy
         return *pr_funcState[funcName];
     }
 
-    inline void MLIRListener::setVarState( const std::string &funcName, const std::string &varName, variable_state st )
+    inline void MLIRListener::setVarState( const std::string &funcName, const std::string &varName, VariableState st )
     {
         PerFunctionState &f = funcState( funcName );
         f.varStates[varName] = st;
     }
 
-    inline variable_state MLIRListener::getVarState( const std::string &varName )
+    inline VariableState MLIRListener::getVarState( const std::string &varName )
     {
         PerFunctionState &f = funcState( currentFuncName );
         return f.varStates[varName];
@@ -74,7 +74,7 @@ namespace toy
     {
         if ( ( input.size() < 2 ) || ( input.front() != '"' ) || ( input.back() != '"' ) )
         {
-            throw exception_with_context(
+            throw ExceptionWithContext(
                 __FILE__, __LINE__, __func__,
                 std::format( "{}internal error: String '{}' was not double quotes enclosed as expected.\n",
                              formatLocation( loc ), input ) );
@@ -90,9 +90,9 @@ namespace toy
 
         if ( op == nullptr )
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__,
-                                          std::format( "{}internal error: Unable to find FuncOp for function {}\n",
-                                                       formatLocation( loc ), funcName ) );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "{}internal error: Unable to find FuncOp for function {}\n",
+                                                     formatLocation( loc ), funcName ) );
         }
         return op;
     }
@@ -152,13 +152,13 @@ namespace toy
     void MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                             ToyParser::ArrayBoundsExpressionContext *arrayBounds )
     {
-        variable_state varState = getVarState( varName );
-        if ( varState != variable_state::undeclared )
+        VariableState varState = getVarState( varName );
+        if ( varState != VariableState::undeclared )
         {
-            throw user_error( loc, std::format( "Variable {} already declared", varName ) );
+            throw UserError( loc, std::format( "Variable {} already declared", varName ) );
         }
 
-        setVarState( currentFuncName, varName, variable_state::declared );
+        setVarState( currentFuncName, varName, VariableState::declared );
 
         size_t arraySize{};
         if ( arrayBounds )
@@ -221,10 +221,10 @@ namespace toy
             }
             else
             {
-                throw exception_with_context( __FILE__, __LINE__, __func__,
-                                              std::format( "{}error: internal error: boolean value neither TRUE nor "
-                                                           "FALSE.\n",
-                                                           formatLocation( loc ) ) );
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                            std::format( "{}error: internal error: boolean value neither TRUE nor "
+                                                         "FALSE.\n",
+                                                         formatLocation( loc ) ) );
             }
 
             value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 1 );
@@ -251,16 +251,16 @@ namespace toy
             assert( variableNode );
             std::string varName = variableNode->getText();
 
-            variable_state varState = getVarState( varName );
+            VariableState varState = getVarState( varName );
 
-            if ( varState == variable_state::undeclared )
+            if ( varState == VariableState::undeclared )
             {
-                throw user_error( loc, std::format( "Variable {} not declared in expr", varName ) );
+                throw UserError( loc, std::format( "Variable {} not declared in expr", varName ) );
             }
 
-            if ( varState != variable_state::assigned )
+            if ( varState != VariableState::assigned )
             {
-                throw user_error( loc, std::format( "Variable {} not assigned in expr", varName ) );
+                throw UserError( loc, std::format( "Variable {} not assigned in expr", varName ) );
             }
 
             toy::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
@@ -290,8 +290,8 @@ namespace toy
         }
         else
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__,
-                                          std::format( "{}internal error: Invalid operand\n", formatLocation( loc ) ) );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "{}internal error: Invalid operand\n", formatLocation( loc ) ) );
         }
 
         return value;
@@ -306,7 +306,7 @@ namespace toy
         value = buildUnaryExpression( loc, booleanNode, integerNode, floatNode, scalarOrArrayElement, stringNode, s );
         if ( s.length() )
         {
-            throw exception_with_context(
+            throw ExceptionWithContext(
                 __FILE__, __LINE__, __func__,
                 std::format( "{}internal error: Unexpected string literal\n", formatLocation( loc ) ) );
         }
@@ -319,9 +319,9 @@ namespace toy
     {
         hasErrors = true;
         std::string tokenText = offendingSymbol ? offendingSymbol->getText() : "<none>";
-        throw exception_with_context( __FILE__, __LINE__, __func__,
-                                      std::format( "Syntax error in {}:{}:{}: {} (token: {} )", filename, line,
-                                                   charPositionInLine, msg, tokenText ) );
+        throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                    std::format( "Syntax error in {}:{}:{}: {} (token: {} )", filename, line,
+                                                 charPositionInLine, msg, tokenText ) );
     }
 
     toy::ScopeOp MLIRListener::getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp ) const
@@ -335,7 +335,7 @@ namespace toy
             }
         }
 
-        throw exception_with_context(
+        throw ExceptionWithContext(
             __FILE__, __LINE__, __func__,
             std::format( "{}internal error: Unable to find Enclosing ScopeOp for currentFunction {}\n",
                          formatLocation( loc ), currentFuncName ) );
@@ -357,13 +357,13 @@ namespace toy
         mlir::Operation *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
         if ( !symbolOp )
         {
-            throw user_error( loc, std::format( "Undeclared variable {} (symbol lookup failed.)", varName ) );
+            throw UserError( loc, std::format( "Undeclared variable {} (symbol lookup failed.)", varName ) );
         }
 
         toy::DeclareOp declareOp = mlir::dyn_cast<toy::DeclareOp>( symbolOp );
         if ( !declareOp )
         {
-            throw user_error( loc, std::format( "Undeclared variable {} (DeclareOp not found)", varName ) );
+            throw UserError( loc, std::format( "Undeclared variable {} (DeclareOp not found)", varName ) );
         }
 
         return declareOp;
@@ -558,7 +558,7 @@ namespace toy
             paramTypes.push_back( paramType );
             paramNames.push_back( paramName );
 
-            setVarState( funcName, paramName, variable_state::assigned );
+            setVarState( funcName, paramName, VariableState::assigned );
         }
 
         std::vector<mlir::NamedAttribute> attrs;
@@ -711,10 +711,9 @@ namespace toy
         }
         else
         {
-            throw exception_with_context(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: Unsupported signed integer declaration size.\n",
-                             formatLocation( loc ) ) );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "{}internal error: Unsupported signed integer declaration size.\n",
+                                                     formatLocation( loc ) ) );
         }
     }
     CATCH_USER_ERROR
@@ -739,10 +738,9 @@ namespace toy
         }
         else
         {
-            throw exception_with_context(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: Unsupported floating point declaration size.\n",
-                             formatLocation( loc ) ) );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "{}internal error: Unsupported floating point declaration size.\n",
+                                                     formatLocation( loc ) ) );
         }
     }
     CATCH_USER_ERROR
@@ -834,7 +832,7 @@ namespace toy
                 }
                 else
                 {
-                    throw exception_with_context(
+                    throw ExceptionWithContext(
                         __FILE__, __LINE__, __func__,
                         std::format( "{}internal error: Unsupported binary operator in if condition.\n",
                                      formatLocation( loc ) ) );
@@ -842,7 +840,7 @@ namespace toy
             }
             else
             {
-                throw exception_with_context(
+                throw ExceptionWithContext(
                     __FILE__, __LINE__, __func__,
                     std::format( "{}internal error: Only binary operators supported in if condition (for now).\n",
                                  formatLocation( loc ) ) );
@@ -857,7 +855,7 @@ namespace toy
         // Ensure the predicate has type i1
         if ( !conditionPredicate.getType().isInteger( 1 ) )
         {
-            throw exception_with_context(
+            throw ExceptionWithContext(
                 __FILE__, __LINE__, __func__,
                 std::format( "{}internal error: if condition must be i1\n", formatLocation( loc ) ) );
         }
@@ -912,7 +910,7 @@ namespace toy
 
         if ( !ifElifElse )
         {
-            throw exception_with_context(
+            throw ExceptionWithContext(
                 __FILE__, __LINE__, __func__,
                 std::format( "{}internal error: IfStatement parent is not IfelifelseContext: ctx: {}\n",
                              formatLocation( loc ), ctx->getText() ) );
@@ -921,7 +919,7 @@ namespace toy
         std::vector<ToyParser::ElifStatementContext *> elifs = ifElifElse->elifStatement();
         if ( elifs.size() )
         {
-            throw exception_with_context(
+            throw ExceptionWithContext(
                 __FILE__, __LINE__, __func__,
                 std::format( "{}internal error: ELIF NYI: {}\n", formatLocation( loc ), ctx->getText() ) );
         }
@@ -949,7 +947,7 @@ namespace toy
 
             if ( !ifOp )
             {
-                throw exception_with_context(
+                throw ExceptionWithContext(
                     __FILE__, __LINE__, __func__,
                     std::format( "{}internal error: Could not find scf.if op corresponding to this if statement\n",
                                  formatLocation( loc ), ctx->getText() ) );
@@ -958,9 +956,9 @@ namespace toy
             mlir::Region &elseRegion = ifOp.getElseRegion();
             if ( !elseRegion.empty() )
             {
-                throw exception_with_context( __FILE__, __LINE__, __func__,
-                                              std::format( "{}internal error: Expected empty else region\n",
-                                                           formatLocation( loc ), ctx->getText() ) );
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                            std::format( "{}internal error: Expected empty else region\n",
+                                                         formatLocation( loc ), ctx->getText() ) );
             }
 
             elseRegion.emplaceBlock();    // creates one empty block
@@ -1006,10 +1004,10 @@ namespace toy
 
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
-        variable_state varState = getVarState( varName );
-        if ( varState == variable_state::undeclared )
+        VariableState varState = getVarState( varName );
+        if ( varState == VariableState::undeclared )
         {
-            throw user_error( loc, std::format( "Variable {} not declared in PRINT", varName ) );
+            throw UserError( loc, std::format( "Variable {} not declared in PRINT", varName ) );
         }
 
         mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
@@ -1044,9 +1042,9 @@ namespace toy
         }
         else
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__,
-                                          std::format( "{}internal error: FOR loop: expected start index: {}\n",
-                                                       formatLocation( loc ), ctx->getText() ) );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "{}internal error: FOR loop: expected start index: {}\n",
+                                                     formatLocation( loc ), ctx->getText() ) );
         }
 
         if ( pEnd )
@@ -1061,9 +1059,9 @@ namespace toy
         }
         else
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__,
-                                          std::format( "{}internal error: FOR loop: expected end index: {}\n",
-                                                       formatLocation( loc ), ctx->getText() ) );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "{}internal error: FOR loop: expected end index: {}\n",
+                                                     formatLocation( loc ), ctx->getText() ) );
         }
 
         if ( pStep )
@@ -1094,7 +1092,7 @@ namespace toy
         mlir::Value inductionVar = loopBody.getArgument( 0 );
         builder.create<toy::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ inductionVar },
                                        llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
-        setVarState( currentFuncName, varName, variable_state::assigned );
+        setVarState( currentFuncName, varName, VariableState::assigned );
     }
     CATCH_USER_ERROR
 
@@ -1123,14 +1121,14 @@ namespace toy
             tNode *varNameObject = scalarOrArrayElement->IDENTIFIER();
             assert( varNameObject );
             std::string varName = varNameObject->getText();
-            variable_state varState = getVarState( varName );
-            if ( varState == variable_state::undeclared )
+            VariableState varState = getVarState( varName );
+            if ( varState == VariableState::undeclared )
             {
-                throw user_error( loc, std::format( "Variable {} not declared in PRINT", varName ) );
+                throw UserError( loc, std::format( "Variable {} not declared in PRINT", varName ) );
             }
-            if ( varState != variable_state::assigned )
+            if ( varState != VariableState::assigned )
             {
-                throw user_error( loc, std::format( "Variable {} not assigned in PRINT", varName ) );
+                throw UserError( loc, std::format( "Variable {} not assigned in PRINT", varName ) );
             }
 
             toy::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
@@ -1173,9 +1171,9 @@ namespace toy
         }
         else
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__,
-                                          std::format( "{}internal error: unexpected print context {}\n",
-                                                       formatLocation( loc ), ctx->getText() ) );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "{}internal error: unexpected print context {}\n",
+                                                     formatLocation( loc ), ctx->getText() ) );
         }
     }
     CATCH_USER_ERROR
@@ -1194,10 +1192,10 @@ namespace toy
             tNode *varNameObject = scalarOrArrayElement->IDENTIFIER();
             assert( varNameObject );
             std::string varName = varNameObject->getText();
-            variable_state varState = getVarState( varName );
-            if ( varState == variable_state::undeclared )
+            VariableState varState = getVarState( varName );
+            if ( varState == VariableState::undeclared )
             {
-                throw user_error( loc, std::format( "Variable {} not declared in GET", varName ) );
+                throw UserError( loc, std::format( "Variable {} not declared in GET", varName ) );
             }
 
             toy::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
@@ -1214,7 +1212,7 @@ namespace toy
             }
             else if ( declareOp.getSizeAttr() )
             {
-                throw user_error( loc, std::format( "Attempted GET to string literal?: {}", ctx->getText() ) );
+                throw UserError( loc, std::format( "Attempted GET to string literal?: {}", ctx->getText() ) );
             }
             else
             {
@@ -1226,11 +1224,11 @@ namespace toy
             toy::GetOp resultValue = builder.create<toy::GetOp>( loc, elemType );
             builder.create<toy::AssignOp>( loc, symRef, optIndexValue, resultValue );
 
-            setVarState( currentFuncName, varName, variable_state::assigned );
+            setVarState( currentFuncName, varName, VariableState::assigned );
         }
         else
         {
-            throw exception_with_context(
+            throw ExceptionWithContext(
                 __FILE__, __LINE__, __func__,
                 std::format( "{}internal error: unexpected get context {}\n", formatLocation( loc ), ctx->getText() ) );
         }
@@ -1315,10 +1313,9 @@ namespace toy
         assert( parentOp );
         if ( !isa<toy::ScopeOp>( parentOp ) )
         {
-            throw exception_with_context(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: RETURN statement must be inside a toy.scope\n",
-                             formatLocation( loc ) ) );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "{}internal error: RETURN statement must be inside a toy.scope\n",
+                                                     formatLocation( loc ) ) );
         }
 
         mlir::func::FuncOp func = parentOp->getParentOfType<mlir::func::FuncOp>();
@@ -1326,7 +1323,7 @@ namespace toy
 
         if ( !isa<toy::ReturnOp>( currentBlock->getTerminator() ) )
         {
-            throw exception_with_context(
+            throw ExceptionWithContext(
                 __FILE__, __LINE__, __func__,
                 std::format( "{}internal error: Expected toy::ReturnOp terminator\n", formatLocation( loc ) ) );
         }
@@ -1389,15 +1386,15 @@ namespace toy
                     }
                     else
                     {
-                        throw exception_with_context( __FILE__, __LINE__, __func__,
-                                                      std::format( "{}internal error: Support for FloatType w/ size "
-                                                                   "other than 32/64 is not implemented: {}\n",
-                                                                   formatLocation( loc ), w ) );
+                        throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                                    std::format( "{}internal error: Support for FloatType w/ size "
+                                                                 "other than 32/64 is not implemented: {}\n",
+                                                                 formatLocation( loc ), w ) );
                     }
                 }
                 else
                 {
-                    throw exception_with_context(
+                    throw ExceptionWithContext(
                         __FILE__, __LINE__, __func__,
                         std::format(
                             "{}internal error: Return support for non-(IntegerType,FloatType) is not implemented\n",
@@ -1470,15 +1467,15 @@ namespace toy
                 buildNonStringUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr, lhs, nullptr );
         }
 
-        variable_state varState = getVarState( currentVarName );
-        if ( varState == variable_state::declared )
+        VariableState varState = getVarState( currentVarName );
+        if ( varState == VariableState::declared )
         {
-            setVarState( currentFuncName, currentVarName, variable_state::assigned );
+            setVarState( currentFuncName, currentVarName, VariableState::assigned );
         }
-        else if ( varState == variable_state::undeclared )
+        else if ( varState == VariableState::undeclared )
         {
             assignmentTargetValid = false;
-            throw user_error( loc, std::format( "Variable {} not declared in assignment", currentVarName ) );
+            throw UserError( loc, std::format( "Variable {} not declared in assignment", currentVarName ) );
         }
         currentAssignLoc = loc;
         callIsHandled = false;
@@ -1505,10 +1502,9 @@ namespace toy
         if ( !valTy.isSignlessInteger( 64 ) )
         {
             // If it's a non-i64 IntegerType, we could cast up to i64, and then cast that to index.
-            throw exception_with_context(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: NYI: indexTypeCast for types other than i64\n",
-                             formatLocation( loc ) ) );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "{}internal error: NYI: indexTypeCast for types other than i64\n",
+                                                     formatLocation( loc ) ) );
         }
 
         return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
@@ -1565,7 +1561,7 @@ namespace toy
 
                     if ( s.length() )
                     {
-                        throw exception_with_context(
+                        throw ExceptionWithContext(
                             __FILE__, __LINE__, __func__,
                             std::format( "{}internal error: Unexpected string literal for negation operation\n",
                                          formatLocation( loc ) ) );
@@ -1580,7 +1576,7 @@ namespace toy
 
                     if ( s.length() )
                     {
-                        throw exception_with_context(
+                        throw ExceptionWithContext(
                             __FILE__, __LINE__, __func__,
                             std::format( "{}internal error: Unexpected string literal for negation operation\n",
                                          formatLocation( loc ) ) );
@@ -1592,7 +1588,7 @@ namespace toy
         {
             if ( bsz != 2 )
             {
-                throw exception_with_context(
+                throw ExceptionWithContext(
                     __FILE__, __LINE__, __func__,
                     std::format( "{}internal error: binaryElement size != 2\n", formatLocation( loc ) ) );
             }
@@ -1684,7 +1680,7 @@ namespace toy
             }
             else
             {
-                throw exception_with_context(
+                throw ExceptionWithContext(
                     __FILE__, __LINE__, __func__,
                     std::format( "{}internal error: Invalid binary operator {}\n", formatLocation( loc ), opText ) );
             }
@@ -1692,7 +1688,7 @@ namespace toy
 
         if ( currentVarName.empty() )
         {
-            throw exception_with_context(
+            throw ExceptionWithContext(
                 __FILE__, __LINE__, __func__,
                 std::format( "{}internal error: currentVarName not set!\n", formatLocation( loc ) ) );
         }
@@ -1734,7 +1730,7 @@ namespace toy
             }
         }
 
-        setVarState( currentFuncName, currentVarName, variable_state::assigned );
+        setVarState( currentFuncName, currentVarName, VariableState::assigned );
         currentVarName.clear();
         currentIndexExpr = mlir::Value();
     }

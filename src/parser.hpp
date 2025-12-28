@@ -26,7 +26,7 @@ namespace toy
 {
 
     /// State of a variable within a function scope.
-    enum class variable_state : int
+    enum class VariableState : int
     {
         /// Variable not yet seen in this function.
         undeclared,
@@ -39,14 +39,15 @@ namespace toy
     };
 
     /// Surface a user error.
-    class user_error : public std::exception
+    class UserError : public std::exception
     {
        public:
-
-        user_error( mlir::Location iloc, const std::string& imessage ) : loc{iloc}, message{imessage} {}
+        UserError( mlir::Location iloc, const std::string &imessage ) : loc{ iloc }, message{ imessage }
+        {
+        }
 
         /// Fetch the message text from the throw point.
-        const char* what() const noexcept override
+        const char *what() const noexcept override
         {
             return message.c_str();
         }
@@ -79,7 +80,7 @@ namespace toy
     struct PerFunctionState
     {
         /// Variable states in this function.
-        std::unordered_map<std::string, variable_state> varStates;
+        std::unordered_map<std::string, VariableState> varStates;
 
         /// Associated func::FuncOp.
         mlir::Operation *funcOp{};
@@ -140,7 +141,7 @@ namespace toy
         void enterRhs( ToyParser::RhsContext *ctx ) override;
 
         /// Returns the constructed ModuleOp.
-        /// @throw exception_with_context if syntax errors occurred.
+        /// @throw ExceptionWithContext if syntax errors occurred.
         inline mlir::ModuleOp &getModule();
 
        private:
@@ -263,8 +264,8 @@ namespace toy
                                   ToyParser::ArrayBoundsExpressionContext *arrayBounds );
 
         inline PerFunctionState &funcState( const std::string &funcName );
-        inline void setVarState( const std::string &funcName, const std::string &varName, variable_state st );
-        inline variable_state getVarState( const std::string &varName );
+        inline void setVarState( const std::string &funcName, const std::string &varName, VariableState st );
+        inline VariableState getVarState( const std::string &varName );
         inline void setFuncOp( mlir::Operation *op );
         inline mlir::func::FuncOp getFuncOp( mlir::Location loc, const std::string &funcName );
         inline void markExplicitTerminator();
@@ -305,8 +306,8 @@ namespace toy
     {
         if ( hasErrors )
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__,
-                                          std::format( "Cannot emit MLIR due to syntax errors in {}", filename ) );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "Cannot emit MLIR due to syntax errors in {}", filename ) );
         }
         return mod;
     }

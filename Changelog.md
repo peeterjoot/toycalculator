@@ -261,6 +261,8 @@ which previously failed with y not declared at the assignment point (since the d
 * driver: remove autos
 * lowering: remove most autos
 * lowering: remove `using namespace mlir` (was using mlir:: qualified variables in some places, but not others, and it was confusing looking.)
+* merge testerrors and testit
+* s/exception_with_context/ExceptionWithContext/ ; s/user_error/UserError/
 
 ## tag: V5 (Dec 22, 2025)
 

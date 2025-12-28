@@ -195,8 +195,8 @@ namespace toy
                     return getI64zero( loc, rewriter );
             }
 
-            throw exception_with_context( __FILE__, __LINE__, __func__,
-                                          std::format( "Unexpected integer size {}", width ) );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "Unexpected integer size {}", width ) );
         }
 
         mlir::LLVM::ConstantOp getI64one( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter )
@@ -226,8 +226,8 @@ namespace toy
                     return getF64zero( loc, rewriter );
             }
 
-            throw exception_with_context( __FILE__, __LINE__, __func__,
-                                          std::format( "Unexpected float size {}", width ) );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "Unexpected float size {}", width ) );
         }
 
         class useModuleInsertionPoint

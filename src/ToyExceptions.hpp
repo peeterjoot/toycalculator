@@ -9,16 +9,15 @@
 namespace toy
 {
     /// An exception class for internal errors that builds a file:line:func triplet along with the reason.
-    class exception_with_context : public std::exception
+    class ExceptionWithContext : public std::exception
     {
        public:
-
         /// Example usage:
         ///
         /// ```
-        /// throw exception_with_context(__FILE__, __LINE__, __func__, "Blah blah blah");
+        /// throw ExceptionWithContext(__FILE__, __LINE__, __func__, "Blah blah blah");
         /// ```
-        exception_with_context( const char* file, int line, const char* func, const std::string& imessage )
+        ExceptionWithContext( const char* file, int line, const char* func, const std::string& imessage )
         {
             message = std::format( "{}:{}:{}: {}", file, line, func, imessage );
         }

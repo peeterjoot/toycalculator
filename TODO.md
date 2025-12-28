@@ -1,12 +1,14 @@
 ## TODO
 
+next:
+  - Switch to CamelCase uniformly.
+
 ----------------------------------
 * Test:
 
   - a whole range of statements in IF-then and if-ELSE blocks, and FOR (dcl, assignment, call, ...)
   - NOT operator: add more comprehensive all types testing.
   - tests for all the type conversions (i.e.: binary and unary arith operators)
-  - merge testit and testerrors
 
 ----------------------------------
 * Maintainance:
@@ -14,7 +16,7 @@
   - Switch to CamelCase uniformly.
   - Move scf lowering into 1st pass?  arith pass lowering shouldn't be in both.
   - Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
-  - Purge auto usage in lowering.cpp too (like parser.cpp)
+  - Purge rest of the auto usage in lowering.cpp (just a couple touchy ones left.)
 
 ----------------------------------
 

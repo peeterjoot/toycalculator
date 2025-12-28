@@ -125,7 +125,7 @@ static void writeLL( std::unique_ptr<llvm::Module>& llvmModule, llvm::SmallStrin
         llvm::raw_fd_ostream out( path.str(), EC, llvm::sys::fs::OF_Text );
         if ( EC )
         {
-            throw toy::exception_with_context( __FILE__, __LINE__, __func__, "Failed to open file: " + EC.message() );
+            throw toy::ExceptionWithContext( __FILE__, __LINE__, __func__, "Failed to open file: " + EC.message() );
         }
 
         llvmModule->print( out, nullptr, debugInfo /* print debug info */ );
@@ -188,13 +188,13 @@ int main( int argc, char** argv )
         if ( debugInfo )
         {
             flags.enableDebugInfo( true );
-            //flags.printGenericOpForm(); // Why did I do this?  If I have an assemblyFormat, I'd like it to show up.
+            // flags.printGenericOpForm(); // Why did I do this?  If I have an assemblyFormat, I'd like it to show up.
         }
         llvm::StringRef stem = llvm::sys::path::stem( filename );
         if ( stem.empty() )
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__,
-                                          "Invalid filename: empty stem: '" + filename + "'" );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        "Invalid filename: empty stem: '" + filename + "'" );
         }
         llvm::StringRef dirname = llvm::sys::path::parent_path( filename );
         llvm::SmallString<128> dirWithStem;
@@ -205,8 +205,8 @@ int main( int argc, char** argv )
             std::error_code EC = llvm::sys::fs::create_directories( outDir );
             if ( EC )
             {
-                throw exception_with_context( __FILE__, __LINE__, __func__,
-                                              "Failed to create output directory: " + EC.message() );
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                            "Failed to create output directory: " + EC.message() );
             }
             dirWithStem = outDir;
             llvm::sys::path::append( dirWithStem, stem );
@@ -235,15 +235,14 @@ int main( int argc, char** argv )
                 llvm::raw_fd_ostream out( path.str(), EC, llvm::sys::fs::OF_Text );
                 if ( EC )
                 {
-                    throw exception_with_context( __FILE__, __LINE__, __func__,
-                                                  "Failed to open file: " + EC.message() );
+                    throw ExceptionWithContext( __FILE__, __LINE__, __func__, "Failed to open file: " + EC.message() );
                 }
                 listener.getModule().print( out, flags );
             }
         }
 
-        mlir::ModuleOp & module = listener.getModule();
-        mlir::MLIRContext * context = module.getContext();
+        mlir::ModuleOp& module = listener.getModule();
+        mlir::MLIRContext* context = module.getContext();
 
         // Register dialect translations
         mlir::registerLLVMDialectTranslation( *context );
@@ -266,7 +265,10 @@ int main( int argc, char** argv )
         st.wantDebug = debugInfo;
         st.filename = filename;
 
-        LLVM_DEBUG( { llvm::errs() << "IR before stage I lowering:\n"; module->dump(); } );
+        LLVM_DEBUG( {
+            llvm::errs() << "IR before stage I lowering:\n";
+            module->dump();
+        } );
 
         pm.addPass( mlir::createToyToLLVMLoweringPass( &st ) );
         pm.addPass( mlir::createSCFToControlFlowPass() );
@@ -277,7 +279,7 @@ int main( int argc, char** argv )
         {
             llvm::errs() << "IR after stage I lowering failure:\n";
             module->dump();
-            throw exception_with_context( __FILE__, __LINE__, __func__, "Stage I LLVM lowering failed" );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__, "Stage I LLVM lowering failed" );
         }
 
         mlir::PassManager pm2( context );
@@ -292,7 +294,7 @@ int main( int argc, char** argv )
         {
             llvm::errs() << "IR after stage II lowering failure:\n";
             module->dump();
-            throw exception_with_context( __FILE__, __LINE__, __func__, "Stage II LLVM lowering failed" );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__, "Stage II LLVM lowering failed" );
         }
 
         if ( toStdout )
@@ -309,7 +311,7 @@ int main( int argc, char** argv )
 
         if ( !llvmModule )
         {
-            throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to translate to LLVM IR" );
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__, "Failed to translate to LLVM IR" );
         }
 
         bool emitObject = !noEmitObject;
@@ -318,7 +320,7 @@ int main( int argc, char** argv )
             // Verify the module to ensure debug info is valid
             if ( llvm::verifyModule( *llvmModule, &llvm::errs() ) )
             {
-                throw exception_with_context( __FILE__, __LINE__, __func__, "Invalid LLVM IR module" );
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__, "Invalid LLVM IR module" );
             }
 
             // Dump the pre-optimized LL if we aren't creating a .o
@@ -330,15 +332,15 @@ int main( int argc, char** argv )
             if ( emitObject )
             {
                 std::string targetTripleStr = llvm::sys::getProcessTriple();
-                llvm::Triple targetTriple(targetTripleStr);
-                llvmModule->setTargetTriple(targetTriple);
+                llvm::Triple targetTriple( targetTripleStr );
+                llvmModule->setTargetTriple( targetTriple );
 
                 // Lookup the target
                 std::string error;
                 const llvm::Target* target = llvm::TargetRegistry::lookupTarget( targetTriple, error );
                 if ( !target )
                 {
-                    throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to find target: " + error );
+                    throw ExceptionWithContext( __FILE__, __LINE__, __func__, "Failed to find target: " + error );
                 }
 
                 // Create the target machine
@@ -346,7 +348,7 @@ int main( int argc, char** argv )
                     target->createTargetMachine( targetTriple, "generic", "", llvm::TargetOptions(), std::nullopt ) );
                 if ( !targetMachine )
                 {
-                    throw exception_with_context( __FILE__, __LINE__, __func__, "Failed to create target machine" );
+                    throw ExceptionWithContext( __FILE__, __LINE__, __func__, "Failed to create target machine" );
                 }
 
                 // Optimize the module (optional)
@@ -389,16 +391,16 @@ int main( int argc, char** argv )
                 llvm::raw_fd_ostream dest( outputFilename.str(), EC, llvm::sys::fs::OF_None );
                 if ( EC )
                 {
-                    throw exception_with_context( __FILE__, __LINE__, __func__,
-                                                  "Failed to open output file: " + EC.message() );
+                    throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                                "Failed to open output file: " + EC.message() );
                 }
 
                 llvmModule->setDataLayout( targetMachine->createDataLayout() );
                 llvm::legacy::PassManager codegenPM;
                 if ( targetMachine->addPassesToEmitFile( codegenPM, dest, nullptr, llvm::CodeGenFileType::ObjectFile ) )
                 {
-                    throw exception_with_context( __FILE__, __LINE__, __func__,
-                                                  "TargetMachine can't emit an object file" );
+                    throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                                "TargetMachine can't emit an object file" );
                 }
 
                 codegenPM.run( *llvmModule );
@@ -432,14 +434,14 @@ void invokeLinker( const char* argv0, llvm::SmallString<128>& exePath, llvm::Sma
     LLVM_DEBUG( { llvm::outs() << "Compiler driver path: " << driverPath << '\n'; } );
 
     // Find the linker (gcc)
-    const char * linker = "gcc";
+    const char* linker = "gcc";
     llvm::ErrorOr<std::string> linkerPath = llvm::sys::findProgramByName( linker );
     if ( !linkerPath )
     {
         std::error_code ec = linkerPath.getError();
 
-        throw exception_with_context( __FILE__, __LINE__, __func__,
-                                      std::format( "Error finding path for linker '{}': {}\n", linker, ec.message() ) );
+        throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                    std::format( "Error finding path for linker '{}': {}\n", linker, ec.message() ) );
     }
     LLVM_DEBUG( { llvm::outs() << "Linker path: " << linkerPath.get() << '\n'; } );
 
@@ -466,8 +468,8 @@ void invokeLinker( const char* argv0, llvm::SmallString<128>& exePath, llvm::Sma
     int result = llvm::sys::ExecuteAndWait( linkerPath.get(), argv, std::nullopt, {}, 0, 0, &errMsg );
     if ( result != 0 )
     {
-        throw exception_with_context( __FILE__, __LINE__, __func__,
-                                      std::format( "Linker failed with exit code: {}, rc = {}\n", errMsg, result ) );
+        throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                    std::format( "Linker failed with exit code: {}, rc = {}\n", errMsg, result ) );
     }
 }
 

@@ -161,6 +161,17 @@ xorop
 #shortstring
 #shortstring2
 
+my %failuretests = map {$_ => 1} (qw(
+error_redeclare
+error_unassigned
+error_undeclare
+error_invalid_binary
+error_invalid_unary
+error_keyword_declare
+error_keyword_declare2
+));
+#error_intarray_bad_constaccess
+
 if ( defined $just )
 {
     $tests{$just}++ unless ( defined $tests{$just} );
@@ -194,7 +205,10 @@ sub verbose_system
 }
 
 my $pwd = `pwd` ; chomp $pwd;
-foreach my $stem (sort keys %tests)
+my @alltests = keys %tests;
+push(@alltests, keys %failuretests);
+
+foreach my $stem (sort @alltests)
 {
     next if ( $stem =~ /^#/ );
     next if ( defined $just and $just ne $stem );
@@ -204,7 +218,20 @@ foreach my $stem (sort keys %tests)
 
     print "##########################################################################\n";
     my $cmd = qq(../build/toycalculator --output-directory out $stem.toy $flags --emit-llvm --emit-mlir);
-    verbose_system( $cmd );
+    my $crc = verbose_system( $cmd );
+    if ( defined $failuretests{$stem} )
+    {
+        if ($crc)
+        {
+            print "TEST: $stem.toy failed as expected: rc = $crc\n";
+        }
+        else
+        {
+            die "Expected failure running $stem.toy";
+        }
+
+        next;
+    }
 
     verbose_system( qq(objdump -dr --no-show-raw-insn out/${stem}.o > out/${stem}.s) );
 
