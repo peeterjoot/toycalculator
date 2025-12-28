@@ -1,1 +1,0 @@
-/usr/local/llvm-20.1.5/bin/clang -Wno-incompatible-library-redeclaration -fclangir -O2 -emit-cir hibye_cir.c

@@ -130,10 +130,6 @@ add_executable(simplest
   prototypes/simplest.cpp
 )
 
-add_executable(hibye
-  prototypes/hibye.cpp
-)
-
 #------------------------------------------------------------------------------
 # compile options (and target dependencies)
 
@@ -141,7 +137,7 @@ add_executable(hibye
 target_include_directories(silly PRIVATE ${ANTLR_OUTPUT_DIR})
 
 # Ensure the ANTLR and TableGen generation runs before building the project
-add_dependencies(silly hibye simplest mlirtest silly_runtime GenerateANTLR SillyDialectIncGen SillyPassesIncGen)
+add_dependencies(silly simplest mlirtest silly_runtime GenerateANTLR SillyDialectIncGen SillyPassesIncGen)
 
 set(COMMON_COMPILE_OPTIONS
   -Wall
@@ -213,23 +209,6 @@ target_link_libraries(mlirtest
 )
 
 target_link_libraries(simplest
-  PRIVATE
-  LLVMSupport
-  LLVMPasses
-  LLVMMC
-  LLVM${LLVM_TARGET_ARCH}AsmParser
-  LLVM${LLVM_TARGET_ARCH}CodeGen
-  LLVM${LLVM_TARGET_ARCH}Desc
-  LLVM${LLVM_TARGET_ARCH}Info
-  MLIRFuncToLLVM
-  MLIRLLVMToLLVMIRTranslation
-  MLIRBuiltinToLLVMIRTranslation
-  MLIRTransforms
-  MLIRPass
-  MLIRMemRefToLLVM
-)
-
-target_link_libraries(hibye
   PRIVATE
   LLVMSupport
   LLVMPasses

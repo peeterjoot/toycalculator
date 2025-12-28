@@ -71,8 +71,7 @@ As an example of the pain of working with AI tools, here's a trivial example: I 
 * `src/silly.td` -- This is the MLIR dialect that defines the compiler eye view of all the grammar elements.
 * `src/parser.cpp`   -- This is the Antlr4 parse tree walker and the MLIR builder.
 * `src/lowering.cpp` -- LLVM-IR lowering classes.
-* `prototypes/simplest.cpp`  -- A MWE w/ working DWARF instrumentation.  Just emits LLVM-IR and has no assembly printing pass like the silly compiler.
-* `prototypes/hibye.cpp` -- A MWE w/ working DWARF instrumentation.  This one emits LLVM-IR for a program that includes an `IF` statement.
+* `prototypes/simplest.cpp`  -- A MWE with working DWARF instrumentation.  Just emits LLVM-IR and has no assembly printing pass like the silly compiler.
 * `samples/*.silly` and `bin/testit` -- sample programs and a rudimentary regression test suite based on them.
 * `bin/build`, `bin/rebuild` -- build scripts (first runs cmake and ninja and sets compiler override if required), second just ninja with some teeing and grepping.
 
