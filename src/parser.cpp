@@ -35,12 +35,12 @@ namespace silly
 {
     inline PerFunctionState &MLIRListener::funcState( const std::string &funcName )
     {
-        if ( !pr_funcState.contains( funcName ) )
+        if ( !functionStateMap.contains( funcName ) )
         {
-            pr_funcState[funcName] = std::make_unique<PerFunctionState>( builder.getUnknownLoc() );
+            functionStateMap[funcName] = std::make_unique<PerFunctionState>( builder.getUnknownLoc() );
         }
 
-        return *pr_funcState[funcName];
+        return *functionStateMap[funcName];
     }
 
     inline void MLIRListener::setVarState( const std::string &funcName, const std::string &varName, VariableState st )
@@ -402,8 +402,8 @@ namespace silly
         return nullptr;
     }
 
-    MLIRListener::MLIRListener( const std::string &_filename )
-        : filename( _filename ),
+    MLIRListener::MLIRListener( const std::string &filenameIn )
+        : filename( filenameIn ),
           dialect(),
           builder( &dialect.context ),
           currentAssignLoc( getLocation( nullptr ) ),

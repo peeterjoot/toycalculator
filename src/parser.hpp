@@ -106,8 +106,8 @@ namespace silly
     {
        public:
         /// Constructor.
-        /// @param _filename Source filename for location information.
-        MLIRListener( const std::string &_filename );
+        /// @param filenameIn Source filename for location information.
+        MLIRListener( const std::string &filenameIn );
 
         /// Override to throw on syntax errors.
         void syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
@@ -176,7 +176,7 @@ namespace silly
         mlir::Value currentIndexExpr;
 
         /// Per-function state map.
-        std::unordered_map<std::string, std::unique_ptr<PerFunctionState>> pr_funcState;
+        std::unordered_map<std::string, std::unique_ptr<PerFunctionState>> functionStateMap;
 
         /// Valid assignment target.
         bool assignmentTargetValid{};

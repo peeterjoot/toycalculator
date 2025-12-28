@@ -101,12 +101,12 @@ static llvm::cl::opt<OptLevel> optLevel( "O", llvm::cl::desc( "Optimization leve
                                                            clEnumValN( OptLevel::O3, "3", "Aggressive optimization" ) ),
                                          llvm::cl::init( OptLevel::O0 ), llvm::cl::cat( SillyCategory ) );
 
-enum class return_codes : int
+enum class ReturnCodes : int
 {
     success,
-    cannot_open_file,
-    semantic_error,
-    unknown_error
+    cannotOpenFile,
+    semanticError,
+    unknownError
 };
 
 static void invokeLinker( const char* argv0, llvm::SmallString<128>& exePath, llvm::SmallString<128>& objectPath );
@@ -157,7 +157,7 @@ int main( int argc, char** argv )
         if ( !inputStream.is_open() )
         {
             llvm::errs() << std::format( "Error: Cannot open file {}\n", filename );
-            return (int)return_codes::cannot_open_file;
+            return (int)ReturnCodes::cannotOpenFile;
         }
     }
     else
@@ -420,10 +420,10 @@ int main( int argc, char** argv )
     catch ( const std::exception& e )
     {
         llvm::errs() << std::format( "FATAL ERROR: {}\n", e.what() );
-        return (int)return_codes::unknown_error;
+        return (int)ReturnCodes::unknownError;
     }
 
-    return (int)return_codes::success;
+    return (int)ReturnCodes::success;
 }
 
 void invokeLinker( const char* argv0, llvm::SmallString<128>& exePath, llvm::SmallString<128>& objectPath )

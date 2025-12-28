@@ -264,6 +264,7 @@ which previously failed with y not declared at the assignment point (since the d
 * merge testerrors and testit
 * `s/exception_with_context/ExceptionWithContext/` ; `s/user_error/UserError/`
 * s/driverState/DriverState/
+* except for lowering.cpp, rename all the underscore variables (close to a consistent convention now.)
 
 ### 5. Rebranding: toy calculator TO silly compiler/language.
 
