@@ -196,3 +196,36 @@ The assembler printer (with -O 2) reduces all the double operations to constant 
   40048e:       ret
 ```
 
+## Debugging
+
+### Peeking into LLVM object internals
+
+LLVM uses it's own internal `dynamic_cast<>` mechanism, so many types appear opaque.  Example:
+
+```
+(gdb) p loc
+$2 = {impl = {<mlir::Attribute> = {impl = 0x5528d8}, <No data fields>}}
+```
+
+If we happen to know the real underlying type, we can cast the impl part of the object
+
+```
+(gdb) p *(mlir::FileLineColLoc*)loc.impl
+$3 = {<mlir::FileLineColRange> = {<mlir::detail::StorageUserBase<mlir::FileLineColRange, mlir::LocationAttr, mlir::detail::FileLineColRangeAttrStorage, mlir::detail::AttributeUniquer, mlir::AttributeTrait::IsLocation>> = {<mlir::LocationAttr> = {<mlir::Attribute> = {
+          impl = 0x539330}, <No data fields>}, <mlir::AttributeTrait::IsLocation<mlir::FileLineColRange>> = {<mlir::detail::StorageUserTraitBase<mlir::FileLineColRange, mlir::AttributeTrait::IsLocation>> = {<No data fields>}, <No data fields>}, <No data fields>}, <No data fields>}, <No data fields>}
+```
+
+but that may not be any more illuminating.  Old fashioned printf style debugging does work:
+
+```
+             LLVM_DEBUG( llvm::dbgs()
+                         << "Lowering silly.program: " << *op << '\n' << loc << '\n' );
+```
+
+In particular, the dump() function can be used for many mlir objects.  That coupled with `--debug` in the driver is the primary debug mechanism that I have used developing this compiler.
+
+## Experimenting with symbol tables.
+
+Now using symbol tables instead of hashing in parser/builder, but not in lowering.  An attempt to do so can be found in the branch `peeter/old/symbol-table-tryII`.
+
+Everything in that branch was merged to master in one big commit that wipes out all the false starts in that branch (that merge also includes the `peeter/old/if-else` branch.)
