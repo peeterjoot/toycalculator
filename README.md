@@ -169,7 +169,7 @@ Blocks use `{ ... }`, and expressions use parentheses `( ... )`.
 
 ### Implicit Declaration
 
-Declares a scalar or array variable with an implicit FLOAT64 type.
+Declares a scalar or array variable with an implicit `FLOAT64` type.
 
 ```text
 DCL x;
@@ -209,6 +209,35 @@ Strings must be arrays (fixed-length).
 ```text
 STRING name[32];
 ```
+
+## Array Element Access
+
+Array elements are accessed using square brackets:
+
+```
+a[0]
+values[i]
+```
+
+Array elements may be used wherever a scalar value is expected:
+
+- Assignment rvalues
+- Expressions
+- Function call parameters
+- PRINT, GET, RETURN, and EXIT statements
+
+They behave as **rvalues** in expressions and as **lvalues** on the left-hand side of assignments.
+
+```
+x = a[3];
+y = b[i] + 2;
+a[i] = 7;
+PRINT arr[5];
+GET arr[0];
+EXIT arr[1];
+```
+
+Index expressions are currently limited to a single identifier or integer literal.
 
 ---
 
@@ -399,6 +428,7 @@ Functions are invoked using the `CALL` keyword.
 
 ```text
 x = CALL add(2, 3);
+y = CALL sum(a[1], a[2]);
 ```
 
 ---
@@ -413,6 +443,7 @@ Outputs a value or literal.
 PRINT x;
 PRINT "Hello";
 PRINT 3.14;
+PRINT arr[3];
 ```
 
 ### GET
@@ -436,6 +467,7 @@ Explicitly terminates program execution, optionally returning a value.
 EXIT;
 EXIT 0;
 EXIT status;
+EXIT arr[0];
 ```
 
 ---

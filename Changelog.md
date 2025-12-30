@@ -83,6 +83,8 @@ define i32 @main() !dbg !4 {
 }
 ```
 
+### 2. README now has a language-reference.
+
 ## tag: V6 (Dec 28, 2025)
 
 ### 1. Get statement support.
