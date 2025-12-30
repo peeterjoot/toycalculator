@@ -153,7 +153,7 @@ Depending on what I currently have booted, this project has been built on only a
 
 # Silly Language — Operations Reference
 
-This document describes the **operations and statements** supported by the *Silly* language, as defined by the `Silly.g4` ANTLR4 grammar. It is intended as a language-level reference rather than a grammar walkthrough.
+This following describes the **operations and statements** supported by the *Silly* language, as defined by the `Silly.g4` ANTLR4 grammar. It is intended as a language-level reference rather than a grammar walkthrough.
 
 ---
 
@@ -169,7 +169,7 @@ Blocks use `{ ... }`, and expressions use parentheses `( ... )`.
 
 ### Implicit Declaration
 
-Declares a scalar or array variable with an implicit numeric type.
+Declares a scalar or array variable with an implicit FLOAT64 type.
 
 ```text
 DCL x;
@@ -309,7 +309,7 @@ Comparison operators produce boolean values.
 | `NE` | Not equal |
 
 ```text
-IF (x < 10) { PRINT x; }
+IF (x < 10) { PRINT x; };
 ```
 
 ---
@@ -343,7 +343,7 @@ IF (x < 0) {
   PRINT "zero";
 } ELSE {
   PRINT "positive";
-}
+};
 ```
 
 ---
@@ -355,11 +355,11 @@ Range-based iteration with optional step size.
 ```text
 FOR ( i : (1, 10) ) {
   PRINT i;
-}
+};
 
 FOR ( i : (0, 20, 2) ) {
   PRINT i;
-}
+};
 ```
 
 Semantically equivalent to:
@@ -452,7 +452,7 @@ Single-line comments begin with `//` and extend to the end of the line.
 
 ## Summary of Core Operations
 
-- Variable declaration (implicit and typed)
+- Variable declaration (implicit-float and explicit-types), scalar or arrays.
 - Scalar and array assignment
 - Unary and binary arithmetic
 - Boolean logic and comparisons
