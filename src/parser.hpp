@@ -124,9 +124,6 @@ namespace silly
         void enterElseStatement( SillyParser::ElseStatementContext *ctx ) override;
         void exitElseStatement( SillyParser::ElseStatementContext *ctx ) override;
 
-        /// Creates main function scope on first use.
-        void mainFirstTime( mlir::Location loc );
-
         void enterFunction( SillyParser::FunctionContext *ctx ) override;
         void enterCall( SillyParser::CallContext *ctx ) override;
         void exitFunction( SillyParser::FunctionContext *ctx ) override;
@@ -221,17 +218,15 @@ namespace silly
         /// Call handled in RHS.
         bool callIsHandled{};
 
-        /// Main scope created.
+        /// Main ScopeOp created (symbol table, region, and block)
         bool mainScopeGenerated{};
-
 
         /// Looks up DeclareOp for a variable.
         silly::DeclareOp lookupDeclareForVar( mlir::Location loc, const std::string &varName );
 
-
         /// Computes location from parser context.
-        inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx, bool useStopLocation = false );
-
+        /// Side effect: Creates a silly::ScopeOp for main, if not already done.
+        inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx, bool useStopLocation );
 
         /// Strip double quotes off of a string.
         inline std::string stripQuotes( mlir::Location loc, const std::string &input ) const;
@@ -241,10 +236,8 @@ namespace silly
         void createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName,
                           const std::vector<std::string> &paramNames );
 
-
         /// Formats location for error messages.
         inline std::string formatLocation( mlir::Location loc ) const;
-
 
         /// Builds MLIR value from unary expression (literals/variables).
         mlir::Value buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode, tNode *floatNode,

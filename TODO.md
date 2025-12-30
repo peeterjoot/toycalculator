@@ -69,9 +69,29 @@
 ----------------------------------
 * Debugging:
 
+  - Dwarf DI test cases.
+  - Figure out what I'm doing with the setLastLoc/getLastLoc functions.  Am guessing all such calls should be handled some other way.
+
+  - t/c function.silly:
+
+```
+Breakpoint 1, main () at function.silly:32
+32      PRINT "Hello functions.";
+(gdb) n
+Hello functions.
+34      CALL bar0();
+(gdb) s
+bar0 () at function.silly:1
+1       FUNCTION plus3( INT32 v ) : INT32
+(gdb) s
+22          PRINT "bar0";
+```
+
+    location showing as line 1, not line 20!
+
   - t/c: function.silly:
 
-    line stepping behaves wrong after CALL, showing the wrong line after some calls:
+    line stepping behaves wrong after CALL too, showing the wrong line after some calls:
 
 ```
         (gdb) n
@@ -149,5 +169,7 @@ __libc_start_call_main (main=main@entry=0x400470 <main>, argc=argc@entry=1, argv
 ```
 
 -- see the line numbers jump around.  probably want getLocation(, true) for `ctx->getStop()` in some places (like end of program.)
+
+
 
 ----------------------------------
