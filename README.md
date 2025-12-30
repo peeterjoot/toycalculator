@@ -1,3 +1,5 @@
+# Overview
+
 ## Motivation
 
 The goal of this project was to gain concrete, hands-on experience with the MLIR ecosystem.
@@ -149,3 +151,315 @@ Depending on what I currently have booted, this project has been built on only a
 * WSL ubuntu 24/X64 (same laptop.)
 * Ambian (ubuntu), running on an raspberry PI (this is why there is an ARM case in buildllvm and CMakeLists.txt)
 
+# Silly Language — Operations Reference
+
+This document describes the **operations and statements** supported by the *Silly* language, as defined by the `Silly.g4` ANTLR4 grammar. It is intended as a language-level reference rather than a grammar walkthrough.
+
+---
+
+## Program Structure
+
+A Silly program consists of zero or more **statements** and **comments**, optionally followed by an explicit `EXIT` statement. Each statement is terminated by a semicolon (`;`).
+
+Blocks use `{ ... }`, and expressions use parentheses `( ... )`.
+
+---
+
+## Declarations
+
+### Implicit Declaration
+
+Declares a scalar or array variable with an implicit numeric type.
+
+```text
+DCL x;
+DECLARE y[10];
+```
+
+### Typed Declarations
+
+Scalar and array declarations with explicit types:
+
+#### Integer Types
+
+```text
+INT8   a;
+INT16  b;
+INT32  c[4];
+INT64  d;
+```
+
+#### Floating-Point Types
+
+```text
+FLOAT32 f;
+FLOAT64 g[8];
+```
+
+#### Boolean Type
+
+```text
+BOOL flag;
+```
+
+#### String Type
+
+Strings must be arrays (fixed-length).
+
+```text
+STRING name[32];
+```
+
+---
+
+## Assignment
+
+Assigns a value or expression to a scalar or array element.
+
+```text
+x = 42;
+a[3] = b;
+y = -x;
+```
+
+Right-hand sides may be:
+
+- literals
+- variables or array elements
+- unary expressions
+- binary expressions
+- function calls
+
+---
+
+## Literals
+
+### Numeric Literals
+
+```text
+42
+-7
+3.14
+2.0E-3
+```
+
+### Boolean Literals
+
+```text
+TRUE
+FALSE
+```
+
+(Boolean literals may also be represented numerically.)
+
+### String Literals
+
+```text
+"hello world"
+```
+
+---
+
+## Unary Operations
+
+Unary operators apply to scalar values or array elements.
+
+| Operator | Meaning |
+|--------|---------|
+| `+` | Unary plus |
+| `-` | Unary negation |
+| `NOT` | Boolean negation |
+
+```text
+x = -y;
+flag = NOT flag;
+```
+
+---
+
+## Binary Arithmetic Operations
+
+Binary arithmetic operators work on numeric operands.
+
+| Operator | Meaning |
+|--------|---------|
+| `+` | Addition |
+| `-` | Subtraction |
+| `*` | Multiplication |
+| `/` | Division |
+
+```text
+x = a + b;
+y = x * 3;
+```
+
+---
+
+## Comparison (Predicate) Operations
+
+Comparison operators produce boolean values.
+
+| Operator | Meaning |
+|--------|---------|
+| `<`  | Less than |
+| `>`  | Greater than |
+| `<=` | Less than or equal |
+| `>=` | Greater than or equal |
+| `EQ` | Equal |
+| `NE` | Not equal |
+
+```text
+IF (x < 10) { PRINT x; }
+```
+
+---
+
+## Boolean Operations
+
+Boolean operators may be logical or bitwise depending on operand types.
+
+| Operator | Meaning |
+|--------|---------|
+| `AND` | Boolean AND |
+| `OR`  | Boolean OR |
+| `XOR` | Boolean XOR |
+
+```text
+flag = a AND b;
+```
+
+---
+
+## Control Flow
+
+### IF / ELIF / ELSE
+
+Conditional execution using boolean expressions.
+
+```text
+IF (x < 0) {
+  PRINT "negative";
+} ELIF (x EQ 0) {
+  PRINT "zero";
+} ELSE {
+  PRINT "positive";
+}
+```
+
+---
+
+### FOR Loop
+
+Range-based iteration with optional step size.
+
+```text
+FOR ( i : (1, 10) ) {
+  PRINT i;
+}
+
+FOR ( i : (0, 20, 2) ) {
+  PRINT i;
+}
+```
+
+Semantically equivalent to:
+
+```text
+i = start;
+while (i <= end) {
+  ...
+  i += step;
+}
+```
+
+---
+
+## Functions
+
+### Definition
+
+Defines a function with typed parameters and optional return type.
+
+```text
+FUNCTION add(INT32 a, INT32 b) : INT32 {
+  RETURN a + b;
+};
+```
+
+Notes:
+
+- Parameters and return types must be scalar types
+- A `RETURN` statement is required
+
+---
+
+### Function Calls
+
+Functions are invoked using the `CALL` keyword.
+
+```text
+x = CALL add(2, 3);
+```
+
+---
+
+## Input and Output
+
+### PRINT
+
+Outputs a value or literal.
+
+```text
+PRINT x;
+PRINT "Hello";
+PRINT 3.14;
+```
+
+### GET
+
+Reads input into a scalar or array element.
+
+```text
+GET x;
+GET arr[2];
+```
+
+---
+
+## Program Termination
+
+### EXIT
+
+Explicitly terminates program execution, optionally returning a value.
+
+```text
+EXIT;
+EXIT 0;
+EXIT status;
+```
+
+---
+
+## Comments
+
+Single-line comments begin with `//` and extend to the end of the line.
+
+```text
+// This is a comment
+```
+
+---
+
+## Summary of Core Operations
+
+- Variable declaration (implicit and typed)
+- Scalar and array assignment
+- Unary and binary arithmetic
+- Boolean logic and comparisons
+- Conditional execution (`IF / ELIF / ELSE`)
+- Range-based `FOR` loops
+- Functions and calls
+- Input (`GET`) and output (`PRINT`)
+- Explicit program termination (`EXIT`)
+
+---
