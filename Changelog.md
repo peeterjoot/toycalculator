@@ -5,6 +5,7 @@
 * arith pass lowering removed from first pass, as we end up with more after the scf lowering.
 * samples/elif.silly: code tests for both paths.
 * Split LoweringContext declaration and implementation.  Some stuff made private.
+* Fix shortstring2 t/c (print of empty string literal.)
 
 ## tag: V6 (Dec 28, 2025)
 

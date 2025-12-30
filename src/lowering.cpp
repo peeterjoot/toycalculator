@@ -722,7 +722,7 @@ namespace silly
 
                 assert( 0 );    // should not get here.
             }
-            assert( numElems );
+            // numElems == 0 is okay here.  t/c: shortstring2.silly
 
             mlir::LLVM::ConstantOp sizeConst =
                 rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( numElems ) );

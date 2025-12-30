@@ -26,12 +26,7 @@
 * String tests and behaviour:
   - longstring.silly:
    compiler truncates an assignment from a too long string literal.  Could implement safe vs. checked behaviour so that such an assignment would trigger an error instead.
-  - string literal tests for edge cases: shortstring.silly: two bugs unresolved.
-  - shortstring2.silly:
-
-  `silly: /home/pjoot/toycalculator/src/lowering.cpp:765: silly::CallOp silly::loweringContext::createPrintCall(ConversionPatternRewriter &, mlir::Location, mlir::Value): Assertion `numElems' failed.`
-
-    -- might just want to remove that assertion?  Review the lowered code carefully if trying that.
+  - string literal test for edge cases: shortstring.silly3 (assignment of empty string literal.)
 
 ----------------------------------
 * Control flow:

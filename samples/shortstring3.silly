@@ -1,3 +1,3 @@
 STRING s[20];
-s = "hi";
+s = "";
 PRINT s;
