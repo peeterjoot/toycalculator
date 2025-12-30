@@ -1,6 +1,10 @@
 ## tag: V7 (WIP)
 
-* ...
+### 1. Minor maintainance:
+
+* arith pass lowering removed from first pass, as we end up with more after the scf lowering.
+* samples/elif.silly: code tests for both paths.
+* Split LoweringContext declaration and implementation.  Some stuff made private.
 
 ## tag: V6 (Dec 28, 2025)
 
