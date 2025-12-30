@@ -10,7 +10,7 @@
 ----------------------------------
 * Maintainance:
   - lowering error handling is pschizophrenic: mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
-  - Move scf lowering into 1st pass?  arith pass lowering shouldn't be in both.
+  - Move scf lowering into 1st pass?
   - Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 
 ----------------------------------

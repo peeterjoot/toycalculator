@@ -1906,8 +1906,8 @@ namespace silly
             // First phase: Lower silly operations except ScopeOp and YieldOp
             {
                 mlir::ConversionTarget target( getContext() );
-                target.addLegalDialect<mlir::LLVM::LLVMDialect, silly::SillyDialect, mlir::scf::SCFDialect>();
-                target.addIllegalOp<mlir::arith::ConstantOp, silly::AddOp, silly::AndOp, silly::AssignOp,
+                target.addLegalDialect<mlir::arith::ArithDialect, mlir::LLVM::LLVMDialect, silly::SillyDialect, mlir::scf::SCFDialect>();
+                target.addIllegalOp<silly::AddOp, silly::AndOp, silly::AssignOp,
                                     silly::DeclareOp, silly::DivOp, silly::EqualOp, silly::LessEqualOp, silly::LessOp,
                                     silly::LoadOp, silly::MulOp, silly::NegOp, silly::NotEqualOp, silly::OrOp,
                                     silly::PrintOp, silly::GetOp, silly::StringLiteralOp, silly::SubOp, silly::XorOp>();
@@ -1921,7 +1921,6 @@ namespace silly
                              MulOpLowering, NegOpLowering, NotEqualOpLowering, OrOpLowering, PrintOpLowering,
                              GetOpLowering, StringLiteralOpLowering, SubOpLowering, XorOpLowering>( lState,
                                                                                                     &getContext(), 1 );
-                mlir::arith::populateArithToLLVMConversionPatterns( lState.getTypeConverter(), patterns );
 
                 if ( failed( applyFullConversion( mod, target, std::move( patterns ) ) ) )
                 {
