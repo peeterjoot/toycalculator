@@ -115,13 +115,18 @@ namespace silly
 
         void enterStartRule( SillyParser::StartRuleContext *ctx ) override;
         void exitStartRule( SillyParser::StartRuleContext *ctx ) override;
+
+        void enterIfelifelse( SillyParser::IfelifelseContext *ctx ) override;
         void exitIfStatement( SillyParser::IfStatementContext *ctx ) override;
+        void enterElifStatement( SillyParser::ElifStatementContext *ctx ) override;
+        void exitElifStatement( SillyParser::ElifStatementContext *ctx ) override;
+
+        void enterElseStatement( SillyParser::ElseStatementContext *ctx ) override;
         void exitElseStatement( SillyParser::ElseStatementContext *ctx ) override;
 
         /// Creates main function scope on first use.
         void mainFirstTime( mlir::Location loc );
 
-        void enterIfelifelse( SillyParser::IfelifelseContext *ctx ) override;
         void enterFunction( SillyParser::FunctionContext *ctx ) override;
         void enterCall( SillyParser::CallContext *ctx ) override;
         void exitFunction( SillyParser::FunctionContext *ctx ) override;
@@ -159,9 +164,6 @@ namespace silly
 
         /// Current function name.
         std::string currentFuncName;
-
-        /// Cached last location.
-        mlir::FileLineColLoc lastLocation;
 
         /// Stack for scf.if/scf.for blocks.
         std::vector<mlir::OpBuilder::InsertPoint> insertionPointStack;
@@ -300,6 +302,9 @@ namespace silly
         template <class Literal>
         void processReturnLike( mlir::Location loc, Literal *lit,
                                 SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *boolNode );
+
+
+        void createElseBlock( mlir::Location loc, SillyParser::ElseStatementContext *ctx );
     };
 
     inline mlir::ModuleOp &MLIRListener::getModule()

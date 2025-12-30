@@ -135,7 +135,6 @@ namespace silly
         }
 
         mlir::FileLineColLoc loc = mlir::FileLineColLoc::get( builder.getStringAttr( filename ), line, col + 1 );
-        lastLocation = loc;
 
         return loc;
     }
@@ -920,54 +919,13 @@ namespace silly
         }
 
         std::vector<SillyParser::ElifStatementContext *> elifs = ifElifElse->elifStatement();
-        if ( elifs.size() )
-        {
-            throw ExceptionWithContext(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: ELIF NYI: {}\n", formatLocation( loc ), ctx->getText() ) );
-        }
 
         SillyParser::ElseStatementContext *elseCtx = ifElifElse->elseStatement();
         if ( elseCtx )
         {
-            mlir::scf::IfOp ifOp;
-
-            // Temporarily restore the insertion point to right after the scf.if, to search for our current IfOp
-            builder.restoreInsertionPoint( insertionPointStack.back() );
-
-            // Now find the scf.if op that is just before the current insertion point
-            mlir::Block *currentBlock = builder.getInsertionBlock();
-            assert( currentBlock );
-            mlir::Block::iterator ip = builder.getInsertionPoint();
-
-            // The insertion point is at the position where new ops would be inserted.
-            // So the operation just before it should be the scf.if
-            if ( ip != currentBlock->begin() )
-            {
-                mlir::Operation *prevOp = &*( --ip );    // the op immediately before the insertion point
-                ifOp = dyn_cast<mlir::scf::IfOp>( prevOp );
-            }
-
-            if ( !ifOp )
-            {
-                throw ExceptionWithContext(
-                    __FILE__, __LINE__, __func__,
-                    std::format( "{}internal error: Could not find scf.if op corresponding to this if statement\n",
-                                 formatLocation( loc ), ctx->getText() ) );
-            }
-
-            mlir::Region &elseRegion = ifOp.getElseRegion();
-            if ( !elseRegion.empty() )
-            {
-                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                            std::format( "{}internal error: Expected empty else region\n",
-                                                         formatLocation( loc ), ctx->getText() ) );
-            }
-
-            elseRegion.emplaceBlock();    // creates one empty block
-
-            mlir::Block &elseBlock = elseRegion.front();
-            builder.setInsertionPointToStart( &elseBlock );
+        }
+        else if ( elifs.size() )
+        {
         }
         else
         {
@@ -978,6 +936,58 @@ namespace silly
         }
 
         // LLVM_DEBUG( { llvm::errs() << "exitIfStatement module dump:\n"; mod->dump(); } );
+    }
+    CATCH_USER_ERROR
+
+    void MLIRListener::createElseBlock( mlir::Location loc, SillyParser::ElseStatementContext *ctx )
+    {
+        mlir::scf::IfOp ifOp;
+
+        // Temporarily restore the insertion point to right after the scf.if, to search for our current IfOp
+        builder.restoreInsertionPoint( insertionPointStack.back() );
+
+        // Now find the scf.if op that is just before the current insertion point
+        mlir::Block *currentBlock = builder.getInsertionBlock();
+        assert( currentBlock );
+        mlir::Block::iterator ip = builder.getInsertionPoint();
+
+        // The insertion point is at the position where new ops would be inserted.
+        // So the operation just before it should be the scf.if
+        if ( ip != currentBlock->begin() )
+        {
+            mlir::Operation *prevOp = &*( --ip );    // the op immediately before the insertion point
+            ifOp = dyn_cast<mlir::scf::IfOp>( prevOp );
+        }
+
+        if ( !ifOp )
+        {
+            throw ExceptionWithContext(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}internal error: Could not find scf.if op corresponding to this if statement\n",
+                             formatLocation( loc ), ctx->getText() ) );
+        }
+
+        mlir::Region &elseRegion = ifOp.getElseRegion();
+        if ( !elseRegion.empty() )
+        {
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "{}internal error: Expected empty else region\n",
+                                                     formatLocation( loc ), ctx->getText() ) );
+        }
+
+        elseRegion.emplaceBlock();    // creates one empty block
+
+        mlir::Block &elseBlock = elseRegion.front();
+        builder.setInsertionPointToStart( &elseBlock );
+    }
+
+    void MLIRListener::enterElseStatement( SillyParser::ElseStatementContext *ctx )
+    try
+    {
+        assert( ctx );
+        mlir::Location loc = getLocation( ctx, false );
+
+        createElseBlock( loc, ctx );
     }
     CATCH_USER_ERROR
 
@@ -992,6 +1002,26 @@ namespace silly
         insertionPointStack.pop_back();
 
         // LLVM_DEBUG( { llvm::errs() << "exitElseStatement module dump:\n"; mod->dump(); } );
+    }
+    CATCH_USER_ERROR
+
+    void MLIRListener::enterElifStatement(SillyParser::ElifStatementContext * ctx )
+    try
+    {
+        assert( ctx );
+        mlir::Location loc = getLocation( ctx, false );
+
+        throw ExceptionWithContext(
+            __FILE__, __LINE__, __func__,
+            std::format( "{}internal error: ELIF NYI: {}\n", formatLocation( loc ), ctx->getText() ) );
+    }
+    CATCH_USER_ERROR
+
+    void MLIRListener::exitElifStatement(SillyParser::ElifStatementContext * ctx )
+    try
+    {
+        assert( ctx );
+        assert( 0 && "should not get here yet" );
     }
     CATCH_USER_ERROR
 
