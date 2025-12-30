@@ -3,8 +3,6 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   This file implements the LLVM-IR lowering pattern matching operators
 ///
-#include "lowering.hpp"
-
 #include <llvm/ADT/StringRef.h>
 #include <llvm/BinaryFormat/Dwarf.h>    // For DW_LANG_C, DW_ATE_*
 #include <llvm/IR/DebugInfoMetadata.h>
@@ -19,20 +17,15 @@
 #include <mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h>
 #include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Conversion/LLVMCommon/Pattern.h>
-#include <mlir/Conversion/LLVMCommon/TypeConverter.h>
 #include <mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h>
 #include <mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/ControlFlow/IR/ControlFlow.h>
-#include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/Dialect/LLVMIR/LLVMAttrs.h>
-#include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
 #include <mlir/Dialect/SCF/IR/SCF.h>
 #include <mlir/IR/Block.h>
 #include <mlir/IR/BuiltinAttributes.h>
-#include <mlir/IR/BuiltinOps.h>
-#include <mlir/IR/Location.h>    // For FileLineColLoc
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/Pass/Pass.h>
 #include <mlir/Transforms/DialectConversion.h>
@@ -40,8 +33,9 @@
 #include <format>
 #include <numeric>
 
-#include "SillyDialect.hpp"
 #include "SillyExceptions.hpp"
+#include "lowering.hpp"
+#include "loweringContext.hpp"
 
 #define DEBUG_TYPE "silly-lowering"
 
@@ -53,6 +47,24 @@
 
 namespace silly
 {
+    class ModuleInsertionPointGuard
+    {
+        mlir::OpBuilder& builder;
+        mlir::OpBuilder::InsertPoint oldIP;
+
+       public:
+        ModuleInsertionPointGuard( mlir::ModuleOp& mod, mlir::OpBuilder& opBuilder )
+            : builder{ opBuilder }, oldIP{ builder.saveInsertionPoint() }
+        {
+            builder.setInsertionPointToStart( mod.getBody() );
+        }
+
+        ~ModuleInsertionPointGuard()
+        {
+            builder.restoreInsertionPoint( oldIP );
+        }
+    };
+
     mlir::FileLineColLoc getLocation( mlir::Location loc )
     {
         // Cast Location to FileLineColLoc
@@ -75,708 +87,652 @@ namespace silly
         return nullptr;
     }
 
-    class LoweringContext
+    LoweringContext::LoweringContext( mlir::ModuleOp& moduleOp, const silly::DriverState& ds )
+        : driverState{ ds }, mod{ moduleOp }, builder{ mod.getRegion() }, typeConverter{ builder.getContext() }
     {
-       private:
-        mlir::LLVM::DIFileAttr fileAttr;
-        std::unordered_map<std::string, mlir::LLVM::DISubprogramAttr> subprogramAttr;
-        std::unordered_map<std::string, mlir::LLVM::GlobalOp> stringLiterals;
-        mlir::func::FuncOp printFuncF64;
-        mlir::func::FuncOp printFuncI64;
-        mlir::func::FuncOp printFuncString;
-        mlir::func::FuncOp getFuncI1;
-        mlir::func::FuncOp getFuncI8;
-        mlir::func::FuncOp getFuncI16;
-        mlir::func::FuncOp getFuncI32;
-        mlir::func::FuncOp getFuncI64;
-        mlir::func::FuncOp getFuncF32;
-        mlir::func::FuncOp getFuncF64;
+        tyI1 = builder.getI1Type();
+        tyI8 = builder.getI8Type();
+        tyI16 = builder.getI16Type();
+        tyI32 = builder.getI32Type();
+        tyI64 = builder.getI64Type();
 
-        const silly::DriverState& driverState;
-        mlir::ModuleOp& mod;
-        mlir::OpBuilder builder;
-        std::unordered_map<std::string, mlir::Operation*> symbolToAlloca;
+        tyF32 = builder.getF32Type();
+        tyF64 = builder.getF64Type();
 
-        mlir::LLVM::DICompileUnitAttr compileUnitAttr;
-        mlir::LLVM::DITypeAttr diI8;
-        mlir::LLVM::DITypeAttr diI16;
-        mlir::LLVM::DITypeAttr diI32;
-        mlir::LLVM::DITypeAttr diI64;
-        mlir::LLVM::DITypeAttr diF32;
-        mlir::LLVM::DITypeAttr diF64;
-        mlir::LLVM::DITypeAttr diVOID;
-        mlir::LLVM::DITypeAttr diUNKNOWN;
+        mlir::MLIRContext* context = builder.getContext();
+        tyPtr = mlir::LLVM::LLVMPointerType::get( context );
 
-       public:
-        mlir::IntegerType tyI1;
-        mlir::IntegerType tyI8;
-        mlir::IntegerType tyI16;
-        mlir::IntegerType tyI32;
-        mlir::IntegerType tyI64;
-        mlir::FloatType tyF32;
-        mlir::FloatType tyF64;
-        mlir::LLVM::LLVMPointerType tyPtr;
-        mlir::LLVM::LLVMVoidType tyVoid;
-        mlir::LLVMTypeConverter typeConverter;
+        tyVoid = mlir::LLVM::LLVMVoidType::get( context );
+    }
 
-        LoweringContext( mlir::ModuleOp& moduleOp, const silly::DriverState& driverState )
-            : driverState{ driverState },
-              mod{ moduleOp },
-              builder{ mod.getRegion() },
-              typeConverter{ builder.getContext() }
+    inline mlir::LLVMTypeConverter & LoweringContext::getTypeConverter() { return typeConverter; };
+
+    unsigned LoweringContext::preferredTypeAlignment( mlir::Operation* op, mlir::Type elemType )
+    {
+        mlir::ModuleOp mod = op->getParentOfType<mlir::ModuleOp>();
+        assert( mod );
+        mlir::DataLayout dataLayout( mod );
+        unsigned alignment = dataLayout.getTypePreferredAlignment( elemType );
+
+        return alignment;
+    }
+
+    inline mlir::MLIRContext* LoweringContext::getContext()
+    {
+        return builder.getContext();
+    }
+
+    inline bool LoweringContext::isTypeFloat( mlir::Type ty ) const
+    {
+        return ( ( ty == tyF32 ) || ( ty == tyF64 ) );
+    }
+
+    inline mlir::LLVM::ConstantOp LoweringContext::getI8zero( mlir::Location loc,
+                                                              mlir::ConversionPatternRewriter& rewriter )
+    {
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI8, rewriter.getI8IntegerAttr( 0 ) );
+    }
+
+    inline mlir::LLVM::ConstantOp LoweringContext::getI16zero( mlir::Location loc,
+                                                               mlir::ConversionPatternRewriter& rewriter )
+    {
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI16, rewriter.getI16IntegerAttr( 0 ) );
+    }
+
+    inline mlir::LLVM::ConstantOp LoweringContext::getI32zero( mlir::Location loc,
+                                                               mlir::ConversionPatternRewriter& rewriter )
+    {
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI32, rewriter.getI32IntegerAttr( 0 ) );
+    }
+
+    inline mlir::LLVM::ConstantOp LoweringContext::getI64zero( mlir::Location loc,
+                                                               mlir::ConversionPatternRewriter& rewriter )
+    {
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( 0 ) );
+    }
+
+    /// Returns a zero constant for the given integer width (i8, i16, i32, i64).
+    /// Throws an exception for unsupported widths.
+    inline mlir::LLVM::ConstantOp LoweringContext::getIzero( mlir::Location loc,
+                                                             mlir::ConversionPatternRewriter& rewriter, unsigned width )
+    {
+        switch ( width )
         {
-            tyI1 = builder.getI1Type();
-            tyI8 = builder.getI8Type();
-            tyI16 = builder.getI16Type();
-            tyI32 = builder.getI32Type();
-            tyI64 = builder.getI64Type();
+            case 8:
+                return getI8zero( loc, rewriter );
+            case 16:
+                return getI16zero( loc, rewriter );
+            case 32:
+                return getI32zero( loc, rewriter );
+            case 64:
+                return getI64zero( loc, rewriter );
+        }
 
-            tyF32 = builder.getF32Type();
-            tyF64 = builder.getF64Type();
+        throw ExceptionWithContext( __FILE__, __LINE__, __func__, std::format( "Unexpected integer size {}", width ) );
+    }
+
+    inline mlir::LLVM::ConstantOp LoweringContext::getI64one( mlir::Location loc,
+                                                              mlir::ConversionPatternRewriter& rewriter )
+    {
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( 1 ) );
+    }
+
+    inline mlir::LLVM::ConstantOp LoweringContext::getF32zero( mlir::Location loc,
+                                                               mlir::ConversionPatternRewriter& rewriter )
+    {
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyF32, rewriter.getF32FloatAttr( 0 ) );
+    }
+
+    inline mlir::LLVM::ConstantOp LoweringContext::getF64zero( mlir::Location loc,
+                                                               mlir::ConversionPatternRewriter& rewriter )
+    {
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyF64, rewriter.getF64FloatAttr( 0 ) );
+    }
+
+    mlir::LLVM::ConstantOp LoweringContext::getFzero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
+                                                      unsigned width )
+    {
+        switch ( width )
+        {
+            case 32:
+                return getF32zero( loc, rewriter );
+            case 64:
+                return getF64zero( loc, rewriter );
+        }
+
+        throw ExceptionWithContext( __FILE__, __LINE__, __func__, std::format( "Unexpected float size {}", width ) );
+    }
+
+    template <class Ty>
+    void LoweringContext::createSillyPrintPrototype( mlir::func::FuncOp& printOp, Ty type, const char* name )
+    {
+        if ( !printOp )
+        {
+            ModuleInsertionPointGuard ip( mod, builder );
+
+            mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), { type }, {} );
+
+            printOp = builder.create<mlir::func::FuncOp>( mod.getLoc(), name, funcType );
+            printOp.setVisibility( mlir::SymbolTable::Visibility::Private );
+        }
+    }
+
+    inline void LoweringContext::createSillyPrintF64Prototype()
+    {
+        createSillyPrintPrototype( printFuncF64, tyF64, "__silly_print_f64" );
+    }
+
+    inline void LoweringContext::createSillyPrintI64Prototype()
+    {
+        createSillyPrintPrototype( printFuncI64, tyI64, "__silly_print_i64" );
+    }
+
+    void LoweringContext::createSillyPrintStringPrototype()
+    {
+        if ( !printFuncString )
+        {
+            ModuleInsertionPointGuard ip( mod, builder );
+
+            mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), { tyI64, tyPtr }, {} );
+            printFuncString = builder.create<mlir::func::FuncOp>( mod.getLoc(), "__silly_print_string", funcType );
+            printFuncString.setVisibility( mlir::SymbolTable::Visibility::Private );
+        }
+    }
+
+    template <class RetTy>
+    void LoweringContext::createSillyGetPrototype( mlir::func::FuncOp& getOp, RetTy retType, const char* name )
+    {
+        if ( !getOp )
+        {
+            ModuleInsertionPointGuard ip( mod, builder );
+
+            mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), {},    // no arguments
+                                                                   { retType }                  // single return type
+            );
+
+            getOp = builder.create<mlir::func::FuncOp>( mod.getLoc(), name, funcType );
+            getOp.setVisibility( mlir::SymbolTable::Visibility::Private );
+        }
+    }
+
+    inline void LoweringContext::createSillyGetI1Prototype()
+    {
+        // returns int8_t, but checks input to verify 0/1 value.
+        createSillyGetPrototype( getFuncI1, tyI8, "__silly_get_i1" );
+    }
+
+    inline void LoweringContext::createSillyGetI8Prototype()
+    {
+        createSillyGetPrototype( getFuncI8, tyI8, "__silly_get_i8" );
+    }
+
+    inline void LoweringContext::createSillyGetI16Prototype()
+    {
+        createSillyGetPrototype( getFuncI16, tyI16, "__silly_get_i16" );
+    }
+
+    inline void LoweringContext::createSillyGetI32Prototype()
+    {
+        createSillyGetPrototype( getFuncI32, tyI32, "__silly_get_i32" );
+    }
+
+    inline void LoweringContext::createSillyGetI64Prototype()
+    {
+        createSillyGetPrototype( getFuncI64, tyI64, "__silly_get_i64" );
+    }
+
+    inline void LoweringContext::createSillyGetF32Prototype()
+    {
+        createSillyGetPrototype( getFuncF32, tyF32, "__silly_get_f32" );
+    }
+
+    inline void LoweringContext::createSillyGetF64Prototype()
+    {
+        createSillyGetPrototype( getFuncF64, tyF64, "__silly_get_f64" );
+    }
+
+    void LoweringContext::createDICompileUnit()
+    {
+        if ( driverState.wantDebug )
+        {
+            ModuleInsertionPointGuard ip( mod, builder );
 
             mlir::MLIRContext* context = builder.getContext();
-            tyPtr = mlir::LLVM::LLVMPointerType::get( context );
-
-            tyVoid = mlir::LLVM::LLVMVoidType::get( context );
-        }
-
-        unsigned preferredTypeAlignment( mlir::Operation* op, mlir::Type elemType )
-        {
-            mlir::ModuleOp mod = op->getParentOfType<mlir::ModuleOp>();
-            assert( mod );
-            mlir::DataLayout dataLayout( mod );
-            unsigned alignment = dataLayout.getTypePreferredAlignment( elemType );
-
-            return alignment;
-        }
-
-        mlir::MLIRContext* getContext()
-        {
-            return builder.getContext();
-        }
-
-        bool isTypeFloat( mlir::Type ty ) const
-        {
-            return ( ( ty == tyF32 ) || ( ty == tyF64 ) );
-        }
-
-        mlir::LLVM::ConstantOp getI8zero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter )
-        {
-            return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI8, rewriter.getI8IntegerAttr( 0 ) );
-        }
-
-        mlir::LLVM::ConstantOp getI16zero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter )
-        {
-            return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI16, rewriter.getI16IntegerAttr( 0 ) );
-        }
-
-        mlir::LLVM::ConstantOp getI32zero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter )
-        {
-            return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI32, rewriter.getI32IntegerAttr( 0 ) );
-        }
-
-        mlir::LLVM::ConstantOp getI64zero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter )
-        {
-            return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( 0 ) );
-        }
-
-        /// Returns a zero constant for the given integer width (i8, i16, i32, i64).
-        /// Throws an exception for unsupported widths.
-        mlir::LLVM::ConstantOp getIzero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter, unsigned width )
-        {
-            switch ( width )
-            {
-                case 8:
-                    return getI8zero( loc, rewriter );
-                case 16:
-                    return getI16zero( loc, rewriter );
-                case 32:
-                    return getI32zero( loc, rewriter );
-                case 64:
-                    return getI64zero( loc, rewriter );
-            }
-
-            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                        std::format( "Unexpected integer size {}", width ) );
-        }
-
-        mlir::LLVM::ConstantOp getI64one( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter )
-        {
-            return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( 1 ) );
-        }
-
-        mlir::LLVM::ConstantOp getF32zero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter )
-        {
-            return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyF32, rewriter.getF32FloatAttr( 0 ) );
-        }
-
-        mlir::LLVM::ConstantOp getF64zero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter )
-        {
-            return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyF64, rewriter.getF64FloatAttr( 0 ) );
-        }
-
-        mlir::LLVM::ConstantOp getFzero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter, unsigned width )
-        {
-            switch ( width )
-            {
-                case 32:
-                    return getF32zero( loc, rewriter );
-                case 64:
-                    return getF64zero( loc, rewriter );
-            }
-
-            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                        std::format( "Unexpected float size {}", width ) );
-        }
-
-        class useModuleInsertionPoint
-        {
-            mlir::OpBuilder& builder;
-            mlir::OpBuilder::InsertPoint oldIP;
-
-           public:
-            useModuleInsertionPoint( mlir::ModuleOp& mod, mlir::OpBuilder& opBuilder )
-                : builder{ opBuilder }, oldIP{ builder.saveInsertionPoint() }
-            {
-                builder.setInsertionPointToStart( mod.getBody() );
-            }
-
-            ~useModuleInsertionPoint()
-            {
-                builder.restoreInsertionPoint( oldIP );
-            }
-        };
-
-        template <class Ty>
-        void createSillyPrintPrototype( mlir::func::FuncOp& printOp, Ty type, const char* name )
-        {
-            if ( !printOp )
-            {
-                useModuleInsertionPoint ip( mod, builder );
-
-                mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), { type }, {} );
-
-                printOp = builder.create<mlir::func::FuncOp>( mod.getLoc(), name, funcType );
-                printOp.setVisibility( mlir::SymbolTable::Visibility::Private );
-            }
-        }
-
-        void createSillyPrintF64Prototype()
-        {
-            createSillyPrintPrototype( printFuncF64, tyF64, "__silly_print_f64" );
-        }
-
-        void createSillyPrintI64Prototype()
-        {
-            createSillyPrintPrototype( printFuncI64, tyI64, "__silly_print_i64" );
-        }
-
-        void createSillyPrintStringPrototype()
-        {
-            if ( !printFuncString )
-            {
-                useModuleInsertionPoint ip( mod, builder );
-
-                mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), { tyI64, tyPtr }, {} );
-                printFuncString = builder.create<mlir::func::FuncOp>( mod.getLoc(), "__silly_print_string", funcType );
-                printFuncString.setVisibility( mlir::SymbolTable::Visibility::Private );
-            }
-        }
-
-        template <class RetTy>
-        void createSillyGetPrototype( mlir::func::FuncOp& getOp, RetTy retType, const char* name )
-        {
-            if ( !getOp )
-            {
-                useModuleInsertionPoint ip( mod, builder );
-
-                mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), {},    // no arguments
-                                                                       { retType }    // single return type
-                );
-
-                getOp = builder.create<mlir::func::FuncOp>( mod.getLoc(), name, funcType );
-                getOp.setVisibility( mlir::SymbolTable::Visibility::Private );
-            }
-        }
-
-        void createSillyGetI1Prototype()
-        {
-            // returns int8_t, but checks input to verify 0/1 value.
-            createSillyGetPrototype( getFuncI1, tyI8, "__silly_get_i1" );
-        }
-
-        void createSillyGetI8Prototype()
-        {
-            createSillyGetPrototype( getFuncI8, tyI8, "__silly_get_i8" );
-        }
-
-        void createSillyGetI16Prototype()
-        {
-            createSillyGetPrototype( getFuncI16, tyI16, "__silly_get_i16" );
-        }
-
-        void createSillyGetI32Prototype()
-        {
-            createSillyGetPrototype( getFuncI32, tyI32, "__silly_get_i32" );
-        }
-
-        void createSillyGetI64Prototype()
-        {
-            createSillyGetPrototype( getFuncI64, tyI64, "__silly_get_i64" );
-        }
-
-        void createSillyGetF32Prototype()
-        {
-            createSillyGetPrototype( getFuncF32, tyF32, "__silly_get_f32" );
-        }
-
-        void createSillyGetF64Prototype()
-        {
-            createSillyGetPrototype( getFuncF64, tyF64, "__silly_get_f64" );
-        }
-
-        void createDICompileUnit()
-        {
-            if ( driverState.wantDebug )
-            {
-                useModuleInsertionPoint ip( mod, builder );
-
-                mlir::MLIRContext* context = builder.getContext();
 
 
-                diVOID = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
-                                                           builder.getStringAttr( "void" ), 0, 0 );
+            diVOID = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
+                                                       builder.getStringAttr( "void" ), 0, 0 );
 
-                diF32 =
-                    mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
+            diF32 = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
                                                       builder.getStringAttr( "float" ), 32, llvm::dwarf::DW_ATE_float );
 
-                diF64 = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
-                                                          builder.getStringAttr( "double" ), 64,
-                                                          llvm::dwarf::DW_ATE_float );
+            diF64 =
+                mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
+                                                  builder.getStringAttr( "double" ), 64, llvm::dwarf::DW_ATE_float );
 
-                diUNKNOWN = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
-                                                              builder.getStringAttr( "unknown" ), 0, 0 );
+            diUNKNOWN = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
+                                                          builder.getStringAttr( "unknown" ), 0, 0 );
 
 
-                diI8 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
-                                                         builder.getStringAttr( "char" ), 8,
-                                                         (unsigned)llvm::dwarf::DW_ATE_signed );
+            diI8 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                     builder.getStringAttr( "char" ), 8,
+                                                     (unsigned)llvm::dwarf::DW_ATE_signed );
 
-                diI16 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
-                                                          builder.getStringAttr( "short" ), 16,
-                                                          (unsigned)llvm::dwarf::DW_ATE_signed );
+            diI16 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                      builder.getStringAttr( "short" ), 16,
+                                                      (unsigned)llvm::dwarf::DW_ATE_signed );
 
-                diI32 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
-                                                          builder.getStringAttr( "int" ), 32,
-                                                          (unsigned)llvm::dwarf::DW_ATE_signed );
+            diI32 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                      builder.getStringAttr( "int" ), 32,
+                                                      (unsigned)llvm::dwarf::DW_ATE_signed );
 
-                diI64 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
-                                                          builder.getStringAttr( "long" ), 64,
-                                                          (unsigned)llvm::dwarf::DW_ATE_signed );
+            diI64 = mlir::LLVM::DIBasicTypeAttr::get( context, (unsigned)llvm::dwarf::DW_TAG_base_type,
+                                                      builder.getStringAttr( "long" ), 64,
+                                                      (unsigned)llvm::dwarf::DW_ATE_signed );
 
-                // Construct module level DI state:
-                fileAttr = mlir::LLVM::DIFileAttr::get( context, driverState.filename, "." );
-                mlir::DistinctAttr distinctAttr = mlir::DistinctAttr::create( builder.getUnitAttr() );
-                compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
-                    context, distinctAttr, llvm::dwarf::DW_LANG_C, fileAttr, builder.getStringAttr( COMPILER_NAME ),
-                    false, mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
-            }
-
-            mod->setAttr( "llvm.ident", builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
+            // Construct module level DI state:
+            fileAttr = mlir::LLVM::DIFileAttr::get( context, driverState.filename, "." );
+            mlir::DistinctAttr distinctAttr = mlir::DistinctAttr::create( builder.getUnitAttr() );
+            compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
+                context, distinctAttr, llvm::dwarf::DW_LANG_C, fileAttr, builder.getStringAttr( COMPILER_NAME ), false,
+                mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
         }
 
-        mlir::LLVM::DITypeAttr getDIType( mlir::Type type )
+        mod->setAttr( "llvm.ident", builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );
+    }
+
+    mlir::LLVM::DITypeAttr LoweringContext::getDIType( mlir::Type type )
+    {
+        if ( !type )
         {
-            if ( !type )
-            {
-                return diVOID;
-            }
-            else if ( type.isF32() )
-            {
-                return diF32;
-            }
-            else if ( type.isF64() )
-            {
-                return diF64;
-            }
-            else if ( type.isInteger( 8 ) || type.isInteger( 1 ) )
-            {
-                return diI8;
-            }
-            else if ( type.isInteger( 16 ) )
-            {
-                return diI16;
-            }
-            else if ( type.isInteger( 32 ) )
-            {
-                return diI32;
-            }
-            else if ( type.isInteger( 64 ) )
-            {
-                return diI64;
-            }
-            else
-            {
-                return diUNKNOWN;
-            }
+            return diVOID;
+        }
+        else if ( type.isF32() )
+        {
+            return diF32;
+        }
+        else if ( type.isF64() )
+        {
+            return diF64;
+        }
+        else if ( type.isInteger( 8 ) || type.isInteger( 1 ) )
+        {
+            return diI8;
+        }
+        else if ( type.isInteger( 16 ) )
+        {
+            return diI16;
+        }
+        else if ( type.isInteger( 32 ) )
+        {
+            return diI32;
+        }
+        else if ( type.isInteger( 64 ) )
+        {
+            return diI64;
+        }
+        else
+        {
+            return diUNKNOWN;
+        }
+    }
+
+    mlir::LLVM::DISubroutineTypeAttr LoweringContext::createDISubroutineType( mlir::func::FuncOp funcOp )
+    {
+        mlir::FunctionType funcType = funcOp.getFunctionType();
+
+        mlir::SmallVector<mlir::LLVM::DITypeAttr> paramTypes;
+
+        mlir::LLVM::DITypeAttr returnType =
+            getDIType( funcType.getResults().empty() ? mlir::Type() : funcType.getResults()[0] );
+        paramTypes.push_back( returnType );
+
+        for ( mlir::Type argType : funcType.getInputs() )
+        {
+            paramTypes.push_back( getDIType( argType ) );
         }
 
-        mlir::LLVM::DISubroutineTypeAttr createDISubroutineType( mlir::func::FuncOp funcOp )
+        mlir::MLIRContext* context = builder.getContext();
+
+        return mlir::LLVM::DISubroutineTypeAttr::get( context, llvm::DINode::FlagZero, paramTypes );
+    }
+
+    void LoweringContext::createFuncDebug( mlir::func::FuncOp funcOp )
+    {
+        if ( driverState.wantDebug )
         {
-            mlir::FunctionType funcType = funcOp.getFunctionType();
-
-            mlir::SmallVector<mlir::LLVM::DITypeAttr> paramTypes;
-
-            mlir::LLVM::DITypeAttr returnType =
-                getDIType( funcType.getResults().empty() ? mlir::Type() : funcType.getResults()[0] );
-            paramTypes.push_back( returnType );
-
-            for ( mlir::Type argType : funcType.getInputs() )
-            {
-                paramTypes.push_back( getDIType( argType ) );
-            }
+            ModuleInsertionPointGuard ip( mod, builder );
 
             mlir::MLIRContext* context = builder.getContext();
+            std::string funcName = funcOp.getSymName().str();
 
-            return mlir::LLVM::DISubroutineTypeAttr::get( context, llvm::DINode::FlagZero, paramTypes );
+            mlir::LLVM::DISubroutineTypeAttr subprogramType = createDISubroutineType( funcOp );
+
+            mlir::LLVM::DISubprogramAttr sub = mlir::LLVM::DISubprogramAttr::get(
+                context, mlir::DistinctAttr::create( builder.getUnitAttr() ), compileUnitAttr, fileAttr,
+                builder.getStringAttr( funcName ), builder.getStringAttr( funcName ), fileAttr, 1, 1,
+                mlir::LLVM::DISubprogramFlags::Definition, subprogramType, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{},
+                llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
+
+            funcOp->setAttr( "llvm.debug.subprogram", sub );
+
+            // This is the key to ensure that translateModuleToLLVMIR does not strip the location info (instead
+            // converts loc's into !dbg's)
+            funcOp->setLoc( builder.getFusedLoc( { mod.getLoc() }, sub ) );
+
+            subprogramAttr[funcName] = sub;
         }
+    }
 
-        void createFuncDebug( mlir::func::FuncOp funcOp )
+    std::string LoweringContext::lookupFuncNameForOp( mlir::Operation* op )
+    {
+        mlir::func::FuncOp funcOp = getEnclosingFuncOp( op );
+
+        return funcOp.getSymName().str();
+    }
+
+    mlir::LLVM::AllocaOp LoweringContext::lookupLocalSymbolReference( mlir::Operation* op, const std::string& varName )
+    {
+        mlir::func::FuncOp funcOp = getEnclosingFuncOp( op );
+
+        LLVM_DEBUG( {
+            llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
+            funcOp->dump();
+        } );
+
+        std::string funcName = funcOp->getName().getStringRef().str();
+
+        std::string funcNameAndVarName = funcName + "::" + varName;
+
+        mlir::Operation* alloca = symbolToAlloca[funcNameAndVarName];
+        return mlir::dyn_cast<mlir::LLVM::AllocaOp>( alloca );
+    }
+
+    void LoweringContext::createLocalSymbolReference( mlir::LLVM::AllocaOp allocaOp, const std::string& varName )
+    {
+        mlir::func::FuncOp funcOp = getEnclosingFuncOp( allocaOp );
+        std::string funcName = funcOp->getName().getStringRef().str();
+
+        std::string funcNameAndVarName = funcName + "::" + varName;
+
+        symbolToAlloca[funcNameAndVarName] = allocaOp;
+    }
+
+    void LoweringContext::constructVariableDI( llvm::StringRef varName, mlir::Type& elemType, mlir::FileLineColLoc loc,
+                                               unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp,
+                                               int64_t arraySize )
+    {
+        if ( driverState.wantDebug )
         {
-            if ( driverState.wantDebug )
+            mlir::MLIRContext* context = builder.getContext();
+
+            allocaOp->setAttr( "bindc_name", builder.getStringAttr( varName ) );
+
+            mlir::LLVM::DILocalVariableAttr diVar;
+            mlir::LLVM::DITypeAttr diType;
+
+            const char* typeName{};
+            unsigned dwType = llvm::dwarf::DW_ATE_signed;
+            unsigned elemStorageSizeInBits = elemSizeInBits;    // Storage size (e.g., i1 uses i8)
+
+            if ( mlir::isa<mlir::IntegerType>( elemType ) )
             {
-                useModuleInsertionPoint ip( mod, builder );
-
-                mlir::MLIRContext* context = builder.getContext();
-                std::string funcName = funcOp.getSymName().str();
-
-                mlir::LLVM::DISubroutineTypeAttr subprogramType = createDISubroutineType( funcOp );
-
-                mlir::LLVM::DISubprogramAttr sub = mlir::LLVM::DISubprogramAttr::get(
-                    context, mlir::DistinctAttr::create( builder.getUnitAttr() ), compileUnitAttr, fileAttr,
-                    builder.getStringAttr( funcName ), builder.getStringAttr( funcName ), fileAttr, 1, 1,
-                    mlir::LLVM::DISubprogramFlags::Definition, subprogramType, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{},
-                    llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
-
-                funcOp->setAttr( "llvm.debug.subprogram", sub );
-
-                // This is the key to ensure that translateModuleToLLVMIR does not strip the location info (instead
-                // converts loc's into !dbg's)
-                funcOp->setLoc( builder.getFusedLoc( { mod.getLoc() }, sub ) );
-
-                subprogramAttr[funcName] = sub;
-            }
-        }
-
-        std::string lookupFuncNameForOp( mlir::Operation* op )
-        {
-            mlir::func::FuncOp funcOp = getEnclosingFuncOp( op );
-
-            return funcOp.getSymName().str();
-        }
-
-        mlir::LLVM::AllocaOp lookupLocalSymbolReference( mlir::Operation* op, const std::string& varName )
-        {
-            mlir::func::FuncOp funcOp = getEnclosingFuncOp( op );
-
-            LLVM_DEBUG( {
-                llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
-                funcOp->dump();
-            } );
-
-            std::string funcName = funcOp->getName().getStringRef().str();
-
-            std::string funcNameAndVarName = funcName + "::" + varName;
-
-            mlir::Operation* alloca = symbolToAlloca[funcNameAndVarName];
-            return mlir::dyn_cast<mlir::LLVM::AllocaOp>( alloca );
-        }
-
-        void createLocalSymbolReference( mlir::LLVM::AllocaOp allocaOp, const std::string& varName )
-        {
-            mlir::func::FuncOp funcOp = getEnclosingFuncOp( allocaOp );
-            std::string funcName = funcOp->getName().getStringRef().str();
-
-            std::string funcNameAndVarName = funcName + "::" + varName;
-
-            symbolToAlloca[funcNameAndVarName] = allocaOp;
-        }
-
-        void constructVariableDI( llvm::StringRef varName, mlir::Type& elemType, mlir::FileLineColLoc loc,
-                                  unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp, int64_t arraySize = 1 )
-        {
-            if ( driverState.wantDebug )
-            {
-                mlir::MLIRContext* context = builder.getContext();
-
-                allocaOp->setAttr( "bindc_name", builder.getStringAttr( varName ) );
-
-                mlir::LLVM::DILocalVariableAttr diVar;
-                mlir::LLVM::DITypeAttr diType;
-
-                const char* typeName{};
-                unsigned dwType = llvm::dwarf::DW_ATE_signed;
-                unsigned elemStorageSizeInBits = elemSizeInBits;    // Storage size (e.g., i1 uses i8)
-
-                if ( mlir::isa<mlir::IntegerType>( elemType ) )
+                switch ( elemSizeInBits )
                 {
-                    switch ( elemSizeInBits )
+                    case 1:
                     {
-                        case 1:
-                        {
-                            typeName = "bool";
-                            dwType = llvm::dwarf::DW_ATE_boolean;
-                            elemStorageSizeInBits = 8;
-                            break;
-                        }
-                        case 8:
-                        {
-                            typeName = "char";    // Using "char" for STRING arrays
-                            dwType = llvm::dwarf::DW_ATE_signed_char;
-                            break;
-                        }
-                        case 16:
-                        {
-                            typeName = "int16_t";
-                            break;
-                        }
-                        case 32:
-                        {
-                            typeName = "int32_t";
-                            break;
-                        }
-                        case 64:
-                        {
-                            typeName = "int64_t";
-                            break;
-                        }
-                        default:
-                        {
-                            llvm_unreachable( "Unsupported integer type size" );
-                        }
+                        typeName = "bool";
+                        dwType = llvm::dwarf::DW_ATE_boolean;
+                        elemStorageSizeInBits = 8;
+                        break;
+                    }
+                    case 8:
+                    {
+                        typeName = "char";    // Using "char" for STRING arrays
+                        dwType = llvm::dwarf::DW_ATE_signed_char;
+                        break;
+                    }
+                    case 16:
+                    {
+                        typeName = "int16_t";
+                        break;
+                    }
+                    case 32:
+                    {
+                        typeName = "int32_t";
+                        break;
+                    }
+                    case 64:
+                    {
+                        typeName = "int64_t";
+                        break;
+                    }
+                    default:
+                    {
+                        llvm_unreachable( "Unsupported integer type size" );
                     }
                 }
-                else if ( mlir::isa<mlir::FloatType>( elemType ) )
+            }
+            else if ( mlir::isa<mlir::FloatType>( elemType ) )
+            {
+                dwType = llvm::dwarf::DW_ATE_float;
+                switch ( elemSizeInBits )
                 {
-                    dwType = llvm::dwarf::DW_ATE_float;
-                    switch ( elemSizeInBits )
+                    case 32:
                     {
-                        case 32:
-                        {
-                            typeName = "float";
-                            break;
-                        }
-                        case 64:
-                        {
-                            typeName = "double";
-                            break;
-                        }
-                        default:
-                        {
-                            llvm_unreachable( "Unsupported float type size" );
-                        }
+                        typeName = "float";
+                        break;
+                    }
+                    case 64:
+                    {
+                        typeName = "double";
+                        break;
+                    }
+                    default:
+                    {
+                        llvm_unreachable( "Unsupported float type size" );
                     }
                 }
-                else
-                {
-                    llvm_unreachable( "Unsupported type for debug info" );
-                }
-
-                std::string funcName = lookupFuncNameForOp( allocaOp );
-                mlir::LLVM::DISubprogramAttr sub = subprogramAttr[funcName];
-                assert( sub );
-
-                unsigned totalSizeInBits = elemStorageSizeInBits * arraySize;
-                if ( arraySize > 1 )
-                {
-                    // Create base type for array elements
-                    mlir::LLVM::DIBasicTypeAttr baseType = mlir::LLVM::DIBasicTypeAttr::get(
-                        context, llvm::dwarf::DW_TAG_base_type, builder.getStringAttr( typeName ),
-                        elemStorageSizeInBits, dwType );
-
-                    // Create subrange for array (count = arraySize, lowerBound = 0)
-                    mlir::IntegerAttr countAttr = mlir::IntegerAttr::get( tyI64, arraySize );
-                    mlir::IntegerAttr lowerBoundAttr = mlir::IntegerAttr::get( tyI64, 0 );
-                    mlir::LLVM::DISubrangeAttr subrange =
-                        mlir::LLVM::DISubrangeAttr::get( context, countAttr, lowerBoundAttr,
-                                                         /*upperBound=*/nullptr, /*stride=*/nullptr );
-
-                    // Create array type
-                    unsigned alignInBits = elemStorageSizeInBits;    // Alignment matches element size
-                    diType = mlir::LLVM::DICompositeTypeAttr::get(
-                        context, llvm::dwarf::DW_TAG_array_type, builder.getStringAttr( "" ), fileAttr,
-                        /*line=*/0, sub, baseType, mlir::LLVM::DIFlags::Zero, totalSizeInBits, alignInBits,
-                        llvm::ArrayRef<mlir::LLVM::DINodeAttr>{ subrange },
-                        /*dataLocation=*/nullptr, /*rank=*/nullptr, /*allocated=*/nullptr, /*associated=*/nullptr );
-                }
-                else
-                {
-                    // Scalar type
-                    diType = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
-                                                               builder.getStringAttr( typeName ), elemStorageSizeInBits,
-                                                               dwType );
-                }
-
-                diVar = mlir::LLVM::DILocalVariableAttr::get(
-                    context, sub, builder.getStringAttr( varName ), fileAttr, loc.getLine(),
-                    /*argNo=*/0, totalSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
-
-                builder.setInsertionPointAfter( allocaOp );
-                builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
-            }
-
-            createLocalSymbolReference( allocaOp, varName.str() );
-        }
-
-        mlir::LLVM::GlobalOp lookupGlobalOp( mlir::StringAttr& stringLit )
-        {
-            mlir::LLVM::GlobalOp globalOp;
-            auto it = stringLiterals.find( stringLit.str() );
-            if ( it != stringLiterals.end() )
-            {
-                globalOp = it->second;
-                LLVM_DEBUG( llvm::dbgs() << std::format( "Found global: {} for string literal '{}'\n",
-                                                         globalOp.getSymName().str(), stringLit.str() ) );
-            }
-
-            return globalOp;
-        }
-
-        mlir::LLVM::GlobalOp lookupOrInsertGlobalOp( mlir::ConversionPatternRewriter& rewriter,
-                                                     mlir::StringAttr& stringLit, mlir::Location loc, size_t strLen )
-        {
-            mlir::LLVM::GlobalOp globalOp;
-            auto it = stringLiterals.find( stringLit.str() );
-            if ( it != stringLiterals.end() )
-            {
-                globalOp = it->second;
-                LLVM_DEBUG( llvm::dbgs() << "Reusing global: " << globalOp.getSymName() << '\n' );
             }
             else
             {
-                mlir::OpBuilder::InsertPoint savedIP = rewriter.saveInsertionPoint();
-                rewriter.setInsertionPointToStart( mod.getBody() );
-
-                mlir::LLVM::LLVMArrayType arrayType = mlir::LLVM::LLVMArrayType::get( tyI8, strLen );
-
-                mlir::SmallVector<char> stringData( stringLit.begin(), stringLit.end() );
-                mlir::DenseElementsAttr denseAttr = mlir::DenseElementsAttr::get(
-                    mlir::RankedTensorType::get( { static_cast<int64_t>( strLen ) }, tyI8 ),
-                    mlir::ArrayRef<char>( stringData ) );
-
-                std::string globalName = "str_" + std::to_string( stringLiterals.size() );
-                globalOp = rewriter.create<mlir::LLVM::GlobalOp>( loc, arrayType, true, mlir::LLVM::Linkage::Private,
-                                                                  globalName, denseAttr );
-                globalOp->setAttr( "unnamed_addr", rewriter.getUnitAttr() );
-
-                stringLiterals[stringLit.str()] = globalOp;
-                LLVM_DEBUG( llvm::dbgs() << "Created global: " << globalName << '\n' );
-
-                rewriter.restoreInsertionPoint( savedIP );
+                llvm_unreachable( "Unsupported type for debug info" );
             }
 
-            return globalOp;
-        }
+            std::string funcName = lookupFuncNameForOp( allocaOp );
+            mlir::LLVM::DISubprogramAttr sub = subprogramAttr[funcName];
+            assert( sub );
 
-        silly::CallOp createPrintCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
-                                       mlir::Value input )
-        {
-            mlir::Type inputType = input.getType();
-            silly::CallOp result;
-
-            if ( mlir::IntegerType inputi = mlir::dyn_cast<mlir::IntegerType>( inputType ) )
+            unsigned totalSizeInBits = elemStorageSizeInBits * arraySize;
+            if ( arraySize > 1 )
             {
-                unsigned width = inputi.getWidth();
+                // Create base type for array elements
+                mlir::LLVM::DIBasicTypeAttr baseType = mlir::LLVM::DIBasicTypeAttr::get(
+                    context, llvm::dwarf::DW_TAG_base_type, builder.getStringAttr( typeName ), elemStorageSizeInBits,
+                    dwType );
 
-                if ( width == 1 )
-                {
-                    input = rewriter.create<mlir::LLVM::ZExtOp>( loc, tyI64, input );
-                }
-                else if ( width < 64 )
-                {
-                    input = rewriter.create<mlir::LLVM::SExtOp>( loc, tyI64, input );
-                }
+                // Create subrange for array (count = arraySize, lowerBound = 0)
+                mlir::IntegerAttr countAttr = mlir::IntegerAttr::get( tyI64, arraySize );
+                mlir::IntegerAttr lowerBoundAttr = mlir::IntegerAttr::get( tyI64, 0 );
+                mlir::LLVM::DISubrangeAttr subrange =
+                    mlir::LLVM::DISubrangeAttr::get( context, countAttr, lowerBoundAttr,
+                                                     /*upperBound=*/nullptr, /*stride=*/nullptr );
 
-                createSillyPrintI64Prototype();
-                result = rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, "__silly_print_i64",
-                                                         mlir::ValueRange{ input } );
-            }
-            else if ( mlir::FloatType inputf = mlir::dyn_cast<mlir::FloatType>( inputType ) )
-            {
-                if ( inputType == tyF32 )
-                {
-                    input = rewriter.create<mlir::LLVM::FPExtOp>( loc, tyF64, input );
-                }
-                else
-                {
-                    assert( inputType == tyF64 );
-                }
-
-                createSillyPrintF64Prototype();
-                result = rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, "__silly_print_f64",
-                                                         mlir::ValueRange{ input } );
-            }
-            else if ( inputType == tyPtr )
-            {
-                // Find AllocaOp for size and element type
-                int64_t numElems = 0;
-                if ( silly::LoadOp loadOp = input.getDefiningOp<silly::LoadOp>() )
-                {
-                    mlir::SymbolRefAttr varNameAttr = loadOp.getVarName();
-                    assert( varNameAttr );
-
-                    // Get string (e.g., "x")
-                    std::string varName = varNameAttr.getLeafReference().str();
-                    LLVM_DEBUG( { llvm::dbgs() << "LoadOp variable name: " << varName << "\n"; } );
-
-                    mlir::LLVM::AllocaOp allocaOp = lookupLocalSymbolReference( loadOp, varName );
-
-                    // Validate element type is i8
-                    mlir::Type elemType = allocaOp.getElemType();
-                    assert( elemType == tyI8 );
-
-                    if ( mlir::LLVM::ConstantOp constOp =
-                             allocaOp.getArraySize().getDefiningOp<mlir::LLVM::ConstantOp>() )
-                    {
-                        mlir::IntegerAttr intAttr = mlir::dyn_cast<mlir::IntegerAttr>( constOp.getValue() );
-                        numElems = intAttr.getInt();
-                    }
-                }
-                else if ( silly::StringLiteralOp stringLitOp = input.getDefiningOp<silly::StringLiteralOp>() )
-                {
-                    mlir::StringAttr strAttr = stringLitOp.getValueAttr();
-                    llvm::StringRef strValue = strAttr.getValue();
-                    numElems = strValue.size();
-
-                    mlir::LLVM::GlobalOp globalOp = lookupGlobalOp( strAttr );
-                    input = rewriter.create<mlir::LLVM::AddressOfOp>( loc, globalOp );
-                }
-                else
-                {
-                    LLVM_DEBUG( {
-                        llvm::errs() << "why am I here?\n";
-                        input.dump();
-                        // mlir::ModuleOp mod = input.getParentOfType<mlir::ModuleOp>();
-                        // mod.dump();
-                    } );
-
-                    assert( 0 );    // should not get here.
-                }
-                assert( numElems );
-
-                mlir::LLVM::ConstantOp sizeConst =
-                    rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( numElems ) );
-
-                createSillyPrintStringPrototype();
-                const char* name = "__silly_print_string";
-                result = rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, name,
-                                                         mlir::ValueRange{ sizeConst, input } );
+                // Create array type
+                unsigned alignInBits = elemStorageSizeInBits;    // Alignment matches element size
+                diType = mlir::LLVM::DICompositeTypeAttr::get(
+                    context, llvm::dwarf::DW_TAG_array_type, builder.getStringAttr( "" ), fileAttr,
+                    /*line=*/0, sub, baseType, mlir::LLVM::DIFlags::Zero, totalSizeInBits, alignInBits,
+                    llvm::ArrayRef<mlir::LLVM::DINodeAttr>{ subrange },
+                    /*dataLocation=*/nullptr, /*rank=*/nullptr, /*allocated=*/nullptr, /*associated=*/nullptr );
             }
             else
             {
-                assert( 0 );    // Error: unsupported type
+                // Scalar type
+                diType = mlir::LLVM::DIBasicTypeAttr::get( context, llvm::dwarf::DW_TAG_base_type,
+                                                           builder.getStringAttr( typeName ), elemStorageSizeInBits,
+                                                           dwType );
             }
+
+            diVar = mlir::LLVM::DILocalVariableAttr::get(
+                context, sub, builder.getStringAttr( varName ), fileAttr, loc.getLine(),
+                /*argNo=*/0, totalSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
+
+            builder.setInsertionPointAfter( allocaOp );
+            builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
+        }
+
+        createLocalSymbolReference( allocaOp, varName.str() );
+    }
+
+    mlir::LLVM::GlobalOp LoweringContext::lookupGlobalOp( mlir::StringAttr& stringLit )
+    {
+        mlir::LLVM::GlobalOp globalOp;
+        auto it = stringLiterals.find( stringLit.str() );
+        if ( it != stringLiterals.end() )
+        {
+            globalOp = it->second;
+            LLVM_DEBUG( llvm::dbgs() << std::format( "Found global: {} for string literal '{}'\n",
+                                                     globalOp.getSymName().str(), stringLit.str() ) );
+        }
+
+        return globalOp;
+    }
+
+    mlir::LLVM::GlobalOp LoweringContext::lookupOrInsertGlobalOp( mlir::ConversionPatternRewriter& rewriter,
+                                                                  mlir::StringAttr& stringLit, mlir::Location loc,
+                                                                  size_t strLen )
+    {
+        mlir::LLVM::GlobalOp globalOp;
+        auto it = stringLiterals.find( stringLit.str() );
+        if ( it != stringLiterals.end() )
+        {
+            globalOp = it->second;
+            LLVM_DEBUG( llvm::dbgs() << "Reusing global: " << globalOp.getSymName() << '\n' );
+        }
+        else
+        {
+            mlir::OpBuilder::InsertPoint savedIP = rewriter.saveInsertionPoint();
+            rewriter.setInsertionPointToStart( mod.getBody() );
+
+            mlir::LLVM::LLVMArrayType arrayType = mlir::LLVM::LLVMArrayType::get( tyI8, strLen );
+
+            mlir::SmallVector<char> stringData( stringLit.begin(), stringLit.end() );
+            mlir::DenseElementsAttr denseAttr =
+                mlir::DenseElementsAttr::get( mlir::RankedTensorType::get( { static_cast<int64_t>( strLen ) }, tyI8 ),
+                                              mlir::ArrayRef<char>( stringData ) );
+
+            std::string globalName = "str_" + std::to_string( stringLiterals.size() );
+            globalOp = rewriter.create<mlir::LLVM::GlobalOp>( loc, arrayType, true, mlir::LLVM::Linkage::Private,
+                                                              globalName, denseAttr );
+            globalOp->setAttr( "unnamed_addr", rewriter.getUnitAttr() );
+
+            stringLiterals[stringLit.str()] = globalOp;
+            LLVM_DEBUG( llvm::dbgs() << "Created global: " << globalName << '\n' );
+
+            rewriter.restoreInsertionPoint( savedIP );
+        }
+
+        return globalOp;
+    }
+
+    silly::CallOp LoweringContext::createPrintCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
+                                                    mlir::Value input )
+    {
+        mlir::Type inputType = input.getType();
+        silly::CallOp result;
+
+        if ( mlir::IntegerType inputi = mlir::dyn_cast<mlir::IntegerType>( inputType ) )
+        {
+            unsigned width = inputi.getWidth();
+
+            if ( width == 1 )
+            {
+                input = rewriter.create<mlir::LLVM::ZExtOp>( loc, tyI64, input );
+            }
+            else if ( width < 64 )
+            {
+                input = rewriter.create<mlir::LLVM::SExtOp>( loc, tyI64, input );
+            }
+
+            createSillyPrintI64Prototype();
+            result = rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, "__silly_print_i64",
+                                                     mlir::ValueRange{ input } );
+        }
+        else if ( mlir::FloatType inputf = mlir::dyn_cast<mlir::FloatType>( inputType ) )
+        {
+            if ( inputType == tyF32 )
+            {
+                input = rewriter.create<mlir::LLVM::FPExtOp>( loc, tyF64, input );
+            }
+            else
+            {
+                assert( inputType == tyF64 );
+            }
+
+            createSillyPrintF64Prototype();
+            result = rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, "__silly_print_f64",
+                                                     mlir::ValueRange{ input } );
+        }
+        else if ( inputType == tyPtr )
+        {
+            // Find AllocaOp for size and element type
+            int64_t numElems = 0;
+            if ( silly::LoadOp loadOp = input.getDefiningOp<silly::LoadOp>() )
+            {
+                mlir::SymbolRefAttr varNameAttr = loadOp.getVarName();
+                assert( varNameAttr );
+
+                // Get string (e.g., "x")
+                std::string varName = varNameAttr.getLeafReference().str();
+                LLVM_DEBUG( { llvm::dbgs() << "LoadOp variable name: " << varName << "\n"; } );
+
+                mlir::LLVM::AllocaOp allocaOp = lookupLocalSymbolReference( loadOp, varName );
+
+                // Validate element type is i8
+                mlir::Type elemType = allocaOp.getElemType();
+                assert( elemType == tyI8 );
+
+                if ( mlir::LLVM::ConstantOp constOp = allocaOp.getArraySize().getDefiningOp<mlir::LLVM::ConstantOp>() )
+                {
+                    mlir::IntegerAttr intAttr = mlir::dyn_cast<mlir::IntegerAttr>( constOp.getValue() );
+                    numElems = intAttr.getInt();
+                }
+            }
+            else if ( silly::StringLiteralOp stringLitOp = input.getDefiningOp<silly::StringLiteralOp>() )
+            {
+                mlir::StringAttr strAttr = stringLitOp.getValueAttr();
+                llvm::StringRef strValue = strAttr.getValue();
+                numElems = strValue.size();
+
+                mlir::LLVM::GlobalOp globalOp = lookupGlobalOp( strAttr );
+                input = rewriter.create<mlir::LLVM::AddressOfOp>( loc, globalOp );
+            }
+            else
+            {
+                LLVM_DEBUG( {
+                    llvm::errs() << "why am I here?\n";
+                    input.dump();
+                    // mlir::ModuleOp mod = input.getParentOfType<mlir::ModuleOp>();
+                    // mod.dump();
+                } );
+
+                assert( 0 );    // should not get here.
+            }
+            assert( numElems );
+
+            mlir::LLVM::ConstantOp sizeConst =
+                rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( numElems ) );
+
+            createSillyPrintStringPrototype();
+            const char* name = "__silly_print_string";
+            result =
+                rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, name, mlir::ValueRange{ sizeConst, input } );
+        }
+        else
+        {
+            assert( 0 );    // Error: unsupported type
+        }
 
 #if 0
             LLVM_DEBUG( {
@@ -786,175 +742,175 @@ namespace silly
             } );
 #endif
 
-            return result;
-        }
+        return result;
+    }
 
-        mlir::Value createGetCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc, mlir::Type inputType )
+    mlir::Value LoweringContext::createGetCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
+                                                mlir::Type inputType )
+    {
+        const char* name = nullptr;
+        bool isBool{};
+
+        if ( mlir::IntegerType inputi = mlir::dyn_cast<mlir::IntegerType>( inputType ) )
         {
-            const char* name = nullptr;
-            bool isBool{};
+            unsigned width = inputi.getWidth();
 
-            if ( mlir::IntegerType inputi = mlir::dyn_cast<mlir::IntegerType>( inputType ) )
+            switch ( width )
             {
-                unsigned width = inputi.getWidth();
-
-                switch ( width )
+                case 1:
                 {
-                    case 1:
-                    {
-                        name = "__silly_get_i1";
-                        createSillyGetI1Prototype();
-                        inputType = tyI8;
-                        isBool = true;
-                        break;
-                    }
-                    case 8:
-                    {
-                        name = "__silly_get_i8";
-                        createSillyGetI8Prototype();
-                        break;
-                    }
-                    case 16:
-                    {
-                        name = "__silly_get_i16";
-                        createSillyGetI16Prototype();
-                        break;
-                    }
-                    case 32:
-                    {
-                        name = "__silly_get_i32";
-                        createSillyGetI32Prototype();
-                        break;
-                    }
-                    case 64:
-                    {
-                        name = "__silly_get_i64";
-                        createSillyGetI64Prototype();
-                        break;
-                    }
-                    default:
-                    {
-                        assert( 0 && "Unexpected integer size" );
-                    }
+                    name = "__silly_get_i1";
+                    createSillyGetI1Prototype();
+                    inputType = tyI8;
+                    isBool = true;
+                    break;
+                }
+                case 8:
+                {
+                    name = "__silly_get_i8";
+                    createSillyGetI8Prototype();
+                    break;
+                }
+                case 16:
+                {
+                    name = "__silly_get_i16";
+                    createSillyGetI16Prototype();
+                    break;
+                }
+                case 32:
+                {
+                    name = "__silly_get_i32";
+                    createSillyGetI32Prototype();
+                    break;
+                }
+                case 64:
+                {
+                    name = "__silly_get_i64";
+                    createSillyGetI64Prototype();
+                    break;
+                }
+                default:
+                {
+                    assert( 0 && "Unexpected integer size" );
                 }
             }
-            else if ( mlir::FloatType inputf = mlir::dyn_cast<mlir::FloatType>( inputType ) )
+        }
+        else if ( mlir::FloatType inputf = mlir::dyn_cast<mlir::FloatType>( inputType ) )
+        {
+            if ( inputType == tyF32 )
             {
-                if ( inputType == tyF32 )
-                {
-                    name = "__silly_get_f32";
-                    createSillyGetF32Prototype();
-                }
-                else if ( inputType == tyF64 )
-                {
-                    name = "__silly_get_f64";
-                    createSillyGetF64Prototype();
-                }
-                else
-                {
-                    assert( 0 && "Unexpected floating point type" );
-                }
+                name = "__silly_get_f32";
+                createSillyGetF32Prototype();
+            }
+            else if ( inputType == tyF64 )
+            {
+                name = "__silly_get_f64";
+                createSillyGetF64Prototype();
             }
             else
             {
-                assert( 0 && "Error: unsupported type" );
+                assert( 0 && "Unexpected floating point type" );
             }
-
-            silly::CallOp callOp =
-                rewriter.create<silly::CallOp>( loc, mlir::TypeRange{ inputType }, name, mlir::ValueRange{} );
-            mlir::Value result = *callOp.getResult().begin();
-
-            if ( isBool )
-            {
-                result = rewriter.create<mlir::LLVM::TruncOp>( loc, tyI1, result );
-            }
-
-            return result;
         }
-
-        /// Emit debug info for parameter
-        void constructParameterDI( mlir::FileLineColLoc loc, mlir::ConversionPatternRewriter& rewriter,
-                                   const std::string& varName, mlir::LLVM::AllocaOp value, mlir::Type elemType,
-                                   int paramIndex, const std::string& funcName )
+        else
         {
-            if ( driverState.wantDebug )
-            {
-                // Create debug type for basic types (e.g., i32, f32)
-                mlir::MLIRContext* context = rewriter.getContext();
-                mlir::LLVM::DITypeAttr diType = getDIType( elemType );
-
-                // Get DISubprogram from subprogramAttr
-                mlir::LLVM::DISubprogramAttr sub = subprogramAttr[funcName];
-                assert( sub );
-
-                unsigned bitWidth = elemType.getIntOrFloatBitWidth();
-
-                // Create debug variable
-                mlir::LLVM::DILocalVariableAttr diVar = mlir::LLVM::DILocalVariableAttr::get(
-                    context, sub, rewriter.getStringAttr( varName ), fileAttr, loc.getLine(), paramIndex + 1, bitWidth,
-                    diType, mlir::LLVM::DIFlags::Zero );
-
-                // Emit llvm.dbg.declare
-                rewriter.create<mlir::LLVM::DbgDeclareOp>( loc, value, diVar );
-            }
+            assert( 0 && "Error: unsupported type" );
         }
 
-        mlir::Value castToElemType( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter, mlir::Value value,
-                                    mlir::Type valType, mlir::Type elemType )
+        silly::CallOp callOp =
+            rewriter.create<silly::CallOp>( loc, mlir::TypeRange{ inputType }, name, mlir::ValueRange{} );
+        mlir::Value result = *callOp.getResult().begin();
+
+        if ( isBool )
         {
-            if ( valType == tyF64 )
-            {
-                if ( mlir::isa<mlir::IntegerType>( elemType ) )
-                {
-                    value = rewriter.create<mlir::LLVM::FPToSIOp>( loc, elemType, value );
-                }
-                else if ( elemType == tyF32 )
-                {
-                    value = rewriter.create<mlir::LLVM::FPTruncOp>( loc, elemType, value );
-                }
-            }
-            else if ( valType == tyF32 )
-            {
-                if ( mlir::isa<mlir::IntegerType>( elemType ) )
-                {
-                    value = rewriter.create<mlir::LLVM::FPToSIOp>( loc, elemType, value );
-                }
-                else if ( elemType == tyF64 )
-                {
-                    value = rewriter.create<mlir::LLVM::FPExtOp>( loc, elemType, value );
-                }
-            }
-            else if ( mlir::IntegerType viType = mlir::cast<mlir::IntegerType>( valType ) )
-            {
-                unsigned vwidth = viType.getWidth();
-                if ( isTypeFloat( elemType ) )
-                {
-                    if ( vwidth == 1 )
-                    {
-                        value = rewriter.create<mlir::LLVM::UIToFPOp>( loc, elemType, value );
-                    }
-                    else
-                    {
-                        value = rewriter.create<mlir::LLVM::SIToFPOp>( loc, elemType, value );
-                    }
-                }
-                else if ( mlir::IntegerType miType = mlir::cast<mlir::IntegerType>( elemType ) )
-                {
-                    unsigned mwidth = miType.getWidth();
-                    if ( vwidth > mwidth )
-                    {
-                        value = rewriter.create<mlir::LLVM::TruncOp>( loc, elemType, value );
-                    }
-                    else if ( vwidth < mwidth )
-                    {
-                        value = rewriter.create<mlir::LLVM::ZExtOp>( loc, elemType, value );
-                    }
-                }
-            }
-
-            return value;
+            result = rewriter.create<mlir::LLVM::TruncOp>( loc, tyI1, result );
         }
-    };
+
+        return result;
+    }
+
+    /// Emit debug info for parameter
+    void LoweringContext::constructParameterDI( mlir::FileLineColLoc loc, mlir::ConversionPatternRewriter& rewriter,
+                                                const std::string& varName, mlir::LLVM::AllocaOp value,
+                                                mlir::Type elemType, int paramIndex, const std::string& funcName )
+    {
+        if ( driverState.wantDebug )
+        {
+            // Create debug type for basic types (e.g., i32, f32)
+            mlir::MLIRContext* context = rewriter.getContext();
+            mlir::LLVM::DITypeAttr diType = getDIType( elemType );
+
+            // Get DISubprogram from subprogramAttr
+            mlir::LLVM::DISubprogramAttr sub = subprogramAttr[funcName];
+            assert( sub );
+
+            unsigned bitWidth = elemType.getIntOrFloatBitWidth();
+
+            // Create debug variable
+            mlir::LLVM::DILocalVariableAttr diVar = mlir::LLVM::DILocalVariableAttr::get(
+                context, sub, rewriter.getStringAttr( varName ), fileAttr, loc.getLine(), paramIndex + 1, bitWidth,
+                diType, mlir::LLVM::DIFlags::Zero );
+
+            // Emit llvm.dbg.declare
+            rewriter.create<mlir::LLVM::DbgDeclareOp>( loc, value, diVar );
+        }
+    }
+
+    mlir::Value LoweringContext::castToElemType( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
+                                                 mlir::Value value, mlir::Type valType, mlir::Type elemType )
+    {
+        if ( valType == tyF64 )
+        {
+            if ( mlir::isa<mlir::IntegerType>( elemType ) )
+            {
+                value = rewriter.create<mlir::LLVM::FPToSIOp>( loc, elemType, value );
+            }
+            else if ( elemType == tyF32 )
+            {
+                value = rewriter.create<mlir::LLVM::FPTruncOp>( loc, elemType, value );
+            }
+        }
+        else if ( valType == tyF32 )
+        {
+            if ( mlir::isa<mlir::IntegerType>( elemType ) )
+            {
+                value = rewriter.create<mlir::LLVM::FPToSIOp>( loc, elemType, value );
+            }
+            else if ( elemType == tyF64 )
+            {
+                value = rewriter.create<mlir::LLVM::FPExtOp>( loc, elemType, value );
+            }
+        }
+        else if ( mlir::IntegerType viType = mlir::cast<mlir::IntegerType>( valType ) )
+        {
+            unsigned vwidth = viType.getWidth();
+            if ( isTypeFloat( elemType ) )
+            {
+                if ( vwidth == 1 )
+                {
+                    value = rewriter.create<mlir::LLVM::UIToFPOp>( loc, elemType, value );
+                }
+                else
+                {
+                    value = rewriter.create<mlir::LLVM::SIToFPOp>( loc, elemType, value );
+                }
+            }
+            else if ( mlir::IntegerType miType = mlir::cast<mlir::IntegerType>( elemType ) )
+            {
+                unsigned mwidth = miType.getWidth();
+                if ( vwidth > mwidth )
+                {
+                    value = rewriter.create<mlir::LLVM::TruncOp>( loc, elemType, value );
+                }
+                else if ( vwidth < mwidth )
+                {
+                    value = rewriter.create<mlir::LLVM::ZExtOp>( loc, elemType, value );
+                }
+            }
+        }
+
+        return value;
+    }
 
     class DeclareOpLowering : public mlir::ConversionPattern
     {
@@ -1965,7 +1921,7 @@ namespace silly
                              MulOpLowering, NegOpLowering, NotEqualOpLowering, OrOpLowering, PrintOpLowering,
                              GetOpLowering, StringLiteralOpLowering, SubOpLowering, XorOpLowering>( lState,
                                                                                                     &getContext(), 1 );
-                mlir::arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns );
+                mlir::arith::populateArithToLLVMConversionPatterns( lState.getTypeConverter(), patterns );
 
                 if ( failed( applyFullConversion( mod, target, std::move( patterns ) ) ) )
                 {
@@ -1995,10 +1951,10 @@ namespace silly
                 // SCF -> CF
                 mlir::populateSCFToControlFlowConversionPatterns( patterns );
 
-                mlir::arith::populateArithToLLVMConversionPatterns( lState.typeConverter, patterns );
+                mlir::arith::populateArithToLLVMConversionPatterns( lState.getTypeConverter(), patterns );
 
                 // CF -> LLVM
-                mlir::cf::populateControlFlowToLLVMConversionPatterns( lState.typeConverter, patterns );
+                mlir::cf::populateControlFlowToLLVMConversionPatterns( lState.getTypeConverter(), patterns );
 
                 if ( failed( applyFullConversion( mod, target, std::move( patterns ) ) ) )
                 {
