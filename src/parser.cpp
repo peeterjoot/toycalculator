@@ -1178,6 +1178,12 @@ namespace silly
                                                            nullptr, nullptr );
             builder.create<silly::PrintOp>( loc, n );
         }
+        else if ( SillyParser::BooleanLiteralContext *theBoolean = ctx->booleanLiteral() )
+        {
+            mlir::Value b = buildNonStringUnaryExpression( loc, theBoolean->BOOLEAN_PATTERN(), nullptr, nullptr,
+                                                           nullptr, nullptr );
+            builder.create<silly::PrintOp>( loc, b );
+        }
         else
         {
             throw ExceptionWithContext( __FILE__, __LINE__, __func__,

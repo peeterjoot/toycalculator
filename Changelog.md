@@ -53,6 +53,35 @@ define i32 @main() !dbg !4 {
 }
 ```
 
+* PRINT: Also implement BOOLean print literal (t/c: printboollit.silly)
+
+MLIR:
+```
+module {
+  func.func @main() -> i32 {
+    "silly.scope"() ({
+      %true = arith.constant true
+      silly.print %true : i1
+      %false = arith.constant false
+      silly.print %false : i1
+      %c0_i32 = arith.constant 0 : i32
+      "silly.return"(%c0_i32) : (i32) -> ()
+    }) : () -> ()
+    "silly.yield"() : () -> ()
+  }
+}
+```
+
+LL:
+```
+declare void @__silly_print_i64(i64)
+
+define i32 @main() !dbg !4 {
+  call void @__silly_print_i64(i64 1), !dbg !8
+  call void @__silly_print_i64(i64 0), !dbg !9
+  ret i32 0, !dbg !9
+}
+```
 
 ## tag: V6 (Dec 28, 2025)
 
