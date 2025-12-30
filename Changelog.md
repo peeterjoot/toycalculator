@@ -6,6 +6,18 @@
 * samples/elif.silly: code tests for both paths.
 * Split LoweringContext declaration and implementation.  Some stuff made private.
 * Fix shortstring2 t/c (print of empty string literal.)
+* Fix shortstring3 t/c (assignment of empty string literal).
+
+    Ended up in the non-string literal codepath:
+
+```
+  (gdb) up
+#11 0x00000000005065d0 in silly::MLIRListener::enterRhs (this=0x7fffffffd7d8, ctx=0x7296d0) at /home/pjoot/toycalculator/src/parser.cpp:1732
+1732                    builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ resultValue },
+```
+
+    checking s.length() isn't appropriate.
+*
 
 ## tag: V6 (Dec 28, 2025)
 

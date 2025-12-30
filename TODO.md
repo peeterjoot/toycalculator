@@ -26,7 +26,6 @@
 * String tests and behaviour:
   - longstring.silly:
    compiler truncates an assignment from a too long string literal.  Could implement safe vs. checked behaviour so that such an assignment would trigger an error instead.
-  - string literal test for edge cases: shortstring.silly3 (assignment of empty string literal.)
 
 ----------------------------------
 * Control flow:

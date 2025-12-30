@@ -152,6 +152,7 @@ neqop
 orop
 shortstring
 shortstring2
+shortstring3
 simpleless
 simplest
 stringlit
@@ -160,7 +161,6 @@ types
 unary
 xorop
 ));
-#shortstring3
 
 my %failuretests = map {$_ => 1} (qw(
 error_redeclare

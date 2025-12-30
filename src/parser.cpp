@@ -1534,13 +1534,13 @@ namespace silly
         mlir::Value lhsValue;
         size_t bsz = ctx->binaryElement().size();
         std::string s;
+        SillyParser::LiteralContext *lit{};
 
         if ( bsz == 0 )
         {
             mlir::Value lhsValue;
 
-            SillyParser::LiteralContext *lit = ctx->literal();
-
+            lit = ctx->literal();
             if ( SillyParser::CallContext *call = ctx->call() )
             {
                 callIsHandled = true;
@@ -1698,7 +1698,7 @@ namespace silly
         }
 
         mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, currentVarName );
-        if ( s.length() )
+        if ( lit && lit->STRING_PATTERN() )
         {
             mlir::StringAttr strAttr = builder.getStringAttr( s );
 
