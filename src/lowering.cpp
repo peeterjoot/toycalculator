@@ -105,7 +105,10 @@ namespace silly
         tyVoid = mlir::LLVM::LLVMVoidType::get( context );
     }
 
-    inline mlir::LLVMTypeConverter & LoweringContext::getTypeConverter() { return typeConverter; };
+    inline mlir::LLVMTypeConverter& LoweringContext::getTypeConverter()
+    {
+        return typeConverter;
+    };
 
     unsigned LoweringContext::preferredTypeAlignment( mlir::Operation* op, mlir::Type elemType )
     {
@@ -1906,11 +1909,12 @@ namespace silly
             // First phase: Lower silly operations except ScopeOp and YieldOp
             {
                 mlir::ConversionTarget target( getContext() );
-                target.addLegalDialect<mlir::arith::ArithDialect, mlir::LLVM::LLVMDialect, silly::SillyDialect, mlir::scf::SCFDialect>();
-                target.addIllegalOp<silly::AddOp, silly::AndOp, silly::AssignOp,
-                                    silly::DeclareOp, silly::DivOp, silly::EqualOp, silly::LessEqualOp, silly::LessOp,
-                                    silly::LoadOp, silly::MulOp, silly::NegOp, silly::NotEqualOp, silly::OrOp,
-                                    silly::PrintOp, silly::GetOp, silly::StringLiteralOp, silly::SubOp, silly::XorOp>();
+                target.addLegalDialect<mlir::arith::ArithDialect, mlir::LLVM::LLVMDialect, silly::SillyDialect,
+                                       mlir::scf::SCFDialect>();
+                target.addIllegalOp<silly::AddOp, silly::AndOp, silly::AssignOp, silly::DeclareOp, silly::DivOp,
+                                    silly::EqualOp, silly::LessEqualOp, silly::LessOp, silly::LoadOp, silly::MulOp,
+                                    silly::NegOp, silly::NotEqualOp, silly::OrOp, silly::PrintOp, silly::GetOp,
+                                    silly::StringLiteralOp, silly::SubOp, silly::XorOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
                                   silly::ScopeOp, silly::YieldOp, silly::ReturnOp, silly::CallOp, mlir::func::CallOp,
                                   mlir::scf::IfOp, mlir::scf::ForOp, mlir::scf::YieldOp>();
