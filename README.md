@@ -375,6 +375,8 @@ IF (x < 0) {
 };
 ```
 
+Note that support for `ELIF` is currently only in the grammar (compiler parser/builder needs work to support that, but lowering will probably be unchanged.)
+
 ---
 
 ### FOR Loop
@@ -488,7 +490,7 @@ Single-line comments begin with `//` and extend to the end of the line.
 - Scalar and array assignment
 - Unary and binary arithmetic
 - Boolean logic and comparisons
-- Conditional execution (`IF / ELIF / ELSE`)
+- Conditional execution (`IF / ELSE`), with `ELIF` planned, but not implemented.
 - Range-based `FOR` loops
 - Functions and calls
 - Input (`GET`) and output (`PRINT`)
