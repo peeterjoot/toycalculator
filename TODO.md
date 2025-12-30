@@ -14,6 +14,8 @@
   - Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 
 ----------------------------------
+* PRINT.  Allow a list of values, instead of just one (print all to one line.)
+----------------------------------
 
 * Exit/return
   - Maybe: enforce i8 Exit type in the grammar (i.e.: actual UNIX shell semantics.)  Don't have an ExitOp anymore, just ReturnOp, but could switch from the hardcoded i32 return type in the builder.
@@ -37,7 +39,7 @@
   - Don't have any traits defined for my MLIR operations (initially caused compile errors, and I just commented-out or omitted after that.)
   - Validators, and better custom assembly printers.
   - MLIR has considerable capability for semantic checking, but I'm not exploiting that here, and have very little in custom verifiers.
-  - If verify fails, I shouldn't proceed to lowering.
+  - If verify fails, I shouldn't proceed to lowering.  Do I?
 
 ----------------------------------
 * arrays:
@@ -53,9 +55,10 @@
 
       : ARRAY_START_TOKEN (IDENTIFIER | INTEGER_PATTERN) ARRAY_END_TOKEN
 
+
 ----------------------------------
 * Misc:
-  - GET into a BOOL should logically support TRUE/FALSE values, and not just 0/1.
+  - GET into a BOOL should logically support TRUE/FALSE values, and not just 0/1.  PRINT of a BOOL should display TRUE/FALSE, not just 1/0.
   - Write a MLIR walker (and/or opt-silly front end) to see how to answer code questions about a given program.
 
   - More complicated expressions.
