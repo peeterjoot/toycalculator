@@ -150,6 +150,7 @@ longstring
 neg
 neqop
 orop
+printlit
 shortstring
 shortstring2
 shortstring3

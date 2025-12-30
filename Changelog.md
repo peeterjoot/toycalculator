@@ -17,7 +17,42 @@
 ```
 
     checking s.length() isn't appropriate.
-*
+* Added integer literal support to PRINT (t/c: printlit.silly), allowing for a program as simple as:
+
+```
+PRINT 42;
+```
+
+MLIR:
+```
+module {
+  func.func @main() -> i32 {
+    "silly.scope"() ({
+      %c42_i64 = arith.constant 42 : i64
+      silly.print %c42_i64 : i64
+      %cst = arith.constant 4.200000e+01 : f64
+      silly.print %cst : f64
+      %c0_i32 = arith.constant 0 : i32
+      "silly.return"(%c0_i32) : (i32) -> ()
+    }) : () -> ()
+    "silly.yield"() : () -> ()
+  }
+}
+```
+
+LLVM-LL:
+```
+declare void @__silly_print_f64(double)
+
+declare void @__silly_print_i64(i64)
+
+define i32 @main() !dbg !4 {
+  call void @__silly_print_i64(i64 42), !dbg !8
+  call void @__silly_print_f64(double 4.200000e+01), !dbg !9
+  ret i32 0, !dbg !9
+}
+```
+
 
 ## tag: V6 (Dec 28, 2025)
 

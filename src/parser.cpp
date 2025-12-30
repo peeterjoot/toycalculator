@@ -1172,6 +1172,12 @@ namespace silly
 
             builder.create<silly::PrintOp>( loc, stringLiteral );
         }
+        else if ( SillyParser::NumericLiteralContext *theNumber = ctx->numericLiteral() )
+        {
+            mlir::Value n = buildNonStringUnaryExpression( loc, nullptr, theNumber->INTEGER_PATTERN(), theNumber->FLOAT_PATTERN(),
+                                                           nullptr, nullptr );
+            builder.create<silly::PrintOp>( loc, n );
+        }
         else
         {
             throw ExceptionWithContext( __FILE__, __LINE__, __func__,

@@ -132,7 +132,7 @@ returnStatement
 
 // A print statement that outputs a variable (e.g., 'PRINT x;').
 print
-  : PRINT_TOKEN (scalarOrArrayElement | STRING_PATTERN)
+  : PRINT_TOKEN (scalarOrArrayElement | STRING_PATTERN | numericLiteral)
   ;
 
 // A get statement that inputs into a scalar variable (e.g., 'GET x;', 'GET x[1]').

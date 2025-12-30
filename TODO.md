@@ -54,13 +54,9 @@
       : ARRAY_START_TOKEN (IDENTIFIER | INTEGER_PATTERN) ARRAY_END_TOKEN
 
 ----------------------------------
-* Print:
-  - Add integer literal support to PRINT, so that I can do a program as simple as:
-    PRINT 42;
-----------------------------------
 * Misc:
   - GET into a BOOL should logically support TRUE/FALSE values, and not just 0/1.
-  - Write a MLIR walker to see how to answer code questions about a given program.
+  - Write a MLIR walker (and/or opt-silly front end) to see how to answer code questions about a given program.
 
   - More complicated expressions.
   - CAST operators.  Could also implement that with a "standard library", or on demand.
