@@ -10,7 +10,7 @@
 ----------------------------------
 * Maintainance:
   - lowering error handling is pschizophrenic: mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
-  - Move scf lowering into 1st pass?
+  - Move scf lowering into 1st pass?  Attempt at this in xpgn:streamline-passes-attempt branch (not pushed.)
   - Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
 
 ----------------------------------
