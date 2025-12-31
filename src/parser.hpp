@@ -96,6 +96,7 @@ namespace silly
         }
     };
 
+    using LocPairs = std::pair<mlir::Location, mlir::Location>;
 
     /// ANTLR listener that constructs MLIR for the Silly language.
     ///
@@ -224,6 +225,8 @@ namespace silly
         /// Looks up DeclareOp for a variable.
         silly::DeclareOp lookupDeclareForVar( mlir::Location loc, const std::string &varName );
 
+        inline LocPairs getLocations( antlr4::ParserRuleContext *ctx );
+
         /// Computes location from parser context.
         /// Side effect: Creates a silly::ScopeOp for main, if not already done.
         inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx, bool useStopLocation );
@@ -233,7 +236,7 @@ namespace silly
 
 
         /// Creates a silly::ScopeOp and initializes function state.
-        void createScope( mlir::Location loc, mlir::func::FuncOp func, const std::string &funcName,
+        void createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp func, const std::string &funcName,
                           const std::vector<std::string> &paramNames );
 
         /// Formats location for error messages.

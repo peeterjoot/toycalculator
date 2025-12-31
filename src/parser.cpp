@@ -122,32 +122,46 @@ namespace silly
         return f.lastLoc;
     }
 
-    inline mlir::Location MLIRListener::getLocation( antlr4::ParserRuleContext *ctx, bool useStopLocation )
+    inline LocPairs MLIRListener::getLocations( antlr4::ParserRuleContext *ctx )
     {
-        size_t line = 1;
-        size_t col = 0;
+        size_t startLine = 1;
+        size_t startCol = 0;
+        size_t endLine = 1;
+        size_t endCol = 0;
+
         if ( ctx )
         {
-            antlr4::Token *tok = useStopLocation ? ctx->getStop() : ctx->getStart();
-            assert( tok );
-            line = tok->getLine();
-            col = tok->getCharPositionInLine();
+            antlr4::Token *startToken = ctx->getStart();
+            startLine = startToken->getLine();
+            startCol = startToken->getCharPositionInLine();
+
+            antlr4::Token *endToken = ctx->getStart();
+            endLine = endToken->getLine();
+            endCol = endToken->getCharPositionInLine();
         }
 
-        mlir::FileLineColLoc loc = mlir::FileLineColLoc::get( builder.getStringAttr( filename ), line, col + 1 );
+        mlir::FileLineColLoc startLoc = mlir::FileLineColLoc::get( builder.getStringAttr( filename ), startLine, startCol + 1 );
+        mlir::FileLineColLoc endLoc = mlir::FileLineColLoc::get( builder.getStringAttr( filename ), endLine, endCol + 1 );
 
         if ( !mainScopeGenerated && ( MLIRListener::currentFuncName == ENTRY_SYMBOL_NAME ) )
         {
             mlir::FunctionType funcType = builder.getFunctionType( {}, tyI32 );
-            mlir::func::FuncOp funcOp = builder.create<mlir::func::FuncOp>( loc, ENTRY_SYMBOL_NAME, funcType );
+            mlir::func::FuncOp funcOp = builder.create<mlir::func::FuncOp>( startLoc, ENTRY_SYMBOL_NAME, funcType );
 
             std::vector<std::string> paramNames;
-            createScope( loc, funcOp, ENTRY_SYMBOL_NAME, paramNames );
+            createScope( startLoc, endLoc, funcOp, ENTRY_SYMBOL_NAME, paramNames );
 
             mainScopeGenerated = true;
         }
 
-        return loc;
+        return {startLoc, endLoc};
+    }
+
+    inline mlir::Location MLIRListener::getLocation( antlr4::ParserRuleContext *ctx, bool useStopLocation )
+    {
+        LocPairs locs = getLocations( ctx );
+
+        return useStopLocation ? locs.first : locs.second;
     }
 
     DialectCtx::DialectCtx()
@@ -436,15 +450,18 @@ namespace silly
         tyPtr = mlir::LLVM::LLVMPointerType::get( ctx );
     }
 
-    void MLIRListener::createScope( mlir::Location loc, mlir::func::FuncOp funcOp, const std::string &funcName,
+    void MLIRListener::createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp funcOp, const std::string &funcName,
                                     const std::vector<std::string> &paramNames )
     {
+        LLVM_DEBUG( {
+            llvm::errs() << std::format( "createScope: {}: startLoc: {}, endLoc: {}\n", funcName, formatLocation(startLoc), formatLocation(endLoc) );
+        } );
         mlir::Block &block = *funcOp.addEntryBlock();
         builder.setInsertionPointToStart( &block );
 
         // initially with empty operands and results
-        silly::ScopeOp scopeOp = builder.create<silly::ScopeOp>( loc, mlir::TypeRange{}, mlir::ValueRange{} );
-        builder.create<silly::YieldOp>( loc );
+        silly::ScopeOp scopeOp = builder.create<silly::ScopeOp>( startLoc, mlir::TypeRange{}, mlir::ValueRange{} );
+        builder.create<silly::YieldOp>( endLoc );
 
         mlir::Block &scopeBlock = scopeOp.getBody().emplaceBlock();
 
@@ -459,7 +476,7 @@ namespace silly
             } );
             mlir::StringAttr strAttr = builder.getStringAttr( paramNames[i] );
             silly::DeclareOp dcl =
-                builder.create<silly::DeclareOp>( loc, mlir::TypeAttr::get( argType ), /*size=*/nullptr,
+                builder.create<silly::DeclareOp>( startLoc, mlir::TypeAttr::get( argType ), /*size=*/nullptr,
                                                   builder.getUnitAttr(), builder.getI64IntegerAttr( i ) );
             dcl->setAttr( "sym_name", strAttr );
         }
@@ -472,12 +489,12 @@ namespace silly
         if ( !returnType.empty() )
         {
             mlir::arith::ConstantOp zero = builder.create<mlir::arith::ConstantOp>(
-                loc, returnType[0], builder.getIntegerAttr( returnType[0], 0 ) );
-            returnOp = builder.create<silly::ReturnOp>( loc, mlir::ValueRange{ zero } );
+                endLoc, returnType[0], builder.getIntegerAttr( returnType[0], 0 ) );
+            returnOp = builder.create<silly::ReturnOp>( endLoc, mlir::ValueRange{ zero } );
         }
         else
         {
-            returnOp = builder.create<silly::ReturnOp>( loc, mlir::ValueRange{} );
+            returnOp = builder.create<silly::ReturnOp>( endLoc, mlir::ValueRange{} );
         }
 
 
@@ -524,7 +541,11 @@ namespace silly
     try
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
+        LocPairs locs = getLocations( ctx );
+
+        LLVM_DEBUG( {
+            llvm::errs() << std::format("enterFunction: startLoc: {}, endLoc: {}:\n", formatLocation(locs.first), formatLocation(locs.second));
+            });
 
         mainIP = builder.saveInsertionPoint();
 
@@ -559,9 +580,9 @@ namespace silly
             mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
 
         mlir::FunctionType funcType = builder.getFunctionType( paramTypes, returns );
-        mlir::func::FuncOp funcOp = builder.create<mlir::func::FuncOp>( loc, funcName, funcType, attrs );
-        createScope( loc, funcOp, funcName, paramNames );
-        setLastLoc( loc );
+        mlir::func::FuncOp funcOp = builder.create<mlir::func::FuncOp>( locs.first, funcName, funcType, attrs );
+        createScope( locs.first, locs.second, funcOp, funcName, paramNames );
+        setLastLoc( locs.first );
     }
     CATCH_USER_ERROR
 
