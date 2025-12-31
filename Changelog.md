@@ -90,6 +90,7 @@ define i32 @main() !dbg !4 {
 * parser: merge mainFirstTime into getLocation, removing all calls to it.  i.e.: any time we process a location for the first time is a good time to generate the main wrapper.
 * note bug in function.silly DI (while stepping into CALL, not just after.)
 * make getLocation bool param required and explicit.
+* purge parser functions: setLastLoc, getLastLoc (and PerFuncState::lastLoc).  Switched to getStop() based token location.
 
 ## tag: V6 (Dec 28, 2025)
 

@@ -3,8 +3,6 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   altlr4 parse tree listener and MLIR builder.
 ///
-#include "parser.hpp"
-
 #include <llvm/Support/Debug.h>
 #include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
@@ -20,6 +18,7 @@
 #include <format>
 
 #include "SillyExceptions.hpp"
+#include "parser.hpp"
 
 #define DEBUG_TYPE "silly-parser"
 
@@ -38,7 +37,7 @@ namespace silly
     {
         if ( !functionStateMap.contains( funcName ) )
         {
-            functionStateMap[funcName] = std::make_unique<PerFunctionState>( builder.getUnknownLoc() );
+            functionStateMap[funcName] = std::make_unique<PerFunctionState>( );
         }
 
         return *functionStateMap[funcName];
@@ -110,18 +109,6 @@ namespace silly
         return f.terminatorWasExplcit;
     }
 
-    inline void MLIRListener::setLastLoc( mlir::Location loc )
-    {
-        PerFunctionState &f = funcState( currentFuncName );
-        f.lastLoc = loc;
-    }
-
-    inline mlir::Location MLIRListener::getLastLoc()
-    {
-        PerFunctionState &f = funcState( currentFuncName );
-        return f.lastLoc;
-    }
-
     inline LocPairs MLIRListener::getLocations( antlr4::ParserRuleContext *ctx )
     {
         size_t startLine = 1;
@@ -135,13 +122,15 @@ namespace silly
             startLine = startToken->getLine();
             startCol = startToken->getCharPositionInLine();
 
-            antlr4::Token *endToken = ctx->getStart();
+            antlr4::Token *endToken = ctx->getStop();
             endLine = endToken->getLine();
             endCol = endToken->getCharPositionInLine();
         }
 
-        mlir::FileLineColLoc startLoc = mlir::FileLineColLoc::get( builder.getStringAttr( filename ), startLine, startCol + 1 );
-        mlir::FileLineColLoc endLoc = mlir::FileLineColLoc::get( builder.getStringAttr( filename ), endLine, endCol + 1 );
+        mlir::FileLineColLoc startLoc =
+            mlir::FileLineColLoc::get( builder.getStringAttr( filename ), startLine, startCol + 1 );
+        mlir::FileLineColLoc endLoc =
+            mlir::FileLineColLoc::get( builder.getStringAttr( filename ), endLine, endCol + 1 );
 
         if ( !mainScopeGenerated && ( MLIRListener::currentFuncName == ENTRY_SYMBOL_NAME ) )
         {
@@ -151,10 +140,16 @@ namespace silly
             std::vector<std::string> paramNames;
             createScope( startLoc, endLoc, funcOp, ENTRY_SYMBOL_NAME, paramNames );
 
+#if 0
+            startRule
+  : (statement|comment)* (exitStatement ENDOFSTATEMENT_TOKEN)? comment* EOF
+  ;
+#endif
+
             mainScopeGenerated = true;
         }
 
-        return {startLoc, endLoc};
+        return { startLoc, endLoc };
     }
 
     inline mlir::Location MLIRListener::getLocation( antlr4::ParserRuleContext *ctx, bool useStopLocation )
@@ -450,11 +445,12 @@ namespace silly
         tyPtr = mlir::LLVM::LLVMPointerType::get( ctx );
     }
 
-    void MLIRListener::createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp funcOp, const std::string &funcName,
-                                    const std::vector<std::string> &paramNames )
+    void MLIRListener::createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp funcOp,
+                                    const std::string &funcName, const std::vector<std::string> &paramNames )
     {
         LLVM_DEBUG( {
-            llvm::errs() << std::format( "createScope: {}: startLoc: {}, endLoc: {}\n", funcName, formatLocation(startLoc), formatLocation(endLoc) );
+            llvm::errs() << std::format( "createScope: {}: startLoc: {}, endLoc: {}\n", funcName,
+                                         formatLocation( startLoc ), formatLocation( endLoc ) );
         } );
         mlir::Block &block = *funcOp.addEntryBlock();
         builder.setInsertionPointToStart( &block );
@@ -515,7 +511,6 @@ namespace silly
         assert( ctx );
         currentFuncName = ENTRY_SYMBOL_NAME;
         mlir::Location loc = getLocation( ctx, false );
-        setLastLoc( loc );
     }
     CATCH_USER_ERROR
 
@@ -544,8 +539,9 @@ namespace silly
         LocPairs locs = getLocations( ctx );
 
         LLVM_DEBUG( {
-            llvm::errs() << std::format("enterFunction: startLoc: {}, endLoc: {}:\n", formatLocation(locs.first), formatLocation(locs.second));
-            });
+            llvm::errs() << std::format( "enterFunction: startLoc: {}, endLoc: {}:\n", formatLocation( locs.first ),
+                                         formatLocation( locs.second ) );
+        } );
 
         mainIP = builder.saveInsertionPoint();
 
@@ -582,7 +578,6 @@ namespace silly
         mlir::FunctionType funcType = builder.getFunctionType( paramTypes, returns );
         mlir::func::FuncOp funcOp = builder.create<mlir::func::FuncOp>( locs.first, funcName, funcType, attrs );
         createScope( locs.first, locs.second, funcOp, funcName, paramNames );
-        setLastLoc( locs.first );
     }
     CATCH_USER_ERROR
 
@@ -590,14 +585,21 @@ namespace silly
     try
     {
         assert( ctx );
-        mlir::Location lastLoc = getLastLoc();
+        SillyParser::ReturnStatementContext * r = ctx->returnStatement();
+
+        mlir::Location loc = getLocation( r, true );
+        LLVM_DEBUG( {
+            llvm::errs() << std::format( "exitFunction: currentFunction: {}, location: {}\n", currentFuncName,
+                                         formatLocation( loc ) );
+            ;
+        } );
 
         // This is in case the grammar enforcement of a RETURN at end of FUNCTION is removed (which would make sense,
         // and is also desirable when control flow is added.) For now, still have enforced mandatory RETURN at
         // function-end in the grammar.
         if ( !wasTerminatorExplicit() )
         {
-            processReturnLike<SillyParser::LiteralContext>( lastLoc, nullptr, nullptr, nullptr );
+            processReturnLike<SillyParser::LiteralContext>( loc, nullptr, nullptr, nullptr );
         }
 
         builder.restoreInsertionPoint( mainIP );
@@ -664,7 +666,6 @@ namespace silly
             return;
 
         mlir::Location loc = getLocation( ctx, false );
-        setLastLoc( loc );
 
         handleCall( ctx );
     }
@@ -675,7 +676,6 @@ namespace silly
     {
         assert( ctx );
         mlir::Location loc = getLocation( ctx, false );
-        setLastLoc( loc );
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
 
@@ -688,7 +688,6 @@ namespace silly
     {
         assert( ctx );
         mlir::Location loc = getLocation( ctx, false );
-        setLastLoc( loc );
         std::string varName = ctx->IDENTIFIER()->getText();
         registerDeclaration( loc, varName, tyI1, ctx->arrayBoundsExpression() );
     }
@@ -699,7 +698,6 @@ namespace silly
     {
         assert( ctx );
         mlir::Location loc = getLocation( ctx, false );
-        setLastLoc( loc );
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
 
@@ -733,7 +731,6 @@ namespace silly
     {
         assert( ctx );
         mlir::Location loc = getLocation( ctx, false );
-        setLastLoc( loc );
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
 
@@ -759,7 +756,6 @@ namespace silly
     {
         assert( ctx );
         mlir::Location loc = getLocation( ctx, false );
-        setLastLoc( loc );
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
         SillyParser::ArrayBoundsExpressionContext *arrayBounds = ctx->arrayBoundsExpression();
@@ -1012,7 +1008,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterElifStatement(SillyParser::ElifStatementContext * ctx )
+    void MLIRListener::enterElifStatement( SillyParser::ElifStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1024,7 +1020,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::exitElifStatement(SillyParser::ElifStatementContext * ctx )
+    void MLIRListener::exitElifStatement( SillyParser::ElifStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1037,7 +1033,6 @@ namespace silly
     {
         assert( ctx );
         mlir::Location loc = getLocation( ctx, true );
-        setLastLoc( loc );
 
         LLVM_DEBUG( { llvm::errs() << std::format( "For: {}\n", ctx->getText() ); } );
 
@@ -1149,7 +1144,6 @@ namespace silly
     {
         assert( ctx );
         mlir::Location loc = getLocation( ctx, false );
-        setLastLoc( loc );
 
         mlir::Type varType;
 
@@ -1209,14 +1203,14 @@ namespace silly
         }
         else if ( SillyParser::NumericLiteralContext *theNumber = ctx->numericLiteral() )
         {
-            mlir::Value n = buildNonStringUnaryExpression( loc, nullptr, theNumber->INTEGER_PATTERN(), theNumber->FLOAT_PATTERN(),
-                                                           nullptr, nullptr );
+            mlir::Value n = buildNonStringUnaryExpression( loc, nullptr, theNumber->INTEGER_PATTERN(),
+                                                           theNumber->FLOAT_PATTERN(), nullptr, nullptr );
             builder.create<silly::PrintOp>( loc, n );
         }
         else if ( SillyParser::BooleanLiteralContext *theBoolean = ctx->booleanLiteral() )
         {
-            mlir::Value b = buildNonStringUnaryExpression( loc, theBoolean->BOOLEAN_PATTERN(), nullptr, nullptr,
-                                                           nullptr, nullptr );
+            mlir::Value b =
+                buildNonStringUnaryExpression( loc, theBoolean->BOOLEAN_PATTERN(), nullptr, nullptr, nullptr, nullptr );
             builder.create<silly::PrintOp>( loc, b );
         }
         else
@@ -1233,7 +1227,6 @@ namespace silly
     {
         assert( ctx );
         mlir::Location loc = getLocation( ctx, false );
-        setLastLoc( loc );
 
         SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = ctx->scalarOrArrayElement();
         if ( scalarOrArrayElement )
@@ -1471,7 +1464,6 @@ namespace silly
     {
         assert( ctx );
         mlir::Location loc = getLocation( ctx, false );
-        setLastLoc( loc );
 
         SillyParser::LiteralContext *lit = ctx->literal();
         processReturnLike<SillyParser::LiteralContext>( loc, lit, ctx->scalarOrArrayElement(),
@@ -1484,7 +1476,6 @@ namespace silly
     {
         assert( ctx );
         mlir::Location loc = getLocation( ctx, false );
-        setLastLoc( loc );
 
         SillyParser::NumericLiteralContext *lit = ctx->numericLiteral();
 
@@ -1498,7 +1489,6 @@ namespace silly
         assert( ctx );
         assignmentTargetValid = true;
         mlir::Location loc = getLocation( ctx, false );
-        setLastLoc( loc );
         SillyParser::ScalarOrArrayElementContext *lhs = ctx->scalarOrArrayElement();
         assert( lhs );
         assert( lhs->IDENTIFIER() );
@@ -1566,7 +1556,6 @@ namespace silly
             return;
         }
         mlir::Location loc = getLocation( ctx, false );
-        setLastLoc( loc );
         mlir::Value resultValue;
 
         silly::DeclareOp declareOp = lookupDeclareForVar( loc, currentVarName );

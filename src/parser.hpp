@@ -85,13 +85,10 @@ namespace silly
         /// Associated func::FuncOp.
         mlir::Operation *funcOp{};
 
-        /// Last location seen in this function.
-        mlir::Location lastLoc;
-
         /// True if return/exit was explicit.
         bool terminatorWasExplcit{};
 
-        PerFunctionState( mlir::Location loc ) : lastLoc( loc )
+        PerFunctionState( )
         {
         }
     };
@@ -268,9 +265,6 @@ namespace silly
         inline mlir::func::FuncOp getFuncOp( mlir::Location loc, const std::string &funcName );
         inline void markExplicitTerminator();
         inline bool wasTerminatorExplicit();
-        inline void setLastLoc( mlir::Location loc );
-        inline mlir::Location getLastLoc();
-
 
         /// Parses scalar type string to MLIR type.
         mlir::Type parseScalarType( const std::string &ty );

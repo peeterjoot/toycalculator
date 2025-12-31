@@ -70,8 +70,10 @@
 * Debugging:
 
   - Dwarf DI test cases.
-  - Figure out what I'm doing with the setLastLoc/getLastLoc functions.  Am guessing all such calls should be handled some other way.
-    -- have adjusted createScope -- think it looks right, but still getting DI jumping around.  Suspect I've got a global module reference somewhere
+  - Review PerFunctionState -- can any of that be purged?
+  - Can I remove any of the return/exit rewrite complexity, and just generate those in the exit handlers?  should be able to look for EXIT context in
+    the parser state, and always have a RETURN context in a function body (as currently enforced by the grammar.)
+  - Have adjusted createScope -- think it looks right, but still getting DI jumping around.  Suspect I've got a global module reference somewhere
     in lowering when the DI is created? -- review that.
 
   - t/c function.silly:
