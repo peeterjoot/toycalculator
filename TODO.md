@@ -70,9 +70,6 @@
 * Debugging:
 
   - Dwarf DI test cases.
-  - Review PerFunctionState -- can any of that be purged?
-  - Can I remove any of the return/exit rewrite complexity, and just generate those in the exit handlers?  should be able to look for EXIT context in
-    the parser state, and always have a RETURN context in a function body (as currently enforced by the grammar.)
   - Have adjusted createScope -- think it looks right, but still getting DI jumping around.  Suspect I've got a global module reference somewhere
     in lowering when the DI is created? -- review that.
 

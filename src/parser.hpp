@@ -85,9 +85,6 @@ namespace silly
         /// Associated func::FuncOp.
         mlir::Operation *funcOp{};
 
-        /// True if return/exit was explicit.
-        bool terminatorWasExplcit{};
-
         PerFunctionState( )
         {
         }
@@ -263,8 +260,6 @@ namespace silly
         inline VariableState getVarState( const std::string &varName );
         inline void setFuncOp( mlir::Operation *op );
         inline mlir::func::FuncOp getFuncOp( mlir::Location loc, const std::string &funcName );
-        inline void markExplicitTerminator();
-        inline bool wasTerminatorExplicit();
 
         /// Parses scalar type string to MLIR type.
         mlir::Type parseScalarType( const std::string &ty );
@@ -291,7 +286,7 @@ namespace silly
         /// Emits silly::ReturnOp (or exit equivalent) with optional value.
         template <class Literal>
         void processReturnLike( mlir::Location loc, Literal *lit,
-                                SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *boolNode );
+                                SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *boolNode);
 
 
         void createElseBlock( mlir::Location loc, SillyParser::ElseStatementContext *ctx );

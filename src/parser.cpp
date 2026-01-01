@@ -37,7 +37,7 @@ namespace silly
     {
         if ( !functionStateMap.contains( funcName ) )
         {
-            functionStateMap[funcName] = std::make_unique<PerFunctionState>( );
+            functionStateMap[funcName] = std::make_unique<PerFunctionState>();
         }
 
         return *functionStateMap[funcName];
@@ -97,18 +97,6 @@ namespace silly
         return op;
     }
 
-    inline void MLIRListener::markExplicitTerminator()
-    {
-        PerFunctionState &f = funcState( currentFuncName );
-        f.terminatorWasExplcit = true;
-    }
-
-    inline bool MLIRListener::wasTerminatorExplicit()
-    {
-        PerFunctionState &f = funcState( currentFuncName );
-        return f.terminatorWasExplcit;
-    }
-
     inline LocPairs MLIRListener::getLocations( antlr4::ParserRuleContext *ctx )
     {
         size_t startLine = 1;
@@ -139,12 +127,6 @@ namespace silly
 
             std::vector<std::string> paramNames;
             createScope( startLoc, endLoc, funcOp, ENTRY_SYMBOL_NAME, paramNames );
-
-#if 0
-            startRule
-  : (statement|comment)* (exitStatement ENDOFSTATEMENT_TOKEN)? comment* EOF
-  ;
-#endif
 
             mainScopeGenerated = true;
         }
@@ -477,30 +459,6 @@ namespace silly
             dcl->setAttr( "sym_name", strAttr );
         }
 
-        // Insert a default silly::ReturnOp terminator (with no operands, or default zero return for scalar return
-        // functions, like main). This will be replaced later with an silly::ReturnOp with the actual return code if
-        // desired.
-        mlir::TypeRange returnType = funcOp.getFunctionType().getResults();
-        mlir::Operation *returnOp = nullptr;
-        if ( !returnType.empty() )
-        {
-            mlir::arith::ConstantOp zero = builder.create<mlir::arith::ConstantOp>(
-                endLoc, returnType[0], builder.getIntegerAttr( returnType[0], 0 ) );
-            returnOp = builder.create<silly::ReturnOp>( endLoc, mlir::ValueRange{ zero } );
-        }
-        else
-        {
-            returnOp = builder.create<silly::ReturnOp>( endLoc, mlir::ValueRange{} );
-        }
-
-
-        LLVM_DEBUG( {
-            llvm::errs() << std::format( "Created mlir::func::FuncOp stub for function {}\n", funcName );
-            funcOp.dump();
-        } );
-
-        builder.setInsertionPoint( returnOp );    // Set insertion point *before* the saved silly::ReturnOp
-
         currentFuncName = funcName;
         setFuncOp( funcOp );
     }
@@ -510,7 +468,6 @@ namespace silly
     {
         assert( ctx );
         currentFuncName = ENTRY_SYMBOL_NAME;
-        mlir::Location loc = getLocation( ctx, false );
     }
     CATCH_USER_ERROR
 
@@ -520,7 +477,7 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getLocation( ctx, true );
 
-        if ( !wasTerminatorExplicit() )
+        if ( !ctx->exitStatement() )
         {
             processReturnLike<SillyParser::NumericLiteralContext>( loc, nullptr, nullptr, nullptr );
         }
@@ -585,7 +542,7 @@ namespace silly
     try
     {
         assert( ctx );
-        SillyParser::ReturnStatementContext * r = ctx->returnStatement();
+        SillyParser::ReturnStatementContext *r = ctx->returnStatement();
 
         mlir::Location loc = getLocation( r, true );
         LLVM_DEBUG( {
@@ -593,14 +550,6 @@ namespace silly
                                          formatLocation( loc ) );
             ;
         } );
-
-        // This is in case the grammar enforcement of a RETURN at end of FUNCTION is removed (which would make sense,
-        // and is also desirable when control flow is added.) For now, still have enforced mandatory RETURN at
-        // function-end in the grammar.
-        if ( !wasTerminatorExplicit() )
-        {
-            processReturnLike<SillyParser::LiteralContext>( loc, nullptr, nullptr, nullptr );
-        }
 
         builder.restoreInsertionPoint( mainIP );
 
@@ -664,8 +613,6 @@ namespace silly
         assert( ctx );
         if ( callIsHandled )
             return;
-
-        mlir::Location loc = getLocation( ctx, false );
 
         handleCall( ctx );
     }
@@ -1349,45 +1296,36 @@ namespace silly
     {
         // Handle the dummy ReturnOp originally inserted in the FuncOp's block
         mlir::Block *currentBlock = builder.getInsertionBlock();
-        assert( currentBlock );
-        assert( !currentBlock->empty() );
-        mlir::Operation *parentOp = currentBlock->getParentOp();
-        assert( parentOp );
-        if ( !isa<silly::ScopeOp>( parentOp ) )
+
+        mlir::Type returnType{};
+        bool returnTypeNotEmpty{};
+
+        if ( currentBlock && !currentBlock->empty() )
         {
-            throw ExceptionWithContext(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: RETURN statement must be inside a silly.scope\n",
-                             formatLocation( loc ) ) );
+            mlir::Operation *parentOp = currentBlock->getParentOp();
+            assert( parentOp );
+            if ( !isa<silly::ScopeOp>( parentOp ) )
+            {
+                throw ExceptionWithContext(
+                    __FILE__, __LINE__, __func__,
+                    std::format( "{}internal error: RETURN statement must be inside a silly.scope\n",
+                                 formatLocation( loc ) ) );
+            }
+
+            mlir::func::FuncOp func = parentOp->getParentOfType<mlir::func::FuncOp>();
+            llvm::ArrayRef<mlir::Type> returnTypeArray = func.getFunctionType().getResults();
+
+            if ( !returnTypeArray.empty() )
+            {
+                returnType = returnTypeArray[0];
+                returnTypeNotEmpty = true;
+            }
         }
-
-        mlir::func::FuncOp func = parentOp->getParentOfType<mlir::func::FuncOp>();
-        llvm::ArrayRef<mlir::Type> returnType = func.getFunctionType().getResults();
-
-        if ( !isa<silly::ReturnOp>( currentBlock->getTerminator() ) )
+        else
         {
-            throw ExceptionWithContext(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: Expected silly::ReturnOp terminator\n", formatLocation( loc ) ) );
+            returnType = tyI32;
+            returnTypeNotEmpty = true;
         }
-
-        // Erase existing silly::ReturnOp and its constant
-        mlir::Operation *existingExit = currentBlock->getTerminator();
-        assert( existingExit );
-        mlir::Operation *constantOp{};
-        if ( existingExit->getNumOperands() > 0 )
-        {
-            constantOp = existingExit->getOperand( 0 ).getDefiningOp();
-        }
-        existingExit->erase();
-
-        if ( constantOp && mlir::isa<mlir::arith::ConstantOp>( constantOp ) )
-        {
-            constantOp->erase();
-        }
-
-        // Set insertion point to func::FuncOp block
-        builder.setInsertionPointToEnd( currentBlock );
 
         mlir::Value value{};
 
@@ -1401,21 +1339,21 @@ namespace silly
 
             // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
             // uses arith dialect operations instead of LLVM dialect
-            if ( !returnType.empty() )
+            if ( returnTypeNotEmpty )
             {
-                value = castOpIfRequired( loc, value, returnType[0] );
+                value = castOpIfRequired( loc, value, returnType );
             }
         }
         else
         {
-            if ( !returnType.empty() )
+            if ( returnTypeNotEmpty )
             {
-                if ( mlir::IntegerType intType = mlir::dyn_cast<mlir::IntegerType>( returnType[0] ) )
+                if ( mlir::IntegerType intType = mlir::dyn_cast<mlir::IntegerType>( returnType ) )
                 {
                     unsigned width = intType.getWidth();
                     value = builder.create<mlir::arith::ConstantIntOp>( loc, 0, width );
                 }
-                else if ( mlir::FloatType floatType = mlir::dyn_cast<mlir::FloatType>( returnType[0] ) )
+                else if ( mlir::FloatType floatType = mlir::dyn_cast<mlir::FloatType>( returnType ) )
                 {
                     llvm::APFloat apVal( 0.0 );
                     unsigned w = floatType.getWidth();
@@ -1455,8 +1393,6 @@ namespace silly
         {
             builder.create<silly::ReturnOp>( loc, mlir::ValueRange{} );
         }
-
-        markExplicitTerminator();
     }
 
     void MLIRListener::enterReturnStatement( SillyParser::ReturnStatementContext *ctx )

@@ -91,6 +91,7 @@ define i32 @main() !dbg !4 {
 * note bug in function.silly DI (while stepping into CALL, not just after.)
 * make getLocation bool param required and explicit.
 * purge parser functions: setLastLoc, getLastLoc (and PerFuncState::lastLoc).  Switched to getStop() based token location.
+* Gut the dummy return-logic in createScope, and generate return/exit at function/program exit instead.  This allows for purging the terminator field in PerFunctionState too.
 
 ## tag: V6 (Dec 28, 2025)
 
