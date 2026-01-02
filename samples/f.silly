@@ -1,0 +1,9 @@
+PRINT "hi"; // line 1
+
+FUNCTION bar0 ( ) // line 3
+{
+    PRINT "bar0"; // line 5
+    RETURN; // line 6
+};
+
+CALL bar0(); // line 9

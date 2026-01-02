@@ -411,9 +411,27 @@ namespace silly
 
             mlir::LLVM::DISubroutineTypeAttr subprogramType = createDISubroutineType( funcOp );
 
+            mlir::Location funcLoc = funcOp.getLoc();
+            mlir::FileLineColLoc loc = getLocation( funcLoc );
+            unsigned line = loc.getLine();
+            unsigned scopeLine = line;
+
+            mlir::Region &region = funcOp.getRegion();
+
+            mlir::Block &entryBlock = region.front();
+
+            // Get the location of the First operation in the block for the scopeLine:
+            if (!entryBlock.empty()) {
+              mlir::Operation *firstOp = &entryBlock.front();
+              mlir::Location firstLoc = firstOp->getLoc();
+              mlir::FileLineColLoc scopeLoc = getLocation( firstLoc );
+
+              scopeLine = scopeLoc.getLine();
+            }
+
             mlir::LLVM::DISubprogramAttr sub = mlir::LLVM::DISubprogramAttr::get(
                 context, mlir::DistinctAttr::create( builder.getUnitAttr() ), compileUnitAttr, fileAttr,
-                builder.getStringAttr( funcName ), builder.getStringAttr( funcName ), fileAttr, 1, 1,
+                builder.getStringAttr( funcName ), builder.getStringAttr( funcName ), fileAttr, line, scopeLine,
                 mlir::LLVM::DISubprogramFlags::Definition, subprogramType, llvm::ArrayRef<mlir::LLVM::DINodeAttr>{},
                 llvm::ArrayRef<mlir::LLVM::DINodeAttr>{} );
 

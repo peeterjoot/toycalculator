@@ -70,25 +70,6 @@
 * Debugging:
 
   - Dwarf DI test cases.
-  - Have adjusted createScope -- think it looks right, but still getting DI jumping around.  Suspect I've got a global module reference somewhere
-    in lowering when the DI is created? -- review that.
-
-  - t/c function.silly:
-
-```
-Breakpoint 1, main () at function.silly:32
-32      PRINT "Hello functions.";
-(gdb) n
-Hello functions.
-34      CALL bar0();
-(gdb) s
-bar0 () at function.silly:1
-1       FUNCTION plus3( INT32 v ) : INT32
-(gdb) s
-22          PRINT "bar0";
-```
-
-    location showing as line 1, not line 20!
 
   - t/c: function.silly:
 
