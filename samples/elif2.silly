@@ -1,0 +1,14 @@
+INT32 x;
+
+x = 3;
+
+IF ( x > 4 )
+{
+   PRINT x;
+}
+ELIF ( x < 5 )
+{
+   PRINT "Bug if we don't get here.";
+};
+
+PRINT "Done.";

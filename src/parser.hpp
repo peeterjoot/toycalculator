@@ -85,7 +85,7 @@ namespace silly
         /// Associated func::FuncOp.
         mlir::Operation *funcOp{};
 
-        PerFunctionState( )
+        PerFunctionState()
         {
         }
     };
@@ -230,8 +230,8 @@ namespace silly
 
 
         /// Creates a silly::ScopeOp and initializes function state.
-        void createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp func, const std::string &funcName,
-                          const std::vector<std::string> &paramNames );
+        void createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp func,
+                          const std::string &funcName, const std::vector<std::string> &paramNames );
 
         /// Formats location for error messages.
         inline std::string formatLocation( mlir::Location loc ) const;
@@ -286,10 +286,11 @@ namespace silly
         /// Emits silly::ReturnOp (or exit equivalent) with optional value.
         template <class Literal>
         void processReturnLike( mlir::Location loc, Literal *lit,
-                                SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *boolNode);
+                                SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *boolNode );
 
 
-        void createElseBlock( mlir::Location loc, SillyParser::ElseStatementContext *ctx );
+        void createElseBlock( mlir::Location loc, const std::string & errorText );
+        void createIf( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue );
     };
 
     inline mlir::ModuleOp &MLIRListener::getModule()

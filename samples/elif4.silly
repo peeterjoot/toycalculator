@@ -9,6 +9,10 @@ IF ( x < 4 )
 ELIF ( x > 5 )
 {
    PRINT "Bug if we get here.";
+}
+ELSE
+{
+   PRINT "Bug if we get here too.";
 };
 
 PRINT 42;

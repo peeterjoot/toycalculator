@@ -816,6 +816,18 @@ namespace silly
         return conditionPredicate;
     }
 
+    void MLIRListener::createIf( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue )
+    {
+        mlir::Value conditionPredicate = MLIRListener::parsePredicate( loc, booleanValue );
+
+        insertionPointStack.push_back( builder.saveInsertionPoint() );
+
+        mlir::scf::IfOp ifOp = builder.create<mlir::scf::IfOp>( loc, conditionPredicate );
+
+        mlir::Block &thenBlock = ifOp.getThenRegion().front();
+        builder.setInsertionPointToStart( &thenBlock );
+    }
+
     void MLIRListener::enterIfelifelse( SillyParser::IfelifelseContext *ctx )
     try
     {
@@ -837,14 +849,7 @@ namespace silly
             std::cout << "\n";
         } );
 
-        mlir::Value conditionPredicate = MLIRListener::parsePredicate( loc, booleanValue );
-
-        insertionPointStack.push_back( builder.saveInsertionPoint() );
-
-        mlir::scf::IfOp ifOp = builder.create<mlir::scf::IfOp>( loc, conditionPredicate );
-
-        mlir::Block &thenBlock = ifOp.getThenRegion().front();
-        builder.setInsertionPointToStart( &thenBlock );
+        createIf( loc, booleanValue );
     }
     CATCH_USER_ERROR
 
@@ -889,7 +894,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::createElseBlock( mlir::Location loc, SillyParser::ElseStatementContext *ctx )
+    void MLIRListener::createElseBlock( mlir::Location loc, const std::string & errorText )
     {
         mlir::scf::IfOp ifOp;
 
@@ -914,7 +919,7 @@ namespace silly
             throw ExceptionWithContext(
                 __FILE__, __LINE__, __func__,
                 std::format( "{}internal error: Could not find scf.if op corresponding to this if statement\n",
-                             formatLocation( loc ), ctx->getText() ) );
+                             formatLocation( loc ), errorText ) );
         }
 
         mlir::Region &elseRegion = ifOp.getElseRegion();
@@ -922,7 +927,7 @@ namespace silly
         {
             throw ExceptionWithContext( __FILE__, __LINE__, __func__,
                                         std::format( "{}internal error: Expected empty else region\n",
-                                                     formatLocation( loc ), ctx->getText() ) );
+                                                     formatLocation( loc ), errorText ) );
         }
 
         elseRegion.emplaceBlock();    // creates one empty block
@@ -937,7 +942,7 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getLocation( ctx, false );
 
-        createElseBlock( loc, ctx );
+        createElseBlock( loc, ctx->getText() );
     }
     CATCH_USER_ERROR
 
@@ -961,9 +966,11 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getLocation( ctx, false );
 
-        throw ExceptionWithContext(
-            __FILE__, __LINE__, __func__,
-            std::format( "{}internal error: ELIF NYI: {}\n", formatLocation( loc ), ctx->getText() ) );
+        createElseBlock( loc, ctx->getText() );
+
+        SillyParser::BooleanValueContext *booleanValue = ctx->booleanValue();
+
+        createIf( loc, booleanValue );
     }
     CATCH_USER_ERROR
 
@@ -971,7 +978,47 @@ namespace silly
     try
     {
         assert( ctx );
-        assert( 0 && "should not get here yet" );
+        mlir::Location loc = getLocation( ctx, false );
+        //builder.create<mlir::scf::YieldOp>( loc );
+        // All statements in the if-body have now been processed by their own enter/exit callbacks, accumulated
+        // into an scf.if then region.
+
+        antlr4::tree::ParseTree *parent = ctx->parent;
+        assert( parent );
+        SillyParser::IfelifelseContext *ifElifElse = dynamic_cast<SillyParser::IfelifelseContext *>( parent );
+
+        if ( !ifElifElse )
+        {
+            throw ExceptionWithContext(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}internal error: IfStatement parent is not IfelifelseContext: ctx: {}\n",
+                             formatLocation( loc ), ctx->getText() ) );
+        }
+
+        std::vector<SillyParser::ElifStatementContext *> elifs = ifElifElse->elifStatement();
+
+        SillyParser::ElseStatementContext *elseCtx = ifElifElse->elseStatement();
+        if ( elseCtx )
+        {
+        }
+        else if ( elifs.size() != 1 )
+        {
+            assert(0 && "Multiple elif not supported yet.");
+        }
+        else
+        {
+            // Restore EXACTLY where we were before creating the scf.if
+            // This places new ops right AFTER the scf.if
+            builder.restoreInsertionPoint( insertionPointStack.back() );
+            insertionPointStack.pop_back();
+
+            builder.create<mlir::scf::YieldOp>( loc );
+
+            builder.restoreInsertionPoint( insertionPointStack.back() );
+            insertionPointStack.pop_back();
+        }
+
+        // LLVM_DEBUG( { llvm::errs() << "exitIfStatement module dump:\n"; mod->dump(); } );
     }
     CATCH_USER_ERROR
 
@@ -1306,6 +1353,10 @@ namespace silly
             assert( parentOp );
             if ( !isa<silly::ScopeOp>( parentOp ) )
             {
+                LLVM_DEBUG( {
+                    llvm::errs() << std::format( "IP stacking error:\n" );
+                    mod.dump();
+                } );
                 throw ExceptionWithContext(
                     __FILE__, __LINE__, __func__,
                     std::format( "{}internal error: RETURN statement must be inside a silly.scope\n",
