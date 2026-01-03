@@ -94,6 +94,7 @@ define i32 @main() !dbg !4 {
 * Gut the dummy return-logic in createScope, and generate return/exit at function/program exit instead.  This allows for purging the terminator field in PerFunctionState too.
 * Fix the DISubprogramAttr line and scopeline parameters (handles stepping into CALL getting the line numbers wrong).  Simple test case added.
 * driver: Fix deprecated overload warning in TargetMachine construction
+* not.silly: more comprehensive all types testing for unary NOT operator.
 
 ## tag: V6 (Dec 28, 2025)
 

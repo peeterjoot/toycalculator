@@ -150,6 +150,7 @@ lessop
 longstring
 neg
 neqop
+not
 orop
 printboollit
 printlit

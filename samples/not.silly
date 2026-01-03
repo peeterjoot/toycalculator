@@ -1,0 +1,57 @@
+BOOL b;
+BOOL i1;
+INT8 i8;
+INT16 i16;
+INT32 i32;
+INT64 i64;
+
+PRINT "NOT i1(FALSE)";
+i1 = FALSE;
+b = NOT i1;
+PRINT b;
+
+PRINT "NOT i1(TRUE)";
+i1 = TRUE;
+b = NOT i1;
+PRINT b;
+
+PRINT "NOT i8(10):";
+i8 = 10;
+b = NOT i8;
+PRINT b;
+
+PRINT "NOT i16(1000):";
+i16 = 1000;
+b = NOT i16;
+PRINT b;
+
+PRINT "NOT i32(100000):";
+i32 = 100000;
+b = NOT i32;
+PRINT b;
+
+PRINT "NOT i64(100000000000):";
+i64 = 100000000000;
+b = NOT i64;
+PRINT b;
+
+
+PRINT "NOT i8(0):";
+i8 = 0;
+b = NOT i8;
+PRINT b;
+
+PRINT "NOT i16(0):";
+i16 = 0;
+b = NOT i16;
+PRINT b;
+
+PRINT "NOT i32(0):";
+i32 = 0;
+b = NOT i32;
+PRINT b;
+
+PRINT "NOT i64(0):";
+i64 = 0;
+b = NOT i64;
+PRINT b;
