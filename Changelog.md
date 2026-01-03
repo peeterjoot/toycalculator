@@ -96,6 +96,114 @@ define i32 @main() !dbg !4 {
 * driver: Fix deprecated overload warning in TargetMachine construction
 * not.silly: more comprehensive all types testing for unary NOT operator.
 * lowering: purge the last auto variables
+* Implement ELIF.  Was done in the peeter/old/elif-support branch, squashed when merged to master.  This simplifies the IF/ELSE handling considerably.  In particular, I now generate scf.if with both then/else regions automatically, so that there's an implicit terminator.  This means that a program like the following:
+
+```
+INT32 x;
+
+x = 3;
+
+IF ( x < 4 )
+{
+  INT32 y;
+  y = 42;
+  PRINT y;
+};
+
+PRINT "Done.";
+```
+
+now shows up with an empty else block in the MLIR representation:
+
+```
+module {
+  func.func @main() -> i32 {
+    "silly.scope"() ({
+      "silly.declare"() <{type = i32}> {sym_name = "y"} : () -> ()
+      "silly.declare"() <{type = i32}> {sym_name = "x"} : () -> ()
+      %c3_i64 = arith.constant 3 : i64
+      silly.assign @x = %c3_i64 : i64
+      %0 = silly.load @x : i32
+      %c4_i64 = arith.constant 4 : i64
+      %1 = "silly.less"(%0, %c4_i64) : (i32, i64) -> i1
+      scf.if %1 {
+        %c42_i64 = arith.constant 42 : i64
+        silly.assign @y = %c42_i64 : i64
+        %3 = silly.load @y : i32
+        silly.print %3 : i32
+      } else {
+      }
+      %2 = "silly.string_literal"() <{value = "Done."}> : () -> !llvm.ptr
+      silly.print %2 : !llvm.ptr
+      %c0_i32 = arith.constant 0 : i32
+      "silly.return"(%c0_i32) : (i32) -> ()
+    }) : () -> ()
+    "silly.yield"() : () -> ()
+  }
+}
+```
+
+We can represent a program with an ELIF fairly easily as a nested scf.if in that new else block:
+
+```
+INT32 x; // line 1
+
+x = 3; // line 3
+
+IF ( x < 4 ) // line 5
+{
+   PRINT x; // line 7
+}
+ELIF ( x > 5 ) // line 9
+{
+   PRINT "Bug if we get here."; // line 11
+};
+
+PRINT 42; // line 13
+```
+
+This looks like:
+
+```
+module {
+  func.func @main() -> i32 {
+    "silly.scope"() ({
+      "silly.declare"() <{type = i32}> {sym_name = "x"} : () -> () loc(#loc)
+      %c3_i64 = arith.constant 3 : i64 loc(#loc1)
+      silly.assign @x = %c3_i64 : i64 loc(#loc1)
+      %0 = silly.load @x : i32 loc(#loc2)
+      %c4_i64 = arith.constant 4 : i64 loc(#loc2)
+      %1 = "silly.less"(%0, %c4_i64) : (i32, i64) -> i1 loc(#loc2)
+      scf.if %1 {
+        %2 = silly.load @x : i32 loc(#loc3)
+        silly.print %2 : i32 loc(#loc3)
+      } else {
+        %2 = silly.load @x : i32 loc(#loc4)
+        %c5_i64 = arith.constant 5 : i64 loc(#loc4)
+        %3 = "silly.less"(%c5_i64, %2) : (i64, i32) -> i1 loc(#loc4)
+        scf.if %3 {
+          %4 = "silly.string_literal"() <{value = "Bug if we get here."}> : () -> !llvm.ptr loc(#loc5)
+          silly.print %4 : !llvm.ptr loc(#loc5)
+        } else {
+        } loc(#loc4)
+      } loc(#loc2)
+      %c42_i64 = arith.constant 42 : i64 loc(#loc6)
+      silly.print %c42_i64 : i64 loc(#loc6)
+      %c0_i32 = arith.constant 0 : i32 loc(#loc)
+      "silly.return"(%c0_i32) : (i32) -> () loc(#loc)
+    }) : () -> () loc(#loc)
+    "silly.yield"() : () -> () loc(#loc7)
+  } loc(#loc)
+} loc(#loc)
+#loc = loc("elif.silly":1:1)
+#loc1 = loc("elif.silly":3:5)
+#loc2 = loc("elif.silly":5:1)
+#loc3 = loc("elif.silly":7:4)
+#loc4 = loc("elif.silly":9:1)
+#loc5 = loc("elif.silly":11:4)
+#loc6 = loc("elif.silly":14:1)
+#loc7 = loc("elif.silly":1:7)
+```
 
 ## tag: V6 (Dec 28, 2025)
 

@@ -3,7 +3,7 @@
 ----------------------------------
 * Test:
 
-  - a whole range of statements in IF-then and if-ELSE blocks, and FOR (dcl, assignment, call, ...)
+  - a whole range of statements in IF-then and if-ELSE blocks, and FOR (dcl, assignment, call, ...).  Especially IFs in IF/ELIF/ELSE!
   - tests for all the type conversions (i.e.: binary and unary arith operators)
 
 ----------------------------------
@@ -11,6 +11,7 @@
   - lowering error handling is pschizophrenic: mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
   - Move scf lowering into 1st pass?  Attempt at this in xpgn:streamline-passes-attempt branch (not pushed.)
   - Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
+  - Final version of ELIF support meant that I didn't need getStopLocation() anymore (was using it to generate scf.yield with the end of the block location).  Review that and decide what to do with it.
 
 ----------------------------------
 * PRINT.  Allow a list of values, instead of just one (print all to one line.)
@@ -31,7 +32,7 @@
 ----------------------------------
 * Control flow:
   - Should implement a break-like keyword for the FOR loop.  That would allow for a "poor man's while", with an effectively infinite very large loop bound.
-  - AND/OR: Implement ELIF/WHILE/DO/BREAK/CONTINUE statements.
+  - AND/OR: Implement WHILE/DO/BREAK/CONTINUE statements.
 
 ----------------------------------
 * Tablegen/MLIR:

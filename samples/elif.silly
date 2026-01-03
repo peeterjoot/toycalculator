@@ -1,36 +1,14 @@
-INT32 x;
+INT32 x; // line 1
 
-x = 3;
+x = 3; // line 3
 
-IF ( x < 4 )
+IF ( x < 4 ) // line 5
 {
-   PRINT x;
+   PRINT x; // line 7
 }
-ELIF ( x > 5 )
+ELIF ( x > 5 ) // line 9
 {
-   PRINT "Bug if we get here.";
+   PRINT "Bug if we get here."; // line 11
 };
 
-IF ( x > 4 )
-{
-   PRINT x;
-}
-ELIF ( x < 5 )
-{
-   PRINT "Bug if we don't get here.";
-};
-
-IF ( x < 4 )
-{
-   PRINT x;
-}
-ELIF ( x > 5 )
-{
-   PRINT "Bug if we get here.";
-}
-ELSE
-{
-   PRINT "Bug if we get here too.";
-};
-
-PRINT "Done.";
+PRINT 42; // line 13

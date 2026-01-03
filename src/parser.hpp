@@ -85,7 +85,7 @@ namespace silly
         /// Associated func::FuncOp.
         mlir::Operation *funcOp{};
 
-        PerFunctionState( )
+        PerFunctionState()
         {
         }
     };
@@ -111,13 +111,10 @@ namespace silly
         void enterStartRule( SillyParser::StartRuleContext *ctx ) override;
         void exitStartRule( SillyParser::StartRuleContext *ctx ) override;
 
-        void enterIfelifelse( SillyParser::IfelifelseContext *ctx ) override;
-        void exitIfStatement( SillyParser::IfStatementContext *ctx ) override;
+        void enterIfStatement( SillyParser::IfStatementContext *ctx ) override;
         void enterElifStatement( SillyParser::ElifStatementContext *ctx ) override;
-        void exitElifStatement( SillyParser::ElifStatementContext *ctx ) override;
-
         void enterElseStatement( SillyParser::ElseStatementContext *ctx ) override;
-        void exitElseStatement( SillyParser::ElseStatementContext *ctx ) override;
+        void exitIfelifelse( SillyParser::IfelifelseContext *ctx ) override;
 
         void enterFunction( SillyParser::FunctionContext *ctx ) override;
         void enterCall( SillyParser::CallContext *ctx ) override;
@@ -219,19 +216,24 @@ namespace silly
         /// Looks up DeclareOp for a variable.
         silly::DeclareOp lookupDeclareForVar( mlir::Location loc, const std::string &varName );
 
+        /// Construct locations from the getStart() and getStop() tokens.
+        /// Side effect: Creates a silly::ScopeOp for main, if not already done.
         inline LocPairs getLocations( antlr4::ParserRuleContext *ctx );
 
-        /// Computes location from parser context.
+        /// Computes start location from parser context.
         /// Side effect: Creates a silly::ScopeOp for main, if not already done.
-        inline mlir::Location getLocation( antlr4::ParserRuleContext *ctx, bool useStopLocation );
+        inline mlir::Location getStartLocation( antlr4::ParserRuleContext *ctx );
+
+        /// Computes stop location from parser context.
+        /// Side effect: Creates a silly::ScopeOp for main, if not already done.
+        inline mlir::Location getStopLocation( antlr4::ParserRuleContext *ctx );
 
         /// Strip double quotes off of a string.
         inline std::string stripQuotes( mlir::Location loc, const std::string &input ) const;
 
-
         /// Creates a silly::ScopeOp and initializes function state.
-        void createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp func, const std::string &funcName,
-                          const std::vector<std::string> &paramNames );
+        void createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp func,
+                          const std::string &funcName, const std::vector<std::string> &paramNames );
 
         /// Formats location for error messages.
         inline std::string formatLocation( mlir::Location loc ) const;
@@ -286,10 +288,12 @@ namespace silly
         /// Emits silly::ReturnOp (or exit equivalent) with optional value.
         template <class Literal>
         void processReturnLike( mlir::Location loc, Literal *lit,
-                                SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *boolNode);
+                                SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *boolNode );
 
 
-        void createElseBlock( mlir::Location loc, SillyParser::ElseStatementContext *ctx );
+        void createIf( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue, bool saveIP );
+
+        void selectElseBlock( mlir::Location loc, const std::string & errorText );
     };
 
     inline mlir::ModuleOp &MLIRListener::getModule()
