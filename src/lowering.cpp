@@ -609,7 +609,7 @@ namespace silly
     mlir::LLVM::GlobalOp LoweringContext::lookupGlobalOp( mlir::StringAttr& stringLit )
     {
         mlir::LLVM::GlobalOp globalOp;
-        auto it = stringLiterals.find( stringLit.str() );
+        StringLit2GlobalOp::iterator it = stringLiterals.find( stringLit.str() );
         if ( it != stringLiterals.end() )
         {
             globalOp = it->second;
@@ -625,7 +625,7 @@ namespace silly
                                                                   size_t strLen )
     {
         mlir::LLVM::GlobalOp globalOp;
-        auto it = stringLiterals.find( stringLit.str() );
+        StringLit2GlobalOp::iterator it = stringLiterals.find( stringLit.str() );
         if ( it != stringLiterals.end() )
         {
             globalOp = it->second;
@@ -1177,7 +1177,7 @@ namespace silly
             }
             else    // ARRAY ELEMENT or UNSUPPORTED ASSIGNMENT
             {
-                auto optIndex = assignOp.getIndex();    // std::optional<Value>
+                mlir::TypedValue<mlir::IndexType> optIndex = assignOp.getIndex();    // std::optional<Value>
 
                 if ( !optIndex )
                 {
@@ -1399,7 +1399,7 @@ namespace silly
 
             std::string varName = loadOp.getVarNameAttr().getRootReference().getValue().str();
             mlir::LLVM::AllocaOp allocaOp = lState.lookupLocalSymbolReference( loadOp, varName );
-            auto optIndex = loadOp.getIndex();
+            mlir::TypedValue<mlir::IndexType> optIndex = loadOp.getIndex();
 
             LLVM_DEBUG( llvm::dbgs() << "varName: " << varName << '\n' );
 

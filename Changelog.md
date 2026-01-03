@@ -95,6 +95,7 @@ define i32 @main() !dbg !4 {
 * Fix the DISubprogramAttr line and scopeline parameters (handles stepping into CALL getting the line numbers wrong).  Simple test case added.
 * driver: Fix deprecated overload warning in TargetMachine construction
 * not.silly: more comprehensive all types testing for unary NOT operator.
+* lowering: purge the last auto variables
 
 ## tag: V6 (Dec 28, 2025)
 

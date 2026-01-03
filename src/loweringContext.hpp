@@ -192,7 +192,8 @@ namespace silly
         std::unordered_map<std::string, mlir::LLVM::DISubprogramAttr> subprogramAttr;
 
         /// Map from string literal content to its GlobalOp.
-        std::unordered_map<std::string, mlir::LLVM::GlobalOp> stringLiterals;
+        using StringLit2GlobalOp = std::unordered_map<std::string, mlir::LLVM::GlobalOp>;
+        StringLit2GlobalOp stringLiterals;
 
         /// Prototype for __silly_print_f64.
         mlir::func::FuncOp printFuncF64;
