@@ -93,7 +93,7 @@ int main( int argc, char **argv )
     assert( target );
     llvm::TargetOptions options;
     auto targetMachine = std::unique_ptr<llvm::TargetMachine>( target->createTargetMachine(
-        targetTriple, "generic", "", options, std::optional<llvm::Reloc::Model>( llvm::Reloc::PIC_ ) ) );
+        triple, "generic", "", options, std::optional<llvm::Reloc::Model>( llvm::Reloc::PIC_ ) ) );
     assert( targetMachine );
     std::string dataLayoutStr = targetMachine->createDataLayout().getStringRepresentation();
 

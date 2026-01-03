@@ -69,9 +69,9 @@
 ----------------------------------
 * Debugging:
 
-  - Dwarf DI test cases.
+  - Expand Dwarf DI test cases (have just one in `bin/testit` for `samples/f.silly`, and it is completely manual, and only checks bar0 line number.)
 
-  - t/c: function.silly:
+  - t/c: function.silly: see if this is still and issue, and debug it, if it is:
 
     line stepping behaves wrong after CALL too, showing the wrong line after some calls:
 

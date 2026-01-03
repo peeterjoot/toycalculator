@@ -92,7 +92,8 @@ define i32 @main() !dbg !4 {
 * make getLocation bool param required and explicit.
 * purge parser functions: setLastLoc, getLastLoc (and PerFuncState::lastLoc).  Switched to getStop() based token location.
 * Gut the dummy return-logic in createScope, and generate return/exit at function/program exit instead.  This allows for purging the terminator field in PerFunctionState too.
-* Fix the DISubprogramAttr line and scopeline parameters (handles stepping into CALL getting the line numbers wrong)
+* Fix the DISubprogramAttr line and scopeline parameters (handles stepping into CALL getting the line numbers wrong).  Simple test case added.
+* driver: Fix deprecated overload warning in TargetMachine construction
 
 ## tag: V6 (Dec 28, 2025)
 

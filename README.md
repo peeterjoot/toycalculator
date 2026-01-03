@@ -79,6 +79,8 @@ As an example of the pain of working with AI tools, here's a trivial example: I 
 
 ## Command line options
 
+Once built, the compiler driver can be run with `build/silly` with options including
+
 * `--output-directory`
 * `--emit-llvm`
 * `--emit-mlir`
@@ -91,6 +93,16 @@ As an example of the pain of working with AI tools, here's a trivial example: I 
 * `--stdout`.  MLIR and LLVM-IR output to stdout instead of to files.
 * `--no-emit-object`
 * `-c` (compile only, and don't link.)
+
+Examples
+
+```
+cd samples
+rm -rf out
+mkdir out
+../build/silly --output-directory out f.silly -g --emit-llvm --emit-mlir --debug
+../build/silly --output-directory out f.silly -O 2
+```
 
 ## Building
 

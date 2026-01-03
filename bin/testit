@@ -123,6 +123,7 @@ eqop
 exit3
 exitarrayelement
 exitx
+f
 foo
 function
 function_add
@@ -270,6 +271,19 @@ foreach my $stem (sort @alltests)
     {
         my $msg = "ERROR: COMPARE FILE NOT FOUND: expected/$stem.out\n";
         push( @warnings, $msg );
+    }
+
+    # DI testing HACK for one issue, now fixed:
+    if ( $stem eq 'f' )
+    {
+        # Could check a lot more, but start with this:
+        my $cmd = qq(dwarfdump out/f.o | tee out/f.dd | grep -A3 DW_AT_linkage_name.*bar0 | tail -1);
+        my $line = `$cmd` ; chomp $line;
+
+        unless ( $line =~ /DW_AT_decl_line.*0x00000003/ )
+        {
+            complain( "ERROR: unexpected dwarfdump output for f.silly in out/f.dd.  Expected DW_AT_decl_line 0x00000003, found: '$line'" );
+        }
     }
 }
 

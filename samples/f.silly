@@ -7,3 +7,6 @@ FUNCTION bar0 ( ) // line 3
 };
 
 CALL bar0(); // line 9
+
+// This is a test case used to resolve a dwarf DI instrumentation issue (where line numbers were wrong
+// for the bar0 function.)
