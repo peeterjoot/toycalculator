@@ -844,32 +844,6 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::doneIfElifElse( antlr4::ParserRuleContext *ctx )
-    try
-    {
-#if 0
-        assert( ctx );
-        mlir::Location loc = getStopLocation( ctx );
-        builder.create<mlir::scf::YieldOp>( loc );
-#endif
-    }
-    CATCH_USER_ERROR
-
-    void MLIRListener::exitIfStatement( SillyParser::IfStatementContext *ctx )
-    {
-        doneIfElifElse( ctx );
-    }
-
-    void MLIRListener::exitElifStatement( SillyParser::ElifStatementContext *ctx )
-    {
-        doneIfElifElse( ctx );
-    }
-
-    void MLIRListener::exitElseStatement( SillyParser::ElseStatementContext *ctx )
-    {
-        doneIfElifElse( ctx );
-    }
-
     void MLIRListener::selectElseBlock( mlir::Location loc, const std::string & errorText )
     {
         mlir::scf::IfOp ifOp;

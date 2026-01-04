@@ -112,14 +112,8 @@ namespace silly
         void exitStartRule( SillyParser::StartRuleContext *ctx ) override;
 
         void enterIfStatement( SillyParser::IfStatementContext *ctx ) override;
-        void exitIfStatement( SillyParser::IfStatementContext *ctx ) override;
-
         void enterElifStatement( SillyParser::ElifStatementContext *ctx ) override;
-        void exitElifStatement( SillyParser::ElifStatementContext *ctx ) override;
-
         void enterElseStatement( SillyParser::ElseStatementContext *ctx ) override;
-        void exitElseStatement( SillyParser::ElseStatementContext *ctx ) override;
-
         void exitIfelifelse( SillyParser::IfelifelseContext *ctx ) override;
 
         void enterFunction( SillyParser::FunctionContext *ctx ) override;
@@ -298,8 +292,6 @@ namespace silly
 
 
         void createIf( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue, bool saveIP );
-
-        void doneIfElifElse( antlr4::ParserRuleContext *ctx );
 
         void selectElseBlock( mlir::Location loc, const std::string & errorText );
     };
