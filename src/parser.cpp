@@ -134,11 +134,18 @@ namespace silly
         return { startLoc, endLoc };
     }
 
-    inline mlir::Location MLIRListener::getLocation( antlr4::ParserRuleContext *ctx, bool useStopLocation )
+    inline mlir::Location MLIRListener::getStartLocation( antlr4::ParserRuleContext *ctx )
     {
         LocPairs locs = getLocations( ctx );
 
-        return useStopLocation ? locs.first : locs.second;
+        return locs.first;
+    }
+
+    inline mlir::Location MLIRListener::getStopLocation( antlr4::ParserRuleContext *ctx )
+    {
+        LocPairs locs = getLocations( ctx );
+
+        return locs.second;
     }
 
     DialectCtx::DialectCtx()
@@ -408,7 +415,7 @@ namespace silly
         : filename( filenameIn ),
           dialect(),
           builder( &dialect.context ),
-          currentAssignLoc( getLocation( nullptr, false ) ),
+          currentAssignLoc( getStartLocation( nullptr ) ),
           mod( mlir::ModuleOp::create( currentAssignLoc ) )
     {
         builder.setInsertionPointToStart( mod.getBody() );
@@ -475,7 +482,7 @@ namespace silly
     try
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, true );
+        mlir::Location loc = getStartLocation( ctx );
 
         if ( !ctx->exitStatement() )
         {
@@ -542,15 +549,6 @@ namespace silly
     try
     {
         assert( ctx );
-        SillyParser::ReturnStatementContext *r = ctx->returnStatement();
-
-        mlir::Location loc = getLocation( r, true );
-        LLVM_DEBUG( {
-            llvm::errs() << std::format( "exitFunction: currentFunction: {}, location: {}\n", currentFuncName,
-                                         formatLocation( loc ) );
-            ;
-        } );
-
         builder.restoreInsertionPoint( mainIP );
 
         currentFuncName = ENTRY_SYMBOL_NAME;
@@ -560,7 +558,7 @@ namespace silly
     mlir::Value MLIRListener::handleCall( SillyParser::CallContext *ctx )
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
+        mlir::Location loc = getStartLocation( ctx );
         tNode *id = ctx->IDENTIFIER();
         assert( id );
         std::string funcName = id->getText();
@@ -622,7 +620,7 @@ namespace silly
     try
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
+        mlir::Location loc = getStartLocation( ctx );
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
 
@@ -634,7 +632,7 @@ namespace silly
     try
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
+        mlir::Location loc = getStartLocation( ctx );
         std::string varName = ctx->IDENTIFIER()->getText();
         registerDeclaration( loc, varName, tyI1, ctx->arrayBoundsExpression() );
     }
@@ -644,7 +642,7 @@ namespace silly
     try
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
+        mlir::Location loc = getStartLocation( ctx );
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
 
@@ -677,7 +675,7 @@ namespace silly
     try
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
+        mlir::Location loc = getStartLocation( ctx );
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
 
@@ -702,7 +700,7 @@ namespace silly
     try
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
+        mlir::Location loc = getStartLocation( ctx );
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
         SillyParser::ArrayBoundsExpressionContext *arrayBounds = ctx->arrayBoundsExpression();
@@ -816,11 +814,14 @@ namespace silly
         return conditionPredicate;
     }
 
-    void MLIRListener::createIf( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue )
+    void MLIRListener::createIf( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue, bool saveIP )
     {
         mlir::Value conditionPredicate = MLIRListener::parsePredicate( loc, booleanValue );
 
-        insertionPointStack.push_back( builder.saveInsertionPoint() );
+        if ( saveIP )
+        {
+            insertionPointStack.push_back( builder.saveInsertionPoint() );
+        }
 
         mlir::scf::IfOp ifOp = builder.create<mlir::scf::IfOp>( loc, conditionPredicate );
 
@@ -828,71 +829,44 @@ namespace silly
         builder.setInsertionPointToStart( &thenBlock );
     }
 
-    void MLIRListener::enterIfelifelse( SillyParser::IfelifelseContext *ctx )
+    void MLIRListener::enterIfStatement( SillyParser::IfStatementContext *ctx )
     try
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
+        mlir::Location loc = getStartLocation( ctx );
 
-        SillyParser::IfStatementContext *theIf = ctx->ifStatement();
-        assert( theIf );
-        SillyParser::BooleanValueContext *booleanValue = theIf->booleanValue();
+        SillyParser::BooleanValueContext *booleanValue = ctx->booleanValue();
         assert( booleanValue );
 
-        LLVM_DEBUG( {
-            std::vector<SillyParser::StatementContext *> statements = theIf->statement();
-            std::cout << std::format( "IF: ({})", booleanValue->getText() );
-            for ( SillyParser::StatementContext *s : statements )
-            {
-                std::cout << std::format( " STATEMENT: {}", s->getText() );
-            }
-            std::cout << "\n";
-        } );
+        createIf( loc, booleanValue, true );
+    }
+    CATCH_USER_ERROR
 
-        createIf( loc, booleanValue );
+    void MLIRListener::doneIfElifElse( antlr4::ParserRuleContext *ctx )
+    try
+    {
+#if 0
+        assert( ctx );
+        mlir::Location loc = getStopLocation( ctx );
+        builder.create<mlir::scf::YieldOp>( loc );
+#endif
     }
     CATCH_USER_ERROR
 
     void MLIRListener::exitIfStatement( SillyParser::IfStatementContext *ctx )
-    try
     {
-        assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
-        // All statements in the if-body have now been processed by their own enter/exit callbacks, accumulated
-        // into an scf.if then region.
-
-        antlr4::tree::ParseTree *parent = ctx->parent;
-        assert( parent );
-        SillyParser::IfelifelseContext *ifElifElse = dynamic_cast<SillyParser::IfelifelseContext *>( parent );
-
-        if ( !ifElifElse )
-        {
-            throw ExceptionWithContext(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: IfStatement parent is not IfelifelseContext: ctx: {}\n",
-                             formatLocation( loc ), ctx->getText() ) );
-        }
-
-        std::vector<SillyParser::ElifStatementContext *> elifs = ifElifElse->elifStatement();
-
-        SillyParser::ElseStatementContext *elseCtx = ifElifElse->elseStatement();
-        if ( elseCtx )
-        {
-        }
-        else if ( elifs.size() )
-        {
-        }
-        else
-        {
-            // Restore EXACTLY where we were before creating the scf.if
-            // This places new ops right AFTER the scf.if
-            builder.restoreInsertionPoint( insertionPointStack.back() );
-            insertionPointStack.pop_back();
-        }
-
-        // LLVM_DEBUG( { llvm::errs() << "exitIfStatement module dump:\n"; mod->dump(); } );
+        doneIfElifElse( ctx );
     }
-    CATCH_USER_ERROR
+
+    void MLIRListener::exitElifStatement( SillyParser::ElifStatementContext *ctx )
+    {
+        doneIfElifElse( ctx );
+    }
+
+    void MLIRListener::exitElseStatement( SillyParser::ElseStatementContext *ctx )
+    {
+        doneIfElifElse( ctx );
+    }
 
     void MLIRListener::createElseBlock( mlir::Location loc, const std::string & errorText )
     {
@@ -940,23 +914,9 @@ namespace silly
     try
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
+        mlir::Location loc = getStartLocation( ctx );
 
         createElseBlock( loc, ctx->getText() );
-    }
-    CATCH_USER_ERROR
-
-    void MLIRListener::exitElseStatement( SillyParser::ElseStatementContext *ctx )
-    try
-    {
-        assert( ctx );
-        mlir::Location loc = getLocation( ctx, true );
-        builder.create<mlir::scf::YieldOp>( loc );
-
-        builder.restoreInsertionPoint( insertionPointStack.back() );
-        insertionPointStack.pop_back();
-
-        // LLVM_DEBUG( { llvm::errs() << "exitElseStatement module dump:\n"; mod->dump(); } );
     }
     CATCH_USER_ERROR
 
@@ -964,61 +924,23 @@ namespace silly
     try
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
+        mlir::Location loc = getStartLocation( ctx );
 
         createElseBlock( loc, ctx->getText() );
 
         SillyParser::BooleanValueContext *booleanValue = ctx->booleanValue();
 
-        createIf( loc, booleanValue );
+        createIf( loc, booleanValue, false );
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::exitElifStatement( SillyParser::ElifStatementContext *ctx )
+    void MLIRListener::exitIfelifelse( SillyParser::IfelifelseContext *ctx )
     try
     {
-        assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
-        //builder.create<mlir::scf::YieldOp>( loc );
-        // All statements in the if-body have now been processed by their own enter/exit callbacks, accumulated
-        // into an scf.if then region.
-
-        antlr4::tree::ParseTree *parent = ctx->parent;
-        assert( parent );
-        SillyParser::IfelifelseContext *ifElifElse = dynamic_cast<SillyParser::IfelifelseContext *>( parent );
-
-        if ( !ifElifElse )
-        {
-            throw ExceptionWithContext(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: IfStatement parent is not IfelifelseContext: ctx: {}\n",
-                             formatLocation( loc ), ctx->getText() ) );
-        }
-
-        std::vector<SillyParser::ElifStatementContext *> elifs = ifElifElse->elifStatement();
-
-        SillyParser::ElseStatementContext *elseCtx = ifElifElse->elseStatement();
-        if ( elseCtx )
-        {
-        }
-        else if ( elifs.size() != 1 )
-        {
-            assert(0 && "Multiple elif not supported yet.");
-        }
-        else
-        {
-            // Restore EXACTLY where we were before creating the scf.if
-            // This places new ops right AFTER the scf.if
-            builder.restoreInsertionPoint( insertionPointStack.back() );
-            insertionPointStack.pop_back();
-
-            builder.create<mlir::scf::YieldOp>( loc );
-
-            builder.restoreInsertionPoint( insertionPointStack.back() );
-            insertionPointStack.pop_back();
-        }
-
-        // LLVM_DEBUG( { llvm::errs() << "exitIfStatement module dump:\n"; mod->dump(); } );
+        // Restore EXACTLY where we were before creating the scf.if
+        // This places new ops right AFTER the scf.if
+        builder.restoreInsertionPoint( insertionPointStack.back() );
+        insertionPointStack.pop_back();
     }
     CATCH_USER_ERROR
 
@@ -1026,7 +948,7 @@ namespace silly
     try
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, true );
+        mlir::Location loc = getStartLocation( ctx );
 
         LLVM_DEBUG( { llvm::errs() << std::format( "For: {}\n", ctx->getText() ); } );
 
@@ -1137,7 +1059,7 @@ namespace silly
     try
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
+        mlir::Location loc = getStartLocation( ctx );
 
         mlir::Type varType;
 
@@ -1220,7 +1142,7 @@ namespace silly
     try
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
+        mlir::Location loc = getStartLocation( ctx );
 
         SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = ctx->scalarOrArrayElement();
         if ( scalarOrArrayElement )
@@ -1450,7 +1372,7 @@ namespace silly
     try
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
+        mlir::Location loc = getStartLocation( ctx );
 
         SillyParser::LiteralContext *lit = ctx->literal();
         processReturnLike<SillyParser::LiteralContext>( loc, lit, ctx->scalarOrArrayElement(),
@@ -1462,7 +1384,7 @@ namespace silly
     try
     {
         assert( ctx );
-        mlir::Location loc = getLocation( ctx, false );
+        mlir::Location loc = getStartLocation( ctx );
 
         SillyParser::NumericLiteralContext *lit = ctx->numericLiteral();
 
@@ -1475,7 +1397,7 @@ namespace silly
     {
         assert( ctx );
         assignmentTargetValid = true;
-        mlir::Location loc = getLocation( ctx, false );
+        mlir::Location loc = getStartLocation( ctx );
         SillyParser::ScalarOrArrayElementContext *lhs = ctx->scalarOrArrayElement();
         assert( lhs );
         assert( lhs->IDENTIFIER() );
@@ -1542,7 +1464,7 @@ namespace silly
         {
             return;
         }
-        mlir::Location loc = getLocation( ctx, false );
+        mlir::Location loc = getStartLocation( ctx );
         mlir::Value resultValue;
 
         silly::DeclareOp declareOp = lookupDeclareForVar( loc, currentVarName );
