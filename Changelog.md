@@ -85,7 +85,7 @@ define i32 @main() !dbg !4 {
 
 ### 2. README now has a language-reference.
 
-### 3. Start implementing ELIF, and make some parser location logic simplification:
+### 3. Implemented ELIF, plus parser location logic simplification:
 
 * parser: merge mainFirstTime into getLocation, removing all calls to it.  i.e.: any time we process a location for the first time is a good time to generate the main wrapper.
 * note bug in function.silly DI (while stepping into CALL, not just after.)
