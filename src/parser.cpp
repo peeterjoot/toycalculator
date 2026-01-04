@@ -816,14 +816,16 @@ namespace silly
 
     void MLIRListener::createIf( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue, bool saveIP )
     {
-        mlir::Value conditionPredicate = MLIRListener::parsePredicate( loc, booleanValue );
+        mlir::Value conditionPredicate = parsePredicate( loc, booleanValue );
 
         if ( saveIP )
         {
             insertionPointStack.push_back( builder.saveInsertionPoint() );
         }
 
-        mlir::scf::IfOp ifOp = builder.create<mlir::scf::IfOp>( loc, conditionPredicate );
+        mlir::scf::IfOp ifOp = builder.create<mlir::scf::IfOp>(
+            loc, conditionPredicate,
+            /*withElseRegion=*/true );
 
         mlir::Block &thenBlock = ifOp.getThenRegion().front();
         builder.setInsertionPointToStart( &thenBlock );
@@ -868,7 +870,7 @@ namespace silly
         doneIfElifElse( ctx );
     }
 
-    void MLIRListener::createElseBlock( mlir::Location loc, const std::string & errorText )
+    void MLIRListener::selectElseBlock( mlir::Location loc, const std::string & errorText )
     {
         mlir::scf::IfOp ifOp;
 
@@ -897,15 +899,6 @@ namespace silly
         }
 
         mlir::Region &elseRegion = ifOp.getElseRegion();
-        if ( !elseRegion.empty() )
-        {
-            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                        std::format( "{}internal error: Expected empty else region\n",
-                                                     formatLocation( loc ), errorText ) );
-        }
-
-        elseRegion.emplaceBlock();    // creates one empty block
-
         mlir::Block &elseBlock = elseRegion.front();
         builder.setInsertionPointToStart( &elseBlock );
     }
@@ -916,7 +909,7 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
-        createElseBlock( loc, ctx->getText() );
+        selectElseBlock( loc, ctx->getText() );
     }
     CATCH_USER_ERROR
 
@@ -926,7 +919,7 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
-        createElseBlock( loc, ctx->getText() );
+        selectElseBlock( loc, ctx->getText() );
 
         SillyParser::BooleanValueContext *booleanValue = ctx->booleanValue();
 

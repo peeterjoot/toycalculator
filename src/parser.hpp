@@ -301,7 +301,7 @@ namespace silly
 
         void doneIfElifElse( antlr4::ParserRuleContext *ctx );
 
-        void createElseBlock( mlir::Location loc, const std::string & errorText );
+        void selectElseBlock( mlir::Location loc, const std::string & errorText );
     };
 
     inline mlir::ModuleOp &MLIRListener::getModule()

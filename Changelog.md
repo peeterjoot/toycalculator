@@ -96,6 +96,7 @@ define i32 @main() !dbg !4 {
 * driver: Fix deprecated overload warning in TargetMachine construction
 * not.silly: more comprehensive all types testing for unary NOT operator.
 * lowering: purge the last auto variables
+* Implement ELIF.  Was done in the peeter/old/elif-support branch, squashed when merged to master.
 
 ## tag: V6 (Dec 28, 2025)
 

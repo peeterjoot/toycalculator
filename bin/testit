@@ -121,6 +121,9 @@ dcl
 elif
 elif2
 elif3
+elif4
+elif5
+elif6
 empty
 eqop
 exit3
@@ -168,9 +171,6 @@ types
 unary
 xorop
 ));
-#elif4
-#elif5
-#elif6
 
 my %failuretests = map {$_ => 1} (qw(
 error_redeclare

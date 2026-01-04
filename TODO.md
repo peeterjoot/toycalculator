@@ -31,7 +31,7 @@
 ----------------------------------
 * Control flow:
   - Should implement a break-like keyword for the FOR loop.  That would allow for a "poor man's while", with an effectively infinite very large loop bound.
-  - AND/OR: Implement ELIF/WHILE/DO/BREAK/CONTINUE statements.
+  - AND/OR: Implement WHILE/DO/BREAK/CONTINUE statements.
 
 ----------------------------------
 * Tablegen/MLIR:
