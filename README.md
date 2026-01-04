@@ -41,7 +41,7 @@ That initial implementation has evolved into a silly language and its compiler. 
 * Array support, including declaration, assignment, printing, returning, exiting, and element access.
 * A `STRING` type as an alias for `INT8` arrays, with string literal assignment and `PRINT` implemented.
 * User-defined functions. Calls use the form `CALL function_name(p1, p2)` or with assignment `x = CALL function_name(p1, p2)`. Declarations use: `FUNCTION foo(type name, type name, ...) : RETURN-type { ... ; RETURN v; };` (where : `RETURN-type` is optional).
-* `IF`/`ELSE` statement support. The grammar includes an `ELIF` construct, but it is not yet implemented. Logical operators (`AND`, `OR`, `XOR`) are not supported in predicates (only comparisons like `<`, `>`, `<=`, `>=`, etc.). Complex predicates (e.g., `(a < b) AND (c < d)`) are not supported. Nested `IF`s are untested and may or may not work.
+* `IF`/`ELSE` statement support. Logical operators (`AND`, `OR`, `XOR`) are not supported in predicates (only comparisons like `<`, `>`, `<=`, `>=`, etc.). Complex predicates (e.g., `(a < b) AND (c < d)`) are not supported. Nested `IF`s are untested and may or may not work.
 * A `FOR` loop (supporting start, end, and step-size params, and requiring a previously defined variable for the loop induction variable.)
 
 There is lots of room to add add further language elements to make the compiler and language more interesting.  Some ideas for improvements (as well as bug fixes) can be found in TODO.md
@@ -387,8 +387,6 @@ IF (x < 0) {
 };
 ```
 
-Note that support for `ELIF` is currently only in the grammar (compiler parser/builder needs work to support that, but lowering will probably be unchanged.)
-
 ---
 
 ### FOR Loop
@@ -502,7 +500,7 @@ Single-line comments begin with `//` and extend to the end of the line.
 - Scalar and array assignment
 - Unary and binary arithmetic
 - Boolean logic and comparisons
-- Conditional execution (`IF / ELSE`), with `ELIF` planned, but not implemented.
+- Conditional execution (`IF / ELIF / ELSE`).
 - Range-based `FOR` loops
 - Functions and calls
 - Input (`GET`) and output (`PRINT`)
