@@ -43,7 +43,7 @@
 #define COMPILER_NAME "silly"
 
 /// For llvm.ident
-#define COMPILER_VERSION " V7"
+#define COMPILER_VERSION " V8"
 
 namespace silly
 {
