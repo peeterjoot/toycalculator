@@ -1619,12 +1619,15 @@ namespace silly
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering silly.print: " << *op << '\n' );
 
+            auto ins = printOp.getInputs();
+#if 0
             mlir::Value input = printOp.getInput();
             LLVM_DEBUG( llvm::dbgs() << "input: " << input << '\n' );
 
             silly::CallOp result = lState.createPrintCall( rewriter, loc, input );
 
             rewriter.replaceOp( op, result );
+#endif
 
 #if 0
             LLVM_DEBUG( {
