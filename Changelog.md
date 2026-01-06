@@ -2,6 +2,9 @@
 
 ## tag: V7 (Jan 4, 2025)
 
+* Add a recursion test: factorial.silly
+* README: document a libdwarf-tools dependency for dwarfdump (testit)
+
 ### 1. Minor maintainance:
 
 * arith pass lowering removed from first pass, as we end up with more after the scf lowering.

@@ -5,7 +5,14 @@
 
   - a whole range of statements in IF-then and if-ELSE blocks, and FOR (dcl, assignment, call, ...).  Especially IFs in IF/ELIF/ELSE!
   - tests for all the type conversions (i.e.: binary and unary arith operators)
-  - try a recursion test, perhaps factorial.  should work.
+
+----------------------------------
+* PRINT.  Allow a list of values, instead of just one (print all to one line.).  Example use case: factorial.silly
+
+----------------------------------
+* Expressions:
+  - Implement more complex expressions, in parameters, and in general.  For example: factorial.silly: `r = CALL factorial( v - 1 );`
+  - Expressions like the above lead to mysterious seeming parse error: Should do better.
 
 ----------------------------------
 * Maintainance:
@@ -14,8 +21,6 @@
   - Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
   - Final version of ELIF support meant that I didn't need getStopLocation() anymore (was using it to generate scf.yield with the end of the block location).  Review that and decide what to do with it.
 
-----------------------------------
-* PRINT.  Allow a list of values, instead of just one (print all to one line.)
 ----------------------------------
 
 * Exit/return
