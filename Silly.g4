@@ -132,7 +132,7 @@ returnStatement
 
 // A print statement that outputs a list of variables (e.g., 'PRINT x, y, z;'), followed by a newline.
 print
-  : PRINT_TOKEN printArgument (COMMA_TOKEN printArgument)?
+  : PRINT_TOKEN printArgument (COMMA_TOKEN printArgument)*
   ;
 
 printArgument

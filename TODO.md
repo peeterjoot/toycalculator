@@ -7,9 +7,6 @@
   - tests for all the type conversions (i.e.: binary and unary arith operators)
 
 ----------------------------------
-* PRINT.  Allow a list of values, instead of just one (print all to one line.).  Example use case: `factorial.silly`, `print_multiple.silly`
-
-----------------------------------
 * Expressions:
   - Implement more complex expressions, in parameters, and in general.  For example: factorial.silly: `r = CALL factorial( v - 1 );`
   - Expressions like the above lead to mysterious seeming parse error: Should do better.

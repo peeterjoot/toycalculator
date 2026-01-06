@@ -161,10 +161,25 @@ def Silly_StringLiteralOp : Op<Silly_Dialect, "string_literal"> {
 }
 
 def Silly_PrintOp : Op<Silly_Dialect, "print"> {
-  let summary = "Print a variable or string literal to standard output";
-  let arguments = (ins AnyType:$input);
+  let summary = "Print a list of values or string literals to standard output";
+
+  // Variadic operand segment (0 or more arguments).
+  let arguments = (ins Variadic<AnyTypeOf<[AnyInteger, AnyFloat, LLVMPointerType]>>:$inputs);
+
   let results = (outs);
-  let assemblyFormat = "$input `:` type($input) attr-dict";
+
+  // broken grok-suggested Custom assembly format for comma-separated list:
+  // Uses functional style if >1 argument, otherwise bare operand for backward compatibility.
+  //let assemblyFormat = [{
+  //  $inputs:{`(``)` `:` type($inputs)}?
+  //  (`(` $inputs^`,` `:` type($inputs) `)`)?
+  //  attr-dict
+  //}];
+  // My old custom print assembly format for a single value:
+  //let assemblyFormat = "$input `:` type($input) attr-dict";
+
+  // Optional: add segment size attribute for better lowering if needed.
+  //let hasFolder = 1;  // If you implement folding later.
 }
 
 def Silly_GetOp : Op<Silly_Dialect, "get"> {

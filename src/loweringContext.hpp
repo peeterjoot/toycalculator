@@ -69,7 +69,7 @@ namespace silly
 
         /// Creates a call to the appropriate Silly print runtime function.
         silly::CallOp createPrintCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
-                                       mlir::Value input );
+                                       mlir::Value input, bool newline );
 
         /// Creates a call to the appropriate Silly get runtime function.
         mlir::Value createGetCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,

@@ -10,43 +10,21 @@
 
 extern "C"
 {
-    void __silly_print_string( size_t len, const char* str )
+    void __silly_print_string( size_t len, const char* str, int newline )
     {
-        printf( "%.*s\n", (int)len, str );
+        printf( "%.*s%s", (int)len, str, newline ? "\n" : "" );
     }
 
-    void __silly_print_f64( double value )
+    void __silly_print_f64( double value, int newline )
     {
-        printf( "%f\n", value );
+        printf( "%f%s", value, newline ? "\n" : "" );
     }
 
 
-    void __silly_print_i64( int64_t value )
+    void __silly_print_i64( int64_t value, int newline )
     {
-        printf( "%" PRId64 "\n", value );
+        printf( "%" PRId64 "%s", value, newline ? "\n" : "" );
     }
-
-#if 0
-    void __silly_print_f32( float value )
-    {
-        printf( "%f\n", value );
-    }
-
-    void __silly_print_i32( int32_t value )
-    {
-        printf( "%d\n", value );
-    }
-
-    void __silly_print_i16( int16_t value )
-    {
-        printf( "%hd\n", value );
-    }
-
-    void __silly_print_i8( int8_t value )
-    {
-        printf( "%d\n", (int)value );
-    }
-#endif
 
     int8_t __silly_get_i8( void )
     {

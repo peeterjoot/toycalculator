@@ -161,6 +161,7 @@ not
 orop
 printboollit
 printlit
+print_multiple
 shortstring
 shortstring2
 shortstring3
@@ -172,7 +173,6 @@ types
 unary
 xorop
 ));
-# print_multiple
 
 my %failuretests = map {$_ => 1} (qw(
 error_redeclare

@@ -1031,79 +1031,84 @@ namespace silly
         mlir::Type varType;
 
         std::vector<SillyParser::PrintArgumentContext *> args = ctx->printArgument();
-        assert( args.size() == 1 );
-        SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = args[0]->scalarOrArrayElement();
-        if ( scalarOrArrayElement )
+        std::vector<mlir::Value> vargs;
+        for ( SillyParser::PrintArgumentContext * parg : args )
         {
-            tNode *varNameObject = scalarOrArrayElement->IDENTIFIER();
-            assert( varNameObject );
-            std::string varName = varNameObject->getText();
-            VariableState varState = getVarState( varName );
-            if ( varState == VariableState::undeclared )
-            {
-                throw UserError( loc, std::format( "Variable {} not declared in PRINT", varName ) );
-            }
-            if ( varState != VariableState::assigned )
-            {
-                throw UserError( loc, std::format( "Variable {} not assigned in PRINT", varName ) );
-            }
+            mlir::Value v;
 
-            silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
-
-            mlir::Type elemType = declareOp.getTypeAttr().getValue();
-            mlir::Value optIndexValue{};
-            if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
+            SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = parg->scalarOrArrayElement();
+            if ( scalarOrArrayElement )
             {
-                mlir::Value indexValue{};
-                indexValue = buildNonStringUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr,
-                                                            scalarOrArrayElement, nullptr );
+                tNode *varNameObject = scalarOrArrayElement->IDENTIFIER();
+                assert( varNameObject );
+                std::string varName = varNameObject->getText();
+                VariableState varState = getVarState( varName );
+                if ( varState == VariableState::undeclared )
+                {
+                    throw UserError( loc, std::format( "Variable {} not declared in PRINT", varName ) );
+                }
+                if ( varState != VariableState::assigned )
+                {
+                    throw UserError( loc, std::format( "Variable {} not assigned in PRINT", varName ) );
+                }
 
-                optIndexValue = indexTypeCast( loc, indexValue );
-                varType = elemType;
+                silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+
+                mlir::Type elemType = declareOp.getTypeAttr().getValue();
+                mlir::Value optIndexValue{};
+                if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
+                {
+                    mlir::Value indexValue{};
+                    indexValue = buildNonStringUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr,
+                                                                scalarOrArrayElement, nullptr );
+
+                    optIndexValue = indexTypeCast( loc, indexValue );
+                    varType = elemType;
+                }
+                else if ( declareOp.getSizeAttr() )    // Check if size attribute exists
+                {
+                    // Array: load a generic pointer (print a string literal)
+                    varType = tyPtr;
+                }
+                else
+                {
+                    // Scalar: load the value
+                    varType = elemType;
+                }
+
+                mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+                silly::LoadOp value = builder.create<silly::LoadOp>( loc, varType, symRef, optIndexValue );
+                v = value.getResult();
             }
-            else if ( declareOp.getSizeAttr() )    // Check if size attribute exists
+            else if ( tNode *theString = parg->STRING_PATTERN() )
             {
-                // Array: load a generic pointer (print a string literal)
-                varType = tyPtr;
+                assert( theString );
+                std::string s = stripQuotes( loc, theString->getText() );
+                mlir::StringAttr strAttr = builder.getStringAttr( s );
+
+                silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
+                v = stringLiteral.getResult();
+            }
+            else if ( SillyParser::NumericLiteralContext *theNumber = parg->numericLiteral() )
+            {
+                v = buildNonStringUnaryExpression( loc, nullptr, theNumber->INTEGER_PATTERN(),
+                                                               theNumber->FLOAT_PATTERN(), nullptr, nullptr );
+            }
+            else if ( SillyParser::BooleanLiteralContext *theBoolean = parg->booleanLiteral() )
+            {
+                v = buildNonStringUnaryExpression( loc, theBoolean->BOOLEAN_PATTERN(), nullptr, nullptr, nullptr, nullptr );
             }
             else
             {
-                // Scalar: load the value
-                varType = elemType;
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                            std::format( "{}internal error: unexpected print context {}\n",
+                                                         formatLocation( loc ), ctx->getText() ) );
             }
 
-            mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
-            silly::LoadOp value = builder.create<silly::LoadOp>( loc, varType, symRef, optIndexValue );
-            builder.create<silly::PrintOp>( loc, value );
+            vargs.push_back(v);
         }
-        else if ( tNode *theString = args[0]->STRING_PATTERN() )
-        {
-            assert( theString );
-            std::string s = stripQuotes( loc, theString->getText() );
-            mlir::StringAttr strAttr = builder.getStringAttr( s );
 
-            silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
-
-            builder.create<silly::PrintOp>( loc, stringLiteral );
-        }
-        else if ( SillyParser::NumericLiteralContext *theNumber = args[0]->numericLiteral() )
-        {
-            mlir::Value n = buildNonStringUnaryExpression( loc, nullptr, theNumber->INTEGER_PATTERN(),
-                                                           theNumber->FLOAT_PATTERN(), nullptr, nullptr );
-            builder.create<silly::PrintOp>( loc, n );
-        }
-        else if ( SillyParser::BooleanLiteralContext *theBoolean = args[0]->booleanLiteral() )
-        {
-            mlir::Value b =
-                buildNonStringUnaryExpression( loc, theBoolean->BOOLEAN_PATTERN(), nullptr, nullptr, nullptr, nullptr );
-            builder.create<silly::PrintOp>( loc, b );
-        }
-        else
-        {
-            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                        std::format( "{}internal error: unexpected print context {}\n",
-                                                     formatLocation( loc ), ctx->getText() ) );
-        }
+        builder.create<silly::PrintOp>( loc, vargs );
     }
     CATCH_USER_ERROR
 
