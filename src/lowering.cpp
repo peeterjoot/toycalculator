@@ -213,7 +213,7 @@ namespace silly
         {
             ModuleInsertionPointGuard ip( mod, builder );
 
-            mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), { type }, {} );
+            mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), { type, tyI32 }, {} );
 
             printOp = builder.create<mlir::func::FuncOp>( mod.getLoc(), name, funcType );
             printOp.setVisibility( mlir::SymbolTable::Visibility::Private );
@@ -236,7 +236,7 @@ namespace silly
         {
             ModuleInsertionPointGuard ip( mod, builder );
 
-            mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), { tyI64, tyPtr }, {} );
+            mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), { tyI64, tyPtr, tyI32 }, {} );
             printFuncString = builder.create<mlir::func::FuncOp>( mod.getLoc(), "__silly_print_string", funcType );
             printFuncString.setVisibility( mlir::SymbolTable::Visibility::Private );
         }
@@ -658,10 +658,13 @@ namespace silly
     }
 
     silly::CallOp LoweringContext::createPrintCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
-                                                    mlir::Value input )
+                                                    mlir::Value input, bool newline )
     {
         mlir::Type inputType = input.getType();
         silly::CallOp result;
+
+        mlir::LLVM::ConstantOp newlineInput =
+            rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI32, rewriter.getI32IntegerAttr( newline ) );
 
         if ( mlir::IntegerType inputi = mlir::dyn_cast<mlir::IntegerType>( inputType ) )
         {
@@ -678,7 +681,7 @@ namespace silly
 
             createSillyPrintI64Prototype();
             result = rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, "__silly_print_i64",
-                                                     mlir::ValueRange{ input } );
+                                                     mlir::ValueRange{ input, newlineInput } );
         }
         else if ( mlir::FloatType inputf = mlir::dyn_cast<mlir::FloatType>( inputType ) )
         {
@@ -693,7 +696,7 @@ namespace silly
 
             createSillyPrintF64Prototype();
             result = rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, "__silly_print_f64",
-                                                     mlir::ValueRange{ input } );
+                                                     mlir::ValueRange{ input, newlineInput } );
         }
         else if ( inputType == tyPtr )
         {
@@ -748,7 +751,7 @@ namespace silly
             createSillyPrintStringPrototype();
             const char* name = "__silly_print_string";
             result =
-                rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, name, mlir::ValueRange{ sizeConst, input } );
+                rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, name, mlir::ValueRange{ sizeConst, input, newlineInput } );
         }
         else
         {
@@ -1619,13 +1622,18 @@ namespace silly
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering silly.print: " << *op << '\n' );
 
-            for ( mlir::Value input : printOp.getInputs() )
+            auto ins = printOp.getInputs();
+            size_t n = ins.size();
+            size_t i{};
+            for ( mlir::Value input : ins )
             {
-                silly::CallOp result = lState.createPrintCall( rewriter, loc, input );
+                silly::CallOp result = lState.createPrintCall( rewriter, loc, input, (i == (n-1)) ? true : false );
                 LLVM_DEBUG( {
                     llvm::dbgs() << "print call: for input:" << input << ", result: " << result;
                     //mod.dump();
                 } );
+
+                i++;
             }
 
 #if 0

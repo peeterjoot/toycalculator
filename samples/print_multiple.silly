@@ -1,1 +1,3 @@
 PRINT "hi: ", 42;
+PRINT "hi: ", 42, " bye";
+PRINT "hi: ", 42, " bye: ", 32;

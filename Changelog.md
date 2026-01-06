@@ -4,7 +4,7 @@
 
 * Add a recursion test: factorial.silly
 * README: document a libdwarf-tools dependency for dwarfdump (testit)
-* PRINT: grammar generalized to support a list of items.
+* PRINT: Allow a list of values, instead of just one (print all to one line.).  Example use case: `factorial.silly`, `print_multiple.silly`
 
 ### 1. Minor maintainance:
 

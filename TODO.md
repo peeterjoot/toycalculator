@@ -7,7 +7,20 @@
   - tests for all the type conversions (i.e.: binary and unary arith operators)
 
 ----------------------------------
-* PRINT.  Allow a list of values, instead of just one (print all to one line.).  Example use case: `factorial.silly`, `print_multiple.silly`
+
+* print: grammar doesn't like:
+
+`PRINT "Factorial of ", v, " is ", f;`
+
+but this is okay:
+```
+PRINT "Factorial of ", v;
+PRINT " is ", f;
+```
+
+?
+
+string literal token rule wrong?
 
 ----------------------------------
 * Expressions:

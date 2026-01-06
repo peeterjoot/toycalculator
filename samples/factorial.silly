@@ -24,9 +24,11 @@ INT32 f;
 FOR ( v : (0,7) )
 {
     f = CALL factorial( v );
-    PRINT "Factorial of";
-    PRINT v;
-    PRINT "is";
-    PRINT f;
-    PRINT "";
+
+    // grammar doesn't like:
+    //PRINT "Factorial of ", v, " is ", f;
+
+    // but this is okay:
+    PRINT "Factorial of ", v;
+    PRINT " is ", f;
 };
