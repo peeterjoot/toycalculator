@@ -1619,15 +1619,17 @@ namespace silly
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering silly.print: " << *op << '\n' );
 
-            auto ins = printOp.getInputs();
-#if 0
-            mlir::Value input = printOp.getInput();
-            LLVM_DEBUG( llvm::dbgs() << "input: " << input << '\n' );
+            bool done{};
+            for ( mlir::Value input : printOp.getInputs() )
+            {
+                assert( !done && "Only one input supported in silly.print lowering" );
+                LLVM_DEBUG( llvm::dbgs() << "input: " << input << '\n' );
 
-            silly::CallOp result = lState.createPrintCall( rewriter, loc, input );
+                silly::CallOp result = lState.createPrintCall( rewriter, loc, input );
 
-            rewriter.replaceOp( op, result );
-#endif
+                rewriter.replaceOp( op, result );
+                done = true;
+            }
 
 #if 0
             LLVM_DEBUG( {
