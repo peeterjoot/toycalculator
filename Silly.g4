@@ -130,9 +130,13 @@ returnStatement
   : RETURN_TOKEN (literal | scalarOrArrayElement)?
   ;
 
-// A print statement that outputs a variable (e.g., 'PRINT x;').
+// A print statement that outputs a list of variables (e.g., 'PRINT x, y, z;'), followed by a newline.
 print
-  : PRINT_TOKEN (scalarOrArrayElement | STRING_PATTERN | numericLiteral | booleanLiteral)
+  : PRINT_TOKEN printArgument (COMMA_TOKEN printArgument)?
+  ;
+
+printArgument
+  : scalarOrArrayElement | STRING_PATTERN | numericLiteral | booleanLiteral
   ;
 
 // A get statement that inputs into a scalar variable (e.g., 'GET x;', 'GET x[1]').

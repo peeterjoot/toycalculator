@@ -172,6 +172,7 @@ types
 unary
 xorop
 ));
+# print_multiple
 
 my %failuretests = map {$_ => 1} (qw(
 error_redeclare

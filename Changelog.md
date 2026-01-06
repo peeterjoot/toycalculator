@@ -4,6 +4,7 @@
 
 * Add a recursion test: factorial.silly
 * README: document a libdwarf-tools dependency for dwarfdump (testit)
+* PRINT: grammar generalized to support a list of items.
 
 ### 1. Minor maintainance:
 

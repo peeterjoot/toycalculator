@@ -1030,7 +1030,9 @@ namespace silly
 
         mlir::Type varType;
 
-        SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = ctx->scalarOrArrayElement();
+        std::vector<SillyParser::PrintArgumentContext *> args = ctx->printArgument();
+        assert( args.size() == 1 );
+        SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = args[0]->scalarOrArrayElement();
         if ( scalarOrArrayElement )
         {
             tNode *varNameObject = scalarOrArrayElement->IDENTIFIER();
@@ -1074,7 +1076,7 @@ namespace silly
             silly::LoadOp value = builder.create<silly::LoadOp>( loc, varType, symRef, optIndexValue );
             builder.create<silly::PrintOp>( loc, value );
         }
-        else if ( tNode *theString = ctx->STRING_PATTERN() )
+        else if ( tNode *theString = args[0]->STRING_PATTERN() )
         {
             assert( theString );
             std::string s = stripQuotes( loc, theString->getText() );
@@ -1084,13 +1086,13 @@ namespace silly
 
             builder.create<silly::PrintOp>( loc, stringLiteral );
         }
-        else if ( SillyParser::NumericLiteralContext *theNumber = ctx->numericLiteral() )
+        else if ( SillyParser::NumericLiteralContext *theNumber = args[0]->numericLiteral() )
         {
             mlir::Value n = buildNonStringUnaryExpression( loc, nullptr, theNumber->INTEGER_PATTERN(),
                                                            theNumber->FLOAT_PATTERN(), nullptr, nullptr );
             builder.create<silly::PrintOp>( loc, n );
         }
-        else if ( SillyParser::BooleanLiteralContext *theBoolean = ctx->booleanLiteral() )
+        else if ( SillyParser::BooleanLiteralContext *theBoolean = args[0]->booleanLiteral() )
         {
             mlir::Value b =
                 buildNonStringUnaryExpression( loc, theBoolean->BOOLEAN_PATTERN(), nullptr, nullptr, nullptr, nullptr );

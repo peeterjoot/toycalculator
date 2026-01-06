@@ -7,7 +7,7 @@
   - tests for all the type conversions (i.e.: binary and unary arith operators)
 
 ----------------------------------
-* PRINT.  Allow a list of values, instead of just one (print all to one line.).  Example use case: factorial.silly
+* PRINT.  Allow a list of values, instead of just one (print all to one line.).  Example use case: `factorial.silly`, `print_multiple.silly`
 
 ----------------------------------
 * Expressions:
