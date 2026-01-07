@@ -67,35 +67,6 @@ boolDeclare
   : BOOL_TOKEN IDENTIFIER (arrayBoundsExpression)?
   ;
 
-// FOR ( x : (1, 11) ) { PRINT x; };
-// FOR ( x : (1, 11, 2) ) { PRINT x; };
-//
-// respectively equivalent to:
-//
-// for ( x = 1 ; x <= 10 ; x += 1 ) { ... }
-// for ( x = 1 ; x <= 10 ; x += 2 ) { ... }
-for
-  : FOR_TOKEN
-    BRACE_START_TOKEN IDENTIFIER COLON_TOKEN
-        BRACE_START_TOKEN
-            forStart COMMA_TOKEN forEnd (COMMA_TOKEN forStep)?
-        BRACE_END_TOKEN
-    BRACE_END_TOKEN
-    SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
-  ;
-
-forStart
-  : parameter
-  ;
-
-forEnd
-  : parameter
-  ;
-
-forStep
-  : parameter
-  ;
-
 variableTypeAndName
   //: IDENTIFIER COLON_TOKEN scalarType
   : scalarType IDENTIFIER
@@ -146,11 +117,40 @@ get
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
 assignment
-  : scalarOrArrayElement EQUALS_TOKEN rhs
+  : scalarOrArrayElement EQUALS_TOKEN rvalueExpression
   ;
 
-// The right-hand side of an assignment, either a binary or unary expression.
-rhs
+// FOR ( x : (1, 11) ) { PRINT x; };
+// FOR ( x : (1, 11, 2) ) { PRINT x; };
+//
+// respectively equivalent to:
+//
+// for ( x = 1 ; x <= 10 ; x += 1 ) { ... }
+// for ( x = 1 ; x <= 10 ; x += 2 ) { ... }
+for
+  : FOR_TOKEN
+    BRACE_START_TOKEN IDENTIFIER COLON_TOKEN
+        BRACE_START_TOKEN
+            forStart COMMA_TOKEN forEnd (COMMA_TOKEN forStep)?
+        BRACE_END_TOKEN
+    BRACE_END_TOKEN
+    SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
+  ;
+
+forStart
+  : rvalueExpression
+  ;
+
+forEnd
+  : rvalueExpression
+  ;
+
+forStep
+  : rvalueExpression
+  ;
+
+// The right-hand side of an assignment or a parameter, either a binary or unary expression.
+rvalueExpression
   : literal
   | unaryOperator? scalarOrArrayElement
   | binaryElement binaryOperator binaryElement
@@ -162,11 +162,7 @@ call
   ;
 
 parameterList
-  : BRACE_START_TOKEN (parameter (COMMA_TOKEN parameter)*)? BRACE_END_TOKEN
-  ;
-
-parameter
-  : literal | scalarOrArrayElement
+  : BRACE_START_TOKEN (rvalueExpression (COMMA_TOKEN rvalueExpression)*)? BRACE_END_TOKEN
   ;
 
 binaryElement

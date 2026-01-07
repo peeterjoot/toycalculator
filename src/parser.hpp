@@ -132,7 +132,7 @@ namespace silly
         void enterAssignment( SillyParser::AssignmentContext *ctx ) override;
         void exitAssignment( SillyParser::AssignmentContext *ctx ) override;
         void enterExitStatement( SillyParser::ExitStatementContext *ctx ) override;
-        void enterRhs( SillyParser::RhsContext *ctx ) override;
+        void enterRvalueExpression( SillyParser::RvalueExpressionContext *ctx ) override;
 
         /// Returns the constructed ModuleOp.
         /// @throw ExceptionWithContext if syntax errors occurred.

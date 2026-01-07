@@ -570,11 +570,11 @@ namespace silly
             int i = 0;
 
             assert( params );
-            size_t psz = params->parameter().size();
+            size_t psz = params->rvalueExpression().size();
             size_t fsz = funcType.getInputs().size();
             assert( psz == fsz );
 
-            for ( SillyParser::ParameterContext *p : params->parameter() )
+            for ( SillyParser::RvalueExpressionContext *p : params->rvalueExpression() )
             {
                 std::string paramText = p->getText();
                 std::cout << std::format( "CALL function {}: param: {}\n", funcName, paramText );
@@ -587,9 +587,6 @@ namespace silly
                                                        lit ? lit->INTEGER_PATTERN() : nullptr,
                                                        lit ? lit->FLOAT_PATTERN() : nullptr, p->scalarOrArrayElement(),
                                                        lit ? lit->STRING_PATTERN() : nullptr );
-                if ( hasErrors )
-                {
-                }
 
                 value = castOpIfRequired( loc, value, funcType.getInputs()[i] );
                 parameters.push_back( value );
@@ -932,12 +929,12 @@ namespace silly
 
         assert( ctx->forStart() );
         assert( ctx->forEnd() );
-        SillyParser::ParameterContext *pStart = ctx->forStart()->parameter();
-        SillyParser::ParameterContext *pEnd = ctx->forEnd()->parameter();
-        SillyParser::ParameterContext *pStep{};
+        SillyParser::RvalueExpressionContext *pStart = ctx->forStart()->rvalueExpression();
+        SillyParser::RvalueExpressionContext *pEnd = ctx->forEnd()->rvalueExpression();
+        SillyParser::RvalueExpressionContext *pStep{};
         if ( SillyParser::ForStepContext *st = ctx->forStep() )
         {
-            pStep = st->parameter();
+            pStep = st->rvalueExpression();
         }
 
         mlir::Value start;
@@ -1430,7 +1427,7 @@ namespace silly
         return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
     }
 
-    void MLIRListener::enterRhs( SillyParser::RhsContext *ctx )
+    void MLIRListener::enterRvalueExpression( SillyParser::RvalueExpressionContext *ctx )
     try
     {
         assert( ctx );
@@ -1440,6 +1437,13 @@ namespace silly
         }
         mlir::Location loc = getStartLocation( ctx );
         mlir::Value resultValue;
+
+        // HACK: currently only get here for parameters of CALL, and for start/stop/step variables.
+        // ... figure out how to handle.
+        if ( currentVarName.empty() )
+        {
+            return;
+        }
 
         silly::DeclareOp declareOp = lookupDeclareForVar( loc, currentVarName );
         mlir::TypeAttr typeAttr = declareOp.getTypeAttr();
