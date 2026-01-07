@@ -5,6 +5,7 @@
 * Add a recursion test: factorial.silly
 * README: document a libdwarf-tools dependency for dwarfdump (testit)
 * PRINT: Allow a list of values, instead of just one (print all to one line.).  Example use case: `factorial.silly`, `print_multiple.silly`.  Implemented in the peeter/old/print-multiple branch, then squashed and merged to master.
+* Implemented more complex expressions in parameters.  Example application: factorial.silly: `r = CALL factorial( v - 1 );`  Implemented in the generalized-parameter-value-expressions branch, then squashed and merged to master.  (Have grammar support in place to this in for range variables, but that's not done yet.)
 
 ### 1. Minor maintainance:
 

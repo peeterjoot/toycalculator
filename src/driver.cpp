@@ -12,7 +12,6 @@
 /// - runs the assembly printer.
 #include "driver.hpp"
 
-#include <assert.h>
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/DebugProgramInstruction.h>

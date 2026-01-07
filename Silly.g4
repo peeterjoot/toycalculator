@@ -23,7 +23,7 @@ startRule
 
 // A statement can be a declaration, assignment, print, get, if, for, comment.
 statement
-  : (call | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print | get | for) ENDOFSTATEMENT_TOKEN
+  : (callStatement | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print | get | for) ENDOFSTATEMENT_TOKEN
   ;
 
 ifelifelse
@@ -65,35 +65,6 @@ declare
 
 boolDeclare
   : BOOL_TOKEN IDENTIFIER (arrayBoundsExpression)?
-  ;
-
-// FOR ( x : (1, 11) ) { PRINT x; };
-// FOR ( x : (1, 11, 2) ) { PRINT x; };
-//
-// respectively equivalent to:
-//
-// for ( x = 1 ; x <= 10 ; x += 1 ) { ... }
-// for ( x = 1 ; x <= 10 ; x += 2 ) { ... }
-for
-  : FOR_TOKEN
-    BRACE_START_TOKEN IDENTIFIER COLON_TOKEN
-        BRACE_START_TOKEN
-            forStart COMMA_TOKEN forEnd (COMMA_TOKEN forStep)?
-        BRACE_END_TOKEN
-    BRACE_END_TOKEN
-    SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
-  ;
-
-forStart
-  : parameter
-  ;
-
-forEnd
-  : parameter
-  ;
-
-forStep
-  : parameter
   ;
 
 variableTypeAndName
@@ -146,27 +117,68 @@ get
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
 assignment
-  : scalarOrArrayElement EQUALS_TOKEN rhs
+  : scalarOrArrayElement EQUALS_TOKEN assignmentRvalue
   ;
 
-// The right-hand side of an assignment, either a binary or unary expression.
-rhs
+assignmentRvalue
+  : rvalueExpression
+  ;
+
+// FOR ( x : (1, 11) ) { PRINT x; };
+// FOR ( x : (1, 11, 2) ) { PRINT x; };
+//
+// respectively equivalent to:
+//
+// for ( x = 1 ; x <= 10 ; x += 1 ) { ... }
+// for ( x = 1 ; x <= 10 ; x += 2 ) { ... }
+for
+  : FOR_TOKEN
+    BRACE_START_TOKEN IDENTIFIER COLON_TOKEN
+        BRACE_START_TOKEN
+            forStart COMMA_TOKEN forEnd (COMMA_TOKEN forStep)?
+        BRACE_END_TOKEN
+    BRACE_END_TOKEN
+    SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
+  ;
+
+forStart
+  : forRangeExpression
+  ;
+
+forEnd
+  : forRangeExpression
+  ;
+
+forStep
+  : forRangeExpression
+  ;
+
+forRangeExpression
+  : rvalueExpression
+  ;
+
+// The right-hand side of an assignment or a parameter, either a binary or unary expression.
+rvalueExpression
   : literal
   | unaryOperator? scalarOrArrayElement
   | binaryElement binaryOperator binaryElement
-  | call
+  | callExpression
   ;
 
-call
+callStatement
+  : callExpression
+  ;
+
+callExpression
   : CALL_TOKEN IDENTIFIER parameterList
   ;
 
 parameterList
-  : BRACE_START_TOKEN (parameter (COMMA_TOKEN parameter)*)? BRACE_END_TOKEN
+  : BRACE_START_TOKEN (parameterExpression (COMMA_TOKEN parameterExpression)*)? BRACE_END_TOKEN
   ;
 
-parameter
-  : literal | scalarOrArrayElement
+parameterExpression
+  : rvalueExpression
   ;
 
 binaryElement

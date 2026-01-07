@@ -4,11 +4,7 @@ FUNCTION factorial( INT32 v ) : INT32
     r = 1;
     IF ( v > 1 )
     {
-        //r = CALL factorial( v - 1 );  // not currently allowed.
-        INT32 vm;
-        vm = v - 1;
-        r = CALL factorial( vm );
-
+        r = CALL factorial( v - 1 );
         r = v * r;
     }
     ELSE
