@@ -4,7 +4,7 @@
 
 * Add a recursion test: factorial.silly
 * README: document a libdwarf-tools dependency for dwarfdump (testit)
-* PRINT: Allow a list of values, instead of just one (print all to one line.).  Example use case: `factorial.silly`, `print_multiple.silly`
+* PRINT: Allow a list of values, instead of just one (print all to one line.).  Example use case: `factorial.silly`, `print_multiple.silly`.  Implemented in the peeter/old/print-multiple branch, then squashed and merged to master.
 
 ### 1. Minor maintainance:
 
