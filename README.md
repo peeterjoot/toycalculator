@@ -449,11 +449,11 @@ y = CALL sum(a[1], a[2]);
 
 ### PRINT
 
-Outputs a value or literal.
+Outputs one or more variables, or literals, and a trailing newline.
 
 ```text
-PRINT x;
-PRINT "Hello";
+PRINT x, " is ", y;
+PRINT "Hello: ", v;
 PRINT 3.14;
 PRINT arr[3];
 ```
