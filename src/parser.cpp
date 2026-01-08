@@ -415,8 +415,7 @@ namespace silly
         : filename( filenameIn ),
           dialect(),
           builder( &dialect.context ),
-          currentAssignLoc( getStartLocation( nullptr ) ),
-          mod( mlir::ModuleOp::create( currentAssignLoc ) )
+          mod( mlir::ModuleOp::create( getStartLocation( nullptr ) ) )
     {
         builder.setInsertionPointToStart( mod.getBody() );
 
@@ -555,7 +554,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    mlir::Value MLIRListener::handleCall( SillyParser::CallContext *ctx )
+    mlir::Value MLIRListener::handleCall( SillyParser::CallExpressionContext *ctx )
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
@@ -604,14 +603,11 @@ namespace silly
         return resultTypes.empty() ? mlir::Value{} : callOp.getResults()[0];
     }
 
-    void MLIRListener::enterCall( SillyParser::CallContext *ctx )
+    void MLIRListener::enterCallStatement( SillyParser::CallStatementContext *ctx )
     try
     {
         assert( ctx );
-        if ( callIsHandled )
-            return;
-
-        handleCall( ctx );
+        handleCall( ctx->callExpression() );
     }
     CATCH_USER_ERROR
 
@@ -1372,16 +1368,14 @@ namespace silly
     try
     {
         assert( ctx );
-        assignmentTargetValid = true;
         mlir::Location loc = getStartLocation( ctx );
         SillyParser::ScalarOrArrayElementContext *lhs = ctx->scalarOrArrayElement();
         assert( lhs );
         assert( lhs->IDENTIFIER() );
-        currentVarName = lhs->IDENTIFIER()->getText();
+        std::string currentVarName = lhs->IDENTIFIER()->getText();
 
         SillyParser::IndexExpressionContext *indexExpr = lhs->indexExpression();
-
-        currentIndexExpr = mlir::Value();
+        mlir::Value currentIndexExpr = mlir::Value();
 
         if ( indexExpr )
         {
@@ -1396,19 +1390,58 @@ namespace silly
         }
         else if ( varState == VariableState::undeclared )
         {
-            assignmentTargetValid = false;
             throw UserError( loc, std::format( "Variable {} not declared in assignment", currentVarName ) );
         }
-        currentAssignLoc = loc;
-        callIsHandled = false;
-    }
-    CATCH_USER_ERROR
 
-    void MLIRListener::exitAssignment( SillyParser::AssignmentContext *ctx )
-    try
-    {
-        assert( ctx );
-        callIsHandled = false;
+        assert( ctx->assignmentRvalue() );
+        SillyParser::RvalueExpressionContext * exprContext = ctx->assignmentRvalue()->rvalueExpression();
+
+        silly::DeclareOp declareOp = lookupDeclareForVar( loc, currentVarName );
+        mlir::TypeAttr typeAttr = declareOp.getTypeAttr();
+        mlir::Type opType = typeAttr.getValue();
+
+        std::string s;
+        bool foundStringLiteral{};
+        mlir::Value resultValue = parseRvalue( exprContext, loc, opType, s, foundStringLiteral );
+
+        mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, currentVarName );
+        if ( foundStringLiteral )
+        {
+            mlir::StringAttr strAttr = builder.getStringAttr( s );
+
+            silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
+
+            mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
+
+            builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ stringLiteral },
+                                             llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+        }
+        else
+        {
+            if ( currentIndexExpr )
+            {
+                mlir::Value i = indexTypeCast( loc, currentIndexExpr );
+
+                silly::AssignOp assign = builder.create<silly::AssignOp>( loc, symRef, i, resultValue );
+
+                LLVM_DEBUG( {
+                    mlir::OpPrintingFlags flags;
+                    flags.enableDebugInfo( true );
+
+                    assign->print( llvm::outs(), flags );
+                    llvm::outs() << "\n";
+                } );
+            }
+            else
+            {
+                mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
+
+                builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ resultValue },
+                                                 llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+            }
+        }
+
+        setVarState( currentFuncName, currentVarName, VariableState::assigned );
     }
     CATCH_USER_ERROR
 
@@ -1443,9 +1476,8 @@ namespace silly
             mlir::Value lhsValue;
 
             SillyParser::LiteralContext *lit = ctx->literal();
-            if ( SillyParser::CallContext *call = ctx->call() )
+            if ( SillyParser::CallExpressionContext *call = ctx->callExpression() )
             {
-                callIsHandled = true;
                 lhsValue = handleCall( call );
             }
             else
@@ -1599,81 +1631,6 @@ namespace silly
 
         return resultValue;
     }
-
-    void MLIRListener::enterRvalueExpression( SillyParser::RvalueExpressionContext *ctx )
-    try
-    {
-        assert( ctx );
-        if ( !assignmentTargetValid ) // Why was this added?
-        {
-            return;
-        }
-        mlir::Location loc = getStartLocation( ctx );
-
-        // HACK: currently only get here for parameters of CALL, and for start/stop/step variables.
-        // ... figure out how to handle.
-        if ( currentVarName.empty() )
-        {
-            return;
-        }
-
-        if ( currentVarName.empty() )
-        {
-            throw ExceptionWithContext(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: currentVarName not set!\n", formatLocation( loc ) ) );
-        }
-
-        silly::DeclareOp declareOp = lookupDeclareForVar( loc, currentVarName );
-        mlir::TypeAttr typeAttr = declareOp.getTypeAttr();
-        mlir::Type opType = typeAttr.getValue();
-
-        std::string s;
-        bool foundStringLiteral{};
-        mlir::Value resultValue = parseRvalue( ctx, loc, opType, s, foundStringLiteral );
-
-        mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, currentVarName );
-        if ( foundStringLiteral )
-        {
-            mlir::StringAttr strAttr = builder.getStringAttr( s );
-
-            silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
-
-            mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
-
-            builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ stringLiteral },
-                                             llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
-        }
-        else
-        {
-            if ( currentIndexExpr )
-            {
-                mlir::Value i = indexTypeCast( loc, currentIndexExpr );
-
-                silly::AssignOp assign = builder.create<silly::AssignOp>( loc, symRef, i, resultValue );
-
-                LLVM_DEBUG( {
-                    mlir::OpPrintingFlags flags;
-                    flags.enableDebugInfo( true );
-
-                    assign->print( llvm::outs(), flags );
-                    llvm::outs() << "\n";
-                } );
-            }
-            else
-            {
-                mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
-
-                builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ resultValue },
-                                                 llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
-            }
-        }
-
-        setVarState( currentFuncName, currentVarName, VariableState::assigned );
-        currentVarName.clear();
-        currentIndexExpr = mlir::Value();
-    }
-    CATCH_USER_ERROR
 }    // namespace silly
 
 // vim: et ts=4 sw=4

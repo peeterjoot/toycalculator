@@ -117,7 +117,7 @@ namespace silly
         void exitIfelifelse( SillyParser::IfelifelseContext *ctx ) override;
 
         void enterFunction( SillyParser::FunctionContext *ctx ) override;
-        void enterCall( SillyParser::CallContext *ctx ) override;
+        void enterCallStatement(SillyParser::CallStatementContext * ctx) override;
         void exitFunction( SillyParser::FunctionContext *ctx ) override;
         void enterReturnStatement( SillyParser::ReturnStatementContext *ctx ) override;
         void enterDeclare( SillyParser::DeclareContext *ctx ) override;
@@ -130,9 +130,7 @@ namespace silly
         void enterFor( SillyParser::ForContext *ctx ) override;
         void exitFor( SillyParser::ForContext *ctx ) override;
         void enterAssignment( SillyParser::AssignmentContext *ctx ) override;
-        void exitAssignment( SillyParser::AssignmentContext *ctx ) override;
         void enterExitStatement( SillyParser::ExitStatementContext *ctx ) override;
-        void enterRvalueExpression( SillyParser::RvalueExpressionContext *ctx ) override;
 
         /// Returns the constructed ModuleOp.
         /// @throw ExceptionWithContext if syntax errors occurred.
@@ -148,9 +146,6 @@ namespace silly
         /// MLIR builder.
         mlir::OpBuilder builder;
 
-        /// Location of current assignment.
-        mlir::Location currentAssignLoc;
-
         /// Current function name.
         std::string currentFuncName;
 
@@ -160,17 +155,8 @@ namespace silly
         /// Top-level module.
         mlir::ModuleOp mod;
 
-        /// Variable name in current assignment.
-        std::string currentVarName;
-
-        /// Index expression in current assignment.
-        mlir::Value currentIndexExpr;
-
         /// Per-function state map.
         std::unordered_map<std::string, std::unique_ptr<PerFunctionState>> functionStateMap;
-
-        /// Valid assignment target.
-        bool assignmentTargetValid{};
 
         /// Syntax errors detected.
         bool hasErrors{};
@@ -206,9 +192,6 @@ namespace silly
 
         /// Saved insertion point for main.
         mlir::OpBuilder::InsertPoint mainIP;
-
-        /// Call handled in RHS.
-        bool callIsHandled{};
 
         /// Main ScopeOp created (symbol table, region, and block)
         bool mainScopeGenerated{};
@@ -250,8 +233,7 @@ namespace silly
 
 
         /// Emits a silly::CallOp for a function call.
-        mlir::Value handleCall( SillyParser::CallContext *ctx );
-
+        mlir::Value handleCall( SillyParser::CallExpressionContext *ctx );
 
         /// Registers a variable declaration in the current scope.
         void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,

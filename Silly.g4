@@ -23,7 +23,7 @@ startRule
 
 // A statement can be a declaration, assignment, print, get, if, for, comment.
 statement
-  : (call | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print | get | for) ENDOFSTATEMENT_TOKEN
+  : (callStatement | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print | get | for) ENDOFSTATEMENT_TOKEN
   ;
 
 ifelifelse
@@ -162,10 +162,14 @@ rvalueExpression
   : literal
   | unaryOperator? scalarOrArrayElement
   | binaryElement binaryOperator binaryElement
-  | call
+  | callExpression
   ;
 
-call
+callStatement
+  : callExpression
+  ;
+
+callExpression
   : CALL_TOKEN IDENTIFIER parameterList
   ;
 
