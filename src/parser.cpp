@@ -580,16 +580,10 @@ namespace silly
                 std::string paramText = p->getText();
                 std::cout << std::format( "CALL function {}: param: {}\n", funcName, paramText );
 
-                mlir::Value value;
-                SillyParser::LiteralContext *lit = p->literal();
+                bool foundStringLiteral{};
+                std::string s;
+                mlir::Value value = parseRvalue( p, loc, funcType.getInputs()[i], s, foundStringLiteral );
 
-                // Want to support passing string literals (not just to PRINT builtin), but not now.
-                value = buildNonStringUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
-                                                       lit ? lit->INTEGER_PATTERN() : nullptr,
-                                                       lit ? lit->FLOAT_PATTERN() : nullptr, p->scalarOrArrayElement(),
-                                                       lit ? lit->STRING_PATTERN() : nullptr );
-
-                value = castOpIfRequired( loc, value, funcType.getInputs()[i] );
                 parameters.push_back( value );
                 i++;
             }
