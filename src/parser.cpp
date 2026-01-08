@@ -1597,7 +1597,7 @@ namespace silly
             }
         }
 
-        return resultValue;;
+        return resultValue;
     }
 
     void MLIRListener::enterRvalueExpression( SillyParser::RvalueExpressionContext *ctx )
@@ -1633,7 +1633,7 @@ namespace silly
         mlir::Value resultValue = parseRvalue( ctx, loc, opType, s, foundStringLiteral );
 
         mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, currentVarName );
-        if ( s.empty() )
+        if ( foundStringLiteral )
         {
             mlir::StringAttr strAttr = builder.getStringAttr( s );
 
