@@ -14,6 +14,10 @@
   - Expressions that aren't parsed properly (like `CALL factorial(v - 1)` used to) lead to mysterious seeming parse error: Should do better.
 
 ----------------------------------
+* Documentation:
+  - CALL parameters can now be rvalue-expressions.
+
+----------------------------------
 * Maintainance:
   - lowering error handling is pschizophrenic: mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
   - Move scf lowering into 1st pass?  Attempt at this in xpgn:streamline-passes-attempt branch (not pushed.)
