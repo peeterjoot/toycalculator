@@ -5,6 +5,7 @@
 
   - a whole range of statements in IF-then and if-ELSE blocks, and FOR (dcl, assignment, call, ...).  Especially IFs in IF/ELIF/ELSE!
   - tests for all the type conversions (i.e.: binary and unary arith operators)
+  - tests for array access and assignment.
 
 ----------------------------------
 * Expressions:
