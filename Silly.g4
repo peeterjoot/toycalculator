@@ -50,7 +50,9 @@ function
   ;
 
 booleanValue
-  : booleanElement | (binaryElement predicateOperator binaryElement)
+  : booleanElement
+  | (binaryElement predicateOperator binaryElement)
+  | callExpression
   ;
 
 // A single-line comment
@@ -160,9 +162,8 @@ forRangeExpression
 // The right-hand side of an assignment or a parameter, either a binary or unary expression.
 rvalueExpression
   : literal
-  | unaryOperator? scalarOrArrayElement
+  | unaryOperator? (scalarOrArrayElement | callExpression)
   | binaryElement binaryOperator binaryElement
-  | callExpression
   ;
 
 callStatement
@@ -183,7 +184,7 @@ parameterExpression
 
 binaryElement
   : numericLiteral
-  | unaryOperator? scalarOrArrayElement
+  | unaryOperator? (scalarOrArrayElement | callExpression)
   ;
 
 booleanElement

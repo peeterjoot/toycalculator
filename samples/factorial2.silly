@@ -1,0 +1,24 @@
+FUNCTION factorial( INT32 v ) : INT32
+{
+    INT32 r;
+    r = 1;
+    IF ( v > 1 )
+    {
+        r = CALL factorial( v - 1 ) * v;
+    }
+    ELSE
+    {
+        r = 1;
+    };
+
+    RETURN r;
+};
+
+INT32 v;
+INT32 f;
+FOR ( v : (0,7) )
+{
+    f = CALL factorial( v );
+
+    PRINT "Factorial of ", v, " is ", f;
+};

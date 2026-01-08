@@ -1,11 +1,52 @@
 ## tag: V8 (WIP)
 
-## tag: V7 (Jan 4, 2025)
-
 * Add a recursion test: factorial.silly
 * README: document a libdwarf-tools dependency for dwarfdump (testit)
 * PRINT: Allow a list of values, instead of just one (print all to one line.).  Example use case: `factorial.silly`, `print_multiple.silly`.  Implemented in the peeter/old/print-multiple branch, then squashed and merged to master.
 * Implemented more complex expressions in parameters.  Example application: factorial.silly: `r = CALL factorial( v - 1 );`  Implemented in the generalized-parameter-value-expressions branch, then squashed and merged to master.  (Have grammar support in place to this in for range variables, but that's not done yet.)
+* parser maintainance:
+  - rename setFuncOp to setFuncNameAndOp, also passing in the funcName (and have it set currentFuncName)
+  - Move the mainScopeGenerated related main() funcOp and scope creation to enterStartRule, removing from getLocations
+  - make loc the first param of parseRvalue, like most other functions that take a Location.
+  - Doxygen comments for various private functions.
+* Allow CALL in unary and binary expressions.
+* Expressions are now allowed in for loop range values:
+
+Example program:
+```
+INT32 x;
+INT32 a;
+INT32 b;
+INT32 c;
+INT32 z;
+a = 1;
+b = -11;
+c = 2;
+z = 0;
+
+FOR ( x : (+a, -b, c + z) )
+{
+    PRINT x;
+};
+```
+
+Example MLIR fragment for this loop:
+
+```
+%3 = silly.load @a : i32
+%4 = silly.load @b : i32
+%5 = "silly.negate"(%4) : (i32) -> i32
+%6 = silly.load @c : i32
+%7 = silly.load @z : i32
+%8 = "silly.add"(%6, %7) : (i32, i32) -> i32
+scf.for %arg0 = %3 to %5 step %8  : i32 {
+  silly.assign @x = %arg0 : i32
+  %9 = silly.load @x : i32
+  "silly.print"(%9) : (i32) -> ()
+}
+```
+
+## tag: V7 (Jan 4, 2025)
 
 ### 1. Minor maintainance:
 

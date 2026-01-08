@@ -4,8 +4,7 @@ FUNCTION factorial( INT32 v ) : INT32
     r = 1;
     IF ( v > 1 )
     {
-        r = CALL factorial( v - 1 );
-        r = v * r;
+        r = v * CALL factorial( v - 1 );
     }
     ELSE
     {
@@ -19,7 +18,11 @@ INT32 v;
 INT32 f;
 FOR ( v : (0,7) )
 {
-    f = CALL factorial( v );
+    // This is just to test that CALL can be used in a unary expression:
+    f = - CALL factorial( v );
+    PRINT "- Factorial of ", v, " is ", f;
 
+    // undo the negation to print the actual factorial:
+    f = - f;
     PRINT "Factorial of ", v, " is ", f;
 };

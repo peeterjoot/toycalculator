@@ -5,17 +5,22 @@
 
   - a whole range of statements in IF-then and if-ELSE blocks, and FOR (dcl, assignment, call, ...).  Especially IFs in IF/ELIF/ELSE!
   - tests for all the type conversions (i.e.: binary and unary arith operators)
+  - tests for array access and assignment.
+  - tests for call in binary and unary expressions.
+  - Have AI tool review existing tests, looking for holes relative to the grammar.
+    - same for the README "language reference"
+
+----------------------------------
+* Bugs:
+  - boolcall:  bool isn't working in a function return
+  - boolcall2: including one that's like factorial.silly, but using BOOL instead of INT32.
 
 ----------------------------------
 * Expressions:
   - Get rid of CALL and support calls in binary expressions: r = v * foo().
-  - Allow rvalueExpressions in for loop range variables.
   - Implement more complex expressions (chains of operators...)
   - Expressions that aren't parsed properly (like `CALL factorial(v - 1)` used to) lead to mysterious seeming parse error: Should do better.
-
-----------------------------------
-* Documentation:
-  - CALL parameters can now be rvalue-expressions.
+  - Review the parser... any other places where buildUnary is called that ought to be parseRvalue?
 
 ----------------------------------
 * Maintainance:

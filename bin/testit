@@ -131,6 +131,7 @@ exitarrayelement
 exitx
 f
 factorial
+factorial2
 foo
 function
 function_add
@@ -173,6 +174,8 @@ types
 unary
 xorop
 ));
+#boolcall
+#boolcall2
 
 my %failuretests = map {$_ => 1} (qw(
 error_redeclare

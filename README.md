@@ -179,7 +179,7 @@ Blocks use `{ ... }`, and expressions use parentheses `( ... )`.
 
 ## Declarations
 
-### Implicit Declaration
+### Implicit floating point Declaration
 
 Declares a scalar or array variable with an implicit `FLOAT64` type.
 
@@ -394,11 +394,20 @@ IF (x < 0) {
 Range-based iteration with optional step size.
 
 ```text
+INT32 i;
 FOR ( i : (1, 10) ) {
   PRINT i;
 };
 
-FOR ( i : (0, 20, 2) ) {
+INT32 a;
+INT32 b;
+INT32 c;
+INT32 z;
+a = 0;
+b = -20;
+c = 2;
+z = 0;
+FOR ( i : (+a, -b, c + z) ) {
   PRINT i;
 };
 ```
@@ -441,6 +450,12 @@ Functions are invoked using the `CALL` keyword.
 ```text
 x = CALL add(2, 3);
 y = CALL sum(a[1], a[2]);
+```
+
+CALL expressions can also be part of unary or binary expressions, for example
+```
+x = v * CALL foo();
+x = - CALL foo();
 ```
 
 ---
