@@ -565,17 +565,19 @@ namespace silly
         mlir::func::FuncOp funcOp = getFuncOp( loc, funcName );
         mlir::FunctionType funcType = funcOp.getFunctionType();
         std::vector<mlir::Value> parameters;
+
         if ( SillyParser::ParameterListContext *params = ctx->parameterList() )
         {
             int i = 0;
 
             assert( params );
-            size_t psz = params->rvalueExpression().size();
+            size_t psz = params->parameterExpression().size();
             size_t fsz = funcType.getInputs().size();
             assert( psz == fsz );
 
-            for ( SillyParser::RvalueExpressionContext *p : params->rvalueExpression() )
+            for ( SillyParser::ParameterExpressionContext *e : params->parameterExpression() )
             {
+                SillyParser::RvalueExpressionContext *p = e->rvalueExpression();
                 std::string paramText = p->getText();
                 std::cout << std::format( "CALL function {}: param: {}\n", funcName, paramText );
 
@@ -929,12 +931,15 @@ namespace silly
 
         assert( ctx->forStart() );
         assert( ctx->forEnd() );
-        SillyParser::RvalueExpressionContext *pStart = ctx->forStart()->rvalueExpression();
-        SillyParser::RvalueExpressionContext *pEnd = ctx->forEnd()->rvalueExpression();
+        assert( ctx->forStart()->forRangeExpression() );
+        assert( ctx->forEnd()->forRangeExpression() );
+        SillyParser::RvalueExpressionContext *pStart = ctx->forStart()->forRangeExpression()->rvalueExpression();
+        SillyParser::RvalueExpressionContext *pEnd = ctx->forEnd()->forRangeExpression()->rvalueExpression();
         SillyParser::RvalueExpressionContext *pStep{};
         if ( SillyParser::ForStepContext *st = ctx->forStep() )
         {
-            pStep = st->rvalueExpression();
+            assert( st->forRangeExpression() );
+            pStep = st->forRangeExpression()->rvalueExpression();
         }
 
         mlir::Value start;
@@ -1427,38 +1432,17 @@ namespace silly
         return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
     }
 
-    void MLIRListener::enterRvalueExpression( SillyParser::RvalueExpressionContext *ctx )
-    try
+    mlir::Value MLIRListener::parseRvalue( SillyParser::RvalueExpressionContext *ctx, mlir::Location loc, mlir::Type opType, std::string & s, bool & foundStringLiteral )
     {
-        assert( ctx );
-        if ( !assignmentTargetValid )
-        {
-            return;
-        }
-        mlir::Location loc = getStartLocation( ctx );
         mlir::Value resultValue;
-
-        // HACK: currently only get here for parameters of CALL, and for start/stop/step variables.
-        // ... figure out how to handle.
-        if ( currentVarName.empty() )
-        {
-            return;
-        }
-
-        silly::DeclareOp declareOp = lookupDeclareForVar( loc, currentVarName );
-        mlir::TypeAttr typeAttr = declareOp.getTypeAttr();
-        mlir::Type opType = typeAttr.getValue();
-
         mlir::Value lhsValue;
         size_t bsz = ctx->binaryElement().size();
-        std::string s;
-        SillyParser::LiteralContext *lit{};
 
         if ( bsz == 0 )
         {
             mlir::Value lhsValue;
 
-            lit = ctx->literal();
+            SillyParser::LiteralContext *lit = ctx->literal();
             if ( SillyParser::CallContext *call = ctx->call() )
             {
                 callIsHandled = true;
@@ -1470,6 +1454,11 @@ namespace silly
                     buildUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
                                           lit ? lit->INTEGER_PATTERN() : nullptr, lit ? lit->FLOAT_PATTERN() : nullptr,
                                           ctx->scalarOrArrayElement(), lit ? lit->STRING_PATTERN() : nullptr, s );
+            }
+
+            if ( lit && lit->STRING_PATTERN() )
+            {
+                foundStringLiteral = true;
             }
 
             resultValue = lhsValue;
@@ -1608,6 +1597,26 @@ namespace silly
             }
         }
 
+        return resultValue;;
+    }
+
+    void MLIRListener::enterRvalueExpression( SillyParser::RvalueExpressionContext *ctx )
+    try
+    {
+        assert( ctx );
+        if ( !assignmentTargetValid ) // Why was this added?
+        {
+            return;
+        }
+        mlir::Location loc = getStartLocation( ctx );
+
+        // HACK: currently only get here for parameters of CALL, and for start/stop/step variables.
+        // ... figure out how to handle.
+        if ( currentVarName.empty() )
+        {
+            return;
+        }
+
         if ( currentVarName.empty() )
         {
             throw ExceptionWithContext(
@@ -1615,8 +1624,16 @@ namespace silly
                 std::format( "{}internal error: currentVarName not set!\n", formatLocation( loc ) ) );
         }
 
+        silly::DeclareOp declareOp = lookupDeclareForVar( loc, currentVarName );
+        mlir::TypeAttr typeAttr = declareOp.getTypeAttr();
+        mlir::Type opType = typeAttr.getValue();
+
+        std::string s;
+        bool foundStringLiteral{};
+        mlir::Value resultValue = parseRvalue( ctx, loc, opType, s, foundStringLiteral );
+
         mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, currentVarName );
-        if ( lit && lit->STRING_PATTERN() )
+        if ( s.empty() )
         {
             mlir::StringAttr strAttr = builder.getStringAttr( s );
 

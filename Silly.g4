@@ -117,7 +117,11 @@ get
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
 assignment
-  : scalarOrArrayElement EQUALS_TOKEN rvalueExpression
+  : scalarOrArrayElement EQUALS_TOKEN assignmentRvalue
+  ;
+
+assignmentRvalue
+  : rvalueExpression
   ;
 
 // FOR ( x : (1, 11) ) { PRINT x; };
@@ -138,14 +142,18 @@ for
   ;
 
 forStart
-  : rvalueExpression
+  : forRangeExpression
   ;
 
 forEnd
-  : rvalueExpression
+  : forRangeExpression
   ;
 
 forStep
+  : forRangeExpression
+  ;
+
+forRangeExpression
   : rvalueExpression
   ;
 
@@ -162,7 +170,11 @@ call
   ;
 
 parameterList
-  : BRACE_START_TOKEN (rvalueExpression (COMMA_TOKEN rvalueExpression)*)? BRACE_END_TOKEN
+  : BRACE_START_TOKEN (parameterExpression (COMMA_TOKEN parameterExpression)*)? BRACE_END_TOKEN
+  ;
+
+parameterExpression
+  : rvalueExpression
   ;
 
 binaryElement

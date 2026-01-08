@@ -294,6 +294,8 @@ namespace silly
         void createIf( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue, bool saveIP );
 
         void selectElseBlock( mlir::Location loc, const std::string & errorText );
+
+        mlir::Value parseRvalue( SillyParser::RvalueExpressionContext *ctx, mlir::Location loc, mlir::Type opType, std::string & s, bool & foundStringLiteral );
     };
 
     inline mlir::ModuleOp &MLIRListener::getModule()
