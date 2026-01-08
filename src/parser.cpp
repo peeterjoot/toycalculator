@@ -582,7 +582,9 @@ namespace silly
 
                 bool foundStringLiteral{};
                 std::string s;
-                mlir::Value value = parseRvalue( p, loc, funcType.getInputs()[i], s, foundStringLiteral );
+                mlir::Type ty = funcType.getInputs()[i];
+                mlir::Value value = parseRvalue( p, loc, ty, s, foundStringLiteral );
+                value = castOpIfRequired( loc, value, ty );
 
                 parameters.push_back( value );
                 i++;
