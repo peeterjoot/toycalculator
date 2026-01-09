@@ -73,8 +73,8 @@ namespace silly
         DialectCtx();
     };
 
+    /// antlr4::tree::TerminalNode is a long winded expression
     using tNode = antlr4::tree::TerminalNode;
-
 
     /// Per-function state tracked during parsing.
     struct PerFunctionState
@@ -117,7 +117,7 @@ namespace silly
         void exitIfelifelse( SillyParser::IfelifelseContext *ctx ) override;
 
         void enterFunction( SillyParser::FunctionContext *ctx ) override;
-        void enterCallStatement(SillyParser::CallStatementContext * ctx) override;
+        void enterCallStatement( SillyParser::CallStatementContext *ctx ) override;
         void exitFunction( SillyParser::FunctionContext *ctx ) override;
         void enterReturnStatement( SillyParser::ReturnStatementContext *ctx ) override;
         void enterDeclare( SillyParser::DeclareContext *ctx ) override;
@@ -193,9 +193,6 @@ namespace silly
         /// Saved insertion point for main.
         mlir::OpBuilder::InsertPoint mainIP;
 
-        /// Main ScopeOp created (symbol table, region, and block)
-        bool mainScopeGenerated{};
-
         /// Looks up DeclareOp for a variable.
         silly::DeclareOp lookupDeclareForVar( mlir::Location loc, const std::string &varName );
 
@@ -226,6 +223,7 @@ namespace silly
                                           SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
                                           tNode *stringNode, std::string &s );
 
+        /// Like buildUnaryExpression, but throws an error if a string literal was found.
         mlir::Value buildNonStringUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode,
                                                    tNode *floatNode,
                                                    SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
@@ -239,33 +237,39 @@ namespace silly
         void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                   SillyParser::ArrayBoundsExpressionContext *arrayBounds );
 
+        /// Returns a reference to the functionStateMap entry for funcName.
+        ///
+        /// Create that functionStateMap entry for funcName if it doesn't exist.
         inline PerFunctionState &funcState( const std::string &funcName );
-        inline void setVarState( const std::string &funcName, const std::string &varName, VariableState st );
-        inline VariableState getVarState( const std::string &varName );
-        inline void setFuncOp( mlir::Operation *op );
+
+        /// Set the currentFuncName, and it's corresponding func.func operation.
+        inline void setFuncNameAndOp( const std::string & funcName, mlir::Operation *op );
+
+        /// Return the funcOp cached for the current function in setFuncNameAndOp.
         inline mlir::func::FuncOp getFuncOp( mlir::Location loc, const std::string &funcName );
+
+        /// Look up the PerFunctionState for the named function, and set the supplied VariableState for the named variable.
+        inline void setVarState( const std::string &funcName, const std::string &varName, VariableState st );
+
+        /// For currentFuncName, obtain a variable state last saved in a call to setVarState.
+        inline VariableState getVarState( const std::string &varName );
 
         /// Parses scalar type string to MLIR type.
         mlir::Type parseScalarType( const std::string &ty );
-
 
         /// Casts value to desired type if needed.
         ///
         /// This is adapted from AssignOpLowering, but uses arith dialect operations instead of LLVM dialect.
         mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType );
 
-
         /// Builds i1 predicate from booleanValue context.
         mlir::Value parsePredicate( mlir::Location loc, SillyParser::BooleanValueContext *ctx );
-
 
         /// Casts index value to index type.
         mlir::Value indexTypeCast( mlir::Location loc, mlir::Value val );
 
-
         /// Finds enclosing silly::ScopeOp.
         silly::ScopeOp getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp ) const;
-
 
         /// Emits silly::ReturnOp (or exit equivalent) with optional value.
         template <class Literal>
@@ -273,11 +277,20 @@ namespace silly
                                 SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *boolNode );
 
 
+        /// For IF/ELIF, create an scf.if condition and set the insertion point to it's then region.
+        ///
+        /// @param loc [in] The starting location for the IF statement.
+        /// @param booleanValue [in] The predicate for the IF or ELIF condition.
+        /// @param saveIP [in] push the insertion point that is effectively after the if to insertionPointStack (use
+        /// this for the initial if in an IF/ELIF/ELSE, but not for the internal IF created when processing an ELIF.
         void createIf( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue, bool saveIP );
 
-        void selectElseBlock( mlir::Location loc, const std::string & errorText );
+        /// Find the current scf.if condition and set the insertion point to the else region for that if.
+        void selectElseBlock( mlir::Location loc, const std::string &errorText );
 
-        mlir::Value parseRvalue( SillyParser::RvalueExpressionContext *ctx, mlir::Location loc, mlir::Type opType, std::string & s, bool & foundStringLiteral );
+        /// Handle parsing of a RvalueExpressionContext, returning an mlir::Value
+        mlir::Value parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx, mlir::Type opType,
+                                 std::string &s, bool &foundStringLiteral );
     };
 
     inline mlir::ModuleOp &MLIRListener::getModule()

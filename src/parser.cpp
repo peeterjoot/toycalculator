@@ -43,6 +43,27 @@ namespace silly
         return *functionStateMap[funcName];
     }
 
+    inline void MLIRListener::setFuncNameAndOp( const std::string & funcName, mlir::Operation *op )
+    {
+        currentFuncName = funcName;
+        PerFunctionState &f = funcState( currentFuncName );
+        f.funcOp = op;
+    }
+
+    inline mlir::func::FuncOp MLIRListener::getFuncOp( mlir::Location loc, const std::string &funcName )
+    {
+        PerFunctionState &f = funcState( funcName );
+        mlir::func::FuncOp op = mlir::cast<mlir::func::FuncOp>( f.funcOp );
+
+        if ( op == nullptr )
+        {
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "{}internal error: Unable to find FuncOp for function {}\n",
+                                                     formatLocation( loc ), funcName ) );
+        }
+        return op;
+    }
+
     inline void MLIRListener::setVarState( const std::string &funcName, const std::string &varName, VariableState st )
     {
         PerFunctionState &f = funcState( funcName );
@@ -53,12 +74,6 @@ namespace silly
     {
         PerFunctionState &f = funcState( currentFuncName );
         return f.varStates[varName];
-    }
-
-    inline void MLIRListener::setFuncOp( mlir::Operation *op )
-    {
-        PerFunctionState &f = funcState( currentFuncName );
-        f.funcOp = op;
     }
 
     inline std::string MLIRListener::formatLocation( mlir::Location loc ) const
@@ -83,20 +98,6 @@ namespace silly
         return input.substr( 1, input.size() - 2 );
     }
 
-    inline mlir::func::FuncOp MLIRListener::getFuncOp( mlir::Location loc, const std::string &funcName )
-    {
-        PerFunctionState &f = funcState( funcName );
-        mlir::func::FuncOp op = mlir::cast<mlir::func::FuncOp>( f.funcOp );
-
-        if ( op == nullptr )
-        {
-            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                        std::format( "{}internal error: Unable to find FuncOp for function {}\n",
-                                                     formatLocation( loc ), funcName ) );
-        }
-        return op;
-    }
-
     inline LocPairs MLIRListener::getLocations( antlr4::ParserRuleContext *ctx )
     {
         size_t startLine = 1;
@@ -119,17 +120,6 @@ namespace silly
             mlir::FileLineColLoc::get( builder.getStringAttr( filename ), startLine, startCol + 1 );
         mlir::FileLineColLoc endLoc =
             mlir::FileLineColLoc::get( builder.getStringAttr( filename ), endLine, endCol + 1 );
-
-        if ( !mainScopeGenerated && ( MLIRListener::currentFuncName == ENTRY_SYMBOL_NAME ) )
-        {
-            mlir::FunctionType funcType = builder.getFunctionType( {}, tyI32 );
-            mlir::func::FuncOp funcOp = builder.create<mlir::func::FuncOp>( startLoc, ENTRY_SYMBOL_NAME, funcType );
-
-            std::vector<std::string> paramNames;
-            createScope( startLoc, endLoc, funcOp, ENTRY_SYMBOL_NAME, paramNames );
-
-            mainScopeGenerated = true;
-        }
 
         return { startLoc, endLoc };
     }
@@ -465,8 +455,7 @@ namespace silly
             dcl->setAttr( "sym_name", strAttr );
         }
 
-        currentFuncName = funcName;
-        setFuncOp( funcOp );
+        setFuncNameAndOp( funcName, funcOp );
     }
 
     void MLIRListener::enterStartRule( SillyParser::StartRuleContext *ctx )
@@ -474,6 +463,14 @@ namespace silly
     {
         assert( ctx );
         currentFuncName = ENTRY_SYMBOL_NAME;
+
+        LocPairs locs = getLocations(ctx);
+
+        mlir::FunctionType funcType = builder.getFunctionType( {}, tyI32 );
+        mlir::func::FuncOp funcOp = builder.create<mlir::func::FuncOp>( locs.first, ENTRY_SYMBOL_NAME, funcType );
+
+        std::vector<std::string> paramNames;
+        createScope( locs.first, locs.second, funcOp, ENTRY_SYMBOL_NAME, paramNames );
     }
     CATCH_USER_ERROR
 
@@ -583,7 +580,7 @@ namespace silly
                 bool foundStringLiteral{};
                 std::string s;
                 mlir::Type ty = funcType.getInputs()[i];
-                mlir::Value value = parseRvalue( p, loc, ty, s, foundStringLiteral );
+                mlir::Value value = parseRvalue( loc, p, ty, s, foundStringLiteral );
                 value = castOpIfRequired( loc, value, ty );
 
                 parameters.push_back( value );
@@ -1398,7 +1395,7 @@ namespace silly
 
         std::string s;
         bool foundStringLiteral{};
-        mlir::Value resultValue = parseRvalue( exprContext, loc, opType, s, foundStringLiteral );
+        mlir::Value resultValue = parseRvalue( loc, exprContext, opType, s, foundStringLiteral );
 
         mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, currentVarName );
         if ( foundStringLiteral )
@@ -1461,7 +1458,7 @@ namespace silly
         return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
     }
 
-    mlir::Value MLIRListener::parseRvalue( SillyParser::RvalueExpressionContext *ctx, mlir::Location loc, mlir::Type opType, std::string & s, bool & foundStringLiteral )
+    mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx, mlir::Type opType, std::string & s, bool & foundStringLiteral )
     {
         mlir::Value resultValue;
         mlir::Value lhsValue;
