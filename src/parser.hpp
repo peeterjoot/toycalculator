@@ -193,6 +193,12 @@ namespace silly
         /// Saved insertion point for main.
         mlir::OpBuilder::InsertPoint mainIP;
 
+        ////////////////////////////////////////////////////////////////////////
+        ///
+        /// Helper functions
+        ///
+        ////////////////////////////////////////////////////////////////////////
+
         /// Looks up DeclareOp for a variable.
         silly::DeclareOp lookupDeclareForVar( mlir::Location loc, const std::string &varName );
 
@@ -221,12 +227,14 @@ namespace silly
         /// Builds MLIR value from unary expression (literals/variables).
         mlir::Value buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode, tNode *floatNode,
                                           SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
+                                          SillyParser::CallExpressionContext *callNode,
                                           tNode *stringNode, std::string &s );
 
         /// Like buildUnaryExpression, but throws an error if a string literal was found.
         mlir::Value buildNonStringUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode,
                                                    tNode *floatNode,
                                                    SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
+                                                   SillyParser::CallExpressionContext *callNode,
                                                    tNode *stringNode );
 
 

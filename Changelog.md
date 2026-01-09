@@ -9,6 +9,7 @@
   - Move the mainScopeGenerated related main() funcOp and scope creation to enterStartRule, removing from getLocations
   - make loc the first param of parseRvalue, like most other functions that take a Location.
   - Doxygen comments for various private functions.
+* Allow CALL in unary and binary expressions.
 
 ## tag: V7 (Jan 4, 2025)
 

@@ -6,6 +6,7 @@
   - a whole range of statements in IF-then and if-ELSE blocks, and FOR (dcl, assignment, call, ...).  Especially IFs in IF/ELIF/ELSE!
   - tests for all the type conversions (i.e.: binary and unary arith operators)
   - tests for array access and assignment.
+  - tests for call in binary and unary expressions.
 
 ----------------------------------
 * Expressions:
@@ -16,7 +17,7 @@
 
 ----------------------------------
 * Documentation:
-  - CALL parameters can now be rvalue-expressions.
+  - CALL parameters can now be rvalue-expressions, and also in unary and binary expressions.
 
 ----------------------------------
 * Maintainance:
