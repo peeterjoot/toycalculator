@@ -179,7 +179,7 @@ Blocks use `{ ... }`, and expressions use parentheses `( ... )`.
 
 ## Declarations
 
-### Implicit Declaration
+### Implicit floating point Declaration
 
 Declares a scalar or array variable with an implicit `FLOAT64` type.
 
@@ -441,6 +441,12 @@ Functions are invoked using the `CALL` keyword.
 ```text
 x = CALL add(2, 3);
 y = CALL sum(a[1], a[2]);
+```
+
+CALL expressions can also be part of unary or binary expressions, for example
+```
+x = v * CALL foo();
+x = - CALL foo();
 ```
 
 ---
