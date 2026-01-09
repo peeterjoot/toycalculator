@@ -944,13 +944,13 @@ namespace silly
         silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
         mlir::Type elemType = declareOp.getTypeAttr().getValue();
 
+        std::string s;
+        int sl{};
         if ( pStart )
         {
-            SillyParser::LiteralContext *lit = pStart->literal();
-            start = buildNonStringUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
-                                                   lit ? lit->INTEGER_PATTERN() : nullptr,
-                                                   lit ? lit->FLOAT_PATTERN() : nullptr, pStart->scalarOrArrayElement(),
-                                                   nullptr, lit ? lit->STRING_PATTERN() : nullptr );
+            bool foundStringLiteral{};
+            start = parseRvalue( loc, pStart, elemType, s, foundStringLiteral );
+            sl += ( foundStringLiteral == true );
 
             start = castOpIfRequired( loc, start, elemType );
         }
@@ -963,11 +963,9 @@ namespace silly
 
         if ( pEnd )
         {
-            SillyParser::LiteralContext *lit = pEnd->literal();
-            end = buildNonStringUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
-                                                 lit ? lit->INTEGER_PATTERN() : nullptr,
-                                                 lit ? lit->FLOAT_PATTERN() : nullptr, pEnd->scalarOrArrayElement(),
-                                                 nullptr, lit ? lit->STRING_PATTERN() : nullptr );
+            bool foundStringLiteral{};
+            end = parseRvalue( loc, pEnd, elemType, s, foundStringLiteral );
+            sl += ( foundStringLiteral == true );
 
             end = castOpIfRequired( loc, end, elemType );
         }
@@ -980,11 +978,9 @@ namespace silly
 
         if ( pStep )
         {
-            SillyParser::LiteralContext *lit = pStep->literal();
-            step = buildNonStringUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
-                                                  lit ? lit->INTEGER_PATTERN() : nullptr,
-                                                  lit ? lit->FLOAT_PATTERN() : nullptr, pStep->scalarOrArrayElement(),
-                                                  nullptr, lit ? lit->STRING_PATTERN() : nullptr );
+            bool foundStringLiteral{};
+            step = parseRvalue( loc, pStep, elemType, s, foundStringLiteral );
+            sl += ( foundStringLiteral == true );
         }
         else
         {
@@ -993,6 +989,14 @@ namespace silly
         }
 
         step = castOpIfRequired( loc, step, elemType );
+
+        if ( sl )
+        {
+            throw ExceptionWithContext(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}internal error: unexpected string literal found while parsing for range: {}\n",
+                             formatLocation( loc ), ctx->getText() ) );
+        }
 
         insertionPointStack.push_back( builder.saveInsertionPoint() );
 

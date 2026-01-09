@@ -10,6 +10,41 @@
   - make loc the first param of parseRvalue, like most other functions that take a Location.
   - Doxygen comments for various private functions.
 * Allow CALL in unary and binary expressions.
+* Expressions are now allowed in for loop range values:
+
+Example program:
+```
+INT32 x;
+INT32 a;
+INT32 b;
+INT32 c;
+INT32 z;
+a = 1;
+b = -11;
+c = 2;
+z = 0;
+
+FOR ( x : (+a, -b, c + z) )
+{
+    PRINT x;
+};
+```
+
+Example MLIR fragment for this loop:
+
+```
+%3 = silly.load @a : i32
+%4 = silly.load @b : i32
+%5 = "silly.negate"(%4) : (i32) -> i32
+%6 = silly.load @c : i32
+%7 = silly.load @z : i32
+%8 = "silly.add"(%6, %7) : (i32, i32) -> i32
+scf.for %arg0 = %3 to %5 step %8  : i32 {
+  silly.assign @x = %arg0 : i32
+  %9 = silly.load @x : i32
+  "silly.print"(%9) : (i32) -> ()
+}
+```
 
 ## tag: V7 (Jan 4, 2025)
 

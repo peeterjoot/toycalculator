@@ -1,11 +1,19 @@
 INT32 x;
+INT32 a;
+INT32 b;
+INT32 c;
+INT32 z;
+a = 1;
+b = -11;
+c = 2;
+z = 0;
 
 FOR ( x : (1, 11) )
 {
     PRINT x;
 };
 
-FOR ( x : (1, 11, 2) )
+FOR ( x : (+a, -b, c + z) )
 {
     PRINT x;
 };
