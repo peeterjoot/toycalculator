@@ -16,7 +16,6 @@
 ----------------------------------
 * Expressions:
   - Get rid of CALL and support calls in binary expressions: r = v * foo().
-  - Allow rvalueExpressions in for loop range variables.
   - Implement more complex expressions (chains of operators...)
   - Expressions that aren't parsed properly (like `CALL factorial(v - 1)` used to) lead to mysterious seeming parse error: Should do better.
 
