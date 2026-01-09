@@ -174,6 +174,8 @@ types
 unary
 xorop
 ));
+#boolcall
+#boolcall2
 
 my %failuretests = map {$_ => 1} (qw(
 error_redeclare

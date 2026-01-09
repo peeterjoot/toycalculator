@@ -9,6 +9,11 @@
   - tests for call in binary and unary expressions.
 
 ----------------------------------
+* Bugs:
+  - boolcall:  bool isn't working in a function return
+  - boolcall2: including one that's like factorial.silly, but using BOOL instead of INT32.
+
+----------------------------------
 * Expressions:
   - Get rid of CALL and support calls in binary expressions: r = v * foo().
   - Allow rvalueExpressions in for loop range variables.
