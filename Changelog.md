@@ -46,6 +46,9 @@ scf.for %arg0 = %3 to %5 step %8  : i32 {
 }
 ```
 
+* Fix functions returning BOOL that have just a RETURN statement.  Eliminates some of the remnants of the old dummy return rewrite code.
+* Implement declaration with initialization.
+
 ## tag: V7 (Jan 4, 2025)
 
 ### 1. Minor maintainance:

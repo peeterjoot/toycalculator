@@ -62,11 +62,11 @@ comment
 
 // A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').  These are currently implicitly double.
 declare
-  : (DCL_TOKEN|DECLARE_TOKEN) IDENTIFIER (arrayBoundsExpression)?
+  : (DCL_TOKEN|DECLARE_TOKEN) IDENTIFIER (arrayBoundsExpression)? (EQUALS_TOKEN assignmentRvalue)?
   ;
 
 boolDeclare
-  : BOOL_TOKEN IDENTIFIER (arrayBoundsExpression)?
+  : BOOL_TOKEN IDENTIFIER (arrayBoundsExpression)? (EQUALS_TOKEN assignmentRvalue)?
   ;
 
 variableTypeAndName
@@ -79,15 +79,15 @@ scalarType
   ;
 
 intDeclare
-  : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN) IDENTIFIER (arrayBoundsExpression)?
+  : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN) IDENTIFIER (arrayBoundsExpression)? (EQUALS_TOKEN assignmentRvalue)?
   ;
 
 floatDeclare
-  : (FLOAT32_TOKEN | FLOAT64_TOKEN) IDENTIFIER (arrayBoundsExpression)?
+  : (FLOAT32_TOKEN | FLOAT64_TOKEN) IDENTIFIER (arrayBoundsExpression)? (EQUALS_TOKEN assignmentRvalue)?
   ;
 
 stringDeclare
-  : STRING_TOKEN IDENTIFIER arrayBoundsExpression
+  : STRING_TOKEN IDENTIFIER arrayBoundsExpression (EQUALS_TOKEN STRING_PATTERN)?
   ;
 
 arrayBoundsExpression

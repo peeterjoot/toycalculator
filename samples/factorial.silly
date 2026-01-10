@@ -1,14 +1,12 @@
+// 0! = 1
+// 1! = 1
+// 2! = 2
 FUNCTION factorial( INT32 v ) : INT32
 {
-    INT32 r;
-    r = 1;
+    INT32 r = 1;
     IF ( v > 1 )
     {
         r = v * CALL factorial( v - 1 );
-    }
-    ELSE
-    {
-        r = 1;
     };
 
     RETURN r;

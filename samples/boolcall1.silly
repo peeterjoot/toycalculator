@@ -1,0 +1,18 @@
+FUNCTION foo( ) : BOOL
+{
+    RETURN TRUE;
+};
+
+FUNCTION bar( ) : BOOL
+{
+    BOOL b;
+    b = FALSE;
+    RETURN b;
+};
+
+BOOL v;
+v = CALL foo( );
+PRINT v;
+
+v = CALL bar( );
+PRINT v;

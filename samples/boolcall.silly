@@ -1,8 +1,0 @@
-FUNCTION foo( ) : BOOL
-{
-    RETURN TRUE;
-};
-
-BOOL v;
-v = CALL foo( );
-PRINT v;

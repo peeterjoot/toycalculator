@@ -11,16 +11,12 @@
     - same for the README "language reference"
 
 ----------------------------------
-* Bugs:
-  - boolcall:  bool isn't working in a function return
-  - boolcall2: including one that's like factorial.silly, but using BOOL instead of INT32.
-
-----------------------------------
 * Expressions:
   - Get rid of CALL and support calls in binary expressions: r = v * foo().
   - Implement more complex expressions (chains of operators...)
   - Expressions that aren't parsed properly (like `CALL factorial(v - 1)` used to) lead to mysterious seeming parse error: Should do better.
   - Review the parser... any other places where buildUnary is called that ought to be parseRvalue?
+  - Add support for declaration with initialization.
 
 ----------------------------------
 * Maintainance:
@@ -28,6 +24,17 @@
   - Move scf lowering into 1st pass?  Attempt at this in xpgn:streamline-passes-attempt branch (not pushed.)
   - Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
   - Final version of ELIF support meant that I didn't need getStopLocation() anymore (was using it to generate scf.yield with the end of the block location).  Review that and decide what to do with it.
+  - github: archive all the old branches.
+  - merge these?
+
+```
+         registerDeclaration( loc, varName, tyF64, ctx->arrayBoundsExpression() );
+
+         if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
+         {
+             processAssignment( loc, expr->rvalueExpression(), varName, {} );
+         }
+```
 
 ----------------------------------
 

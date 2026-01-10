@@ -1,0 +1,17 @@
+FUNCTION foo( ) : BOOL
+{
+    RETURN TRUE;
+};
+
+FUNCTION bar( ) : BOOL
+{
+    BOOL b;
+    b = FALSE;
+    RETURN b;
+};
+
+FUNCTION moo( ) : BOOL
+{
+    BOOL b = FALSE;
+    RETURN b;
+};

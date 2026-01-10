@@ -1,0 +1,2 @@
+STRING s[10] = "hi";
+PRINT s;

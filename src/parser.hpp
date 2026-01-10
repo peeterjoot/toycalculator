@@ -227,15 +227,14 @@ namespace silly
         /// Builds MLIR value from unary expression (literals/variables).
         mlir::Value buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode, tNode *floatNode,
                                           SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
-                                          SillyParser::CallExpressionContext *callNode,
-                                          tNode *stringNode, std::string &s );
+                                          SillyParser::CallExpressionContext *callNode, tNode *stringNode,
+                                          std::string &s );
 
         /// Like buildUnaryExpression, but throws an error if a string literal was found.
         mlir::Value buildNonStringUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode,
                                                    tNode *floatNode,
                                                    SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
-                                                   SillyParser::CallExpressionContext *callNode,
-                                                   tNode *stringNode );
+                                                   SillyParser::CallExpressionContext *callNode, tNode *stringNode );
 
 
         /// Emits a silly::CallOp for a function call.
@@ -251,12 +250,13 @@ namespace silly
         inline PerFunctionState &funcState( const std::string &funcName );
 
         /// Set the currentFuncName, and it's corresponding func.func operation.
-        inline void setFuncNameAndOp( const std::string & funcName, mlir::Operation *op );
+        inline void setFuncNameAndOp( const std::string &funcName, mlir::Operation *op );
 
         /// Return the funcOp cached for the current function in setFuncNameAndOp.
         inline mlir::func::FuncOp getFuncOp( mlir::Location loc, const std::string &funcName );
 
-        /// Look up the PerFunctionState for the named function, and set the supplied VariableState for the named variable.
+        /// Look up the PerFunctionState for the named function, and set the supplied VariableState for the named
+        /// variable.
         inline void setVarState( const std::string &funcName, const std::string &varName, VariableState st );
 
         /// For currentFuncName, obtain a variable state last saved in a call to setVarState.
@@ -299,6 +299,9 @@ namespace silly
         /// Handle parsing of a RvalueExpressionContext, returning an mlir::Value
         mlir::Value parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx, mlir::Type opType,
                                  std::string &s, bool &foundStringLiteral );
+
+        void processAssignment( mlir::Location loc, SillyParser::RvalueExpressionContext *exprContext,
+                                std::string &currentVarName, mlir::Value currentIndexExpr );
     };
 
     inline mlir::ModuleOp &MLIRListener::getModule()

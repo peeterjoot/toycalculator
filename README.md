@@ -181,16 +181,17 @@ Blocks use `{ ... }`, and expressions use parentheses `( ... )`.
 
 ### Implicit floating point Declaration
 
-Declares a scalar or array variable with an implicit `FLOAT64` type.
+Declares a scalar or array variable with an implicit `FLOAT64` type, with optional initialization.
 
 ```text
 DCL x;
 DECLARE y[10];
+DCL y = 42.0;
 ```
 
 ### Typed Declarations
 
-Scalar and array declarations with explicit types:
+Scalar and array declarations with explicit types and optional initialization:
 
 #### Integer Types
 
@@ -198,7 +199,7 @@ Scalar and array declarations with explicit types:
 INT8   a;
 INT16  b;
 INT32  c[4];
-INT64  d;
+INT64  d = 42;
 ```
 
 #### Floating-Point Types
@@ -206,12 +207,14 @@ INT64  d;
 ```text
 FLOAT32 f;
 FLOAT64 g[8];
+FLOAT32 pi = 3.14;
 ```
 
 #### Boolean Type
 
 ```text
 BOOL flag;
+BOOL b = FALSE;
 ```
 
 #### String Type
@@ -220,6 +223,7 @@ Strings must be arrays (fixed-length).
 
 ```text
 STRING name[32];
+STRING hello[32] = "world";
 ```
 
 ## Array Element Access

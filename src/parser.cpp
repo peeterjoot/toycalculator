@@ -620,6 +620,11 @@ namespace silly
         std::string varName = ctx->IDENTIFIER()->getText();
 
         registerDeclaration( loc, varName, tyF64, ctx->arrayBoundsExpression() );
+
+        if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
+        {
+            processAssignment( loc, expr->rvalueExpression(), varName, {} );
+        }
     }
     CATCH_USER_ERROR
 
@@ -630,6 +635,11 @@ namespace silly
         mlir::Location loc = getStartLocation( ctx );
         std::string varName = ctx->IDENTIFIER()->getText();
         registerDeclaration( loc, varName, tyI1, ctx->arrayBoundsExpression() );
+
+        if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
+        {
+            processAssignment( loc, expr->rvalueExpression(), varName, {} );
+        }
     }
     CATCH_USER_ERROR
 
@@ -663,6 +673,11 @@ namespace silly
                                         std::format( "{}internal error: Unsupported signed integer declaration size.\n",
                                                      formatLocation( loc ) ) );
         }
+
+        if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
+        {
+            processAssignment( loc, expr->rvalueExpression(), varName, {} );
+        }
     }
     CATCH_USER_ERROR
 
@@ -673,20 +688,28 @@ namespace silly
         mlir::Location loc = getStartLocation( ctx );
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
+        mlir::Type ty;
 
         if ( ctx->FLOAT32_TOKEN() )
         {
-            registerDeclaration( loc, varName, tyF32, ctx->arrayBoundsExpression() );
+            ty = tyF32;
         }
         else if ( ctx->FLOAT64_TOKEN() )
         {
-            registerDeclaration( loc, varName, tyF64, ctx->arrayBoundsExpression() );
+            ty = tyF64;
         }
         else
         {
             throw ExceptionWithContext( __FILE__, __LINE__, __func__,
                                         std::format( "{}internal error: Unsupported floating point declaration size.\n",
                                                      formatLocation( loc ) ) );
+        }
+
+        registerDeclaration( loc, varName, ty, ctx->arrayBoundsExpression() );
+
+        if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
+        {
+            processAssignment( loc, expr->rvalueExpression(), varName, {} );
         }
     }
     CATCH_USER_ERROR
@@ -702,6 +725,23 @@ namespace silly
         assert( arrayBounds );
 
         registerDeclaration( loc, varName, tyI8, arrayBounds );
+
+        if ( tNode *theString = ctx->STRING_PATTERN() )
+        {
+            std::string s = stripQuotes( loc, theString->getText() );
+
+            mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+            mlir::StringAttr strAttr = builder.getStringAttr( s );
+
+            silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
+
+            mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
+
+            builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ stringLiteral },
+                                             llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+
+            setVarState( currentFuncName, varName, VariableState::assigned );
+        }
     }
     CATCH_USER_ERROR
 
@@ -1239,47 +1279,28 @@ namespace silly
                                           SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
                                           tNode *boolNode )
     {
-        // Handle the dummy ReturnOp originally inserted in the FuncOp's block
-        mlir::Block *currentBlock = builder.getInsertionBlock();
-
         mlir::Type returnType{};
-        bool returnTypeNotEmpty{};
+        bool returnTypeNonVoid{};
+        mlir::Value value{};
 
-        if ( currentBlock && !currentBlock->empty() )
+        if ( currentFuncName == ENTRY_SYMBOL_NAME )
         {
-            mlir::Operation *parentOp = currentBlock->getParentOp();
-            assert( parentOp );
-            if ( !isa<silly::ScopeOp>( parentOp ) )
-            {
-                LLVM_DEBUG( {
-                    llvm::errs() << std::format( "IP stacking error:\n" );
-                    mod.dump();
-                } );
-                throw ExceptionWithContext(
-                    __FILE__, __LINE__, __func__,
-                    std::format( "{}internal error: RETURN statement must be inside a silly.scope\n",
-                                 formatLocation( loc ) ) );
-            }
-
-            mlir::func::FuncOp func = parentOp->getParentOfType<mlir::func::FuncOp>();
+             returnType = tyI32;
+             returnTypeNonVoid = true;
+        }
+        else
+        {
+            mlir::func::FuncOp func = getFuncOp( loc, currentFuncName );
             llvm::ArrayRef<mlir::Type> returnTypeArray = func.getFunctionType().getResults();
 
             if ( !returnTypeArray.empty() )
             {
                 returnType = returnTypeArray[0];
-                returnTypeNotEmpty = true;
+                returnTypeNonVoid = true;
             }
         }
-        else
-        {
-            returnType = tyI32;
-            returnTypeNotEmpty = true;
-        }
 
-        mlir::Value value{};
-
-        // always regenerate the RETURN/EXIT so that we have the terminator location set properly (not the function body
-        // start location that was used to create the dummy silly.ReturnOp that we rewrite here.)
+        // The RETURN/EXIT generation ensures that we have the terminator location set properly
         if ( lit || scalarOrArrayElement || boolNode )
         {
             value = buildNonStringUnaryExpression( loc, boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
@@ -1288,14 +1309,14 @@ namespace silly
 
             // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
             // uses arith dialect operations instead of LLVM dialect
-            if ( returnTypeNotEmpty )
+            if ( returnTypeNonVoid )
             {
                 value = castOpIfRequired( loc, value, returnType );
             }
         }
         else
         {
-            if ( returnTypeNotEmpty )
+            if ( returnTypeNonVoid )
             {
                 if ( mlir::IntegerType intType = mlir::dyn_cast<mlir::IntegerType>( returnType ) )
                 {
@@ -1368,38 +1389,9 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterAssignment( SillyParser::AssignmentContext *ctx )
-    try
+    void MLIRListener::processAssignment( mlir::Location loc, SillyParser::RvalueExpressionContext *exprContext,
+                                          std::string &currentVarName, mlir::Value currentIndexExpr )
     {
-        assert( ctx );
-        mlir::Location loc = getStartLocation( ctx );
-        SillyParser::ScalarOrArrayElementContext *lhs = ctx->scalarOrArrayElement();
-        assert( lhs );
-        assert( lhs->IDENTIFIER() );
-        std::string currentVarName = lhs->IDENTIFIER()->getText();
-
-        SillyParser::IndexExpressionContext *indexExpr = lhs->indexExpression();
-        mlir::Value currentIndexExpr = mlir::Value();
-
-        if ( indexExpr )
-        {
-            currentIndexExpr = buildNonStringUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr, lhs,
-                                                              nullptr, nullptr );
-        }
-
-        VariableState varState = getVarState( currentVarName );
-        if ( varState == VariableState::declared )
-        {
-            setVarState( currentFuncName, currentVarName, VariableState::assigned );
-        }
-        else if ( varState == VariableState::undeclared )
-        {
-            throw UserError( loc, std::format( "Variable {} not declared in assignment", currentVarName ) );
-        }
-
-        assert( ctx->assignmentRvalue() );
-        SillyParser::RvalueExpressionContext *exprContext = ctx->assignmentRvalue()->rvalueExpression();
-
         silly::DeclareOp declareOp = lookupDeclareForVar( loc, currentVarName );
         mlir::TypeAttr typeAttr = declareOp.getTypeAttr();
         mlir::Type opType = typeAttr.getValue();
@@ -1446,6 +1438,38 @@ namespace silly
         }
 
         setVarState( currentFuncName, currentVarName, VariableState::assigned );
+    }
+
+    void MLIRListener::enterAssignment( SillyParser::AssignmentContext *ctx )
+    try
+    {
+        assert( ctx );
+        mlir::Location loc = getStartLocation( ctx );
+        SillyParser::ScalarOrArrayElementContext *lhs = ctx->scalarOrArrayElement();
+        assert( lhs );
+        assert( lhs->IDENTIFIER() );
+        std::string currentVarName = lhs->IDENTIFIER()->getText();
+
+        SillyParser::IndexExpressionContext *indexExpr = lhs->indexExpression();
+        mlir::Value currentIndexExpr = mlir::Value();
+
+        if ( indexExpr )
+        {
+            currentIndexExpr = buildNonStringUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr, lhs,
+                                                              nullptr, nullptr );
+        }
+
+        VariableState varState = getVarState( currentVarName );
+        if ( varState == VariableState::declared )
+        {
+            setVarState( currentFuncName, currentVarName, VariableState::assigned );
+        }
+        else if ( varState == VariableState::undeclared )
+        {
+            throw UserError( loc, std::format( "Variable {} not declared in assignment", currentVarName ) );
+        }
+
+        processAssignment( loc, ctx->assignmentRvalue()->rvalueExpression(), currentVarName, currentIndexExpr );
     }
     CATCH_USER_ERROR
 

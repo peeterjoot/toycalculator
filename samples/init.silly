@@ -1,0 +1,2 @@
+INT32 v = 1;
+PRINT v;

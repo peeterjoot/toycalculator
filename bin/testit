@@ -113,6 +113,9 @@ andop
 array
 bin
 bool
+boolcall0
+boolcall1
+boolcall2
 boolop
 boolr
 call_with_param_referenced
@@ -149,6 +152,8 @@ getbool
 getboolfail
 if
 ifdcl
+init
+inits
 intarray
 lessbug
 lessbug2
@@ -174,8 +179,6 @@ types
 unary
 xorop
 ));
-#boolcall
-#boolcall2
 
 my %failuretests = map {$_ => 1} (qw(
 error_redeclare
