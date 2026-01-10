@@ -16,7 +16,6 @@
   - Implement more complex expressions (chains of operators...)
   - Expressions that aren't parsed properly (like `CALL factorial(v - 1)` used to) lead to mysterious seeming parse error: Should do better.
   - Review the parser... any other places where buildUnary is called that ought to be parseRvalue?
-  - Add support for declaration with initialization.
 
 ----------------------------------
 * Maintainance:
