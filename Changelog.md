@@ -53,6 +53,7 @@ scf.for %arg0 = %3 to %5 step %8  : i32 {
 * Add "EXIT 39 + 3" example to README
 * Add: exit42.silly
 * Add `return_expression.silly` to regression test list, fixing expected output.
+* Add error test cases that show that there is no support returning STRING or arrays from functions (grammar only allows scalar types).
 
 ## tag: V7 (Jan 4, 2025)
 

@@ -4,7 +4,7 @@
 * Bugs:
   - `nested_if_elif_else.silly` test case 3 fails.  end up in the final ELSE, not the IF!
   - `minimal_eliftest.silly` duplicate zero output for some reason!
-  - don't support returning STRING from functions.  also don't have a test case to show this.
+  - `error_intarray_bad_constaccess.silly` should fail but doesn't.
 
 ----------------------------------
 * Test:
