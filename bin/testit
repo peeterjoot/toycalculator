@@ -111,6 +111,7 @@ my %tests = map { $_ => 1 } (qw(
 addi
 andop
 array
+array_assign_and_use
 bin
 bool
 boolcall0
@@ -136,6 +137,7 @@ f
 factorial
 factorial2
 foo
+for_complex_body
 function
 function_add
 function_foo_with_local
@@ -163,6 +165,9 @@ lessop
 longstring
 neg
 neqop
+nested_if_basic
+nested_if_deep
+nested_if_elif_else
 not
 orop
 printboollit

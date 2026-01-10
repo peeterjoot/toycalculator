@@ -1,0 +1,22 @@
+// Test nesting at all three levels: IF/ELIF/ELSE
+INT32 a = 3;
+INT32 b = 10;
+
+IF (a < 5)
+{
+    PRINT "IF branch";
+    IF (b > 7)
+    {
+        PRINT "Nested in IF";
+    };
+}
+ELIF (a > 5)
+{
+    PRINT "ELIF branch";
+    IF (TRUE) { PRINT "Nested in ELIF"; };
+}
+ELSE
+{
+    PRINT "ELSE branch";
+    IF (FALSE) { PRINT "dead"; } ELSE { PRINT "Nested in ELSE"; };
+};

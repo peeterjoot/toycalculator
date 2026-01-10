@@ -1,0 +1,22 @@
+// FOR with declaration, assignment, call, print
+// Loop variable pre-declared (as required by current compiler)
+INT32 i;
+INT32 sum = 0;
+
+FUNCTION addone(INT32 v) : INT32
+{
+    INT32 temp = v + 1;
+    RETURN temp;
+};
+
+FOR (i : (1, 6))
+{
+    INT32 local = i * 2;           // declaration inside loop
+    sum = sum + local;             // assignment
+    PRINT "i=", i, " local=", local;
+    INT32 next = CALL addone(i);   // function call
+    PRINT "next=", next;
+};
+
+PRINT "Final sum=", sum;
+EXIT 0;

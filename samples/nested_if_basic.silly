@@ -1,0 +1,14 @@
+// Test basic nesting: IF inside IF
+INT32 x = 5;
+
+IF (TRUE)
+{
+    PRINT "Outer IF executed";
+
+    IF (x > 0)
+    {
+        PRINT "Inner IF executed";
+    };
+};
+
+PRINT "Done.";

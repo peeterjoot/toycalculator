@@ -1,0 +1,33 @@
+// 4 levels deep - tests dominance and block nesting
+// somefunc defined at top level (before first IF)
+FUNCTION somefunc()
+{
+    PRINT "Called deep function";
+    RETURN;
+};
+
+INT32 level = 4;
+
+IF (level > 0)
+{
+    PRINT "Level 1";
+    IF (level > 1)
+    {
+        PRINT "Level 2";
+        IF (level > 2)
+        {
+            PRINT "Level 3";
+            IF (level > 3)
+            {
+                PRINT "Level 4 - deepest";
+                CALL somefunc();
+            }
+            ELSE
+            {
+                PRINT "Level 4 not reached";
+            };
+        };
+    };
+};
+
+PRINT "All done";

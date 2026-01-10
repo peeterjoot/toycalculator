@@ -1,0 +1,11 @@
+i=1 local=2
+next=2
+i=2 local=4
+next=3
+i=3 local=6
+next=4
+i=4 local=8
+next=5
+i=5 local=10
+next=6
+Final sum=30
