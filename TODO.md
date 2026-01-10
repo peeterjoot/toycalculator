@@ -15,7 +15,6 @@
   - Tests for call in binary and unary expressions.
   - Have AI tool review existing tests, looking for holes relative to the grammar.  Started this... revisit for error test cases.
     - same for the README "language reference"
-  - test case that verifies there's no current support for returning STRING from functions.
 
 ----------------------------------
 * Expressions:
