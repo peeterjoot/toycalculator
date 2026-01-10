@@ -481,15 +481,69 @@ namespace silly
     }
     CATCH_USER_ERROR
 
+    void MLIRListener::processReturnLike( mlir::Location loc, SillyParser::RvalueExpressionContext *rvalueExpression )
+    {
+        mlir::Type returnType{};
+        mlir::Value value{};
+
+        if ( currentFuncName == ENTRY_SYMBOL_NAME )
+        {
+             returnType = tyI32;
+        }
+        else
+        {
+            mlir::func::FuncOp func = getFuncOp( loc, currentFuncName );
+            llvm::ArrayRef<mlir::Type> returnTypeArray = func.getFunctionType().getResults();
+
+            if ( !returnTypeArray.empty() )
+            {
+                returnType = returnTypeArray[0];
+            }
+        }
+
+        if ( rvalueExpression )
+        {
+            std::string s;
+            bool foundStringLiteral{};
+            value = parseRvalue( loc, rvalueExpression, returnType, s, foundStringLiteral );
+
+            if ( foundStringLiteral )
+            {
+                throw ExceptionWithContext(
+                    __FILE__, __LINE__, __func__,
+                    std::format( "{}internal error: unexpected string literal found while parsing return: {}\n",
+                                 formatLocation( loc ), rvalueExpression->getText() ) );
+            }
+
+            value = castOpIfRequired( loc, value, returnType );
+        }
+        else if ( currentFuncName == ENTRY_SYMBOL_NAME )
+        {
+            value = builder.create<mlir::arith::ConstantIntOp>( loc, 0, 32 );
+        }
+
+        // Create new ReturnOp with user specified value:
+        if ( value )
+        {
+            builder.create<silly::ReturnOp>( loc, mlir::ValueRange{ value } );
+        }
+        else
+        {
+            builder.create<silly::ReturnOp>( loc, mlir::ValueRange{} );
+        }
+    }
+
     void MLIRListener::exitStartRule( SillyParser::StartRuleContext *ctx )
     try
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
+        assert( currentFuncName == ENTRY_SYMBOL_NAME );
+
         if ( !ctx->exitStatement() )
         {
-            processReturnLike<SillyParser::NumericLiteralContext>( loc, nullptr, nullptr, nullptr );
+            processReturnLike( loc, nullptr );
         }
 
         LLVM_DEBUG( {
@@ -1274,106 +1328,13 @@ namespace silly
         return value;
     }
 
-    template <class Literal>
-    void MLIRListener::processReturnLike( mlir::Location loc, Literal *lit,
-                                          SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
-                                          tNode *boolNode )
-    {
-        mlir::Type returnType{};
-        bool returnTypeNonVoid{};
-        mlir::Value value{};
-
-        if ( currentFuncName == ENTRY_SYMBOL_NAME )
-        {
-             returnType = tyI32;
-             returnTypeNonVoid = true;
-        }
-        else
-        {
-            mlir::func::FuncOp func = getFuncOp( loc, currentFuncName );
-            llvm::ArrayRef<mlir::Type> returnTypeArray = func.getFunctionType().getResults();
-
-            if ( !returnTypeArray.empty() )
-            {
-                returnType = returnTypeArray[0];
-                returnTypeNonVoid = true;
-            }
-        }
-
-        // The RETURN/EXIT generation ensures that we have the terminator location set properly
-        if ( lit || scalarOrArrayElement || boolNode )
-        {
-            value = buildNonStringUnaryExpression( loc, boolNode, lit ? lit->INTEGER_PATTERN() : nullptr,
-                                                   lit ? lit->FLOAT_PATTERN() : nullptr, scalarOrArrayElement, nullptr,
-                                                   nullptr );
-
-            // Apply type conversions to match func::FuncOp return type.  This is adapted from AssignOpLowering, but
-            // uses arith dialect operations instead of LLVM dialect
-            if ( returnTypeNonVoid )
-            {
-                value = castOpIfRequired( loc, value, returnType );
-            }
-        }
-        else
-        {
-            if ( returnTypeNonVoid )
-            {
-                if ( mlir::IntegerType intType = mlir::dyn_cast<mlir::IntegerType>( returnType ) )
-                {
-                    unsigned width = intType.getWidth();
-                    value = builder.create<mlir::arith::ConstantIntOp>( loc, 0, width );
-                }
-                else if ( mlir::FloatType floatType = mlir::dyn_cast<mlir::FloatType>( returnType ) )
-                {
-                    llvm::APFloat apVal( 0.0 );
-                    unsigned w = floatType.getWidth();
-                    if ( w == 64 )
-                    {
-                        value = builder.create<mlir::arith::ConstantFloatOp>( loc, tyF64, apVal );
-                    }
-                    else if ( w == 32 )
-                    {
-                        value = builder.create<mlir::arith::ConstantFloatOp>( loc, tyF32, apVal );
-                    }
-                    else
-                    {
-                        throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                                    std::format( "{}internal error: Support for FloatType w/ size "
-                                                                 "other than 32/64 is not implemented: {}\n",
-                                                                 formatLocation( loc ), w ) );
-                    }
-                }
-                else
-                {
-                    throw ExceptionWithContext(
-                        __FILE__, __LINE__, __func__,
-                        std::format(
-                            "{}internal error: Return support for non-(IntegerType,FloatType) is not implemented\n",
-                            formatLocation( loc ) ) );
-                }
-            }
-        }
-
-        // Create new ReturnOp with user specified value:
-        if ( value )
-        {
-            builder.create<silly::ReturnOp>( loc, mlir::ValueRange{ value } );
-        }
-        else
-        {
-            builder.create<silly::ReturnOp>( loc, mlir::ValueRange{} );
-        }
-    }
-
     void MLIRListener::enterReturnStatement( SillyParser::ReturnStatementContext *ctx )
     try
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
-        SillyParser::LiteralContext *lit = ctx->literal();
-        processReturnLike<SillyParser::LiteralContext>( loc, lit, ctx->scalarOrArrayElement(),
-                                                        lit ? lit->BOOLEAN_PATTERN() : nullptr );
+        processReturnLike( loc, ctx->rvalueExpression() );
     }
     CATCH_USER_ERROR
 
@@ -1383,9 +1344,7 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
-        SillyParser::NumericLiteralContext *lit = ctx->numericLiteral();
-
-        processReturnLike<SillyParser::NumericLiteralContext>( loc, lit, ctx->scalarOrArrayElement(), nullptr );
+        processReturnLike( loc, ctx->rvalueExpression() );
     }
     CATCH_USER_ERROR
 

@@ -280,10 +280,7 @@ namespace silly
         silly::ScopeOp getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp ) const;
 
         /// Emits silly::ReturnOp (or exit equivalent) with optional value.
-        template <class Literal>
-        void processReturnLike( mlir::Location loc, Literal *lit,
-                                SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement, tNode *boolNode );
-
+        void processReturnLike( mlir::Location loc, SillyParser::RvalueExpressionContext *rvalueExpression );
 
         /// For IF/ELIF, create an scf.if condition and set the insertion point to it's then region.
         ///

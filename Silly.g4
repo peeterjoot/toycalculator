@@ -96,11 +96,11 @@ arrayBoundsExpression
 
 // Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
 exitStatement
-  : EXIT_TOKEN (numericLiteral | scalarOrArrayElement)?
+  : EXIT_TOKEN rvalueExpression?
   ;
 
 returnStatement
-  : RETURN_TOKEN (literal | scalarOrArrayElement)?
+  : RETURN_TOKEN rvalueExpression?
   ;
 
 // A print statement that outputs a list of variables (e.g., 'PRINT x, y, z;'), followed by a newline.

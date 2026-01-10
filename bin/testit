@@ -131,6 +131,7 @@ elif6
 empty
 eqop
 exit3
+exit42
 exitarrayelement
 exitx
 f
@@ -163,17 +164,18 @@ lessbug3
 lesseqop
 lessop
 longstring
+#minimal_eliftest
 neg
 neqop
 nested_if_basic
 nested_if_deep
 #nested_if_elif_else
-#minimal_eliftest
 not
 orop
 printboollit
 printlit
 print_multiple
+return_expression
 scopebug
 shortstring
 shortstring2
@@ -185,7 +187,6 @@ test
 types
 unary
 xorop
-#return_expression
 ));
 
 my %failuretests = map {$_ => 1} (qw(
@@ -208,6 +209,7 @@ my %expectedRC = (
    'bool' => 1,
    'boolr' => 1,
    'exit3' => 3,
+   'exit42' => 42,
    'exitx' => 3,
    'exitarrayelement' => 42,
    'getboolfail' => '134', # abort

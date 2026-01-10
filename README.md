@@ -516,6 +516,7 @@ Explicitly terminates program execution, optionally returning a value.
 ```text
 EXIT;
 EXIT 0;
+EXIT 39 + 3;
 EXIT status;
 EXIT arr[0];
 ```

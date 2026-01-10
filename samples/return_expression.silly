@@ -16,3 +16,10 @@ PRINT "addone(10) = ", x;
 x = CALL addone(-3);
 PRINT "addone(-3) = ", x;
 
+x = CALL addone(0);
+PRINT "addone(0) = ", x;
+
+x = CALL addone(42);
+PRINT "addone(42) = ", x;
+
+PRINT "Done.";

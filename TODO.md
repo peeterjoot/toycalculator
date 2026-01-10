@@ -2,9 +2,9 @@
 
 ----------------------------------
 * Bugs:
-  - `return_expression.silly` fails to compile.  Not allowed by the grammar/parser, but should be.  Once allowed, add RETURN expressions to the 'language reference' documentation in README
   - `nested_if_elif_else.silly` test case 3 fails.  end up in the final ELSE, not the IF!
   - `minimal_eliftest.silly` duplicate zero output for some reason!
+  - don't support returning STRING from functions.  also don't have a test case to show this.
 
 ----------------------------------
 * Test:
@@ -15,6 +15,7 @@
   - Tests for call in binary and unary expressions.
   - Have AI tool review existing tests, looking for holes relative to the grammar.  Started this... revisit for error test cases.
     - same for the README "language reference"
+  - test case that verifies there's no current support for returning STRING from functions.
 
 ----------------------------------
 * Expressions:
