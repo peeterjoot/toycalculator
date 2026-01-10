@@ -48,6 +48,11 @@ scf.for %arg0 = %3 to %5 step %8  : i32 {
 
 * Fix functions returning BOOL that have just a RETURN statement.  Eliminates some of the remnants of the old dummy return rewrite code.
 * Implement declaration with initialization.
+* Add a bunch of grok generated test cases (two of these find errors.)
+* Implement return and exit expressions (grammar/parser)
+* Add "EXIT 39 + 3" example to README
+* Add: exit42.silly
+* Add `return_expression.silly` to regression test list, fixing expected output.
 
 ## tag: V7 (Jan 4, 2025)
 
