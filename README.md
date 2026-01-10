@@ -46,7 +46,7 @@ That initial implementation has evolved into a silly language and its compiler. 
 
 There is lots of room to add add further language elements to make the compiler and language more interesting.  Some ideas for improvements (as well as bug fixes) can be found in TODO.md
 
-## Language Quirks.
+## Language Quirks and Bugs.
 
 * Like scripted languages, there is an implicit `main` in this silly language.
 * Functions can be defined anywhere, but must be defined before use.
@@ -57,6 +57,25 @@ This means that `x = 1.99 + 2.99` has the value `3`, if `x` is an integer variab
 * The RETURN statement has to be at the end of a function.  It is currently mandatory.
 * See TODO.md for a long list of nice to have features that I haven't gotten around to yet, and may never.
 * `GET` into a `BOOL` value will abort if the value isn't one of 0, or 1.  This is inconsistent with assignment to a BOOL variable, which will truncate and not raise a runtime error.
+* Variables declared in FOR or IF conditions persist past the block that declared them, as if they were declared in the enclosing scope of the function.  For example, these are equivalent
+```
+FUNCTION foo()
+{
+    INT32 x = 1;
+    PRINT x;
+    RETURN;
+};
+
+FUNCTION foo()
+{
+    IF (TRUE)
+    {
+        INT32 x = 1;
+    };
+    PRINT x;
+    RETURN;
+};
+```
 
 ## On the use of AI in this project.
 

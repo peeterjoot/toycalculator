@@ -168,6 +168,7 @@ orop
 printboollit
 printlit
 print_multiple
+scopebug
 shortstring
 shortstring2
 shortstring3

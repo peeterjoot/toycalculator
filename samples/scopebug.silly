@@ -1,0 +1,13 @@
+// This is documented as a bug in the README.  Doesn't make sense if you are used to C semantics
+
+FUNCTION foo()
+{
+    IF (TRUE)
+    {
+        INT32 x = 1;
+    };
+    PRINT x;
+    RETURN;
+};
+
+CALL foo();
