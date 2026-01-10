@@ -1,0 +1,6 @@
+addone(5) = 6
+addone(10) = 11
+addone(-3) = -2
+addone(0) = 1
+addone(42) = 43
+Done.

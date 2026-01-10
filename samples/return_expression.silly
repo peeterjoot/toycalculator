@@ -1,0 +1,18 @@
+// Test RETURN with a direct arithmetic expression (not just literal or variable)
+
+FUNCTION addone(INT32 v) : INT32
+{
+    RETURN v + 1;   // RETURN contains expression, is last statement
+};
+
+INT32 x;
+
+x = CALL addone(5);
+PRINT "addone(5) = ", x;
+
+x = CALL addone(10);
+PRINT "addone(10) = ", x;
+
+x = CALL addone(-3);
+PRINT "addone(-3) = ", x;
+

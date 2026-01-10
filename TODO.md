@@ -1,6 +1,10 @@
 ## TODO
 
 ----------------------------------
+* Bugs:
+  - `return_expression.silly` fails to compile.  Not allowed by the grammar/parser, but should be.  Once allowed, add RETURN expressions to the 'language reference' documentation in README
+
+----------------------------------
 * Test:
 
   - a whole range of statements in IF-then and if-ELSE blocks, and FOR (dcl, assignment, call, ...).  Especially IFs in IF/ELIF/ELSE!

@@ -184,6 +184,7 @@ test
 types
 unary
 xorop
+#return_expression
 ));
 
 my %failuretests = map {$_ => 1} (qw(
