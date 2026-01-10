@@ -1,3 +1,16 @@
+level var = -1
+level var = 0
+level var = 1
+Level 1
+level var = 2
+Level 1
+Level 2
+level var = 3
+Level 1
+Level 2
+Level 3
+Level 4 not reached
+level var = 4
 Level 1
 Level 2
 Level 3

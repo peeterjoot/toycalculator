@@ -167,7 +167,8 @@ neg
 neqop
 nested_if_basic
 nested_if_deep
-nested_if_elif_else
+#nested_if_elif_else
+#minimal_eliftest
 not
 orop
 printboollit

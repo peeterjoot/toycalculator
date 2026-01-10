@@ -1,22 +1,54 @@
-// Test nesting at all three levels: IF/ELIF/ELSE
-INT32 a = 3;
-INT32 b = 10;
+// nested_if_elif_else.silly
+// Tests nesting at all three levels (IF/ELIF/ELSE) by calling a function
+// with different parameter combinations to hit every possible branch.
 
-IF (a < 5)
+FUNCTION test_nested(INT32 a, INT32 b)
 {
-    PRINT "IF branch";
-    IF (b > 7)
+    IF (a < 5)
     {
-        PRINT "Nested in IF";
+        PRINT "IF branch (a < 5)";
+        IF (b > 7)
+        {
+            PRINT "  Nested in IF: b > 7";
+        }
+        ELSE
+        {
+            PRINT "  Nested in IF: b <= 7";
+        };
+    }
+    ELIF (a > 5)
+    {
+        PRINT "ELIF branch (a > 5)";
+        IF (TRUE)
+        {
+            PRINT "  Nested in ELIF: always true";
+        };
+    }
+    ELSE
+    {
+        PRINT "ELSE branch (a == 5)";
+        IF (FALSE)
+        {
+            PRINT "  dead code";
+        }
+        ELSE
+        {
+            PRINT "  Nested in ELSE: false condition";
+        };
     };
-}
-ELIF (a > 5)
-{
-    PRINT "ELIF branch";
-    IF (TRUE) { PRINT "Nested in ELIF"; };
-}
-ELSE
-{
-    PRINT "ELSE branch";
-    IF (FALSE) { PRINT "dead"; } ELSE { PRINT "Nested in ELSE"; };
+    RETURN;
 };
+
+PRINT "=== Test 1: a=3, b=10 (IF + nested IF) ===";
+CALL test_nested(3, 10);
+
+PRINT "=== Test 2: a=3, b=4 (IF + nested ELSE) ===";
+CALL test_nested(3, 4);
+
+PRINT "=== Test 3: a=7, b=0 (ELIF + nested IF) ===";
+CALL test_nested(7, 0);
+
+PRINT "=== Test 4: a=5, b=99 (ELSE + nested ELSE) ===";
+CALL test_nested(5, 99);
+
+PRINT "=== All tests done ===";

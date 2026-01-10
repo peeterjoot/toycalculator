@@ -6,25 +6,30 @@ FUNCTION somefunc()
     RETURN;
 };
 
-INT32 level = 4;
+INT32 level;
 
-IF (level > 0)
+FOR (level : (-1, 5))
 {
-    PRINT "Level 1";
-    IF (level > 1)
+    PRINT "level var = ", level;
+
+    IF (level > 0)
     {
-        PRINT "Level 2";
-        IF (level > 2)
+        PRINT "Level 1";
+        IF (level > 1)
         {
-            PRINT "Level 3";
-            IF (level > 3)
+            PRINT "Level 2";
+            IF (level > 2)
             {
-                PRINT "Level 4 - deepest";
-                CALL somefunc();
-            }
-            ELSE
-            {
-                PRINT "Level 4 not reached";
+                PRINT "Level 3";
+                IF (level > 3)
+                {
+                    PRINT "Level 4 - deepest";
+                    CALL somefunc();
+                }
+                ELSE
+                {
+                    PRINT "Level 4 not reached";
+                };
             };
         };
     };

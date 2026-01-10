@@ -1,0 +1,21 @@
+// minimal_eliftest.silly
+FUNCTION check(INT32 val)
+{
+    IF (val < 0)
+    {
+        PRINT "negative";
+    }
+    ELIF (val > 0)
+    {
+        PRINT "positive";
+    }
+    ELSE
+    {
+        PRINT "zero";
+    };
+    RETURN;
+};
+
+CALL check(-5);   // should print "negative"
+CALL check(0);    // should print "zero"
+CALL check(5);    // should print "positive"

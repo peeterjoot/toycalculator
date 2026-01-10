@@ -3,6 +3,8 @@
 ----------------------------------
 * Bugs:
   - `return_expression.silly` fails to compile.  Not allowed by the grammar/parser, but should be.  Once allowed, add RETURN expressions to the 'language reference' documentation in README
+  - `nested_if_elif_else.silly` test case 3 fails.  end up in the final ELSE, not the IF!
+  - `minimal_eliftest.silly` duplicate zero output for some reason!
 
 ----------------------------------
 * Test:

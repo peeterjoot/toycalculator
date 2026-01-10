@@ -1,2 +1,13 @@
-IF branch
-Nested in IF
+=== Test 1: a=3, b=10 (IF + nested IF) ===
+IF branch (a < 5)
+  Nested in IF: b > 7
+=== Test 2: a=3, b=4 (IF + nested ELSE) ===
+IF branch (a < 5)
+  Nested in IF: b <= 7
+=== Test 3: a=7, b=0 (ELIF + nested IF) ===
+ELIF branch (a > 5)
+  Nested in ELIF: always true
+=== Test 4: a=5, b=99 (ELSE + nested ELSE) ===
+ELSE branch (a == 5)
+  Nested in ELSE: false condition
+=== All tests done ===
