@@ -9,16 +9,16 @@
 ----------------------------------
 * Test:
 
-  - a whole range of statements in IF-then and if-ELSE blocks, and FOR (dcl, assignment, call, ...).  Especially IFs in IF/ELIF/ELSE!
-  - tests for all the type conversions (i.e.: binary and unary arith operators)
-  - tests for array access and assignment.
-  - tests for call in binary and unary expressions.
-  - Have AI tool review existing tests, looking for holes relative to the grammar.
+  - More testing for FOR including (dcl, assignment, call, IF/ELIF/ELSE, ...).
+  - Tests for all the type conversions (i.e.: binary and unary arith operators)
+  - More tests for array access and assignment.  Example, some vector expressions (add, convolution, ...).
+  - Tests for call in binary and unary expressions.
+  - Have AI tool review existing tests, looking for holes relative to the grammar.  Started this... revisit for error test cases.
     - same for the README "language reference"
 
 ----------------------------------
 * Expressions:
-  - Get rid of CALL and support calls in binary expressions: r = v * foo().
+  - Get rid of CALL and support calls in binary expressions: r = v * foo()?
   - Implement more complex expressions (chains of operators...)
   - Expressions that aren't parsed properly (like `CALL factorial(v - 1)` used to) lead to mysterious seeming parse error: Should do better.
   - Review the parser... any other places where buildUnary is called that ought to be parseRvalue?
