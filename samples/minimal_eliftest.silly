@@ -16,8 +16,6 @@ FUNCTION check(INT32 val)
     RETURN;
 };
 
-//CALL check(-5);   // should print "negative"
-//CALL check(0);    // should print "zero"
-//PRINT "foo";
+CALL check(-5);   // should print "negative"
+CALL check(0);    // should print "zero"
 CALL check(5);    // should print "positive"
-//PRINT "bar";

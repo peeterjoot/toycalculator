@@ -164,7 +164,7 @@ lessbug3
 lesseqop
 lessop
 longstring
-#minimal_eliftest
+minimal_eliftest
 neg
 neqop
 nested_if_basic

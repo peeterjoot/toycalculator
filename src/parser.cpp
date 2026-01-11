@@ -934,32 +934,25 @@ namespace silly
 
     void MLIRListener::selectElseBlock( mlir::Location loc, const std::string &errorText )
     {
-        mlir::scf::IfOp ifOp;
-
-        // Temporarily restore the insertion point to right after the scf.if, to search for our current IfOp
-        builder.restoreInsertionPoint( insertionPointStack.back() );
-
-        // Now find the scf.if op that is just before the current insertion point
         mlir::Block *currentBlock = builder.getInsertionBlock();
-        assert( currentBlock );
-        mlir::Block::iterator ip = builder.getInsertionPoint();
+        assert(currentBlock);
 
-        // The insertion point is at the position where new ops would be inserted.
-        // So the operation just before it should be the scf.if
-        if ( ip != currentBlock->begin() )
-        {
-            mlir::Operation *prevOp = &*( --ip );    // the op immediately before the insertion point
-            ifOp = dyn_cast<mlir::scf::IfOp>( prevOp );
-        }
+        // Get the parent region of the current block (the then region).
+        mlir::Region *parentRegion = currentBlock->getParent();
+
+        // Verify it's inside an scf.if by checking the parent op.
+        mlir::Operation *parentOp = parentRegion->getParentOp();
+        mlir::scf::IfOp ifOp = dyn_cast<mlir::scf::IfOp>(parentOp);
 
         if ( !ifOp )
         {
             throw ExceptionWithContext(
                 __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: Could not find scf.if op corresponding to this if statement\n",
+                std::format( "{}internal error: Current insertion point must be inside an scf.if then region\n",
                              formatLocation( loc ), errorText ) );
         }
 
+        // Set the insertion point to the start of the else region's (first) block.
         mlir::Region &elseRegion = ifOp.getElseRegion();
         mlir::Block &elseBlock = elseRegion.front();
         builder.setInsertionPointToStart( &elseBlock );
