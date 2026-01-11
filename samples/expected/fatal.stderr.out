@@ -1,1 +1,2 @@
-fatal.silly:3:FATAL ERROR: aborting
+Unexpected value: 42
+fatal.silly:4:FATAL ERROR: aborting

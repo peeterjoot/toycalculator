@@ -21,6 +21,7 @@ include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/src)
+include_directories(include)
 
 #------------------------------------------------------------------------------
 # antlr4 related rules:

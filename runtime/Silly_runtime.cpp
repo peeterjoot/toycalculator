@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "printflags.hpp"
 
 extern "C"
 {
@@ -18,19 +19,25 @@ extern "C"
         abort();
     }
 
-    void __silly_print_string( size_t len, const char* str, int newline )
+    void __silly_print_string( size_t len, const char* str, PRINT_FLAGS flags )
     {
-        printf( "%.*s%s", (int)len, str, newline ? "\n" : "" );
+        FILE * where = (flags & PRINT_FLAGS_ERROR) ? stderr : stdout;
+        const char * newline = (flags & PRINT_FLAGS_NEWLINE) ? "\n" : "";
+        fprintf( where, "%.*s%s", (int)len, str, newline );
     }
 
-        void __silly_print_f64( double value, int newline )
+    void __silly_print_f64( double value, PRINT_FLAGS flags )
     {
-        printf( "%f%s", value, newline ? "\n" : "" );
+        FILE * where = (flags & PRINT_FLAGS_ERROR) ? stderr : stdout;
+        const char * newline = (flags & PRINT_FLAGS_NEWLINE) ? "\n" : "";
+        fprintf( where, "%f%s", value, newline );
     }
 
-    void __silly_print_i64( int64_t value, int newline )
+    void __silly_print_i64( int64_t value, PRINT_FLAGS flags )
     {
-        printf( "%" PRId64 "%s", value, newline ? "\n" : "" );
+        FILE * where = (flags & PRINT_FLAGS_ERROR) ? stderr : stdout;
+        const char * newline = (flags & PRINT_FLAGS_NEWLINE) ? "\n" : "";
+        fprintf( where, "%" PRId64 "%s", value, newline );
     }
 
     int8_t __silly_get_i8( void )

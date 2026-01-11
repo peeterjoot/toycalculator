@@ -11,6 +11,7 @@
 #include <mlir/IR/Location.h>                            // FileLineColLoc
 
 #include "SillyDialect.hpp"    // silly::CallOp, ...
+#include "printflags.hpp"
 
 namespace silly
 {
@@ -69,7 +70,7 @@ namespace silly
 
         /// Creates a call to the appropriate Silly print runtime function.
         silly::CallOp createPrintCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
-                                       mlir::Value input, bool newline );
+                                       mlir::Value input, PRINT_FLAGS flags );
 
         void createAbortCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc );
 

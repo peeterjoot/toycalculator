@@ -29,9 +29,11 @@ That initial implementation has evolved into a silly language and its compiler. 
 * Floating-point declarations (`FLOAT32`, `FLOAT64`).
 * Boolean declaration (`BOOL`).
 * A `PRINT` operation for printing to standard output.
+* An `ERROR` operation for printing to standard error.
 * A `GET` operation for reading from standard input.
 * Single-line comments.
 * An `EXIT` operation.
+* An `ABORT` operation for program termination.
 * Boolean, integer, and floating-point constants, along with expression evaluation.
 * An ASSIGNMENT operator (`=`) with unary (`+`, `-`) and binary operators (`+`, `-`, `*`, `/`).
 * DWARF instrumentation sufficient for line stepping, breakpoints, continue, and variable inspection (variable modification is likely supported but untested).
@@ -259,7 +261,7 @@ Array elements may be used wherever a scalar value is expected:
 - Assignment rvalues
 - Expressions
 - Function call parameters
-- PRINT, FATAL, GET, RETURN, and EXIT statements
+- PRINT, ERROR, GET, RETURN, and EXIT statements
 
 They behave as **rvalues** in expressions and as **lvalues** on the left-hand side of assignments.
 
@@ -268,7 +270,7 @@ x = a[3];
 y = b[i] + 2;
 a[i] = 7;
 PRINT arr[5];
-FATAL arr[5];
+ERROR arr[5];
 GET arr[0];
 EXIT arr[1];
 ```
@@ -405,7 +407,8 @@ Conditional execution using boolean expressions.
 IF (x < 0) {
   PRINT "negative";
 } ELIF (x EQ 0) {
-  FATAL "zero";
+  ERROR "zero";
+  ABORT;
 } ELSE {
   PRINT "positive";
 };
@@ -497,12 +500,12 @@ PRINT 3.14;
 PRINT arr[3];
 ```
 
-### FATAL
+### ERROR
 
-The FATAL statement is equivalent to PRINT, however, after the PRINT is done, there will be a `<file>:<line>:FATAL ERROR: aborting` printed to stderr, and an abort.
+The ERROR statement is equivalent to PRINT, but prints to stderr instead of stdout.
 
 ```text
-FATAL "Unexpected value: ", v;
+ERROR "Unexpected value: ", v;
 ```
 
 ### GET
@@ -529,6 +532,10 @@ EXIT 39 + 3;
 EXIT status;
 EXIT arr[0];
 ```
+
+### ABORT
+
+Prints a message like `<file>:<line>:ERROR ERROR: aborting` to stderr, and then aborts.
 
 ---
 

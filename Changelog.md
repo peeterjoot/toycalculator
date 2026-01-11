@@ -144,6 +144,35 @@ module {
 #loc1 = loc("fatal.silly":3:1)
 #loc2 = loc("fatal.silly":4:1)
 ```
+  * Rename FATAL to ERROR, and have that print to stderr, instead of stdout and not abort by itself.  Instead add ABORT statement (no params) that just prints
+    the abort message and does so.  Adjusted the lowering for PrintOp and the runtime accordingly.  New sample code:
+```
+INT32 v = 42;
+
+ERROR "Unexpected value: ", v; // line 3.
+ABORT;
+```
+
+MLIR is almost the same, but PRINT now takes an error flag (true in this case):
+```
+module {
+  func.func @main() -> i32 {
+    "silly.scope"() ({
+      "silly.declare"() <{type = i32}> {sym_name = "v"} : () -> ()
+      %c42_i64 = arith.constant 42 : i64
+      silly.assign @v = %c42_i64 : i64
+      %0 = "silly.string_literal"() <{value = "Unexpected value: "}> : () -> !llvm.ptr
+      %1 = silly.load @v : i32
+      %true = arith.constant true
+      "silly.print"(%true, %0, %1) : (i1, !llvm.ptr, i32) -> ()
+      "silly.abort"() : () -> ()
+      %c0_i32 = arith.constant 0 : i32
+      "silly.return"(%c0_i32) : (i32) -> ()
+    }) : () -> ()
+    "silly.yield"() : () -> ()
+  }
+}
+```
 
 ## tag: V7 (Jan 4, 2025)
 

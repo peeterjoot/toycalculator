@@ -1111,7 +1111,7 @@ namespace silly
     CATCH_USER_ERROR
 
     void MLIRListener::handlePrint( mlir::Location loc, const std::vector<SillyParser::PrintArgumentContext *> &args,
-                                    const std::string &errorContextString )
+                                    const std::string &errorContextString, bool error )
     {
         mlir::Type varType;
 
@@ -1193,7 +1193,8 @@ namespace silly
             vargs.push_back( v );
         }
 
-        builder.create<silly::PrintOp>( loc, vargs );
+        mlir::arith::ConstantIntOp flag = builder.create<mlir::arith::ConstantIntOp>( loc, error, 1 );
+        builder.create<silly::PrintOp>( loc, flag, vargs );
     }
 
     void MLIRListener::enterPrint( SillyParser::PrintContext *ctx )
@@ -1202,16 +1203,24 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
-        handlePrint( loc, ctx->printArgument(), ctx->getText() );
+        handlePrint( loc, ctx->printArgument(), ctx->getText(), false );
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterFatal( SillyParser::FatalContext *ctx )
+    void MLIRListener::enterError( SillyParser::ErrorContext *ctx )
     try
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
-        handlePrint( loc, ctx->printArgument(), ctx->getText() );
+        handlePrint( loc, ctx->printArgument(), ctx->getText(), true );
+    }
+    CATCH_USER_ERROR
+
+    void MLIRListener::enterAbort( SillyParser::AbortContext *ctx )
+    try
+    {
+        assert( ctx );
+        mlir::Location loc = getStartLocation( ctx );
 
         builder.create<silly::AbortOp>( loc );
     }

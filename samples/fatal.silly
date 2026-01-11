@@ -1,3 +1,4 @@
 INT32 v = 42;
 
-FATAL "Unexpected value: ", v; // line 3.
+ERROR "Unexpected value: ", v; // line 3.
+ABORT;

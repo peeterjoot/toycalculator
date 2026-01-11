@@ -24,7 +24,7 @@
 
 ----------------------------------
 * Maintainance:
-  - FATAL should print to stderr, not stdout.  Would need to add a parameter to PrintOp to do so.
+  - All the runtime functions should take location context to show where in the users code the error was, if one happens (i.e.: GET functions)
   - lowering error handling is pschizophrenic: mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
   - Move scf lowering into 1st pass?  Attempt at this in xpgn:streamline-passes-attempt branch (not pushed.)
   - Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.

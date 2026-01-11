@@ -21,9 +21,9 @@ startRule
   : (statement|comment)* (exitStatement ENDOFSTATEMENT_TOKEN)? comment* EOF
   ;
 
-// A statement can be a declaration, assignment, print, get, fatal, if, for, call, function or comment.
+// A statement can be a declaration, assignment, print, get, error, abort, if, for, call, function or comment.
 statement
-  : (callStatement | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print | fatal | get | for) ENDOFSTATEMENT_TOKEN
+  : (callStatement | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print | error | abort | get | for) ENDOFSTATEMENT_TOKEN
   ;
 
 ifelifelse
@@ -108,8 +108,12 @@ print
   : PRINT_TOKEN printArgument (COMMA_TOKEN printArgument)*
   ;
 
-fatal
-  : FATAL_TOKEN printArgument (COMMA_TOKEN printArgument)*
+error
+  : ERROR_TOKEN printArgument (COMMA_TOKEN printArgument)*
+  ;
+
+abort
+  : ABORT_TOKEN
   ;
 
 printArgument
@@ -458,22 +462,27 @@ DECLARE_TOKEN
   : 'DECLARE'
   ;
 
-// Matches the 'PRINT' keyword for print statements.
+// Matches the 'PRINT' keyword
 PRINT_TOKEN
   : 'PRINT'
   ;
 
-// Matches the 'FATAL' keyword for fatal statements.
-FATAL_TOKEN
-  : 'FATAL'
+// Matches the 'ERROR' keyword
+ERROR_TOKEN
+  : 'ERROR'
   ;
 
-// Matches the 'GET' keyword for get statements.
+// Matches the 'ABORT' keyword
+ABORT_TOKEN
+  : 'ABORT'
+  ;
+
+// Matches the 'GET' keyword
 GET_TOKEN
   : 'GET'
   ;
 
-// Matches the 'EXIT' keyword for print statements.
+// Matches the 'EXIT' keyword
 EXIT_TOKEN
   : 'EXIT'
   ;
