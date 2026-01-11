@@ -2,7 +2,6 @@
 
 ----------------------------------
 * Bugs:
-  - `nested_if_elif_else.silly` test case 3 fails.  end up in the final ELSE, not the IF!
   - `error_intarray_bad_constaccess.silly` should fail but doesn't.
 
 ----------------------------------
