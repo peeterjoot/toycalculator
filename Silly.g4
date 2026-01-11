@@ -50,18 +50,17 @@ elseStatement
 
 // For now both return and parameters, can only be scalar types.
 function
-  : FUNCTION_TOKEN IDENTIFIER BRACE_START_TOKEN (variableTypeAndName (COMMA_TOKEN variableTypeAndName)*)? BRACE_END_TOKEN (COLON_TOKEN scalarType)? SCOPE_START_TOKEN statement* returnStatement ENDOFSTATEMENT_TOKEN SCOPE_END_TOKEN
+  : FUNCTION_TOKEN IDENTIFIER
+    BRACE_START_TOKEN (variableTypeAndName (COMMA_TOKEN variableTypeAndName)*)? BRACE_END_TOKEN
+    (COLON_TOKEN scalarType)?
+    SCOPE_START_TOKEN statement* returnStatement ENDOFSTATEMENT_TOKEN
+    SCOPE_END_TOKEN
   ;
 
 booleanValue
   : booleanElement
   | (binaryElement predicateOperator binaryElement)
   | callExpression
-  ;
-
-// A single-line comment
-comment
-  : COMMENT_SKIP_RULE
   ;
 
 // A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').  These are currently implicitly double.
@@ -77,10 +76,6 @@ variableTypeAndName
   : scalarType IDENTIFIER
   ;
 
-scalarType
-  : INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN | FLOAT32_TOKEN | FLOAT64_TOKEN | BOOL_TOKEN
-  ;
-
 intDeclare
   : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN) IDENTIFIER (arrayBoundsExpression)? (EQUALS_TOKEN assignmentRvalue)?
   ;
@@ -93,10 +88,6 @@ stringDeclare
   : STRING_TOKEN IDENTIFIER arrayBoundsExpression (EQUALS_TOKEN STRING_PATTERN)?
   ;
 
-arrayBoundsExpression
-  : ARRAY_START_TOKEN INTEGER_PATTERN ARRAY_END_TOKEN
-  ;
-
 // A print statement that outputs a list of variables (e.g., 'PRINT x, y, z;'), followed by a newline.
 print
   : PRINT_TOKEN printArgument (COMMA_TOKEN printArgument)*
@@ -104,10 +95,6 @@ print
 
 error
   : ERROR_TOKEN printArgument (COMMA_TOKEN printArgument)*
-  ;
-
-abort
-  : ABORT_TOKEN
   ;
 
 printArgument
@@ -208,6 +195,23 @@ rvalueExpression
   : literal
   | unaryOperator? (scalarOrArrayElement | callExpression)
   | binaryElement binaryOperator binaryElement
+  ;
+
+// A single-line comment
+comment
+  : COMMENT_SKIP_RULE
+  ;
+
+abort
+  : ABORT_TOKEN
+  ;
+
+scalarType
+  : INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN | FLOAT32_TOKEN | FLOAT64_TOKEN | BOOL_TOKEN
+  ;
+
+arrayBoundsExpression
+  : ARRAY_START_TOKEN INTEGER_PATTERN ARRAY_END_TOKEN
   ;
 
 // A binary operator for addition, subtraction, multiplication, or division, ...
