@@ -4,6 +4,63 @@
 * Bugs:
   - `nested_if_elif_else.silly` test case 3 fails.  end up in the final ELSE, not the IF!
   - `minimal_eliftest.silly` duplicate zero output for some reason!
+
+stripped down to just the `check(5)`, and get:
+
+```
+Breakpoint 1, main () at minimal_eliftest.silly:22
+22      CALL check(5);    // should print "positive"
+(gdb) s
+check (val=0) at minimal_eliftest.silly:2
+2       FUNCTION check(INT32 val)
+(gdb) n
+4           IF (val < 0)
+(gdb)
+14              PRINT "zero";
+(gdb)
+zero
+8           ELIF (val > 0)
+(gdb)
+positive
+16          RETURN;
+(gdb)
+main () at minimal_eliftest.silly:2
+2       FUNCTION check(INT32 val)
+(gdb)
+Downloading source file /usr/src/debug/glibc-2.41-11.fc42.aarch64/csu/../sysdeps/nptl/libc_start_call_main.h
+__libc_start_call_main (main=main@entry=0x400634 <_start+52>, argc=argc@entry=1, argv=argv@entry=0xffffffffea28) at ../sysdeps/nptl/libc_start_call_main.h:74
+74        exit (result);
+
+MLIR is just plain wrong.   There insertion point for the zero PRINT is not in the else block:
+
+  func.func private @check(%arg0: i32
+    "silly.scope"() ({
+      "silly.declare"() <{param_number = 0 : i64, parameter, type = i32}> {sym_name = "val"} : () -> ()
+      %0 = silly.load @val : i32
+      %c0_i64 = arith.constant 0 : i64
+      %1 = "silly.less"(%0, %c0_i64) : (i32, i64) -> i1
+      scf.if %1 {
+        %2 = "silly.string_literal"() <{value = "negative"}> : () -> !llvm.ptr
+        "silly.print"(%2) : (!llvm.ptr) -> ()
+      } else {
+>>>>    %2 = "silly.string_literal"() <{value = "zero"}> : () -> !llvm.ptr
+>>>>    "silly.print"(%2) : (!llvm.ptr) -> ()
+        %3 = silly.load @val : i32
+        %c0_i64_0 = arith.constant 0 : i64
+        %4 = "silly.less"(%c0_i64_0, %3) : (i64, i32) -> i1
+        scf.if %4 {
+          %5 = "silly.string_literal"() <{value = "positive"}> : () -> !llvm.ptr
+          "silly.print"(%5) : (!llvm.ptr) -> ()
+        } else {
+>>>> should be here.
+        }
+      }
+      "silly.return"() : () -> ()
+    }) : () -> ()
+    "silly.yield"() : () -> ()
+  }
+```
+
   - `error_intarray_bad_constaccess.silly` should fail but doesn't.
 
 ----------------------------------
