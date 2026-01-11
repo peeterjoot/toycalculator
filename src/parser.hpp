@@ -126,8 +126,8 @@ namespace silly
         void enterFloatDeclare( SillyParser::FloatDeclareContext *ctx ) override;
         void enterStringDeclare( SillyParser::StringDeclareContext *ctx ) override;
         void enterPrint( SillyParser::PrintContext *ctx ) override;
-        void enterError(SillyParser::ErrorContext * ctx ) override;
-        void enterAbort(SillyParser::AbortContext * ctx ) override;
+        void enterError( SillyParser::ErrorContext *ctx ) override;
+        void enterAbort( SillyParser::AbortContext *ctx ) override;
         void enterGet( SillyParser::GetContext *ctx ) override;
         void enterFor( SillyParser::ForContext *ctx ) override;
         void exitFor( SillyParser::ForContext *ctx ) override;
@@ -242,7 +242,9 @@ namespace silly
         /// Emits a silly::CallOp for a function call.
         mlir::Value handleCall( SillyParser::CallExpressionContext *ctx );
 
-        void handlePrint( mlir::Location loc, const std::vector<SillyParser::PrintArgumentContext *> & args, const std::string & errorContextString, bool error );
+        /// builder logic for print arguments (shared between PRINT and ERROR.)
+        void handlePrint( mlir::Location loc, const std::vector<SillyParser::PrintArgumentContext *> &args,
+                          const std::string &errorContextString, bool error );
 
         /// Registers a variable declaration in the current scope.
         void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
@@ -301,8 +303,10 @@ namespace silly
         mlir::Value parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx, mlir::Type opType,
                                  bool &foundStringLiteral );
 
-        /// Handle parsing of a RvalueExpressionContext, returning an mlir::Value -- but only for the no-string-literal case.
-        mlir::Value parseNoStringRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx, mlir::Type opType );
+        /// Handle parsing of a RvalueExpressionContext, returning an mlir::Value -- but only for the no-string-literal
+        /// case.
+        mlir::Value parseNoStringRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
+                                         mlir::Type opType );
 
         /// Handle assignment processing, given the current var-name and index (if appropriate.)
         void processAssignment( mlir::Location loc, SillyParser::RvalueExpressionContext *exprContext,

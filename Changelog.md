@@ -178,6 +178,7 @@ module {
  * bin/testit: two new tests, one for index expressions, and another with min/max helper functions (which found a bug.)
  * MLIRListener::indexTypeCast: Add support for casting from any size integer type.
  * MLIRListener::parsePredicate: Fix bug: was generating silly.less(x,x) instead of (x,y). (t/c: minmax.silly)
+ * parser: remove parseRvalue std::string argument and push the silly::StringLiteralOp creation logic into there, removing it from processAssignment.
 
 ## tag: V7 (Jan 4, 2025)
 
