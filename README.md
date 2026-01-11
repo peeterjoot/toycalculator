@@ -254,6 +254,7 @@ Array elements are accessed using square brackets:
 ```
 a[0]
 values[i]
+values[i + j]
 ```
 
 Array elements may be used wherever a scalar value is expected:
@@ -275,7 +276,7 @@ GET arr[0];
 EXIT arr[1];
 ```
 
-Index expressions are currently limited to a single identifier or integer literal.
+Index expressions may be any integer valued assignment-rvalues.
 
 ---
 
