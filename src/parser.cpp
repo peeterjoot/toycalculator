@@ -632,10 +632,8 @@ namespace silly
                 std::string paramText = p->getText();
                 std::cout << std::format( "CALL function {}: param: {}\n", funcName, paramText );
 
-                bool foundStringLiteral{};
-                std::string s;
                 mlir::Type ty = funcType.getInputs()[i];
-                mlir::Value value = parseRvalue( loc, p, ty, s, foundStringLiteral );
+                mlir::Value value = parseNoStringRvalue( loc, p, ty );
                 value = castOpIfRequired( loc, value, ty );
 
                 parameters.push_back( value );
@@ -1342,26 +1340,21 @@ namespace silly
     CATCH_USER_ERROR
 
     void MLIRListener::processAssignment( mlir::Location loc, SillyParser::RvalueExpressionContext *exprContext,
-                                          std::string &currentVarName, mlir::Value currentIndexExpr )
+                                          const std::string &currentVarName, mlir::Value currentIndexExpr )
     {
         silly::DeclareOp declareOp = lookupDeclareForVar( loc, currentVarName );
         mlir::TypeAttr typeAttr = declareOp.getTypeAttr();
         mlir::Type opType = typeAttr.getValue();
 
-        std::string s;
         bool foundStringLiteral{};
-        mlir::Value resultValue = parseRvalue( loc, exprContext, opType, s, foundStringLiteral );
+        mlir::Value resultValue = parseRvalue( loc, exprContext, opType, foundStringLiteral );
 
         mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, currentVarName );
         if ( foundStringLiteral )
         {
-            mlir::StringAttr strAttr = builder.getStringAttr( s );
-
-            silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
-
             mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
 
-            builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ stringLiteral },
+            builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ resultValue },
                                              llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
         }
         else
@@ -1453,7 +1446,7 @@ namespace silly
     }
 
     mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
-                                           mlir::Type opType, std::string &s, bool &foundStringLiteral )
+                                           mlir::Type opType, bool &foundStringLiteral )
     {
         mlir::Value resultValue;
         mlir::Value lhsValue;
@@ -1463,6 +1456,7 @@ namespace silly
         {
             mlir::Value lhsValue;
 
+            std::string s;
             SillyParser::LiteralContext *lit = ctx->literal();
             lhsValue = buildUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
                                              lit ? lit->INTEGER_PATTERN() : nullptr,
@@ -1472,6 +1466,11 @@ namespace silly
             if ( lit && lit->STRING_PATTERN() )
             {
                 foundStringLiteral = true;
+
+                mlir::StringAttr strAttr = builder.getStringAttr( s );
+                silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
+
+                lhsValue = stringLiteral.getResult();
             }
 
             resultValue = lhsValue;
@@ -1482,14 +1481,6 @@ namespace silly
                 {
                     silly::NegOp op = builder.create<silly::NegOp>( loc, opType, lhsValue );
                     resultValue = op.getResult();
-
-                    if ( s.length() )
-                    {
-                        throw ExceptionWithContext(
-                            __FILE__, __LINE__, __func__,
-                            std::format( "{}internal error: Unexpected string literal for negation operation\n",
-                                         formatLocation( loc ) ) );
-                    }
                 }
                 else if ( opText == "NOT" )
                 {
@@ -1497,14 +1488,6 @@ namespace silly
 
                     silly::EqualOp b = builder.create<silly::EqualOp>( loc, opType, lhsValue, rhsValue );
                     resultValue = b.getResult();
-
-                    if ( s.length() )
-                    {
-                        throw ExceptionWithContext(
-                            __FILE__, __LINE__, __func__,
-                            std::format( "{}internal error: Unexpected string literal for negation operation\n",
-                                         formatLocation( loc ) ) );
-                    }
                 }
             }
         }
@@ -1618,7 +1601,7 @@ namespace silly
     {
         std::string s;
         bool foundStringLiteral{};
-        mlir::Value value = parseRvalue( loc, ctx, opType, s, foundStringLiteral );
+        mlir::Value value = parseRvalue( loc, ctx, opType, foundStringLiteral );
 
         if ( foundStringLiteral )
         {
