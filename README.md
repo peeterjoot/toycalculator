@@ -558,7 +558,7 @@ Single-line comments begin with `//` and extend to the end of the line.
 - Conditional execution (`IF / ELIF / ELSE`).
 - Range-based `FOR` loops
 - Functions and calls
-- Input (`GET`) and output (`PRINT`)
-- Explicit program termination (`EXIT`)
+- Input (`GET`) and output (`PRINT`, `ERROR`)
+- Explicit program termination (`EXIT`, `ABORT`)
 
 ---

@@ -33,6 +33,13 @@
 
 namespace silly
 {
+    inline std::string mlirTypeToString( mlir::Type t )
+    {
+        std::string s;
+        llvm::raw_string_ostream( s ) << t;
+        return s;
+    }
+
     inline PerFunctionState &MLIRListener::funcState( const std::string &funcName )
     {
         if ( !functionStateMap.contains( funcName ) )
@@ -272,14 +279,11 @@ namespace silly
             mlir::Type varType = declareOp.getTypeAttr().getValue();
             mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
 
-            mlir::Value indexValue = mlir::Value();
-
             if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
             {
-                indexValue = buildNonStringUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr,
-                                                            scalarOrArrayElement, nullptr, nullptr );
+                value = parseNoStringRvalue( loc, indexExpr->rvalueExpression(), varType );
 
-                mlir::Value i = indexTypeCast( loc, indexValue );
+                mlir::Value i = indexTypeCast( loc, value );
 
                 value = builder.create<silly::LoadOp>( loc, varType, symRef, i );
             }
@@ -503,17 +507,7 @@ namespace silly
 
         if ( rvalueExpression )
         {
-            std::string s;
-            bool foundStringLiteral{};
-            value = parseRvalue( loc, rvalueExpression, returnType, s, foundStringLiteral );
-
-            if ( foundStringLiteral )
-            {
-                throw ExceptionWithContext(
-                    __FILE__, __LINE__, __func__,
-                    std::format( "{}internal error: unexpected string literal found while parsing return: {}\n",
-                                 formatLocation( loc ), rvalueExpression->getText() ) );
-            }
+            value = parseNoStringRvalue( loc, rvalueExpression, returnType );
 
             value = castOpIfRequired( loc, value, returnType );
         }
@@ -839,7 +833,7 @@ namespace silly
                 rhsValue = buildNonStringUnaryExpression( loc, nullptr,    // booleanNode
                                                           rlit ? rlit->INTEGER_PATTERN() : nullptr,
                                                           rlit ? rlit->FLOAT_PATTERN() : nullptr,
-                                                          lhs->scalarOrArrayElement(), nullptr, nullptr );
+                                                          rhs->scalarOrArrayElement(), nullptr, nullptr );
 
                 assert( booleanValue );
                 SillyParser::PredicateOperatorContext *op = booleanValue->predicateOperator();
@@ -1032,12 +1026,9 @@ namespace silly
         mlir::Type elemType = declareOp.getTypeAttr().getValue();
 
         std::string s;
-        int sl{};
         if ( pStart )
         {
-            bool foundStringLiteral{};
-            start = parseRvalue( loc, pStart, elemType, s, foundStringLiteral );
-            sl += ( foundStringLiteral == true );
+            start = parseNoStringRvalue( loc, pStart, elemType );
 
             start = castOpIfRequired( loc, start, elemType );
         }
@@ -1050,9 +1041,7 @@ namespace silly
 
         if ( pEnd )
         {
-            bool foundStringLiteral{};
-            end = parseRvalue( loc, pEnd, elemType, s, foundStringLiteral );
-            sl += ( foundStringLiteral == true );
+            end = parseNoStringRvalue( loc, pEnd, elemType );
 
             end = castOpIfRequired( loc, end, elemType );
         }
@@ -1065,9 +1054,7 @@ namespace silly
 
         if ( pStep )
         {
-            bool foundStringLiteral{};
-            step = parseRvalue( loc, pStep, elemType, s, foundStringLiteral );
-            sl += ( foundStringLiteral == true );
+            step = parseNoStringRvalue( loc, pStep, elemType );
         }
         else
         {
@@ -1076,14 +1063,6 @@ namespace silly
         }
 
         step = castOpIfRequired( loc, step, elemType );
-
-        if ( sl )
-        {
-            throw ExceptionWithContext(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: unexpected string literal found while parsing for range: {}\n",
-                             formatLocation( loc ), ctx->getText() ) );
-        }
 
         insertionPointStack.push_back( builder.saveInsertionPoint() );
 
@@ -1142,9 +1121,7 @@ namespace silly
                 mlir::Value optIndexValue{};
                 if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
                 {
-                    mlir::Value indexValue{};
-                    indexValue = buildNonStringUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr,
-                                                                scalarOrArrayElement, nullptr, nullptr );
+                    mlir::Value indexValue = parseNoStringRvalue( loc, indexExpr->rvalueExpression(), elemType );
 
                     optIndexValue = indexTypeCast( loc, indexValue );
                     varType = elemType;
@@ -1250,9 +1227,7 @@ namespace silly
             mlir::Value optIndexValue{};
             if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
             {
-                mlir::Value indexValue{};
-                indexValue = buildNonStringUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr,
-                                                            scalarOrArrayElement, nullptr, nullptr );
+                mlir::Value indexValue = parseNoStringRvalue( loc, indexExpr->rvalueExpression(), elemType );
 
                 optIndexValue = indexTypeCast( loc, indexValue );
             }
@@ -1432,8 +1407,7 @@ namespace silly
 
         if ( indexExpr )
         {
-            currentIndexExpr = buildNonStringUnaryExpression( loc, nullptr, indexExpr->INTEGER_PATTERN(), nullptr, lhs,
-                                                              nullptr, nullptr );
+            currentIndexExpr = parseNoStringRvalue( loc, indexExpr->rvalueExpression(), tyI64 );
         }
 
         VariableState varState = getVarState( currentVarName );
@@ -1456,15 +1430,23 @@ namespace silly
         mlir::Type valTy = val.getType();
 
         if ( valTy == indexTy )
+        {
             return val;
+        }
 
-        // Only support i64 for now
+        if ( !valTy.isSignlessInteger( 64 ) && valTy.isInteger() )
+        {
+            val = castOpIfRequired( loc, val, tyI64 );
+            valTy = tyI64;
+        }
+
+        // Only support i64, or castable to i64, for now
         if ( !valTy.isSignlessInteger( 64 ) )
         {
             // If it's a non-i64 IntegerType, we could cast up to i64, and then cast that to index.
             throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                        std::format( "{}internal error: NYI: indexTypeCast for types other than i64\n",
-                                                     formatLocation( loc ) ) );
+                                        std::format( "{}internal error: NYI: indexTypeCast from type {} is not supported.\n",
+                                                     formatLocation( loc ), mlirTypeToString(valTy) ) );
         }
 
         return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
@@ -1629,6 +1611,24 @@ namespace silly
         }
 
         return resultValue;
+    }
+
+    mlir::Value MLIRListener::parseNoStringRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
+                                                   mlir::Type opType )
+    {
+        std::string s;
+        bool foundStringLiteral{};
+        mlir::Value value = parseRvalue( loc, ctx, opType, s, foundStringLiteral );
+
+        if ( foundStringLiteral )
+        {
+            throw ExceptionWithContext(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}internal error: unexpected string literal found while parsing: {}\n",
+                             formatLocation( loc ), ctx->getText() ) );
+        }
+
+        return value;
     }
 }    // namespace silly
 

@@ -1,0 +1,27 @@
+FUNCTION max(INT64 m, INT64 n) : INT64
+{
+    INT64 r = m;
+    IF (n > m)
+    {
+        r = n;
+    };
+
+    RETURN r;
+};
+
+FUNCTION min(INT64 m, INT64 n) : INT64
+{
+    INT64 r = m;
+    IF (n < m)
+    {
+        r = n;
+    };
+
+    RETURN r;
+};
+
+INT64 a;
+a = CALL min(3, 4);
+PRINT a;
+a = CALL max(3, 4);
+PRINT a;

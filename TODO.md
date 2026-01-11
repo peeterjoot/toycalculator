@@ -3,6 +3,7 @@
 ----------------------------------
 * Bugs:
   - `error_intarray_bad_constaccess.silly` should fail but doesn't.
+  - Have ABORT builtin now to implement failure codepath for runtime array range checking.  Could also use this for assignment to bool from source value > 1.
 
 ----------------------------------
 * Test:
@@ -21,9 +22,14 @@
   - Expressions that aren't parsed properly (like `CALL factorial(v - 1)` used to) lead to mysterious seeming parse error: Should do better.
   - Review the parser... any other places where buildUnary is called that ought to be parseRvalue?
   - declaration scope is weird, persisting beyond the declaring block (see: scopebug.silly and the README)
+  - NOT should be allowed for boolean expressions in IF/ELIF predicates.
+  - no test case for CALL in booleanExpression
+  - grammar allows for CALL to have CALL in the parameter list.  Not tested.
+  - Array initializer syntax.
 
 ----------------------------------
 * Maintainance:
+  - don't like the foundStringLiteral gunk in parser.cpp
   - All the runtime functions should take location context to show where in the users code the error was, if one happens (i.e.: GET functions)
   - lowering error handling is pschizophrenic: mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
   - Move scf lowering into 1st pass?  Attempt at this in xpgn:streamline-passes-attempt branch (not pushed.)
@@ -69,17 +75,7 @@
 ----------------------------------
 * arrays:
   - implement runtime bounds checking (make it a compiler option?)
-  - attempt to put in constant array access range checking did not work (for AssignOp lowering, probably also for LoadOp lowering -- untested).  Also want:
-
-    // allow: Now t[i+1] or t[someFunc()], ..., to parse correctly:
-    indexExpression
-      : ARRAY_START_TOKEN assignmentExpression ARRAY_END_TOKEN
-      ;
-
-    but currently have much more limited index expressions:
-
-      : ARRAY_START_TOKEN (IDENTIFIER | INTEGER_PATTERN) ARRAY_END_TOKEN
-
+  - attempt to put in constant array access range checking did not work (for AssignOp lowering, probably also for LoadOp lowering -- untested).
 
 ----------------------------------
 * Misc:

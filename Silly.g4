@@ -23,7 +23,11 @@ startRule
 
 // A statement can be a declaration, assignment, print, get, error, abort, if, for, call, function or comment.
 statement
-  : (callStatement | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print | error | abort | get | for) ENDOFSTATEMENT_TOKEN
+  : (callStatement | function | ifelifelse |
+     declare | boolDeclare | intDeclare | floatDeclare | stringDeclare |
+     assignment | print | error | abort | get | for
+    )
+    ENDOFSTATEMENT_TOKEN
   ;
 
 ifelifelse
@@ -70,7 +74,6 @@ boolDeclare
   ;
 
 variableTypeAndName
-  //: IDENTIFIER COLON_TOKEN scalarType
   : scalarType IDENTIFIER
   ;
 
@@ -92,15 +95,6 @@ stringDeclare
 
 arrayBoundsExpression
   : ARRAY_START_TOKEN INTEGER_PATTERN ARRAY_END_TOKEN
-  ;
-
-// Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
-exitStatement
-  : EXIT_TOKEN rvalueExpression?
-  ;
-
-returnStatement
-  : RETURN_TOKEN rvalueExpression?
   ;
 
 // A print statement that outputs a list of variables (e.g., 'PRINT x, y, z;'), followed by a newline.
@@ -167,11 +161,13 @@ forRangeExpression
   : rvalueExpression
   ;
 
-// The right-hand side of an assignment or a parameter, either a binary or unary expression.
-rvalueExpression
-  : literal
-  | unaryOperator? (scalarOrArrayElement | callExpression)
-  | binaryElement binaryOperator binaryElement
+// Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
+exitStatement
+  : EXIT_TOKEN rvalueExpression?
+  ;
+
+returnStatement
+  : RETURN_TOKEN rvalueExpression?
   ;
 
 callStatement
@@ -204,9 +200,14 @@ scalarOrArrayElement
   ;
 
 indexExpression
-// probably want (allow: Now t[i+1] or t[someFunc()], ..., to parse correctly.)
-// ARRAY_START_TOKEN assignmentExpression ARRAY_END_TOKEN
-  : ARRAY_START_TOKEN (IDENTIFIER | INTEGER_PATTERN) ARRAY_END_TOKEN
+  : ARRAY_START_TOKEN rvalueExpression ARRAY_END_TOKEN
+  ;
+
+// The right-hand side of an assignment or a parameter, either a binary or unary expression.
+rvalueExpression
+  : literal
+  | unaryOperator? (scalarOrArrayElement | callExpression)
+  | binaryElement binaryOperator binaryElement
   ;
 
 // A binary operator for addition, subtraction, multiplication, or division, ...
@@ -239,6 +240,8 @@ booleanLiteral
   : INTEGER_PATTERN | BOOLEAN_PATTERN
   ;
 
+/////////////////////////////////////////////////////////////////////////////////
+//
 // Lexer Rules
 // ===========
 

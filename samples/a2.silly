@@ -1,0 +1,5 @@
+INT32 arr[1];
+arr[0] = 10;
+
+INT32 result = arr[0];
+PRINT result;

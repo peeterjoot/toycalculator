@@ -108,10 +108,12 @@ system( qq(rm -rf out) );
 
 my %tests = map { $_ => 1 } (qw(
 0minus
+a2
 addi
 andop
 array
 array_assign_and_use
+arrayprod
 bin
 bool
 boolcall0
@@ -166,6 +168,7 @@ lesseqop
 lessop
 longstring
 minimal_eliftest
+minmax
 neg
 neqop
 nested_if_basic

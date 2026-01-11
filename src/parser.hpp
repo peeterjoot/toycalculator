@@ -301,6 +301,8 @@ namespace silly
         mlir::Value parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx, mlir::Type opType,
                                  std::string &s, bool &foundStringLiteral );
 
+        mlir::Value parseNoStringRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx, mlir::Type opType );
+
         void processAssignment( mlir::Location loc, SillyParser::RvalueExpressionContext *exprContext,
                                 std::string &currentVarName, mlir::Value currentIndexExpr );
     };

@@ -174,6 +174,10 @@ module {
 }
 ```
  * Adjust test cases to take advantage of new declare w/ initializer syntax
+ * Add support for array index expressions like t[i+1] or t[CALL someFunc()]
+ * bin/testit: two new tests, one for index expressions, and another with min/max helper functions (which found a bug.)
+ * MLIRListener::indexTypeCast: Add support for casting from any size integer type.
+ * MLIRListener::parsePredicate: Fix bug: was generating silly.less(x,x) instead of (x,y). (t/c: minmax.silly)
 
 ## tag: V7 (Jan 4, 2025)
 
