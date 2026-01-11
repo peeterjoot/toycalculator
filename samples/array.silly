@@ -1,8 +1,7 @@
 STRING t[2];
 STRING u[3];
-STRING s[2];
+STRING s[2] = "hi";
 INT8 s2;
-s = "hi";
 PRINT s;
 t = "hi";
 PRINT t;

@@ -1,16 +1,13 @@
-INT32 x;
-x = 5;
-INT32 y;
-y = 6;
+INT32 x = 5;
+INT32 y = 6;
 INT32 i;
-BOOL b1;
-BOOL b2;
+BOOL b1 = x < y;
+PRINT b1;
+BOOL b2 = x > y;
+PRINT b2;
 BOOL b3;
 BOOL b4;
-b1 = x < y;
-PRINT b1;
-b2 = x > y;
-PRINT b2;
+
 b1 = x <= y;
 PRINT b1;
 b2 = x >= y;

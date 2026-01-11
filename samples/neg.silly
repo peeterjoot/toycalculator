@@ -1,29 +1,23 @@
-INT8 i8;
-i8 = 10;
+INT8 i8 = 10;
 i8 = - i8;
 PRINT i8;
 
-INT16 i16;
-i16 = 1000;
+INT16 i16 = 1000;
 i16 = - i16;
 PRINT i16;
 
-INT32 i32;
-i32 = 100000;
+INT32 i32 = 100000;
 i32 = - i32;
 PRINT i32;
 
-INT64 i64;
-i64 = 100000000000;
+INT64 i64 = 100000000000;
 i64 = - i64;
 PRINT i64;
 
-FLOAT32 f32;
-f32 = 1.1;
+FLOAT32 f32 = 1.1;
 f32 = - f32;
 PRINT f32;
 
-FLOAT64 f64;
-f64 = 2.2E-1;
+FLOAT64 f64 = 2.2E-1;
 f64 = - f64;
 PRINT f64;

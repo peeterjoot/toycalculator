@@ -1,7 +1,6 @@
 FUNCTION plus3( INT32 v ) : INT32
 {
-    INT32 r;
-    r = 3 + v;
+    INT32 r = 3 + v;
     RETURN r;
 };
 
@@ -12,9 +11,7 @@ FUNCTION zero( ) : INT32
 
 FUNCTION add( INT32 v, INT32 w ) : INT32
 {
-    INT32 r;
-    r = v + w;
-    RETURN r;
+    RETURN v + w;
 };
 
 FUNCTION bar0 ( )
@@ -34,8 +31,7 @@ PRINT "Hello functions.";
 CALL bar0();
 CALL bar1();
 
-INT32 v;
-v = CALL add( 42, 0 );
+INT32 v = CALL add( 42, 0 );
 PRINT v;
 v = CALL zero();
 PRINT v;

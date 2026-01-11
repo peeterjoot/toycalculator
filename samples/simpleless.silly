@@ -1,8 +1,6 @@
 BOOL b;
-BOOL i1;
-BOOL j1;
-i1 = TRUE;
-j1 = FALSE;
+BOOL i1 = TRUE;
+BOOL j1 = FALSE;
 PRINT i1;
 PRINT j1;
 // 1 < 0 => 0

@@ -3,9 +3,7 @@ FUNCTION foo( ) : BOOL
   RETURN TRUE;
 };
 
-BOOL v;
-BOOL b;
-b = FALSE;
-v = b OR CALL foo( );
+BOOL b = FALSE;
+BOOL v = b OR CALL foo( );
 
 PRINT "TRUE OR FALSE = ", v;

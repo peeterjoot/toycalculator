@@ -10,8 +10,7 @@ FUNCTION zero2( ) : INT32
     RETURN i[1];
 };
 
-INT32 x;
-x = CALL zero();
+INT32 x = CALL zero();
 PRINT x;
 
 x = CALL zero2();

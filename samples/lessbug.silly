@@ -1,11 +1,8 @@
-FLOAT32 f32;
-f32 = 1.1;
+FLOAT32 f32 = 1.1;
 
-BOOL j1;
-j1 = FALSE;
+BOOL j1 = FALSE;
 
-BOOL b;
-b = f32 < j1; 
-PRINT b; 
-b = f32 > j1; 
-PRINT b; 
+BOOL b = f32 < j1;
+PRINT b;
+b = f32 > j1;
+PRINT b;

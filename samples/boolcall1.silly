@@ -5,13 +5,11 @@ FUNCTION foo( ) : BOOL
 
 FUNCTION bar( ) : BOOL
 {
-    BOOL b;
-    b = FALSE;
+    BOOL b = FALSE;
     RETURN b;
 };
 
-BOOL v;
-v = CALL foo( );
+BOOL v = CALL foo( );
 PRINT v;
 
 v = CALL bar( );

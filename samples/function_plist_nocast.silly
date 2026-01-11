@@ -6,8 +6,7 @@ FUNCTION bar ( INT64 w )
 
 FUNCTION foo ( )
 {
-    INT64 v;
-    v = 3;
+    INT64 v = 3;
     PRINT "In foo";
     CALL bar( v );
     PRINT "Called bar";

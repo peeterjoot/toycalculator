@@ -173,6 +173,7 @@ module {
   }
 }
 ```
+ * Adjust test cases to take advantage of new declare w/ initializer syntax
 
 ## tag: V7 (Jan 4, 2025)
 

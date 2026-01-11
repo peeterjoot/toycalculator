@@ -1,4 +1,3 @@
-DCL x;
-x = 3;
+DCL x = 3;
 // This indenting is to test location generation, and to verify that the resulting columnar position is right.
      PRINT x;

@@ -1,7 +1,5 @@
-INT32 x;
-x = 5 + 3.14E0;
-FLOAT64 f;
-f = x;
+INT32 x = 5 + 3.14E0;
+FLOAT64 f = x;
 PRINT f;
 // PRINT now supports all the builtin types:
 PRINT x;

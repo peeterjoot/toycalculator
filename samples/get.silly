@@ -6,8 +6,7 @@ INT32 y[1];
 GET y[0];
 PRINT y[0];
 
-INT32 z;
-z = x * y[0];
+INT32 z = x * y[0];
 PRINT z;
 
 INT8 v8;

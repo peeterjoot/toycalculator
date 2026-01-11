@@ -1,12 +1,8 @@
 INT32 x;
-INT32 a;
-INT32 b;
-INT32 c;
-INT32 z;
-a = 1;
-b = -11;
-c = 2;
-z = 0;
+INT32 a = 1;
+INT32 b = -11;
+INT32 c = 2;
+INT32 z = 0;
 
 FOR ( x : (1, 11) )
 {

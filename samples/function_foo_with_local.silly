@@ -1,7 +1,6 @@
 FUNCTION foo ( )
 {
-    INT16 v;
-    v = 3;
+    INT16 v = 3;
     PRINT "In foo";
     PRINT v;
     RETURN;

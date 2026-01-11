@@ -1,7 +1,5 @@
-INT32 x;
-x = 1.78 + 3.86E0;
-FLOAT64 f;
-f = x;
+INT32 x = 1.78 + 3.86E0;
+FLOAT64 f = x;
 PRINT f;
 f = 1.78 + 3.86E0;
 PRINT f;

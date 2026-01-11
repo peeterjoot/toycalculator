@@ -1,8 +1,5 @@
-FUNCTION add( INT32 v, INT32 w ) : INT32
+FUNCTION not_called( INT32 v, INT32 w ) : INT32
 {
-    //INT32 r;
-    //r = v + w;
-    //RETURN r;
     RETURN 0;
 };
 

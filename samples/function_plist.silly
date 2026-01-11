@@ -10,8 +10,7 @@ FUNCTION bar ( INT16 w, INT32 z )
 
 FUNCTION foo ( )
 {
-    INT16 v;
-    v = 3;
+    INT16 v = 3;
     PRINT "In foo";
     CALL bar( v, 42 );
     PRINT "Called bar";

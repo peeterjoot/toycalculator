@@ -1,7 +1,4 @@
-INT32 i1;
-i1 = 1;
-INT32 i2;
-i2 = 0;
-INT32 i3;
-i3 = i1 + i2;
+INT32 i1 = 1;
+INT32 i2 = 0;
+INT32 i3 = i1 + i2;
 EXIT i3;

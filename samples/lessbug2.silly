@@ -1,7 +1,6 @@
 BOOL b;
-BOOL i1;
+BOOL i1 = TRUE;
 FLOAT32 g32;
-i1 = TRUE;
 g32 = 1;
 PRINT i1;
 PRINT g32;
