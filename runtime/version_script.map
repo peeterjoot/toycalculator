@@ -1,5 +1,6 @@
 SILLY_V1.0.0 {
      global:
+__silly_abort;
 __silly_print_string;
 __silly_print_f64;
 __silly_print_i64;

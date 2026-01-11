@@ -488,7 +488,7 @@ namespace silly
 
         if ( currentFuncName == ENTRY_SYMBOL_NAME )
         {
-             returnType = tyI32;
+            returnType = tyI32;
         }
         else
         {
@@ -935,14 +935,14 @@ namespace silly
     void MLIRListener::selectElseBlock( mlir::Location loc, const std::string &errorText )
     {
         mlir::Block *currentBlock = builder.getInsertionBlock();
-        assert(currentBlock);
+        assert( currentBlock );
 
         // Get the parent region of the current block (the then region).
         mlir::Region *parentRegion = currentBlock->getParent();
 
         // Verify it's inside an scf.if by checking the parent op.
         mlir::Operation *parentOp = parentRegion->getParentOp();
-        mlir::scf::IfOp ifOp = dyn_cast<mlir::scf::IfOp>(parentOp);
+        mlir::scf::IfOp ifOp = dyn_cast<mlir::scf::IfOp>( parentOp );
 
         if ( !ifOp )
         {
@@ -1110,15 +1110,11 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterPrint( SillyParser::PrintContext *ctx )
-    try
+    void MLIRListener::handlePrint( mlir::Location loc, const std::vector<SillyParser::PrintArgumentContext *> &args,
+                                    const std::string &errorContextString )
     {
-        assert( ctx );
-        mlir::Location loc = getStartLocation( ctx );
-
         mlir::Type varType;
 
-        std::vector<SillyParser::PrintArgumentContext *> args = ctx->printArgument();
         std::vector<mlir::Value> vargs;
         for ( SillyParser::PrintArgumentContext *parg : args )
         {
@@ -1191,13 +1187,33 @@ namespace silly
             {
                 throw ExceptionWithContext( __FILE__, __LINE__, __func__,
                                             std::format( "{}internal error: unexpected print context {}\n",
-                                                         formatLocation( loc ), ctx->getText() ) );
+                                                         formatLocation( loc ), errorContextString ) );
             }
 
             vargs.push_back( v );
         }
 
         builder.create<silly::PrintOp>( loc, vargs );
+    }
+
+    void MLIRListener::enterPrint( SillyParser::PrintContext *ctx )
+    try
+    {
+        assert( ctx );
+        mlir::Location loc = getStartLocation( ctx );
+
+        handlePrint( loc, ctx->printArgument(), ctx->getText() );
+    }
+    CATCH_USER_ERROR
+
+    void MLIRListener::enterFatal( SillyParser::FatalContext *ctx )
+    try
+    {
+        assert( ctx );
+        mlir::Location loc = getStartLocation( ctx );
+        handlePrint( loc, ctx->printArgument(), ctx->getText() );
+
+        builder.create<silly::AbortOp>( loc );
     }
     CATCH_USER_ERROR
 

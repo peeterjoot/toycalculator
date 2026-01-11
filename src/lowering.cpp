@@ -236,9 +236,23 @@ namespace silly
         {
             ModuleInsertionPointGuard ip( mod, builder );
 
-            mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), { tyI64, tyPtr, tyI32 }, {} );
+            mlir::FunctionType funcType =
+                mlir::FunctionType::get( builder.getContext(), { tyI64, tyPtr, tyI32 }, {} );
             printFuncString = builder.create<mlir::func::FuncOp>( mod.getLoc(), "__silly_print_string", funcType );
             printFuncString.setVisibility( mlir::SymbolTable::Visibility::Private );
+        }
+    }
+
+    void LoweringContext::createSillyAbortPrototype()
+    {
+        if ( !printFuncAbort )
+        {
+            ModuleInsertionPointGuard ip( mod, builder );
+
+            mlir::FunctionType funcType =
+                mlir::FunctionType::get( builder.getContext(), { tyI64, tyPtr, tyI32 }, {} );
+            printFuncAbort = builder.create<mlir::func::FuncOp>( mod.getLoc(), "__silly_abort", funcType );
+            printFuncAbort.setVisibility( mlir::SymbolTable::Visibility::Private );
         }
     }
 
@@ -416,17 +430,18 @@ namespace silly
             unsigned line = loc.getLine();
             unsigned scopeLine = line;
 
-            mlir::Region &region = funcOp.getRegion();
+            mlir::Region& region = funcOp.getRegion();
 
-            mlir::Block &entryBlock = region.front();
+            mlir::Block& entryBlock = region.front();
 
             // Get the location of the First operation in the block for the scopeLine:
-            if (!entryBlock.empty()) {
-              mlir::Operation *firstOp = &entryBlock.front();
-              mlir::Location firstLoc = firstOp->getLoc();
-              mlir::FileLineColLoc scopeLoc = getLocation( firstLoc );
+            if ( !entryBlock.empty() )
+            {
+                mlir::Operation* firstOp = &entryBlock.front();
+                mlir::Location firstLoc = firstOp->getLoc();
+                mlir::FileLineColLoc scopeLoc = getLocation( firstLoc );
 
-              scopeLine = scopeLoc.getLine();
+                scopeLine = scopeLoc.getLine();
             }
 
             mlir::LLVM::DISubprogramAttr sub = mlir::LLVM::DISubprogramAttr::get(
@@ -657,6 +672,31 @@ namespace silly
         return globalOp;
     }
 
+    void LoweringContext::createAbortCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc )
+    {
+        mlir::FileLineColLoc fileLoc = getLocation( loc );
+
+        const std::string & filename = fileLoc.getFilename().str();
+        mlir::StringAttr strAttr = builder.getStringAttr( filename );
+
+        mlir::LLVM::ConstantOp sizeConst =
+            rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( filename.size() ) );
+
+        std::string strValue = strAttr.getValue().str();
+        size_t strLen = strValue.size();
+
+        mlir::LLVM::GlobalOp globalOp = lookupOrInsertGlobalOp( rewriter, strAttr, loc, strLen );
+        mlir::Value input = rewriter.create<mlir::LLVM::AddressOfOp>( loc, globalOp );
+
+        mlir::LLVM::ConstantOp lineConst =
+            rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI32, rewriter.getI32IntegerAttr( fileLoc.getLine() ) );
+
+        createSillyAbortPrototype();
+        const char* name = "__silly_abort";
+        rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, name,
+                                        mlir::ValueRange{ sizeConst, input, lineConst } );
+    }
+
     silly::CallOp LoweringContext::createPrintCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
                                                     mlir::Value input, bool newline )
     {
@@ -750,8 +790,8 @@ namespace silly
 
             createSillyPrintStringPrototype();
             const char* name = "__silly_print_string";
-            result =
-                rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, name, mlir::ValueRange{ sizeConst, input, newlineInput } );
+            result = rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, name,
+                                                     mlir::ValueRange{ sizeConst, input, newlineInput } );
         }
         else
         {
@@ -1627,10 +1667,11 @@ namespace silly
             size_t i{};
             for ( mlir::Value input : ins )
             {
-                silly::CallOp result = lState.createPrintCall( rewriter, loc, input, (i == (n-1)) ? true : false );
+                silly::CallOp result =
+                    lState.createPrintCall( rewriter, loc, input, ( i == ( n - 1 ) ) ? true : false );
                 LLVM_DEBUG( {
                     llvm::dbgs() << "print call: for input:" << input << ", result: " << result;
-                    //mod.dump();
+                    // mod.dump();
                 } );
 
                 i++;
@@ -1642,6 +1683,33 @@ namespace silly
                 mod.dump();
             } );
 #endif
+            rewriter.eraseOp( op );
+
+            return mlir::success();
+        }
+    };
+
+    class AbortOpLowering : public mlir::ConversionPattern
+    {
+       private:
+        LoweringContext& lState;
+
+       public:
+        AbortOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( silly::AbortOp::getOperationName(), benefit, context ), lState{ loweringState }
+        {
+        }
+
+        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
+                                             mlir::ConversionPatternRewriter& rewriter ) const override
+        {
+            silly::AbortOp abortOp = cast<silly::AbortOp>( op );
+            mlir::Location loc = abortOp.getLoc();
+
+            LLVM_DEBUG( llvm::dbgs() << "Lowering silly.abort: " << *op << '\n' );
+
+            lState.createAbortCall( rewriter, loc );
+
             rewriter.eraseOp( op );
 
             return mlir::success();
@@ -1943,7 +2011,7 @@ namespace silly
                 target.addIllegalOp<silly::AddOp, silly::AndOp, silly::AssignOp, silly::DeclareOp, silly::DivOp,
                                     silly::EqualOp, silly::LessEqualOp, silly::LessOp, silly::LoadOp, silly::MulOp,
                                     silly::NegOp, silly::NotEqualOp, silly::OrOp, silly::PrintOp, silly::GetOp,
-                                    silly::StringLiteralOp, silly::SubOp, silly::XorOp>();
+                                    silly::StringLiteralOp, silly::SubOp, silly::XorOp, silly::AbortOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
                                   silly::ScopeOp, silly::YieldOp, silly::ReturnOp, silly::CallOp, mlir::func::CallOp,
                                   mlir::scf::IfOp, mlir::scf::ForOp, mlir::scf::YieldOp>();
@@ -1952,8 +2020,8 @@ namespace silly
                 patterns.add<AddOpLowering, AndOpLowering, AssignOpLowering, ConstantOpLowering, DeclareOpLowering,
                              DivOpLowering, EqualOpLowering, LessEqualOpLowering, LessOpLowering, LoadOpLowering,
                              MulOpLowering, NegOpLowering, NotEqualOpLowering, OrOpLowering, PrintOpLowering,
-                             GetOpLowering, StringLiteralOpLowering, SubOpLowering, XorOpLowering>( lState,
-                                                                                                    &getContext(), 1 );
+                             AbortOpLowering, GetOpLowering, StringLiteralOpLowering, SubOpLowering, XorOpLowering>(
+                    lState, &getContext(), 1 );
 
                 if ( failed( applyFullConversion( mod, target, std::move( patterns ) ) ) )
                 {

@@ -21,9 +21,9 @@ startRule
   : (statement|comment)* (exitStatement ENDOFSTATEMENT_TOKEN)? comment* EOF
   ;
 
-// A statement can be a declaration, assignment, print, get, if, for, comment.
+// A statement can be a declaration, assignment, print, get, fatal, if, for, call, function or comment.
 statement
-  : (callStatement | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print | get | for) ENDOFSTATEMENT_TOKEN
+  : (callStatement | function | ifelifelse | declare | boolDeclare | intDeclare | floatDeclare | stringDeclare | assignment | print | fatal | get | for) ENDOFSTATEMENT_TOKEN
   ;
 
 ifelifelse
@@ -106,6 +106,10 @@ returnStatement
 // A print statement that outputs a list of variables (e.g., 'PRINT x, y, z;'), followed by a newline.
 print
   : PRINT_TOKEN printArgument (COMMA_TOKEN printArgument)*
+  ;
+
+fatal
+  : FATAL_TOKEN printArgument (COMMA_TOKEN printArgument)*
   ;
 
 printArgument
@@ -457,6 +461,11 @@ DECLARE_TOKEN
 // Matches the 'PRINT' keyword for print statements.
 PRINT_TOKEN
   : 'PRINT'
+  ;
+
+// Matches the 'FATAL' keyword for fatal statements.
+FATAL_TOKEN
+  : 'FATAL'
   ;
 
 // Matches the 'GET' keyword for get statements.

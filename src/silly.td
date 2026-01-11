@@ -160,6 +160,12 @@ def Silly_StringLiteralOp : Op<Silly_Dialect, "string_literal"> {
   let results = (outs AnyType:$result);
 }
 
+def Silly_AbortOp : Op<Silly_Dialect, "abort"> {
+  let summary = "Print a fatal error message to standard error, with file:line, and then abort";
+  let arguments = (ins);
+  let results = (outs);
+}
+
 def Silly_PrintOp : Op<Silly_Dialect, "print"> {
   let summary = "Print a list of values or string literals to standard output";
 

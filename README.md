@@ -259,7 +259,7 @@ Array elements may be used wherever a scalar value is expected:
 - Assignment rvalues
 - Expressions
 - Function call parameters
-- PRINT, GET, RETURN, and EXIT statements
+- PRINT, FATAL, GET, RETURN, and EXIT statements
 
 They behave as **rvalues** in expressions and as **lvalues** on the left-hand side of assignments.
 
@@ -268,6 +268,7 @@ x = a[3];
 y = b[i] + 2;
 a[i] = 7;
 PRINT arr[5];
+FATAL arr[5];
 GET arr[0];
 EXIT arr[1];
 ```
@@ -404,7 +405,7 @@ Conditional execution using boolean expressions.
 IF (x < 0) {
   PRINT "negative";
 } ELIF (x EQ 0) {
-  PRINT "zero";
+  FATAL "zero";
 } ELSE {
   PRINT "positive";
 };
@@ -494,6 +495,14 @@ PRINT x, " is ", y;
 PRINT "Hello: ", v;
 PRINT 3.14;
 PRINT arr[3];
+```
+
+### FATAL
+
+The FATAL statement is equivalent to PRINT, however, after the PRINT is done, there will be a `<file>:<line>:FATAL ERROR: aborting` printed to stderr, and an abort.
+
+```text
+FATAL "Unexpected value: ", v;
 ```
 
 ### GET

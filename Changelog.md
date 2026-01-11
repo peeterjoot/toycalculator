@@ -113,6 +113,37 @@ The MLIR was just plain wrong.   There insertion point for the zero PRINT is not
 ```
 
   Sure enough the insertion point selection logic was wrong.  The ifOp search logic was finding the outermost scf.if, not the innermost -- now fixed.
+* Add a FATAL builtin, like PRINT, but prints any message text, then `FILE:LINE:FATAL error aborting` message and then aborts.
+
+Example program:
+```
+INT32 v = 42;
+
+FATAL "Unexpected value: ", v; // line 3.
+```
+
+Example listing:
+```
+module {
+  func.func @main() -> i32 {
+    "silly.scope"() ({
+      "silly.declare"() <{type = i32}> {sym_name = "v"} : () -> () loc(#loc)
+      %c42_i64 = arith.constant 42 : i64 loc(#loc)
+      silly.assign @v = %c42_i64 : i64 loc(#loc)
+      %0 = "silly.string_literal"() <{value = "Unexpected value: "}> : () -> !llvm.ptr loc(#loc1)
+      %1 = silly.load @v : i32 loc(#loc1)
+      "silly.print"(%0, %1) : (!llvm.ptr, i32) -> () loc(#loc1)
+      "silly.abort"() : () -> () loc(#loc1)
+      %c0_i32 = arith.constant 0 : i32 loc(#loc)
+      "silly.return"(%c0_i32) : (i32) -> () loc(#loc)
+    }) : () -> () loc(#loc)
+    "silly.yield"() : () -> () loc(#loc2)
+  } loc(#loc)
+} loc(#loc)
+#loc = loc("fatal.silly":1:1)
+#loc1 = loc("fatal.silly":3:1)
+#loc2 = loc("fatal.silly":4:1)
+```
 
 ## tag: V7 (Jan 4, 2025)
 

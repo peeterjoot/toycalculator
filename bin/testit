@@ -137,6 +137,7 @@ exitx
 f
 factorial
 factorial2
+fatal
 foo
 for_complex_body
 function
@@ -214,6 +215,7 @@ my %expectedRC = (
    'exit42' => 42,
    'exitx' => 3,
    'exitarrayelement' => 42,
+   'fatal' => 134, # abort
    'getboolfail' => '134', # abort
 );
 
@@ -273,11 +275,12 @@ foreach my $stem (sort @alltests)
 
     my $rc;
     if ( defined $expectedInput{${stem}} ) {
-        $rc = verbose_system( qq(echo "$expectedInput{${stem}}" | ./out/${stem} > out/${stem}.out) );
+        $rc = verbose_system( qq(echo "$expectedInput{${stem}}" | ./out/${stem} > out/${stem}.out 2>out/${stem}.stderr.out) );
     } else {
-        $rc = verbose_system( qq(./out/${stem} > out/${stem}.out) );
+        $rc = verbose_system( qq(./out/${stem} > out/${stem}.out 2>out/${stem}.stderr.out) );
     }
-    verbose_system( qq(cat out/${stem}.out) );
+    verbose_system( qq(echo 'stdout:' ; cat out/${stem}.out) );
+    verbose_system( qq(echo 'stderr:' ; cat out/${stem}.stderr.out) );
 
     print "${stem}: RC = $rc\n\n\n\n\n";
 
@@ -289,15 +292,21 @@ foreach my $stem (sort @alltests)
 
     complain( "stem: $rc != $erc" ) if ( $rc ne $erc );
 
-    if ( -e "expected/$stem.out" )
+    if ( -e "expected/${stem}.out" )
     {
         my $crc = verbose_system( qq(diff -wup expected/${stem}.out out/${stem}.out) );
         complain( "ERROR: diff -wup expected/${stem}.out out/${stem}.out: $crc\n") if ( $crc );
     }
     else
     {
-        my $msg = "ERROR: COMPARE FILE NOT FOUND: expected/$stem.out\n";
+        my $msg = "ERROR: COMPARE FILE NOT FOUND: expected/${stem}.out\n";
         push( @warnings, $msg );
+    }
+
+    if ( -e "expected/${stem}.stderr.out" )
+    {
+        my $crc = verbose_system( qq(diff -wup expected/${stem}.stderr.out out/${stem}.stderr.out) );
+        complain( "ERROR: diff -wup expected/${stem}.stderr.out out/${stem}.stderr.out: $crc\n") if ( $crc );
     }
 
     # DI testing HACK for one issue, now fixed:

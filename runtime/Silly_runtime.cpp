@@ -10,16 +10,23 @@
 
 extern "C"
 {
+    // * len+str is a __FILE__ like variable.  print a FATAL message to stderr and abort
+    void __silly_abort( size_t len, const char* str, int line )
+    {
+        fflush(NULL);
+        fprintf( stderr, "%.*s:%d:FATAL ERROR: aborting\n", (int)len, str, line );
+        abort();
+    }
+
     void __silly_print_string( size_t len, const char* str, int newline )
     {
         printf( "%.*s%s", (int)len, str, newline ? "\n" : "" );
     }
 
-    void __silly_print_f64( double value, int newline )
+        void __silly_print_f64( double value, int newline )
     {
         printf( "%f%s", value, newline ? "\n" : "" );
     }
-
 
     void __silly_print_i64( int64_t value, int newline )
     {

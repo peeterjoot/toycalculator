@@ -71,6 +71,8 @@ namespace silly
         silly::CallOp createPrintCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
                                        mlir::Value input, bool newline );
 
+        void createAbortCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc );
+
         /// Creates a call to the appropriate Silly get runtime function.
         mlir::Value createGetCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
                                    mlir::Type inputType );
@@ -151,6 +153,9 @@ namespace silly
         /// Creates the prototype for __silly_print_string.
         void createSillyPrintStringPrototype();
 
+        /// Creates the prototype for __silly_abort.
+        void createSillyAbortPrototype();
+
         /// Creates a prototype for a Silly get function if it does not exist.
         template <class RetTy>
         void createSillyGetPrototype( mlir::func::FuncOp& getOp, RetTy retType, const char* name );
@@ -203,6 +208,9 @@ namespace silly
 
         /// Prototype for __silly_print_string.
         mlir::func::FuncOp printFuncString;
+
+        /// Prototype for __silly_abort.
+        mlir::func::FuncOp printFuncAbort;
 
         /// Prototype for __silly_get_i1.
         mlir::func::FuncOp getFuncI1;

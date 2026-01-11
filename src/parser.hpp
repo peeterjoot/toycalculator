@@ -126,6 +126,7 @@ namespace silly
         void enterFloatDeclare( SillyParser::FloatDeclareContext *ctx ) override;
         void enterStringDeclare( SillyParser::StringDeclareContext *ctx ) override;
         void enterPrint( SillyParser::PrintContext *ctx ) override;
+        void enterFatal(SillyParser::FatalContext * ctx ) override;
         void enterGet( SillyParser::GetContext *ctx ) override;
         void enterFor( SillyParser::ForContext *ctx ) override;
         void exitFor( SillyParser::ForContext *ctx ) override;
@@ -239,6 +240,8 @@ namespace silly
 
         /// Emits a silly::CallOp for a function call.
         mlir::Value handleCall( SillyParser::CallExpressionContext *ctx );
+
+        void handlePrint( mlir::Location loc, const std::vector<SillyParser::PrintArgumentContext *> & args, const std::string & errorContextString );
 
         /// Registers a variable declaration in the current scope.
         void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
