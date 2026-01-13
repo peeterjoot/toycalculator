@@ -6,8 +6,60 @@
 
 ----------------------------------
 * Bugs:
+  - Removing varstates breaks: `error_redeclare`.  This should still be an error.
   - `error_intarray_bad_constaccess.silly` should fail but doesn't.
   - Have ABORT builtin now to implement failure codepath for runtime array range checking.  Could also use this for assignment to bool from source value > 1.
+  - line stepping over a multi-argument print statement is getting a new line entry for each individual runtime call:
+
+```
+  (gdb) p w
+$3 = 0
+(gdb) n
+34          PRINT "c[", i, "] = ", c[i], " ( = ", v, " * ", w, " )";
+(gdb)
+32          c[i] = v * w;
+(gdb)
+34          PRINT "c[", i, "] = ", c[i], " ( = ", v, " * ", w, " )";
+(gdb)
+32          c[i] = v * w;
+(gdb)
+34          PRINT "c[", i, "] = ", c[i], " ( = ", v, " * ", w, " )";
+(gdb)
+32          c[i] = v * w;
+(gdb)
+34          PRINT "c[", i, "] = ", c[i], " ( = ", v, " * ", w, " )";
+(gdb)
+c[0] = 0 ( = 1 * 0 )
+14      FOR (i: (0, 10))
+```
+
+  I suppressed real location info for all but the last of these PRINT calls, but that didn't handle it completely:
+```
+(gdb)
+32          c[i] = v * w;
+(gdb)
+
+Breakpoint 1, main () at arrayprod.silly:34
+34          PRINT "c[", i, "] = ", c[i], " ( = ", v, " * ", w, " )";
+(gdb)
+32          c[i] = v * w;
+(gdb)
+34          PRINT "c[", i, "] = ", c[i], " ( = ", v, " * ", w, " )";
+(gdb)
+c[1] = 0 ( = 2 * 0 )
+14      FOR (i: (0, 10))
+```
+
+  Grok suggests suppressing all real location information for the geps and other variable references that are probably bouncing the lines around (or reworking the runtime so there isn't multiple print function calls.)  I've since eliminated the multiple print calls,
+  but still have this issue in arrayprod.  Using unknownLoc for the print args doesn't help -- tried as an experiment.
+
+  ```
+  %8 = bitcast ptr %1 to ptr, !dbg !24
+  store { i32, i32, i64, ptr } { i32 1, i32 0, i64 42, ptr null }, ptr %8, align 8, !dbg !24
+  call void @__silly_print(i32 1, ptr %1), !dbg !24
+  ```
+
+  - In initFill: `loc = rewriter.getUnknownLoc();` This was a HACK to suppress location info for these implicit memset's, so that the line numbers in gdb don't bounce around.  I think that the re-ordering that I now do in the DeclareOp builder is messing things up, and that is the root cause of the trouble (see that in arrayprod.silly trying to step over the dcls if this hack is removed.)
 
 ----------------------------------
 * Test:

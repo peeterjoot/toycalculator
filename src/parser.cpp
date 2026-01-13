@@ -57,6 +57,15 @@ namespace silly
         f.funcOp = op;
     }
 
+    inline std::string formatLocation( mlir::Location loc )
+    {
+        if ( mlir::FileLineColLoc fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc ) )
+        {
+            return std::format( "{}:{}:{}: ", fileLoc.getFilename().str(), fileLoc.getLine(), fileLoc.getColumn() );
+        }
+        return "";
+    }
+
     inline mlir::func::FuncOp MLIRListener::getFuncOp( mlir::Location loc, const std::string &funcName )
     {
         PerFunctionState &f = funcState( funcName );
@@ -69,27 +78,6 @@ namespace silly
                                                      formatLocation( loc ), funcName ) );
         }
         return op;
-    }
-
-    inline void MLIRListener::setVarState( const std::string &funcName, const std::string &varName, VariableState st )
-    {
-        PerFunctionState &f = funcState( funcName );
-        f.varStates[varName] = st;
-    }
-
-    inline VariableState MLIRListener::getVarState( const std::string &varName )
-    {
-        PerFunctionState &f = funcState( currentFuncName );
-        return f.varStates[varName];
-    }
-
-    inline std::string MLIRListener::formatLocation( mlir::Location loc ) const
-    {
-        if ( mlir::FileLineColLoc fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc ) )
-        {
-            return std::format( "{}:{}:{}: ", fileLoc.getFilename().str(), fileLoc.getLine(), fileLoc.getColumn() );
-        }
-        return "";
     }
 
     inline std::string MLIRListener::stripQuotes( mlir::Location loc, const std::string &input ) const
@@ -158,14 +146,6 @@ namespace silly
     void MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                             SillyParser::ArrayBoundsExpressionContext *arrayBounds )
     {
-        VariableState varState = getVarState( varName );
-        if ( varState != VariableState::undeclared )
-        {
-            throw UserError( loc, std::format( "Variable {} already declared", varName ) );
-        }
-
-        setVarState( currentFuncName, varName, VariableState::declared );
-
         size_t arraySize{};
         if ( arrayBounds )
         {
@@ -180,6 +160,12 @@ namespace silly
         mlir::func::FuncOp funcOp = getFuncOp( loc, currentFuncName );
 
         silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
+
+        mlir::Operation *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
+        if ( symbolOp )
+        {
+            throw UserError( loc, std::format( "Variable {} already declared", varName ) );
+        }
 
         // Scope has one block
         mlir::Block *scopeBlock = &scopeOp.getBody().front();
@@ -261,18 +247,6 @@ namespace silly
             assert( variableNode );
             std::string varName = variableNode->getText();
 
-            VariableState varState = getVarState( varName );
-
-            if ( varState == VariableState::undeclared )
-            {
-                throw UserError( loc, std::format( "Variable {} not declared in expr", varName ) );
-            }
-
-            if ( varState != VariableState::assigned )
-            {
-                throw UserError( loc, std::format( "Variable {} not assigned in expr", varName ) );
-            }
-
             silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
 
             mlir::Type varType = declareOp.getTypeAttr().getValue();
@@ -330,7 +304,7 @@ namespace silly
                                                  charPositionInLine, msg, tokenText ) );
     }
 
-    silly::ScopeOp MLIRListener::getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp ) const
+    silly::ScopeOp getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp )
     {
         // Single ScopeOp per function – iterate once to find it
         for ( mlir::Operation &op : funcOp.getBody().front() )
@@ -343,8 +317,8 @@ namespace silly
 
         throw ExceptionWithContext(
             __FILE__, __LINE__, __func__,
-            std::format( "{}internal error: Unable to find Enclosing ScopeOp for currentFunction {}\n",
-                         formatLocation( loc ), currentFuncName ) );
+            std::format( "{}internal error: Unable to find Enclosing ScopeOp\n",
+                         formatLocation( loc ) ) );
 
         return nullptr;
     }
@@ -578,8 +552,6 @@ namespace silly
             std::string paramName = paramCtx->IDENTIFIER()->getText();
             paramTypes.push_back( paramType );
             paramNames.push_back( paramName );
-
-            setVarState( funcName, paramName, VariableState::assigned );
         }
 
         std::vector<mlir::NamedAttribute> attrs;
@@ -781,8 +753,6 @@ namespace silly
 
             builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ stringLiteral },
                                              llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
-
-            setVarState( currentFuncName, varName, VariableState::assigned );
         }
     }
     CATCH_USER_ERROR
@@ -990,11 +960,6 @@ namespace silly
 
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
-        VariableState varState = getVarState( varName );
-        if ( varState == VariableState::undeclared )
-        {
-            throw UserError( loc, std::format( "Variable {} not declared in PRINT", varName ) );
-        }
 
         mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
         mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
@@ -1070,7 +1035,6 @@ namespace silly
         mlir::Value inductionVar = loopBody.getArgument( 0 );
         builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ inductionVar },
                                          llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
-        setVarState( currentFuncName, varName, VariableState::assigned );
     }
     CATCH_USER_ERROR
 
@@ -1084,7 +1048,7 @@ namespace silly
     CATCH_USER_ERROR
 
     void MLIRListener::handlePrint( mlir::Location loc, const std::vector<SillyParser::RvalueExpressionContext *> &args,
-                                    const std::string &errorContextString, PRINT_FLAGS pf )
+                                    const std::string &errorContextString, PrintFlags pf )
     {
         std::vector<mlir::Value> vargs;
         for ( SillyParser::RvalueExpressionContext *parg : args )
@@ -1109,7 +1073,7 @@ namespace silly
         {
             flags = PRINT_FLAGS_CONTINUE;
         }
-        handlePrint( loc, ctx->rvalueExpression(), ctx->getText(), (PRINT_FLAGS)flags );
+        handlePrint( loc, ctx->rvalueExpression(), ctx->getText(), (PrintFlags)flags );
     }
     CATCH_USER_ERROR
 
@@ -1123,7 +1087,7 @@ namespace silly
         {
             flags |= PRINT_FLAGS_CONTINUE;
         }
-        handlePrint( loc, ctx->rvalueExpression(), ctx->getText(), (PRINT_FLAGS)flags );
+        handlePrint( loc, ctx->rvalueExpression(), ctx->getText(), (PrintFlags)flags );
     }
     CATCH_USER_ERROR
 
@@ -1149,11 +1113,6 @@ namespace silly
             tNode *varNameObject = scalarOrArrayElement->IDENTIFIER();
             assert( varNameObject );
             std::string varName = varNameObject->getText();
-            VariableState varState = getVarState( varName );
-            if ( varState == VariableState::undeclared )
-            {
-                throw UserError( loc, std::format( "Variable {} not declared in GET", varName ) );
-            }
 
             silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
 
@@ -1178,8 +1137,6 @@ namespace silly
 
             silly::GetOp resultValue = builder.create<silly::GetOp>( loc, elemType );
             builder.create<silly::AssignOp>( loc, symRef, optIndexValue, resultValue );
-
-            setVarState( currentFuncName, varName, VariableState::assigned );
         }
         else
         {
@@ -1357,8 +1314,6 @@ namespace silly
                                                  llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
             }
         }
-
-        setVarState( currentFuncName, currentVarName, VariableState::assigned );
     }
 
     void MLIRListener::enterAssignment( SillyParser::AssignmentContext *ctx )
@@ -1377,16 +1332,6 @@ namespace silly
         if ( indexExpr )
         {
             currentIndexExpr = parseRvalue( loc, indexExpr->rvalueExpression(), tyI64 );
-        }
-
-        VariableState varState = getVarState( currentVarName );
-        if ( varState == VariableState::declared )
-        {
-            setVarState( currentFuncName, currentVarName, VariableState::assigned );
-        }
-        else if ( varState == VariableState::undeclared )
-        {
-            throw UserError( loc, std::format( "Variable {} not declared in assignment", currentVarName ) );
         }
 
         processAssignment( loc, ctx->assignmentRvalue()->rvalueExpression(), currentVarName, currentIndexExpr );

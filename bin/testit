@@ -106,6 +106,10 @@ if ( $debug )
 
 system( qq(rm -rf out) );
 
+my %testflags = (
+  'arrayprod' => '--init-fill 255',
+);
+
 my %tests = map { $_ => 1 } (qw(
 0minus
 a2
@@ -181,6 +185,7 @@ printcont
 printexpr
 printlit
 print_multiple
+printsome
 return_expression
 s2
 scopebug
@@ -197,15 +202,14 @@ xorop
 ));
 
 my %failuretests = map {$_ => 1} (qw(
-error_redeclare
-error_unassigned
-error_undeclare
+error_arrayreturn
 error_invalid_binary
 error_invalid_unary
 error_keyword_declare
 error_keyword_declare2
+error_redeclare
 error_stringreturn
-error_arrayreturn
+error_undeclare
 ));
 #error_intarray_bad_constaccess
 
@@ -255,8 +259,15 @@ foreach my $stem (sort @alltests)
     print "##########################################################################\n";
     verbose_system( qq(cat $stem.silly) );
 
+    my $thisflags = $flags;
+
+    if ( defined $testflags{$stem} )
+    {
+        #$thisflags .= " $testflags{$stem}";
+    }
+
     print "##########################################################################\n";
-    my $cmd = qq(../build/silly --output-directory out $stem.silly $flags --emit-llvm --emit-mlir);
+    my $cmd = qq(../build/silly --output-directory out $stem.silly $thisflags --emit-llvm --emit-mlir);
     my $crc = verbose_system( $cmd );
     if ( defined $failuretests{$stem} )
     {

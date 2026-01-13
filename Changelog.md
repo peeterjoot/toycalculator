@@ -195,6 +195,57 @@ FUNCTION foo() : FLOAT32
 PRINT "hi", s, 40 + 2, ", ", -x, ", ", f[0], ", ", CALL foo();
 ```
   * Add a CONTINUE parameter to PRINT/ERROR to suppress the newline.
+  * Implement `--init-fill` option for automatic variable initialization (default zero. test case arrayprod uses 255 -- verified in gdb)
+  * Removed varStates -- it does not work anyways now that we have control flow.  Still have checking for redeclaration, but no longer have any checking for use without assignment (but have --init-fill to compensate a bit.)
+  * Reworked the PRINT runtime (and lowering) so that there's now just one function call, with an alloca'ed array (big enough for the largest number of print arguments in the function in question.)  For example, given this MLIR fragment:
+
+```
+%c42_i64 = arith.constant 42 : i64
+%c0_i32 = arith.constant 0 : i32
+"silly.print"(%c0_i32, %c42_i64) : (i32, i64) -> ()
+
+%cst = arith.constant 4.200000e+01 : f64
+%c0_i32_0 = arith.constant 0 : i32
+"silly.print"(%c0_i32_0, %cst) : (i32, f64) -> ()
+
+%c1_i64 = arith.constant 1 : i64
+%c2_i64 = arith.constant 2 : i64
+%c0_i32_1 = arith.constant 0 : i32
+"silly.print"(%c0_i32_1, %c1_i64, %c2_i64) : (i32, i64, i64) -> ()
+```
+
+we lower to:
+```
+  %1 = alloca [4 x { i32, i32, i64, ptr }], align 8
+  store i32 1, ptr %1, align 8
+  %.repack1 = getelementptr inbounds nuw i8, ptr %1, i64 4
+  store i32 0, ptr %.repack1, align 4
+  %.repack2 = getelementptr inbounds nuw i8, ptr %1, i64 8
+  store i64 42, ptr %.repack2, align 8
+  %.repack3 = getelementptr inbounds nuw i8, ptr %1, i64 16
+  store ptr null, ptr %.repack3, align 8
+  call void @__silly_print(i32 1, ptr nonnull %1), !dbg !8
+
+  store i32 2, ptr %1, align 8
+  store i32 0, ptr %.repack1, align 4
+  store i64 4631107791820423168, ptr %.repack2, align 8
+  store ptr null, ptr %.repack3, align 8
+  call void @__silly_print(i32 1, ptr nonnull %1), !dbg !9
+
+  store i32 1, ptr %1, align 8
+  store i32 1, ptr %.repack1, align 4
+  store i64 1, ptr %.repack2, align 8
+  store ptr null, ptr %.repack3, align 8
+  %2 = getelementptr inbounds nuw i8, ptr %1, i64 24
+  store i32 1, ptr %2, align 8
+  %.repack10 = getelementptr inbounds nuw i8, ptr %1, i64 28
+  store i32 0, ptr %.repack10, align 4
+  %.repack11 = getelementptr inbounds nuw i8, ptr %1, i64 32
+  store i64 2, ptr %.repack11, align 8
+  %.repack12 = getelementptr inbounds nuw i8, ptr %1, i64 40
+  store ptr null, ptr %.repack12, align 8
+  call void @__silly_print(i32 2, ptr nonnull %1), !dbg !10
+```
 
 ## tag: V7 (Jan 4, 2025)
 

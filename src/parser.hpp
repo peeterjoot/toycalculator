@@ -25,18 +25,11 @@
 
 namespace silly
 {
-    /// State of a variable within a function scope.
-    enum class VariableState : int
-    {
-        /// Variable not yet seen in this function.
-        undeclared,
+    /// Finds enclosing silly::ScopeOp.
+    silly::ScopeOp getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp );
 
-        /// Variable declared but not assigned.
-        declared,
-
-        /// Variable has been assigned a value.
-        assigned
-    };
+    /// Formats location for error messages.
+    inline std::string formatLocation( mlir::Location loc );
 
     /// Surface a user error.
     class UserError : public std::exception
@@ -79,9 +72,6 @@ namespace silly
     /// Per-function state tracked during parsing.
     struct PerFunctionState
     {
-        /// Variable states in this function.
-        std::unordered_map<std::string, VariableState> varStates;
-
         /// Associated func::FuncOp.
         mlir::Operation *funcOp{};
 
@@ -223,9 +213,6 @@ namespace silly
         void createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp func,
                           const std::string &funcName, const std::vector<std::string> &paramNames );
 
-        /// Formats location for error messages.
-        inline std::string formatLocation( mlir::Location loc ) const;
-
         /// Builds MLIR value from unary expression (literals/variables).
         mlir::Value buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode, tNode *floatNode,
                                           SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
@@ -236,7 +223,7 @@ namespace silly
 
         /// builder logic for print arguments (shared between PRINT and ERROR.)
         void handlePrint( mlir::Location loc, const std::vector<SillyParser::RvalueExpressionContext *> &args,
-                          const std::string &errorContextString, PRINT_FLAGS flags );
+                          const std::string &errorContextString, PrintFlags flags );
 
         /// Registers a variable declaration in the current scope.
         void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
@@ -252,13 +239,6 @@ namespace silly
 
         /// Return the funcOp cached for the current function in setFuncNameAndOp.
         inline mlir::func::FuncOp getFuncOp( mlir::Location loc, const std::string &funcName );
-
-        /// Look up the PerFunctionState for the named function, and set the supplied VariableState for the named
-        /// variable.
-        inline void setVarState( const std::string &funcName, const std::string &varName, VariableState st );
-
-        /// For currentFuncName, obtain a variable state last saved in a call to setVarState.
-        inline VariableState getVarState( const std::string &varName );
 
         /// Parses scalar type string to MLIR type.
         mlir::Type parseScalarType( const std::string &ty );
@@ -276,9 +256,6 @@ namespace silly
 
         /// Casts index value to index type.
         mlir::Value indexTypeCast( mlir::Location loc, mlir::Value val );
-
-        /// Finds enclosing silly::ScopeOp.
-        silly::ScopeOp getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp ) const;
 
         /// Emits silly::ReturnOp (or exit equivalent) with optional value.
         void processReturnLike( mlir::Location loc, SillyParser::RvalueExpressionContext *rvalueExpression );

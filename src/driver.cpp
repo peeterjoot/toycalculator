@@ -10,8 +10,6 @@
 /// - runs the antlr4 parse tree listener (w/ MLIR builder),
 /// - runs the LLVM-IR lowering pass, and
 /// - runs the assembly printer.
-#include "driver.hpp"
-
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/DebugProgramInstruction.h>
@@ -42,6 +40,7 @@
 #include "SillyExceptions.hpp"
 #include "SillyLexer.h"
 #include "SillyPasses.hpp"
+#include "driver.hpp"
 #include "lowering.hpp"
 #include "parser.hpp"
 
@@ -85,6 +84,10 @@ static llvm::cl::opt<bool> noEmitObject( "no-emit-object", llvm::cl::desc( "Skip
 // Noisy debugging output
 static llvm::cl::opt<bool> llvmDEBUG( "debug-llvm", llvm::cl::desc( "Include MLIR dump, and turn off multithreading" ),
                                       llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+
+static llvm::cl::opt<int> initFillValue( "init-fill", llvm::cl::desc( "Initializer fill value." ),
+                                         llvm::cl::init( 0 ), llvm::cl::ValueRequired,
+                                         llvm::cl::cat( SillyCategory ) );
 
 enum class OptLevel : int
 {
@@ -262,6 +265,7 @@ int main( int argc, char** argv )
 
         DriverState st;
         st.isOptimized = optLevel != OptLevel::O0 ? true : false;
+        st.fillValue = (uint8_t)initFillValue;
         st.wantDebug = debugInfo;
         st.filename = filename;
 

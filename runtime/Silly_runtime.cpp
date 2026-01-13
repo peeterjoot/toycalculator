@@ -4,9 +4,11 @@
  * @brief   Runtime functions for the silly compiler and language.
  */
 #include <inttypes.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
 #include "printflags.hpp"
 
 extern "C"
@@ -14,30 +16,41 @@ extern "C"
     // * len+str is a __FILE__ like variable.  print a FATAL message to stderr and abort
     void __silly_abort( size_t len, const char* str, int line )
     {
-        fflush(NULL);
+        fflush( NULL );
         fprintf( stderr, "%.*s:%d:FATAL ERROR: aborting\n", (int)len, str, line );
         abort();
     }
 
-    void __silly_print_string( size_t len, const char* str, silly::PRINT_FLAGS flags )
+    void __silly_print( int num_args, const struct silly::PrintArg* args )
     {
-        FILE * where = (flags & silly::PRINT_FLAGS_ERROR) ? stderr : stdout;
-        const char * newline = (flags & silly::PRINT_FLAGS_CONTINUE) ? "" : "\n";
-        fprintf( where, "%.*s%s", (int)len, str, newline );
-    }
+        for ( int i = 0; i < num_args; ++i )
+        {
+            const struct silly::PrintArg& arg = args[i];
 
-    void __silly_print_f64( double value, silly::PRINT_FLAGS flags )
-    {
-        FILE * where = (flags & silly::PRINT_FLAGS_ERROR) ? stderr : stdout;
-        const char * newline = (flags & silly::PRINT_FLAGS_CONTINUE) ? "" : "\n";
-        fprintf( where, "%f%s", value, newline );
-    }
+            FILE* where = ( arg.flags & silly::PRINT_FLAGS_ERROR ) ? stderr : stdout;
+            const char* newline = ( arg.flags & silly::PRINT_FLAGS_CONTINUE ) ? "" : "\n";
 
-    void __silly_print_i64( int64_t value, silly::PRINT_FLAGS flags )
-    {
-        FILE * where = (flags & silly::PRINT_FLAGS_ERROR) ? stderr : stdout;
-        const char * newline = (flags & silly::PRINT_FLAGS_CONTINUE) ? "" : "\n";
-        fprintf( where, "%" PRId64 "%s", value, newline );
+            switch ( arg.kind )
+            {
+                case silly::PrintKind::I64:
+                    fprintf( where, "%" PRId64 "%s", arg.i, newline );
+                    break;
+
+                case silly::PrintKind::F64:
+                    double d;
+                    memcpy(&d, &arg.i, sizeof(d));
+                    fprintf( where, "%f%s", d, newline );
+                    break;
+
+                case silly::PrintKind::STRING:
+                    fprintf( where, "%.*s%s", (int)arg.i, arg.ptr, newline );
+                    break;
+
+                default:
+                    fprintf( stderr, "Unknown PrintKind %u, for argument %d of %d\n", arg.kind, i, num_args );
+                    abort();
+            }
+        }
     }
 
     int8_t __silly_get_i8( void )

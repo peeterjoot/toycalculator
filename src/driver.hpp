@@ -4,6 +4,7 @@
 #pragma once
 
 #include <string>
+#include <cstdint>
 
 namespace silly
 {
@@ -18,6 +19,8 @@ namespace silly
 
         /// Source file name passed to the driver.
         std::string filename;
+
+        uint8_t fillValue;
     };
 }    // namespace silly
 

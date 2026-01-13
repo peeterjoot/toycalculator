@@ -100,20 +100,23 @@ As an example of the pain of working with AI tools, here's a trivial example: I 
 
 ## Command line options
 
-Once built, the compiler driver can be run with `build/silly` with options including
+Once built, the compiler driver can be run with `build/silly` with options including the following user options:
 
+* `-g` (show MLIR location info in the dump, and lowered LLVM-IR.)
+* `-O[0123]` -- the usual.
+* `-c` (compile only, and don't link.)
+* `--init-fill nnn` set the fill character for stack variables (should be a numeric value <= 255).  Default is zero initialized.
 * `--output-directory`
+
+and the following hacking/debug options:
 * `--emit-llvm`
 * `--emit-mlir`
 * `--debug` (built in MLIR option.)
 * `-debug-only=silly-driver`
 * `-debug-only=silly-lowering`
 * `--debug-mlir`
-* `-g` (show MLIR location info in the dump, and lowered LLVM-IR.)
-* `-O[0123]` -- the usual.
 * `--stdout`.  MLIR and LLVM-IR output to stdout instead of to files.
 * `--no-emit-object`
-* `-c` (compile only, and don't link.)
 
 Examples
 

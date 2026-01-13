@@ -17,6 +17,12 @@ namespace silly
 {
     struct DriverState;
 
+    struct PerFunctionState
+    {
+        mlir::LLVM::DISubprogramAttr subProgramDI;
+        mlir::LLVM::AllocaOp printArgs;
+    };
+
     /// Context object holding state and helper functions used during lowering
     /// of the Silly dialect to LLVM dialect.
     class LoweringContext
@@ -49,6 +55,9 @@ namespace silly
         /// LLVM void type (cached for convenience).
         mlir::LLVM::LLVMVoidType tyVoid;
 
+        /// LLVM type for PRINT builtin arguments (cached for convenience).
+        mlir::Type printArgStructTy;
+
         /// Constructs the lowering context.
         /// @param moduleOp The module being lowered.
         /// @param driverState Reference to driver configuration state.
@@ -69,8 +78,8 @@ namespace silly
                                                      mlir::StringAttr& stringLit, mlir::Location loc, size_t strLen );
 
         /// Creates a call to the appropriate Silly print runtime function.
-        silly::CallOp createPrintCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
-                                       mlir::Value input, PRINT_FLAGS flags );
+        mlir::Value emitPrintArgStruct( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc, mlir::Value input,
+                                        PrintFlags flags );
 
         void createAbortCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc );
 
@@ -82,6 +91,9 @@ namespace silly
         void constructParameterDI( mlir::FileLineColLoc loc, mlir::ConversionPatternRewriter& rewriter,
                                    const std::string& varName, mlir::LLVM::AllocaOp value, mlir::Type elemType,
                                    int paramIndex, const std::string& funcName );
+
+        /// Return the PRINT args allocation for this function, big enough for the biggest PRINT list in the function.
+        mlir::LLVM::AllocaOp getPrintArgs( const std::string & funcName );
 
         /// Casts a value to the target element type, performing necessary conversions.
         mlir::Value castToElemType( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter, mlir::Value value,
@@ -113,7 +125,7 @@ namespace silly
         void createDICompileUnit();
 
         /// Emits debug metadata for a function if debugging is enabled.
-        void createFuncDebug( mlir::func::FuncOp funcOp );
+        void createPerFuncState( mlir::func::FuncOp funcOp );
 
         /// Associates an AllocaOp with a local variable name in the current function.
         void createLocalSymbolReference( mlir::LLVM::AllocaOp allocaOp, const std::string& varName );
@@ -121,8 +133,11 @@ namespace silly
         /// Looks up an existing global for a string literal.
         mlir::LLVM::GlobalOp lookupGlobalOp( mlir::StringAttr& stringLit );
 
-       private:
+        /// Add a memset builtin with the user supplied (or default) fill value.
+        void insertFill( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter, mlir::LLVM::AllocaOp allocaOp,
+                         mlir::Value bytesVal );
 
+       private:
         /// Returns the MLIR context.
         inline mlir::MLIRContext* getContext();
 
@@ -141,18 +156,8 @@ namespace silly
         /// Creates an f64 zero constant.
         inline mlir::LLVM::ConstantOp getF64zero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter );
 
-        /// Creates a prototype for a Silly print function if it does not exist.
-        template <class Ty>
-        void createSillyPrintPrototype( mlir::func::FuncOp& printOp, Ty type, const char* name );
-
-        /// Creates the prototype for __silly_print_f64.
-        inline void createSillyPrintF64Prototype();
-
-        /// Creates the prototype for __silly_print_i64.
-        inline void createSillyPrintI64Prototype();
-
-        /// Creates the prototype for __silly_print_string.
-        void createSillyPrintStringPrototype();
+        /// Creates the prototype for __silly_print.
+        inline void createSillyPrintPrototype();
 
         /// Creates the prototype for __silly_abort.
         void createSillyAbortPrototype();
@@ -188,27 +193,18 @@ namespace silly
         /// Creates a DISubroutineType attribute for a function.
         mlir::LLVM::DISubroutineTypeAttr createDISubroutineType( mlir::func::FuncOp funcOp );
 
-        /// Looks up the enclosing function name for an operation.
-        std::string lookupFuncNameForOp( mlir::Operation* op );
-
         /// Debug file attribute (used when debugging is enabled).
         mlir::LLVM::DIFileAttr fileAttr;
 
         /// Map from function name to its DISubprogram attribute.
-        std::unordered_map<std::string, mlir::LLVM::DISubprogramAttr> subprogramAttr;
+        std::unordered_map<std::string, PerFunctionState> funcState;
 
         /// Map from string literal content to its GlobalOp.
         using StringLit2GlobalOp = std::unordered_map<std::string, mlir::LLVM::GlobalOp>;
         StringLit2GlobalOp stringLiterals;
 
-        /// Prototype for __silly_print_f64.
-        mlir::func::FuncOp printFuncF64;
-
-        /// Prototype for __silly_print_i64.
-        mlir::func::FuncOp printFuncI64;
-
-        /// Prototype for __silly_print_string.
-        mlir::func::FuncOp printFuncString;
+        /// Prototype for __silly_print.
+        mlir::func::FuncOp printFunc;
 
         /// Prototype for __silly_abort.
         mlir::func::FuncOp printFuncAbort;

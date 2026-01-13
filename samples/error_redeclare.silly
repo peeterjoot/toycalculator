@@ -1,2 +1,4 @@
 DCL x;
 DCL x;
+x = 1;
+PRINT x;
