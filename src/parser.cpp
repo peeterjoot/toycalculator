@@ -209,8 +209,7 @@ namespace silly
     mlir::Value MLIRListener::buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode,
                                                     tNode *floatNode,
                                                     SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
-                                                    SillyParser::CallExpressionContext *callNode, tNode *stringNode,
-                                                    std::string &s )
+                                                    SillyParser::CallExpressionContext *callNode, tNode *stringNode )
     {
         mlir::Value value{};
 
@@ -281,7 +280,7 @@ namespace silly
 
             if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
             {
-                value = parseNoStringRvalue( loc, indexExpr->rvalueExpression(), varType );
+                value = parseRvalue( loc, indexExpr->rvalueExpression(), varType );
 
                 mlir::Value i = indexTypeCast( loc, value );
 
@@ -294,31 +293,17 @@ namespace silly
         }
         else if ( stringNode )
         {
-            s = stripQuotes( loc, stringNode->getText() );
+            std::string s = stripQuotes( loc, stringNode->getText() );
+
+            mlir::StringAttr strAttr = builder.getStringAttr( s );
+            silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
+
+            value = stringLiteral.getResult();
         }
         else
         {
             throw ExceptionWithContext( __FILE__, __LINE__, __func__,
                                         std::format( "{}internal error: Invalid operand\n", formatLocation( loc ) ) );
-        }
-
-        return value;
-    }
-
-    mlir::Value MLIRListener::buildNonStringUnaryExpression(
-        mlir::Location loc, tNode *booleanNode, tNode *integerNode, tNode *floatNode,
-        SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement, SillyParser::CallExpressionContext *callNode,
-        tNode *stringNode )
-    {
-        mlir::Value value{};
-        std::string s;
-        value = buildUnaryExpression( loc, booleanNode, integerNode, floatNode, scalarOrArrayElement, callNode,
-                                      stringNode, s );
-        if ( s.length() )
-        {
-            throw ExceptionWithContext(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: Unexpected string literal\n", formatLocation( loc ) ) );
         }
 
         return value;
@@ -507,7 +492,7 @@ namespace silly
 
         if ( rvalueExpression )
         {
-            value = parseNoStringRvalue( loc, rvalueExpression, returnType );
+            value = parseRvalue( loc, rvalueExpression, returnType );
 
             value = castOpIfRequired( loc, value, returnType );
         }
@@ -633,7 +618,7 @@ namespace silly
                 std::cout << std::format( "CALL function {}: param: {}\n", funcName, paramText );
 
                 mlir::Type ty = funcType.getInputs()[i];
-                mlir::Value value = parseNoStringRvalue( loc, p, ty );
+                mlir::Value value = parseRvalue( loc, p, ty );
                 value = castOpIfRequired( loc, value, ty );
 
                 parameters.push_back( value );
@@ -803,9 +788,9 @@ namespace silly
         if ( SillyParser::BooleanElementContext *boolElement = booleanValue->booleanElement() )
         {
             SillyParser::BooleanLiteralContext *lit = boolElement->booleanLiteral();
-            conditionPredicate = buildNonStringUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
-                                                                lit ? lit->INTEGER_PATTERN() : nullptr, nullptr,
-                                                                boolElement->scalarOrArrayElement(), nullptr, nullptr );
+            conditionPredicate = buildUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
+                                                       lit ? lit->INTEGER_PATTERN() : nullptr, nullptr,
+                                                       boolElement->scalarOrArrayElement(), nullptr, nullptr );
         }
         else
         {
@@ -822,16 +807,16 @@ namespace silly
                 assert( rhs );
 
                 SillyParser::NumericLiteralContext *llit = lhs->numericLiteral();
-                lhsValue = buildNonStringUnaryExpression( loc, nullptr,    // booleanNode
-                                                          llit ? llit->INTEGER_PATTERN() : nullptr,
-                                                          llit ? llit->FLOAT_PATTERN() : nullptr,
-                                                          lhs->scalarOrArrayElement(), nullptr, nullptr );
+                lhsValue = buildUnaryExpression( loc, nullptr,    // booleanNode
+                                                 llit ? llit->INTEGER_PATTERN() : nullptr,
+                                                 llit ? llit->FLOAT_PATTERN() : nullptr, lhs->scalarOrArrayElement(),
+                                                 nullptr, nullptr );
 
                 SillyParser::NumericLiteralContext *rlit = rhs->numericLiteral();
-                rhsValue = buildNonStringUnaryExpression( loc, nullptr,    // booleanNode
-                                                          rlit ? rlit->INTEGER_PATTERN() : nullptr,
-                                                          rlit ? rlit->FLOAT_PATTERN() : nullptr,
-                                                          rhs->scalarOrArrayElement(), nullptr, nullptr );
+                rhsValue = buildUnaryExpression( loc, nullptr,    // booleanNode
+                                                 rlit ? rlit->INTEGER_PATTERN() : nullptr,
+                                                 rlit ? rlit->FLOAT_PATTERN() : nullptr, rhs->scalarOrArrayElement(),
+                                                 nullptr, nullptr );
 
                 assert( booleanValue );
                 SillyParser::PredicateOperatorContext *op = booleanValue->predicateOperator();
@@ -1026,7 +1011,7 @@ namespace silly
         std::string s;
         if ( pStart )
         {
-            start = parseNoStringRvalue( loc, pStart, elemType );
+            start = parseRvalue( loc, pStart, elemType );
 
             start = castOpIfRequired( loc, start, elemType );
         }
@@ -1039,7 +1024,7 @@ namespace silly
 
         if ( pEnd )
         {
-            end = parseNoStringRvalue( loc, pEnd, elemType );
+            end = parseRvalue( loc, pEnd, elemType );
 
             end = castOpIfRequired( loc, end, elemType );
         }
@@ -1052,7 +1037,7 @@ namespace silly
 
         if ( pStep )
         {
-            step = parseNoStringRvalue( loc, pStep, elemType );
+            step = parseRvalue( loc, pStep, elemType );
         }
         else
         {
@@ -1119,7 +1104,7 @@ namespace silly
                 mlir::Value optIndexValue{};
                 if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
                 {
-                    mlir::Value indexValue = parseNoStringRvalue( loc, indexExpr->rvalueExpression(), elemType );
+                    mlir::Value indexValue = parseRvalue( loc, indexExpr->rvalueExpression(), elemType );
 
                     optIndexValue = indexTypeCast( loc, indexValue );
                     varType = elemType;
@@ -1150,13 +1135,13 @@ namespace silly
             }
             else if ( SillyParser::NumericLiteralContext *theNumber = parg->numericLiteral() )
             {
-                v = buildNonStringUnaryExpression( loc, nullptr, theNumber->INTEGER_PATTERN(),
-                                                   theNumber->FLOAT_PATTERN(), nullptr, nullptr, nullptr );
+                v = buildUnaryExpression( loc, nullptr, theNumber->INTEGER_PATTERN(), theNumber->FLOAT_PATTERN(),
+                                          nullptr, nullptr, nullptr );
             }
             else if ( SillyParser::BooleanLiteralContext *theBoolean = parg->booleanLiteral() )
             {
-                v = buildNonStringUnaryExpression( loc, theBoolean->BOOLEAN_PATTERN(), nullptr, nullptr, nullptr,
-                                                   nullptr, nullptr );
+                v = buildUnaryExpression( loc, theBoolean->BOOLEAN_PATTERN(), nullptr, nullptr, nullptr, nullptr,
+                                          nullptr );
             }
             else
             {
@@ -1225,7 +1210,7 @@ namespace silly
             mlir::Value optIndexValue{};
             if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
             {
-                mlir::Value indexValue = parseNoStringRvalue( loc, indexExpr->rvalueExpression(), elemType );
+                mlir::Value indexValue = parseRvalue( loc, indexExpr->rvalueExpression(), elemType );
 
                 optIndexValue = indexTypeCast( loc, indexValue );
             }
@@ -1346,11 +1331,10 @@ namespace silly
         mlir::TypeAttr typeAttr = declareOp.getTypeAttr();
         mlir::Type opType = typeAttr.getValue();
 
-        bool foundStringLiteral{};
-        mlir::Value resultValue = parseRvalue( loc, exprContext, opType, foundStringLiteral );
+        mlir::Value resultValue = parseRvalue( loc, exprContext, opType );
 
         mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, currentVarName );
-        if ( foundStringLiteral )
+        if ( isa<silly::StringLiteralOp>( resultValue.getDefiningOp() ) )
         {
             mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
 
@@ -1400,7 +1384,7 @@ namespace silly
 
         if ( indexExpr )
         {
-            currentIndexExpr = parseNoStringRvalue( loc, indexExpr->rvalueExpression(), tyI64 );
+            currentIndexExpr = parseRvalue( loc, indexExpr->rvalueExpression(), tyI64 );
         }
 
         VariableState varState = getVarState( currentVarName );
@@ -1437,16 +1421,17 @@ namespace silly
         if ( !valTy.isSignlessInteger( 64 ) )
         {
             // If it's a non-i64 IntegerType, we could cast up to i64, and then cast that to index.
-            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                        std::format( "{}internal error: NYI: indexTypeCast from type {} is not supported.\n",
-                                                     formatLocation( loc ), mlirTypeToString(valTy) ) );
+            throw ExceptionWithContext(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}internal error: NYI: indexTypeCast from type {} is not supported.\n",
+                             formatLocation( loc ), mlirTypeToString( valTy ) ) );
         }
 
         return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
     }
 
     mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
-                                           mlir::Type opType, bool &foundStringLiteral )
+                                           mlir::Type opType )
     {
         mlir::Value resultValue;
         mlir::Value lhsValue;
@@ -1456,22 +1441,11 @@ namespace silly
         {
             mlir::Value lhsValue;
 
-            std::string s;
             SillyParser::LiteralContext *lit = ctx->literal();
             lhsValue = buildUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
                                              lit ? lit->INTEGER_PATTERN() : nullptr,
                                              lit ? lit->FLOAT_PATTERN() : nullptr, ctx->scalarOrArrayElement(),
-                                             ctx->callExpression(), lit ? lit->STRING_PATTERN() : nullptr, s );
-
-            if ( lit && lit->STRING_PATTERN() )
-            {
-                foundStringLiteral = true;
-
-                mlir::StringAttr strAttr = builder.getStringAttr( s );
-                silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
-
-                lhsValue = stringLiteral.getResult();
-            }
+                                             ctx->callExpression(), lit ? lit->STRING_PATTERN() : nullptr );
 
             resultValue = lhsValue;
             if ( SillyParser::UnaryOperatorContext *unaryOp = ctx->unaryOperator() )
@@ -1507,17 +1481,17 @@ namespace silly
             std::string opText = ctx->binaryOperator()->getText();
 
             SillyParser::NumericLiteralContext *llit = lhs->numericLiteral();
-            lhsValue = buildNonStringUnaryExpression( loc, nullptr,    // booleanNode
-                                                      llit ? llit->INTEGER_PATTERN() : nullptr,
-                                                      llit ? llit->FLOAT_PATTERN() : nullptr,
-                                                      lhs->scalarOrArrayElement(), lhs->callExpression(), nullptr );
+            lhsValue =
+                buildUnaryExpression( loc, nullptr,    // booleanNode
+                                      llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
+                                      lhs->scalarOrArrayElement(), lhs->callExpression(), nullptr );
 
             mlir::Value rhsValue;
             SillyParser::NumericLiteralContext *rlit = rhs->numericLiteral();
-            rhsValue = buildNonStringUnaryExpression( loc, nullptr,    // booleanNode
-                                                      rlit ? rlit->INTEGER_PATTERN() : nullptr,
-                                                      rlit ? rlit->FLOAT_PATTERN() : nullptr,
-                                                      rhs->scalarOrArrayElement(), rhs->callExpression(), nullptr );
+            rhsValue =
+                buildUnaryExpression( loc, nullptr,    // booleanNode
+                                      rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
+                                      rhs->scalarOrArrayElement(), rhs->callExpression(), nullptr );
 
             // Create the binary operator (supports +, -, *, /)
             if ( opText == "+" )
@@ -1594,24 +1568,6 @@ namespace silly
         }
 
         return resultValue;
-    }
-
-    mlir::Value MLIRListener::parseNoStringRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
-                                                   mlir::Type opType )
-    {
-        std::string s;
-        bool foundStringLiteral{};
-        mlir::Value value = parseRvalue( loc, ctx, opType, foundStringLiteral );
-
-        if ( foundStringLiteral )
-        {
-            throw ExceptionWithContext(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: unexpected string literal found while parsing: {}\n",
-                             formatLocation( loc ), ctx->getText() ) );
-        }
-
-        return value;
     }
 }    // namespace silly
 

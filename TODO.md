@@ -30,7 +30,6 @@
 ----------------------------------
 * Maintainance:
 
-  - push the silly::StringLiteralOp logic from parseRvalue down to buildUnaryExpression.
   - All the runtime functions should take location context to show where in the users code the error was, if one happens (i.e.: GET functions)
   - lowering error handling is pschizophrenic: mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
   - Move scf lowering into 1st pass?  Attempt at this in xpgn:streamline-passes-attempt branch (not pushed.)

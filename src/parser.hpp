@@ -229,15 +229,7 @@ namespace silly
         /// Builds MLIR value from unary expression (literals/variables).
         mlir::Value buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode, tNode *floatNode,
                                           SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
-                                          SillyParser::CallExpressionContext *callNode, tNode *stringNode,
-                                          std::string &s );
-
-        /// Like buildUnaryExpression, but throws an error if a string literal was found.
-        mlir::Value buildNonStringUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode,
-                                                   tNode *floatNode,
-                                                   SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
-                                                   SillyParser::CallExpressionContext *callNode, tNode *stringNode );
-
+                                          SillyParser::CallExpressionContext *callNode, tNode *stringNode );
 
         /// Emits a silly::CallOp for a function call.
         mlir::Value handleCall( SillyParser::CallExpressionContext *ctx );
@@ -300,13 +292,7 @@ namespace silly
         void selectElseBlock( mlir::Location loc, const std::string &errorText );
 
         /// Handle parsing of a RvalueExpressionContext, returning an mlir::Value
-        mlir::Value parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx, mlir::Type opType,
-                                 bool &foundStringLiteral );
-
-        /// Handle parsing of a RvalueExpressionContext, returning an mlir::Value -- but only for the no-string-literal
-        /// case.
-        mlir::Value parseNoStringRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
-                                         mlir::Type opType );
+        mlir::Value parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx, mlir::Type opType );
 
         /// Handle assignment processing, given the current var-name and index (if appropriate.)
         void processAssignment( mlir::Location loc, SillyParser::RvalueExpressionContext *exprContext,

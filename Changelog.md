@@ -179,6 +179,7 @@ module {
  * MLIRListener::indexTypeCast: Add support for casting from any size integer type.
  * MLIRListener::parsePredicate: Fix bug: was generating silly.less(x,x) instead of (x,y). (t/c: minmax.silly)
  * parser: remove parseRvalue std::string argument and push the silly::StringLiteralOp creation logic into there, removing it from processAssignment.
+ * parser: push the silly::StringLiteralOp logic from parseRvalue down to buildUnaryExpression, and get rid of the last is-string-literal vs. is-not gunk (the StringLiteralOp is now created in buildUnaryExpression and the mlir::Value tested with definingOp.isa instead.)
 
 ## tag: V7 (Jan 4, 2025)
 
