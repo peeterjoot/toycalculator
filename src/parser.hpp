@@ -21,10 +21,10 @@
 #include "SillyBaseListener.h"
 #include "SillyDialect.hpp"
 #include "SillyExceptions.hpp"
+#include "printflags.hpp"
 
 namespace silly
 {
-
     /// State of a variable within a function scope.
     enum class VariableState : int
     {
@@ -236,7 +236,7 @@ namespace silly
 
         /// builder logic for print arguments (shared between PRINT and ERROR.)
         void handlePrint( mlir::Location loc, const std::vector<SillyParser::RvalueExpressionContext *> &args,
-                          const std::string &errorContextString, bool error );
+                          const std::string &errorContextString, PRINT_FLAGS flags );
 
         /// Registers a variable declaration in the current scope.
         void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,

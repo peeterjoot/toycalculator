@@ -19,24 +19,24 @@ extern "C"
         abort();
     }
 
-    void __silly_print_string( size_t len, const char* str, PRINT_FLAGS flags )
+    void __silly_print_string( size_t len, const char* str, silly::PRINT_FLAGS flags )
     {
-        FILE * where = (flags & PRINT_FLAGS_ERROR) ? stderr : stdout;
-        const char * newline = (flags & PRINT_FLAGS_NEWLINE) ? "\n" : "";
+        FILE * where = (flags & silly::PRINT_FLAGS_ERROR) ? stderr : stdout;
+        const char * newline = (flags & silly::PRINT_FLAGS_CONTINUE) ? "" : "\n";
         fprintf( where, "%.*s%s", (int)len, str, newline );
     }
 
-    void __silly_print_f64( double value, PRINT_FLAGS flags )
+    void __silly_print_f64( double value, silly::PRINT_FLAGS flags )
     {
-        FILE * where = (flags & PRINT_FLAGS_ERROR) ? stderr : stdout;
-        const char * newline = (flags & PRINT_FLAGS_NEWLINE) ? "\n" : "";
+        FILE * where = (flags & silly::PRINT_FLAGS_ERROR) ? stderr : stdout;
+        const char * newline = (flags & silly::PRINT_FLAGS_CONTINUE) ? "" : "\n";
         fprintf( where, "%f%s", value, newline );
     }
 
-    void __silly_print_i64( int64_t value, PRINT_FLAGS flags )
+    void __silly_print_i64( int64_t value, silly::PRINT_FLAGS flags )
     {
-        FILE * where = (flags & PRINT_FLAGS_ERROR) ? stderr : stdout;
-        const char * newline = (flags & PRINT_FLAGS_NEWLINE) ? "\n" : "";
+        FILE * where = (flags & silly::PRINT_FLAGS_ERROR) ? stderr : stdout;
+        const char * newline = (flags & silly::PRINT_FLAGS_CONTINUE) ? "" : "\n";
         fprintf( where, "%" PRId64 "%s", value, newline );
     }
 

@@ -1659,14 +1659,11 @@ namespace silly
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering silly.print: " << *op << '\n' );
 
-            PRINT_FLAGS printFlags = PRINT_FLAGS_NONE;
+            int printFlags = silly::PRINT_FLAGS_NONE;
 
-            if ( mlir::arith::ConstantIntOp flagOp = dyn_cast<mlir::arith::ConstantIntOp>( printOp.getError().getDefiningOp() ) )
+            if ( mlir::arith::ConstantIntOp flagOp = dyn_cast<mlir::arith::ConstantIntOp>( printOp.getFlags().getDefiningOp() ) )
             {
-                if ( flagOp.value() )
-                {
-                    printFlags = PRINT_FLAGS_ERROR;
-                }
+                printFlags = flagOp.value();
             }
 
             auto ins = printOp.getInputs();
@@ -1674,12 +1671,13 @@ namespace silly
             size_t i{};
             for ( mlir::Value input : ins )
             {
-                if ( i == ( n - 1 ) )
+                int pf = printFlags;
+                if ( i != ( n - 1 ) )
                 {
-                    printFlags = (PRINT_FLAGS)( (int)printFlags | (int)PRINT_FLAGS_NEWLINE );
+                    pf = printFlags | (int)silly::PRINT_FLAGS_CONTINUE;
                 }
 
-                silly::CallOp result = lState.createPrintCall( rewriter, loc, input, printFlags );
+                silly::CallOp result = lState.createPrintCall( rewriter, loc, input, (PRINT_FLAGS)pf );
                 LLVM_DEBUG( {
                     llvm::dbgs() << "print call: for input:" << input << ", result: " << result;
                     // mod.dump();

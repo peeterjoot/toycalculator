@@ -194,6 +194,7 @@ FUNCTION foo() : FLOAT32
 
 PRINT "hi", s, 40 + 2, ", ", -x, ", ", f[0], ", ", CALL foo();
 ```
+  * Add a CONTINUE parameter to PRINT/ERROR to suppress the newline.
 
 ## tag: V7 (Jan 4, 2025)
 

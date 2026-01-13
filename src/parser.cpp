@@ -1084,7 +1084,7 @@ namespace silly
     CATCH_USER_ERROR
 
     void MLIRListener::handlePrint( mlir::Location loc, const std::vector<SillyParser::RvalueExpressionContext *> &args,
-                                    const std::string &errorContextString, bool error )
+                                    const std::string &errorContextString, PRINT_FLAGS pf )
     {
         std::vector<mlir::Value> vargs;
         for ( SillyParser::RvalueExpressionContext *parg : args )
@@ -1094,8 +1094,8 @@ namespace silly
             vargs.push_back( v );
         }
 
-        mlir::arith::ConstantIntOp flag = builder.create<mlir::arith::ConstantIntOp>( loc, error, 1 );
-        builder.create<silly::PrintOp>( loc, flag, vargs );
+        mlir::arith::ConstantIntOp constFlagOp = builder.create<mlir::arith::ConstantIntOp>( loc, pf, 32 );
+        builder.create<silly::PrintOp>( loc, constFlagOp, vargs );
     }
 
     void MLIRListener::enterPrint( SillyParser::PrintContext *ctx )
@@ -1104,7 +1104,12 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
-        handlePrint( loc, ctx->rvalueExpression(), ctx->getText(), false );
+        int flags = PRINT_FLAGS_NONE;
+        if ( ctx->CONTINUE_TOKEN() )
+        {
+            flags = PRINT_FLAGS_CONTINUE;
+        }
+        handlePrint( loc, ctx->rvalueExpression(), ctx->getText(), (PRINT_FLAGS)flags );
     }
     CATCH_USER_ERROR
 
@@ -1113,7 +1118,12 @@ namespace silly
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
-        handlePrint( loc, ctx->rvalueExpression(), ctx->getText(), true );
+        int flags = PRINT_FLAGS_ERROR;
+        if ( ctx->CONTINUE_TOKEN() )
+        {
+            flags |= PRINT_FLAGS_CONTINUE;
+        }
+        handlePrint( loc, ctx->rvalueExpression(), ctx->getText(), (PRINT_FLAGS)flags );
     }
     CATCH_USER_ERROR
 

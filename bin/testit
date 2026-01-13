@@ -177,6 +177,7 @@ nested_if_elif_else
 not
 orop
 printboollit
+printcont
 printexpr
 printlit
 print_multiple

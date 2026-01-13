@@ -170,11 +170,11 @@ def Silly_PrintOp : Op<Silly_Dialect, "print"> {
   let summary = "Print a list of values or string literals to standard output";
 
   // Variadic operand segment (0 or more arguments).
-  let arguments = (ins I1:$error, Variadic<AnyTypeOf<[AnyInteger, AnyFloat, LLVMPointerType]>>:$inputs);
+  let arguments = (ins I32:$flags, Variadic<AnyTypeOf<[AnyInteger, AnyFloat, LLVMPointerType]>>:$inputs);
 
   let results = (outs);
 
-  // My old custom print assembly format for a single value (also before the error flag was introduced.)
+  // My old custom print assembly format for a single value (also before the flags were introduced.)
   //let assemblyFormat = "$input `:` type($input) attr-dict";
 }
 

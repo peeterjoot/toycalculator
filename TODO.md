@@ -3,7 +3,6 @@
 ----------------------------------
 * Next TODO:
   - Array initializer syntax.
-  - Add a CONTINUE parameter to PRINT/ERROR to suppress the newline.
 
 ----------------------------------
 * Bugs:

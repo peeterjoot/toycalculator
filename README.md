@@ -492,12 +492,12 @@ x = - CALL foo();
 
 ### PRINT
 
-Outputs one or more expressions (variables, literals, array elements, expressions) and a trailing newline.
+Outputs one or more expressions (variables, literals, array elements, expressions) and a trailing newline after the last expression (unless CONTINUE is specified.)
 
 ```text
 PRINT x, " is ", y;
+PRINT 3.14 CONTINUE;
 PRINT "Hello: ", v;
-PRINT 3.14;
 PRINT arr[3];
 PRINT "hi", s, 40 + 2, ", ", -x, ", ", f[0], ", ", CALL foo();
 ```
@@ -507,7 +507,8 @@ PRINT "hi", s, 40 + 2, ", ", -x, ", ", f[0], ", ", CALL foo();
 The ERROR statement is equivalent to PRINT, but prints to stderr instead of stdout.
 
 ```text
-ERROR "Unexpected value: ", v;
+ERROR "Unexpected value: " CONTINUE;
+ERROR v;
 ```
 
 ### GET
