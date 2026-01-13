@@ -1,0 +1,10 @@
+STRING s[10] = " there: ";
+INT32 x = 1;
+FLOAT64 f[1];
+f[0] = 3.14;
+FUNCTION foo() : FLOAT32
+{
+    RETURN 2.71;
+};
+
+PRINT "hi", s, 40 + 2, ", ", -x, ", ", f[0], ", ", CALL foo();

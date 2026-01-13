@@ -88,17 +88,13 @@ stringDeclare
   : STRING_TOKEN IDENTIFIER arrayBoundsExpression (EQUALS_TOKEN STRING_PATTERN)?
   ;
 
-// A print statement that outputs a list of variables (e.g., 'PRINT x, y, z;'), followed by a newline.
+// A print statement that outputs a list of variables, literals, or expressions (e.g., 'PRINT x, y, z;'), followed by a newline.
 print
-  : PRINT_TOKEN printArgument (COMMA_TOKEN printArgument)*
+  : PRINT_TOKEN rvalueExpression (COMMA_TOKEN rvalueExpression)*
   ;
 
 error
-  : ERROR_TOKEN printArgument (COMMA_TOKEN printArgument)*
-  ;
-
-printArgument
-  : scalarOrArrayElement | STRING_PATTERN | numericLiteral | booleanLiteral
+  : ERROR_TOKEN rvalueExpression (COMMA_TOKEN rvalueExpression)*
   ;
 
 // A get statement that inputs into a scalar variable (e.g., 'GET x;', 'GET x[1]').

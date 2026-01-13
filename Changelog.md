@@ -180,6 +180,20 @@ module {
  * MLIRListener::parsePredicate: Fix bug: was generating silly.less(x,x) instead of (x,y). (t/c: minmax.silly)
  * parser: remove parseRvalue std::string argument and push the silly::StringLiteralOp creation logic into there, removing it from processAssignment.
  * parser: push the silly::StringLiteralOp logic from parseRvalue down to buildUnaryExpression, and get rid of the last is-string-literal vs. is-not gunk (the StringLiteralOp is now created in buildUnaryExpression and the mlir::Value tested with definingOp.isa instead.)
+ * PRINT can now take rvalue expressions in the list.  Example: `printexpr.silly`:
+
+```
+STRING s[10] = " there: ";
+INT32 x = 1;
+FLOAT64 f[1];
+f[0] = 3.14;
+FUNCTION foo() : FLOAT32
+{
+    RETURN 2.71;
+};
+
+PRINT "hi", s, 40 + 2, ", ", -x, ", ", f[0], ", ", CALL foo();
+```
 
 ## tag: V7 (Jan 4, 2025)
 

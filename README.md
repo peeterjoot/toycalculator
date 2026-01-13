@@ -492,13 +492,14 @@ x = - CALL foo();
 
 ### PRINT
 
-Outputs one or more variables, or literals, and a trailing newline.
+Outputs one or more expressions (variables, literals, array elements, expressions) and a trailing newline.
 
 ```text
 PRINT x, " is ", y;
 PRINT "Hello: ", v;
 PRINT 3.14;
 PRINT arr[3];
+PRINT "hi", s, 40 + 2, ", ", -x, ", ", f[0], ", ", CALL foo();
 ```
 
 ### ERROR

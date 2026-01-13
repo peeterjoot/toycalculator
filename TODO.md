@@ -1,6 +1,11 @@
 ## TODO
 
 ----------------------------------
+* Next TODO:
+  - Array initializer syntax.
+  - Add a CONTINUE parameter to PRINT/ERROR to suppress the newline.
+
+----------------------------------
 * Bugs:
   - `error_intarray_bad_constaccess.silly` should fail but doesn't.
   - Have ABORT builtin now to implement failure codepath for runtime array range checking.  Could also use this for assignment to bool from source value > 1.
@@ -25,7 +30,7 @@
   - NOT should be allowed for boolean expressions in IF/ELIF predicates.
   - no test case for CALL in booleanExpression
   - grammar allows for CALL to have CALL in the parameter list.  Not tested.
-  - Array initializer syntax.
+  - PRINT now supports rvalue-expressions.  I had to hack it to interpret INT8 [] arrays as strings in parseRvalue (for PRINT/ERROR handling cases only), as strings aren't a first class entity -- fix that.
 
 ----------------------------------
 * Maintainance:

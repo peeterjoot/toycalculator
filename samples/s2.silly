@@ -1,0 +1,3 @@
+STRING s[2] = "hi";
+PRINT "hi";
+PRINT s;

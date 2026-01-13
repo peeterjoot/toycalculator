@@ -229,13 +229,13 @@ namespace silly
         /// Builds MLIR value from unary expression (literals/variables).
         mlir::Value buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode, tNode *floatNode,
                                           SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
-                                          SillyParser::CallExpressionContext *callNode, tNode *stringNode );
+                                          SillyParser::CallExpressionContext *callNode, tNode *stringNode, bool isPrint );
 
         /// Emits a silly::CallOp for a function call.
         mlir::Value handleCall( SillyParser::CallExpressionContext *ctx );
 
         /// builder logic for print arguments (shared between PRINT and ERROR.)
-        void handlePrint( mlir::Location loc, const std::vector<SillyParser::PrintArgumentContext *> &args,
+        void handlePrint( mlir::Location loc, const std::vector<SillyParser::RvalueExpressionContext *> &args,
                           const std::string &errorContextString, bool error );
 
         /// Registers a variable declaration in the current scope.
@@ -267,6 +267,9 @@ namespace silly
         ///
         /// This is adapted from AssignOpLowering, but uses arith dialect operations instead of LLVM dialect.
         mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType );
+
+        /// Figure out the bigger of two types for implicit cast-like purposes
+        static mlir::Type biggestTypeOf( mlir::Type ty1, mlir::Type ty2 );
 
         /// Builds i1 predicate from booleanValue context.
         mlir::Value parsePredicate( mlir::Location loc, SillyParser::BooleanValueContext *ctx );

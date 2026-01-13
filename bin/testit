@@ -177,9 +177,11 @@ nested_if_elif_else
 not
 orop
 printboollit
+printexpr
 printlit
 print_multiple
 return_expression
+s2
 scopebug
 shortstring
 shortstring2
