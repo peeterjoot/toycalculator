@@ -37,15 +37,15 @@ ifelifelse
   ;
 
 ifStatement
-  : IF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
+  : IF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN LEFT_CURLY_BRACKET_TOKEN statement* RIGHT_CURLY_BRACKET_TOKEN
   ;
 
 elifStatement
-  : ELIF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
+  : ELIF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN LEFT_CURLY_BRACKET_TOKEN statement* RIGHT_CURLY_BRACKET_TOKEN
   ;
 
 elseStatement
-  : ELSE_TOKEN SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
+  : ELSE_TOKEN LEFT_CURLY_BRACKET_TOKEN statement* RIGHT_CURLY_BRACKET_TOKEN
   ;
 
 // For now both return and parameters, can only be scalar types.
@@ -53,8 +53,8 @@ function
   : FUNCTION_TOKEN IDENTIFIER
     BRACE_START_TOKEN (variableTypeAndName (COMMA_TOKEN variableTypeAndName)*)? BRACE_END_TOKEN
     (COLON_TOKEN scalarType)?
-    SCOPE_START_TOKEN statement* returnStatement ENDOFSTATEMENT_TOKEN
-    SCOPE_END_TOKEN
+    LEFT_CURLY_BRACKET_TOKEN statement* returnStatement ENDOFSTATEMENT_TOKEN
+    RIGHT_CURLY_BRACKET_TOKEN
   ;
 
 booleanValue
@@ -69,7 +69,9 @@ declare
   ;
 
 boolDeclare
-  : BOOL_TOKEN IDENTIFIER (arrayBoundsExpression)? (EQUALS_TOKEN assignmentRvalue)?
+  : BOOL_TOKEN
+    IDENTIFIER (arrayBoundsExpression)?
+    ((EQUALS_TOKEN assignmentRvalue) | (LEFT_CURLY_BRACKET_TOKEN booleanLiteral* RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
 variableTypeAndName
@@ -77,11 +79,15 @@ variableTypeAndName
   ;
 
 intDeclare
-  : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN) IDENTIFIER (arrayBoundsExpression)? (EQUALS_TOKEN assignmentRvalue)?
+  : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN)
+    IDENTIFIER (arrayBoundsExpression)?
+    ((EQUALS_TOKEN assignmentRvalue) | (LEFT_CURLY_BRACKET_TOKEN integerLiteral* RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
 floatDeclare
-  : (FLOAT32_TOKEN | FLOAT64_TOKEN) IDENTIFIER (arrayBoundsExpression)? (EQUALS_TOKEN assignmentRvalue)?
+  : (FLOAT32_TOKEN | FLOAT64_TOKEN)
+    IDENTIFIER (arrayBoundsExpression)?
+    ((EQUALS_TOKEN assignmentRvalue) | (LEFT_CURLY_BRACKET_TOKEN numericLiteral* RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
 stringDeclare
@@ -125,7 +131,7 @@ for
             forStart COMMA_TOKEN forEnd (COMMA_TOKEN forStep)?
         BRACE_END_TOKEN
     BRACE_END_TOKEN
-    SCOPE_START_TOKEN statement* SCOPE_END_TOKEN
+    LEFT_CURLY_BRACKET_TOKEN statement* RIGHT_CURLY_BRACKET_TOKEN
   ;
 
 forStart
@@ -226,6 +232,10 @@ predicateOperator
 // An optional unary operator for positive or negative (e.g., '+' or '-').
 unaryOperator
   : MINUS_TOKEN | PLUSCHAR_TOKEN | NOT_TOKEN
+  ;
+
+integerLiteral
+  : INTEGER_PATTERN
   ;
 
 numericLiteral
@@ -348,11 +358,11 @@ BRACE_END_TOKEN
   : ')'
   ;
 
-SCOPE_START_TOKEN
+LEFT_CURLY_BRACKET_TOKEN
   : '{'
   ;
 
-SCOPE_END_TOKEN
+RIGHT_CURLY_BRACKET_TOKEN
   : '}'
   ;
 

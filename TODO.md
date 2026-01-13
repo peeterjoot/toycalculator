@@ -2,7 +2,7 @@
 
 ----------------------------------
 * Next TODO:
-  - Array initializer syntax.
+  - Array initializer syntax: grammar done.  next is parser.  Also write some tests that use it to see if the parser chokes.
 
 ----------------------------------
 * Bugs:
