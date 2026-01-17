@@ -1,8 +1,8 @@
-/**
- * @file    Silly_runtime.cpp
- * @author  Peeter Joot <peeterjoot@pm.me>
- * @brief   Runtime functions for the silly compiler and language.
- */
+///
+/// @file    Silly_runtime.cpp
+/// @author  Peeter Joot <peeterjoot@pm.me>
+/// @brief   Runtime functions for the silly compiler and language.
+///
 #include <inttypes.h>
 #include <cstdint>
 #include <cstdio>

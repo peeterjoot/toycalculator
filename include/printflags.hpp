@@ -7,7 +7,7 @@
 
 namespace silly
 {
-    // Bitmask flags for PRINT builtin and runtime function
+    /// Bitmask flags for PRINT builtin and runtime function
     enum PrintFlags : uint32_t
     {
         PRINT_FLAGS_NONE = 0,
@@ -15,6 +15,7 @@ namespace silly
         PRINT_FLAGS_ERROR = 1U << 1        //< set for PRINT to stderr, instead of stdout.
     };
 
+    /// Variable type to print
     enum class PrintKind : uint32_t
     {
         UNKNOWN = 0,
@@ -23,6 +24,7 @@ namespace silly
         STRING
     };
 
+    /// One PrintArg for each PRINT argument
     struct PrintArg
     {
         PrintKind kind;      // I64, F64, STRING, ...
