@@ -1,6 +1,6 @@
 PRINT 42;
-//PRINT 42.0;
+PRINT 42.0;
 PRINT 1, 2;
-//PRINT 42, 42.0;
-//PRINT 42, ", ", 42.0;
-//PRINT 42, ", ", 42.0, ", x";
+PRINT 42, 42.0;
+PRINT 42, ", ", 42.0;
+PRINT 42, ", ", 42.0, ", x";

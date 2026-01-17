@@ -1,0 +1,8 @@
+STRING s[10] = " there: ";
+
+PRINT "hi", s, 40 + 2 CONTINUE;
+PRINT ", bye", s CONTINUE;
+PRINT "done";
+ERROR "HI", s, 40 + 2 CONTINUE;
+ERROR ", BYE", s CONTINUE;
+ERROR "DONE";
