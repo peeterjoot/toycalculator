@@ -66,6 +66,55 @@ namespace silly
         return "";
     }
 
+    inline mlir::Value MLIRListener::parseBoolean( mlir::Location loc, const std::string &s )
+    {
+        int val;
+        if ( s == "TRUE" )
+        {
+            val = 1;
+        }
+        else if ( s == "FALSE" )
+        {
+            val = 0;
+        }
+        else
+        {
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "{}error: internal error: boolean value neither TRUE nor "
+                                                     "FALSE: {}.\n",
+                                                     formatLocation( loc ), s ) );
+        }
+
+        return builder.create<mlir::arith::ConstantIntOp>( loc, val, 1 );
+    }
+
+    inline mlir::Value MLIRListener::parseInteger( mlir::Location loc, int width, const std::string &s )
+    {
+        int64_t val = std::stoll( s );
+
+        return builder.create<mlir::arith::ConstantIntOp>( loc, val, width );
+    }
+
+    inline mlir::Value MLIRListener::parseFloat( mlir::Location loc, mlir::FloatType ty, const std::string &s )
+    {
+        if ( ty == tyF32 )
+        {
+            float val = std::stof( s );
+
+            llvm::APFloat apVal( val );
+
+            return builder.create<mlir::arith::ConstantFloatOp>( loc, tyF32, apVal );
+        }
+        else
+        {
+            double val = std::stod( s );
+
+            llvm::APFloat apVal( val );
+
+            return builder.create<mlir::arith::ConstantFloatOp>( loc, tyF64, apVal );
+        }
+    }
+
     inline mlir::func::FuncOp MLIRListener::getFuncOp( mlir::Location loc, const std::string &funcName )
     {
         PerFunctionState &f = funcState( funcName );
@@ -144,14 +193,19 @@ namespace silly
     }
 
     void MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
-                                            SillyParser::ArrayBoundsExpressionContext *arrayBounds )
+                                            SillyParser::ArrayBoundsExpressionContext *arrayBounds,
+                                            std::vector<SillyParser::BooleanLiteralContext *> *booleanLiteral,
+                                            std::vector<SillyParser::IntegerLiteralContext *> *integerLiteral,
+                                            std::vector<SillyParser::NumericLiteralContext *> *numericLiteral )
     {
         size_t arraySize{};
+        size_t numElements{ 1 };
         if ( arrayBounds )
         {
             tNode *index = arrayBounds->INTEGER_PATTERN();
             assert( index );
             arraySize = std::stoi( index->getText() );
+            numElements = arraySize;
         }
 
         mlir::OpBuilder::InsertPoint savedIP = builder.saveInsertionPoint();
@@ -174,18 +228,130 @@ namespace silly
         // (all DeclareOps should appear before any scf.if/scf.for)
         builder.setInsertionPointToStart( scopeBlock );
 
+        std::vector<mlir::Value> initializers;
+
+        if ( booleanLiteral )
+        {
+            assert( integerLiteral == nullptr );
+            assert( numericLiteral == nullptr );
+            for ( SillyParser::BooleanLiteralContext *lit : *booleanLiteral )
+            {
+                if ( tNode *b = lit->BOOLEAN_PATTERN() )
+                {
+                    initializers.push_back( parseBoolean( loc, b->getText() ) );
+                }
+                else
+                {
+                    throw ExceptionWithContext(
+                        __FILE__, __LINE__, __func__,
+                        std::format( "{}internal error: boolean literal with unknown type\n", formatLocation( loc ) ) );
+                }
+            }
+
+            ssize_t remaining = numElements - initializers.size();
+            mlir::Value fill{};
+            for ( ssize_t i = 0 ; i < remaining ; i++ )
+            {
+                if ( i == 0 )
+                {
+                    fill = parseBoolean( loc, "FALSE" );
+                }
+
+                initializers.push_back( fill );
+            }
+        }
+        else if ( integerLiteral )
+        {
+            assert( booleanLiteral == nullptr );
+            assert( numericLiteral == nullptr );
+
+            mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( ty );
+            int width = ity.getWidth();
+
+            for ( SillyParser::IntegerLiteralContext *lit : *integerLiteral )
+            {
+                if ( tNode *i = lit->INTEGER_PATTERN() )
+                {
+                    initializers.push_back( parseInteger( loc, width, i->getText() ) );
+                }
+                else
+                {
+                    throw ExceptionWithContext(
+                        __FILE__, __LINE__, __func__,
+                        std::format( "{}internal error: integer literal with unknown type\n", formatLocation( loc ) ) );
+                }
+            }
+
+            ssize_t remaining = numElements - initializers.size();
+            mlir::Value fill{};
+            for ( ssize_t i = 0 ; i < remaining ; i++ )
+            {
+                if ( i == 0 )
+                {
+                    fill = parseInteger( loc, width, "0" );
+                }
+
+                initializers.push_back( fill );
+            }
+        }
+        else if ( numericLiteral )
+        {
+            assert( booleanLiteral == nullptr );
+            assert( integerLiteral == nullptr );
+
+            mlir::FloatType fty = mlir::cast<mlir::FloatType>( ty );
+
+            for ( SillyParser::NumericLiteralContext *lit : *numericLiteral )
+            {
+                if ( tNode *i = lit->INTEGER_PATTERN() )
+                {
+                    initializers.push_back( parseFloat( loc, fty, i->getText() ) );
+                }
+                else if ( tNode *f = lit->FLOAT_PATTERN() )
+                {
+                    initializers.push_back( parseFloat( loc, fty, f->getText() ) );
+                }
+                else
+                {
+                    throw ExceptionWithContext(
+                        __FILE__, __LINE__, __func__,
+                        std::format( "{}internal error: floating point literal with unknown type\n",
+                                     formatLocation( loc ) ) );
+                }
+            }
+
+            ssize_t remaining = numElements - initializers.size();
+            mlir::Value fill{};
+            for ( ssize_t i = 0 ; i < remaining ; i++ )
+            {
+                if ( i == 0 )
+                {
+                    fill = parseFloat( loc, fty, "0" );
+                }
+
+                initializers.push_back( fill );
+            }
+        }
+
+        if ( initializers.size() > numElements )
+        {
+            throw UserError(
+                loc, std::format( "For variable '{}', more initializers ({}) specified than number of elements ({}).\n",
+                                  varName, initializers.size(), numElements ) );
+        }
+
         mlir::StringAttr strAttr = builder.getStringAttr( varName );
         silly::DeclareOp dcl;
         if ( arraySize )
         {
             dcl = builder.create<silly::DeclareOp>( loc, mlir::TypeAttr::get( ty ),
                                                     builder.getI64IntegerAttr( arraySize ),
-                                                    /*parameter=*/nullptr, nullptr );
+                                                    /*parameter=*/nullptr, nullptr, initializers );
         }
         else
         {
             dcl = builder.create<silly::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr, /*parameter=*/nullptr,
-                                                    nullptr );
+                                                    nullptr, initializers );
         }
         dcl->setAttr( "sym_name", strAttr );
 
@@ -195,7 +361,8 @@ namespace silly
     mlir::Value MLIRListener::buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode,
                                                     tNode *floatNode,
                                                     SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
-                                                    SillyParser::CallExpressionContext *callNode, tNode *stringNode, bool isPrint )
+                                                    SillyParser::CallExpressionContext *callNode, tNode *stringNode,
+                                                    bool isPrint )
     {
         mlir::Value value{};
 
@@ -205,41 +372,15 @@ namespace silly
         }
         else if ( booleanNode )
         {
-            int val;
-            std::string bv = booleanNode->getText();
-            if ( bv == "TRUE" )
-            {
-                val = 1;
-            }
-            else if ( bv == "FALSE" )
-            {
-                val = 0;
-            }
-            else
-            {
-                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                            std::format( "{}error: internal error: boolean value neither TRUE nor "
-                                                         "FALSE.\n",
-                                                         formatLocation( loc ) ) );
-            }
-
-            value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 1 );
+            value = parseBoolean( loc, booleanNode->getText() );
         }
         else if ( integerNode )
         {
-            int64_t val = std::stoll( integerNode->getText() );
-            value = builder.create<mlir::arith::ConstantIntOp>( loc, val, 64 );
+            value = parseInteger( loc, 64, integerNode->getText() );
         }
         else if ( floatNode )
         {
-            double val = std::stod( floatNode->getText() );
-
-            llvm::APFloat apVal( val );
-
-            // Like the INTEGER_PATTERN node above, create the float literal with
-            // the max sized type. Would need a grammar change to have a
-            // specific type (i.e.: size) associated with literals.
-            value = builder.create<mlir::arith::ConstantFloatOp>( loc, tyF64, apVal );
+            value = parseFloat( loc, tyF64, floatNode->getText() );
         }
         else if ( scalarOrArrayElement )
         {
@@ -268,7 +409,8 @@ namespace silly
                     if ( mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( varType ) )
                     {
                         unsigned w = ity.getWidth();
-                        if ( w == 8 ) {
+                        if ( w == 8 )
+                        {
                             varType = tyPtr;
                         }
                     }
@@ -317,8 +459,7 @@ namespace silly
 
         throw ExceptionWithContext(
             __FILE__, __LINE__, __func__,
-            std::format( "{}internal error: Unable to find Enclosing ScopeOp\n",
-                         formatLocation( loc ) ) );
+            std::format( "{}internal error: Unable to find Enclosing ScopeOp\n", formatLocation( loc ) ) );
 
         return nullptr;
     }
@@ -430,9 +571,9 @@ namespace silly
                 funcOp.getArgument( i ).dump();
             } );
             mlir::StringAttr strAttr = builder.getStringAttr( paramNames[i] );
-            silly::DeclareOp dcl =
-                builder.create<silly::DeclareOp>( startLoc, mlir::TypeAttr::get( argType ), /*size=*/nullptr,
-                                                  builder.getUnitAttr(), builder.getI64IntegerAttr( i ) );
+            silly::DeclareOp dcl = builder.create<silly::DeclareOp>(
+                startLoc, mlir::TypeAttr::get( argType ), /*size=*/nullptr, builder.getUnitAttr(),
+                builder.getI64IntegerAttr( i ), mlir::ValueRange{} );
             dcl->setAttr( "sym_name", strAttr );
         }
 
@@ -633,7 +774,14 @@ namespace silly
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
 
-        registerDeclaration( loc, varName, tyF64, ctx->arrayBoundsExpression() );
+        std::vector<SillyParser::NumericLiteralContext *> *pNumericLiteral{};
+        std::vector<SillyParser::NumericLiteralContext *> numericLiteral;
+        if ( ctx->LEFT_CURLY_BRACKET_TOKEN() )
+        {
+            numericLiteral = ctx->numericLiteral();
+            pNumericLiteral = &numericLiteral;
+        }
+        registerDeclaration( loc, varName, tyF64, ctx->arrayBoundsExpression(), nullptr, nullptr, pNumericLiteral );
 
         if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
         {
@@ -648,7 +796,15 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
         std::string varName = ctx->IDENTIFIER()->getText();
-        registerDeclaration( loc, varName, tyI1, ctx->arrayBoundsExpression() );
+
+        std::vector<SillyParser::BooleanLiteralContext *> *pBooleanLiteral{};
+        std::vector<SillyParser::BooleanLiteralContext *> booleanLiteral;
+        if ( ctx->LEFT_CURLY_BRACKET_TOKEN() )
+        {
+            booleanLiteral = ctx->booleanLiteral();
+            pBooleanLiteral = &booleanLiteral;
+        }
+        registerDeclaration( loc, varName, tyI1, ctx->arrayBoundsExpression(), pBooleanLiteral, nullptr, nullptr );
 
         if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
         {
@@ -665,21 +821,30 @@ namespace silly
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
 
+        mlir::Type ty;
+        std::vector<SillyParser::IntegerLiteralContext *> *pIntegerLiteral{};
+        std::vector<SillyParser::IntegerLiteralContext *> integerLiteral;
+        if ( ctx->LEFT_CURLY_BRACKET_TOKEN() )
+        {
+            integerLiteral = ctx->integerLiteral();
+            pIntegerLiteral = &integerLiteral;
+        }
+
         if ( ctx->INT8_TOKEN() )
         {
-            registerDeclaration( loc, varName, tyI8, ctx->arrayBoundsExpression() );
+            ty = tyI8;
         }
         else if ( ctx->INT16_TOKEN() )
         {
-            registerDeclaration( loc, varName, tyI16, ctx->arrayBoundsExpression() );
+            ty = tyI16;
         }
         else if ( ctx->INT32_TOKEN() )
         {
-            registerDeclaration( loc, varName, tyI32, ctx->arrayBoundsExpression() );
+            ty = tyI32;
         }
         else if ( ctx->INT64_TOKEN() )
         {
-            registerDeclaration( loc, varName, tyI64, ctx->arrayBoundsExpression() );
+            ty = tyI64;
         }
         else
         {
@@ -687,6 +852,8 @@ namespace silly
                                         std::format( "{}internal error: Unsupported signed integer declaration size.\n",
                                                      formatLocation( loc ) ) );
         }
+
+        registerDeclaration( loc, varName, ty, ctx->arrayBoundsExpression(), nullptr, pIntegerLiteral, nullptr );
 
         if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
         {
@@ -719,7 +886,15 @@ namespace silly
                                                      formatLocation( loc ) ) );
         }
 
-        registerDeclaration( loc, varName, ty, ctx->arrayBoundsExpression() );
+        std::vector<SillyParser::NumericLiteralContext *> *pNumericLiteral{};
+        std::vector<SillyParser::NumericLiteralContext *> numericLiteral;
+        if ( ctx->LEFT_CURLY_BRACKET_TOKEN() )
+        {
+            numericLiteral = ctx->numericLiteral();
+            pNumericLiteral = &numericLiteral;
+        }
+
+        registerDeclaration( loc, varName, ty, ctx->arrayBoundsExpression(), nullptr, nullptr, pNumericLiteral );
 
         if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
         {
@@ -738,7 +913,7 @@ namespace silly
         SillyParser::ArrayBoundsExpressionContext *arrayBounds = ctx->arrayBoundsExpression();
         assert( arrayBounds );
 
-        registerDeclaration( loc, varName, tyI8, arrayBounds );
+        registerDeclaration( loc, varName, tyI8, arrayBounds, nullptr, nullptr, nullptr );
 
         if ( tNode *theString = ctx->STRING_PATTERN() )
         {
@@ -770,7 +945,7 @@ namespace silly
         {
             SillyParser::BooleanLiteralContext *lit = boolElement->booleanLiteral();
             conditionPredicate = buildUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
-                                                       lit ? lit->INTEGER_PATTERN() : nullptr, nullptr,
+                                                       /*lit ? lit->INTEGER_PATTERN() :*/ nullptr, nullptr,
                                                        boolElement->scalarOrArrayElement(), nullptr, nullptr, false );
         }
         else
@@ -1373,7 +1548,7 @@ namespace silly
         mlir::Value resultValue;
         mlir::Value lhsValue;
         size_t bsz = ctx->binaryElement().size();
-        bool isPrint = (opType == mlir::Type{});
+        bool isPrint = ( opType == mlir::Type{} );
 
         if ( bsz == 0 )
         {

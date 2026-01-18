@@ -33,7 +33,7 @@ def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
     Declares a variable (scalar or array) or function parameter with a name and type.
     For parameters, the `parameter` attribute is set, and `param_number` indicates the parameter index.
   }];
-  let arguments = (ins TypeAttr:$type, OptionalAttr<I64Attr>:$size, OptionalAttr<UnitAttr>:$parameter, OptionalAttr<I64Attr>:$param_number);
+  let arguments = (ins TypeAttr:$type, OptionalAttr<I64Attr>:$size, OptionalAttr<UnitAttr>:$parameter, OptionalAttr<I64Attr>:$param_number, Variadic<AnyType>:$init);
   let results = (outs);
   let traits = [Symbol];
 

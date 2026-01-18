@@ -1,0 +1,15 @@
+INT32 c[3] {1,2};
+INT32 e[3] {1,2,3};
+FLOAT32 f[3] {1.0,2.2};
+
+PRINT c[0];
+PRINT c[1];
+PRINT c[2];
+
+PRINT e[0];
+PRINT e[1];
+PRINT e[2];
+
+PRINT f[0];
+PRINT f[1];
+PRINT f[2];

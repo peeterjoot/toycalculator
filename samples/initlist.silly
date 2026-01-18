@@ -1,0 +1,17 @@
+BOOL i {TRUE};
+INT8 a {1};
+INT16 b {1};
+INT64 d {1};
+FLOAT64 g {1};
+DCL gg {1};
+BOOL h {FALSE};
+BOOL j {};
+
+PRINT i;
+PRINT a;
+PRINT b;
+PRINT d;
+PRINT g;
+PRINT gg;
+PRINT h;
+PRINT j;

@@ -1001,6 +1001,142 @@ namespace silly
         return value;
     }
 
+    void LoweringContext::generateAssignment( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
+                                              mlir::Value value, mlir::Type elemType, mlir::LLVM::AllocaOp allocaOp,
+                                              unsigned alignment, mlir::TypedValue<mlir::IndexType> optIndex )
+    {
+        mlir::Type valType = value.getType();
+
+        // varName: i1v
+        // value: %true = arith.constant true
+        // valType: i1
+        LLVM_DEBUG( llvm::dbgs() << "value: " << value << '\n' );
+        LLVM_DEBUG( llvm::dbgs() << "valType: " << valType << '\n' );
+
+        // extract parameters from the allocaOp so we know what to do here:
+        int64_t numElems = 0;
+        if ( mlir::LLVM::ConstantOp constOp = allocaOp.getArraySize().getDefiningOp<mlir::LLVM::ConstantOp>() )
+        {
+            mlir::IntegerAttr intAttr = mlir::dyn_cast<mlir::IntegerAttr>( constOp.getValue() );
+            numElems = intAttr.getInt();
+        }
+
+        // LLVM_DEBUG( llvm::dbgs() << "memType: " << memType << '\n' );
+        LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
+        // LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
+
+        if ( numElems == 1 )
+        {
+            value = castToElemType( loc, rewriter, value, valType, elemType );
+
+            rewriter.create<mlir::LLVM::StoreOp>( loc, value, allocaOp, alignment );
+        }
+        else if ( silly::StringLiteralOp stringLitOp = value.getDefiningOp<silly::StringLiteralOp>() )
+        {
+            if ( elemType != tyI8 )
+            {
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__, "string assignment requires i8 array" );
+            }
+            if ( numElems == 0 )
+            {
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__, "invalid array size" );
+            }
+
+            mlir::StringAttr strAttr = stringLitOp.getValueAttr();
+            llvm::StringRef strValue = strAttr.getValue();
+            size_t literalStrLen = strValue.size();
+            mlir::LLVM::GlobalOp globalOp = lookupGlobalOp( strAttr );
+
+            mlir::LLVM::AddressOfOp globalPtr = rewriter.create<mlir::LLVM::AddressOfOp>( loc, globalOp );
+
+            mlir::Value destPtr = allocaOp.getResult();
+
+            int copySize = std::min( (int)numElems, (int)literalStrLen );
+            mlir::LLVM::ConstantOp sizeConst =
+                rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( copySize ) );
+
+            rewriter.create<mlir::LLVM::MemcpyOp>( loc, destPtr, globalPtr, sizeConst, rewriter.getBoolAttr( false ) );
+
+            // If target array is larger than string literal, zero out the remaining bytes
+            if ( numElems > (int64_t)literalStrLen )
+            {
+                // Compute the offset: destPtr + literalStrLen
+                mlir::LLVM::ConstantOp offsetConst =
+                    rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( literalStrLen ) );
+                mlir::LLVM::GEPOp destPtrOffset = rewriter.create<mlir::LLVM::GEPOp>(
+                    loc, destPtr.getType(), elemType, destPtr, mlir::ValueRange{ offsetConst } );
+
+                // Compute the number of bytes to zero: numElems - literalStrLen
+                mlir::LLVM::ConstantOp remainingSize = rewriter.create<mlir::LLVM::ConstantOp>(
+                    loc, tyI64, rewriter.getI64IntegerAttr( numElems - literalStrLen ) );
+
+                // Set remaining bytes to zero
+                rewriter.create<mlir::LLVM::MemsetOp>( loc, destPtrOffset, getI8zero( loc, rewriter ), remainingSize,
+                                                       rewriter.getBoolAttr( false ) );
+            }
+        }
+        else    // ARRAY ELEMENT or UNSUPPORTED ASSIGNMENT
+        {
+            if ( !optIndex )
+            {
+                // Assigning a non-string-literal to an array (e.g., t = some_expr;)
+                // This is not supported (arrays are not first-class values)
+                throw ExceptionWithContext(
+                    __FILE__, __LINE__, __func__,
+                    "assignment of non-string-literal to array variable without index is not supported" );
+            }
+
+            mlir::Value indexVal = optIndex;
+            mlir::Value destBasePtr = allocaOp.getResult();
+
+            assert( numElems && "non-scalar, non-string assignment must be an array with non-zero size" );
+            if ( mlir::arith::ConstantIndexOp constOp = indexVal.getDefiningOp<mlir::arith::ConstantIndexOp>() )
+            {
+                int64_t idx = constOp.value();
+                if ( idx < 0 || idx >= numElems )
+                {
+                    throw ExceptionWithContext(
+                        __FILE__, __LINE__, __func__,
+                        std::format(
+                            "static out-of-bounds array access: index {} is out of bounds for array of size {}", idx,
+                            numElems ) );
+                }
+            }
+
+            // Cast index to i64 for LLVM dialect GEP indexing
+            mlir::Value idxI64 = rewriter.create<mlir::arith::IndexCastOp>( loc, tyI64, indexVal );
+
+            mlir::Type elemPtrTy = destBasePtr.getType();
+
+            mlir::Value elemPtr = rewriter.create<mlir::LLVM::GEPOp>( loc,
+                                                                      elemPtrTy,    // result type
+                                                                      elemType,     // pointee type
+                                                                      destBasePtr, mlir::ValueRange{ idxI64 } );
+
+            // Nice to have (untested): Runtime bounds check -- make this a compile option?
+            // if (numElems > 0) {
+            //     mlir::Value sizeVal = rewriter.create<mlir::LLVM::ConstantOp>(
+            //         loc, tyI64, rewriter.getI64IntegerAttr(numElems));
+            //     mlir::Value inBounds = rewriter.create<mlir::LLVM::ICmpOp>(
+            //         loc, mlir::LLVM::ICmpPredicate::ult, idxI64, sizeVal);
+            //
+            //     mlir::Block* trapBB = rewriter.createBlock(rewriter.getInsertionBlock()->getParent());
+            //     mlir::Block* contBB = rewriter.createBlock(trapBB);
+            //
+            //     rewriter.create<mlir::LLVM::CondBrOp>(loc, inBounds, contBB, trapBB);
+            //
+            //     rewriter.setInsertionPointToStart(trapBB);
+            //     rewriter.create<mlir::LLVM::UnreachableOp>(loc);  // or call abort()
+            //
+            //     rewriter.setInsertionPointToStart(contBB);
+            // }
+
+            value = castToElemType( loc, rewriter, value, valType, elemType );
+
+            rewriter.create<mlir::LLVM::StoreOp>( loc, value, elemPtr, alignment );
+        }
+    }
+
     void LoweringContext::insertFill( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
                                       mlir::LLVM::AllocaOp allocaOp, mlir::Value bytesVal )
     {
@@ -1118,7 +1254,37 @@ namespace silly
                 lState.constructVariableDI( varName, elemType, getLocation( loc ), elemSizeInBits, allocaOp,
                                             arraySize );
 
-                lState.insertFill( loc, rewriter, allocaOp, bytesVal );
+                auto init = declareOp.getInit();
+                if ( init.size() )
+                {
+                    mlir::Type elemType = allocaOp.getElemType();
+                    unsigned alignment = lState.preferredTypeAlignment( op, elemType );
+
+                    if ( declareOp.getSize().has_value() )
+                    {
+                        for ( size_t i = 0; i < init.size(); ++i )
+                        {
+                            mlir::Value iVal64 = rewriter.create<mlir::LLVM::ConstantOp>(
+                                loc, lState.tyI64, rewriter.getI64IntegerAttr( static_cast<int64_t>( i ) ) );
+
+                            mlir::IndexType indexTy = rewriter.getIndexType();
+                            mlir::Value idxIndex = rewriter.create<mlir::arith::IndexCastOp>( loc, indexTy, iVal64 );
+
+                            lState.generateAssignment( loc, rewriter, init[i], elemType, allocaOp, alignment,
+                                                       mlir::cast<mlir::TypedValue<mlir::IndexType>>( idxIndex ) );
+                        }
+                    }
+                    else
+                    {
+                        assert( init.size() == 1 );
+                        lState.generateAssignment( loc, rewriter, init[0], elemType, allocaOp, alignment,
+                                                   mlir::TypedValue<mlir::IndexType>{} );
+                    }
+                }
+                else
+                {
+                    lState.insertFill( loc, rewriter, allocaOp, bytesVal );
+                }
             }
 
             rewriter.eraseOp( op );
@@ -1193,139 +1359,12 @@ namespace silly
             mlir::LLVM::AllocaOp allocaOp = lState.lookupLocalSymbolReference( assignOp, varName );
 
             mlir::Value value = assignOp.getValue();
-            mlir::Type valType = value.getType();
-
-            // varName: i1v
-            // value: %true = arith.constant true
-            // valType: i1
             LLVM_DEBUG( llvm::dbgs() << "varName: " << varName << '\n' );
-            LLVM_DEBUG( llvm::dbgs() << "value: " << value << '\n' );
-            LLVM_DEBUG( llvm::dbgs() << "valType: " << valType << '\n' );
 
-            // extract parameters from the allocaOp so we know what to do here:
             mlir::Type elemType = allocaOp.getElemType();
-            int64_t numElems = 0;
-            if ( mlir::LLVM::ConstantOp constOp = allocaOp.getArraySize().getDefiningOp<mlir::LLVM::ConstantOp>() )
-            {
-                mlir::IntegerAttr intAttr = mlir::dyn_cast<mlir::IntegerAttr>( constOp.getValue() );
-                numElems = intAttr.getInt();
-            }
+            unsigned alignment = lState.preferredTypeAlignment( op, elemType );
 
-            // LLVM_DEBUG( llvm::dbgs() << "memType: " << memType << '\n' );
-            LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
-            // LLVM_DEBUG( llvm::dbgs() << "elemType: " << elemType << '\n' );
-
-            if ( numElems == 1 )
-            {
-                value = lState.castToElemType( loc, rewriter, value, valType, elemType );
-
-                unsigned alignment = lState.preferredTypeAlignment( op, elemType );
-                rewriter.create<mlir::LLVM::StoreOp>( loc, value, allocaOp, alignment );
-            }
-            else if ( silly::StringLiteralOp stringLitOp = value.getDefiningOp<silly::StringLiteralOp>() )
-            {
-                if ( elemType != lState.tyI8 )
-                {
-                    return rewriter.notifyMatchFailure( assignOp, "string assignment requires i8 array" );
-                }
-                if ( numElems == 0 )
-                {
-                    return rewriter.notifyMatchFailure( assignOp, "invalid array size" );
-                }
-
-                mlir::StringAttr strAttr = stringLitOp.getValueAttr();
-                llvm::StringRef strValue = strAttr.getValue();
-                size_t literalStrLen = strValue.size();
-                mlir::LLVM::GlobalOp globalOp = lState.lookupGlobalOp( strAttr );
-
-                mlir::LLVM::AddressOfOp globalPtr = rewriter.create<mlir::LLVM::AddressOfOp>( loc, globalOp );
-
-                mlir::Value destPtr = allocaOp.getResult();
-
-                int copySize = std::min( (int)numElems, (int)literalStrLen );
-                mlir::LLVM::ConstantOp sizeConst = rewriter.create<mlir::LLVM::ConstantOp>(
-                    loc, lState.tyI64, rewriter.getI64IntegerAttr( copySize ) );
-
-                rewriter.create<mlir::LLVM::MemcpyOp>( loc, destPtr, globalPtr, sizeConst,
-                                                       rewriter.getBoolAttr( false ) );
-
-                // If target array is larger than string literal, zero out the remaining bytes
-                if ( numElems > (int64_t)literalStrLen )
-                {
-                    // Compute the offset: destPtr + literalStrLen
-                    mlir::LLVM::ConstantOp offsetConst = rewriter.create<mlir::LLVM::ConstantOp>(
-                        loc, lState.tyI64, rewriter.getI64IntegerAttr( literalStrLen ) );
-                    mlir::LLVM::GEPOp destPtrOffset = rewriter.create<mlir::LLVM::GEPOp>(
-                        loc, destPtr.getType(), elemType, destPtr, mlir::ValueRange{ offsetConst } );
-
-                    // Compute the number of bytes to zero: numElems - literalStrLen
-                    mlir::LLVM::ConstantOp remainingSize = rewriter.create<mlir::LLVM::ConstantOp>(
-                        loc, lState.tyI64, rewriter.getI64IntegerAttr( numElems - literalStrLen ) );
-
-                    // Set remaining bytes to zero
-                    rewriter.create<mlir::LLVM::MemsetOp>( loc, destPtrOffset, lState.getI8zero( loc, rewriter ),
-                                                           remainingSize, rewriter.getBoolAttr( false ) );
-                }
-            }
-            else    // ARRAY ELEMENT or UNSUPPORTED ASSIGNMENT
-            {
-                mlir::TypedValue<mlir::IndexType> optIndex = assignOp.getIndex();    // std::optional<Value>
-
-                if ( !optIndex )
-                {
-                    // Assigning a non-string-literal to an array (e.g., t = some_expr;)
-                    // This is not supported (arrays are not first-class values)
-                    return rewriter.notifyMatchFailure(
-                        assignOp, "assignment of non-string-literal to array variable without index is not supported" );
-                }
-
-                mlir::Value indexVal = optIndex;
-                mlir::Value destBasePtr = allocaOp.getResult();
-
-                assert( numElems && "non-scalar, non-string assignment must be an array with non-zero size" );
-                if ( mlir::arith::ConstantIndexOp constOp = indexVal.getDefiningOp<mlir::arith::ConstantIndexOp>() )
-                {
-                    int64_t idx = constOp.value();
-                    if ( idx < 0 || idx >= numElems )
-                    {
-                        return assignOp.emitError() << "static out-of-bounds array access: index " << idx
-                                                    << " is out of bounds for array of size " << numElems;
-                    }
-                }
-
-                // Cast index to i64 for LLVM dialect GEP indexing
-                mlir::Value idxI64 = rewriter.create<mlir::arith::IndexCastOp>( loc, lState.tyI64, indexVal );
-
-                mlir::Type elemPtrTy = destBasePtr.getType();
-
-                mlir::Value elemPtr = rewriter.create<mlir::LLVM::GEPOp>( loc,
-                                                                          elemPtrTy,    // result type
-                                                                          elemType,     // pointee type
-                                                                          destBasePtr, mlir::ValueRange{ idxI64 } );
-
-                // Nice to have (untested): Runtime bounds check -- make this a compile option?
-                // if (numElems > 0) {
-                //     mlir::Value sizeVal = rewriter.create<mlir::LLVM::ConstantOp>(
-                //         loc, lState.tyI64, rewriter.getI64IntegerAttr(numElems));
-                //     mlir::Value inBounds = rewriter.create<mlir::LLVM::ICmpOp>(
-                //         loc, mlir::LLVM::ICmpPredicate::ult, idxI64, sizeVal);
-                //
-                //     mlir::Block* trapBB = rewriter.createBlock(rewriter.getInsertionBlock()->getParent());
-                //     mlir::Block* contBB = rewriter.createBlock(trapBB);
-                //
-                //     rewriter.create<mlir::LLVM::CondBrOp>(loc, inBounds, contBB, trapBB);
-                //
-                //     rewriter.setInsertionPointToStart(trapBB);
-                //     rewriter.create<mlir::LLVM::UnreachableOp>(loc);  // or call abort()
-                //
-                //     rewriter.setInsertionPointToStart(contBB);
-                // }
-
-                value = lState.castToElemType( loc, rewriter, value, valType, elemType );
-
-                unsigned alignment = lState.preferredTypeAlignment( op, elemType );
-                rewriter.create<mlir::LLVM::StoreOp>( loc, value, elemPtr, alignment );
-            }
+            lState.generateAssignment( loc, rewriter, value, elemType, allocaOp, alignment, assignOp.getIndex() );
 
             rewriter.eraseOp( op );
             return mlir::success();
@@ -1719,7 +1758,7 @@ namespace silly
             }
 
             mlir::Location argLoc = loc;
-            //mlir::Location argLoc = rewriter.getUnknownLoc();
+            // mlir::Location argLoc = rewriter.getUnknownLoc();
 
             for ( size_t i = 0; i < numArgs; ++i )
             {

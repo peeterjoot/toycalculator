@@ -65,13 +65,17 @@ booleanValue
 
 // A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').  These are currently implicitly double.
 declare
-  : (DCL_TOKEN|DECLARE_TOKEN) IDENTIFIER (arrayBoundsExpression)? (EQUALS_TOKEN assignmentRvalue)?
+  : (DCL_TOKEN|DECLARE_TOKEN)
+    IDENTIFIER (arrayBoundsExpression)?
+    ((EQUALS_TOKEN assignmentRvalue) |
+     (LEFT_CURLY_BRACKET_TOKEN (numericLiteral (COMMA_TOKEN numericLiteral)*)? RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
 boolDeclare
   : BOOL_TOKEN
     IDENTIFIER (arrayBoundsExpression)?
-    ((EQUALS_TOKEN assignmentRvalue) | (LEFT_CURLY_BRACKET_TOKEN booleanLiteral* RIGHT_CURLY_BRACKET_TOKEN))?
+    ((EQUALS_TOKEN assignmentRvalue) |
+     (LEFT_CURLY_BRACKET_TOKEN (booleanLiteral (COMMA_TOKEN booleanLiteral)*)? RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
 variableTypeAndName
@@ -81,13 +85,15 @@ variableTypeAndName
 intDeclare
   : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN)
     IDENTIFIER (arrayBoundsExpression)?
-    ((EQUALS_TOKEN assignmentRvalue) | (LEFT_CURLY_BRACKET_TOKEN integerLiteral* RIGHT_CURLY_BRACKET_TOKEN))?
+    ((EQUALS_TOKEN assignmentRvalue) |
+     (LEFT_CURLY_BRACKET_TOKEN (integerLiteral (COMMA_TOKEN integerLiteral)*)? RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
 floatDeclare
   : (FLOAT32_TOKEN | FLOAT64_TOKEN)
     IDENTIFIER (arrayBoundsExpression)?
-    ((EQUALS_TOKEN assignmentRvalue) | (LEFT_CURLY_BRACKET_TOKEN numericLiteral* RIGHT_CURLY_BRACKET_TOKEN))?
+    ((EQUALS_TOKEN assignmentRvalue) |
+     (LEFT_CURLY_BRACKET_TOKEN (numericLiteral (COMMA_TOKEN numericLiteral)*)? RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
 stringDeclare
@@ -234,6 +240,10 @@ unaryOperator
   : MINUS_TOKEN | PLUSCHAR_TOKEN | NOT_TOKEN
   ;
 
+booleanLiteral
+  : BOOLEAN_PATTERN
+  ;
+
 integerLiteral
   : INTEGER_PATTERN
   ;
@@ -244,10 +254,6 @@ numericLiteral
 
 literal
   : INTEGER_PATTERN | FLOAT_PATTERN | BOOLEAN_PATTERN | STRING_PATTERN
-  ;
-
-booleanLiteral
-  : INTEGER_PATTERN | BOOLEAN_PATTERN
   ;
 
 /////////////////////////////////////////////////////////////////////////////////

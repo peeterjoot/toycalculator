@@ -216,7 +216,8 @@ namespace silly
         /// Builds MLIR value from unary expression (literals/variables).
         mlir::Value buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode, tNode *floatNode,
                                           SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
-                                          SillyParser::CallExpressionContext *callNode, tNode *stringNode, bool isPrint );
+                                          SillyParser::CallExpressionContext *callNode, tNode *stringNode,
+                                          bool isPrint );
 
         /// Emits a silly::CallOp for a function call.
         mlir::Value handleCall( SillyParser::CallExpressionContext *ctx );
@@ -227,7 +228,19 @@ namespace silly
 
         /// Registers a variable declaration in the current scope.
         void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
-                                  SillyParser::ArrayBoundsExpressionContext *arrayBounds );
+                                  SillyParser::ArrayBoundsExpressionContext *arrayBounds,
+                                  std::vector<SillyParser::BooleanLiteralContext *> *booleanLiteral,
+                                  std::vector<SillyParser::IntegerLiteralContext *> *integerLiteral,
+                                  std::vector<SillyParser::NumericLiteralContext *> *numericLiteral );
+
+        /// Construct a Value for a TRUE or FALSE boolean literal string
+        inline mlir::Value parseBoolean( mlir::Location loc, const std::string &s );
+
+        /// Construct a Value for an integer literal string
+        inline mlir::Value parseInteger( mlir::Location loc, int width, const std::string &s );
+
+        /// Construct a Value for a floating point literal string
+        inline mlir::Value parseFloat( mlir::Location loc, mlir::FloatType ty, const std::string &s );
 
         /// Returns a reference to the functionStateMap entry for funcName.
         ///

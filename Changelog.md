@@ -246,6 +246,23 @@ we lower to:
   store ptr null, ptr %.repack12, align 8
   call void @__silly_print(i32 2, ptr nonnull %1), !dbg !10
 ```
+  * new helper functions in unary expression parsing: parseBoolean, parseInteger, parseFloat (also use for
+    initializer list element parsing/building.)
+  * grammar: Remove `INTEGER_PATTERN` from booleanLiteral.  Didn't have any test that relied on or tested that codepath.
+  * Now have grammar/builder support for initializer lists.  Example MLIR:
+```
+      "silly.declare"() <{type = i1}> {sym_name = "j"} : () -> ()
+      "silly.declare"(%true) <{type = i1}> {sym_name = "i"} : (i1) -> ()
+      "silly.declare"(%false) <{type = i1}> {sym_name = "h"} : (i1) -> ()
+      "silly.declare"(%c1_i64) <{type = f64}> {sym_name = "g"} : (i64) -> ()
+      "silly.declare"(%cst, %cst_0) <{size = 3 : i64, type = f32}> {sym_name = "f"} : (f64, f64) -> ()
+      "silly.declare"(%c1_i64_1, %c2_i64, %c3_i64) <{size = 3 : i64, type = i32}> {sym_name = "e"} : (i64, i64, i64) -> ()
+      "silly.declare"(%c1_i64_2) <{type = i64}> {sym_name = "d"} : (i64) -> ()
+      "silly.declare"(%c1_i64_3, %c2_i64_4) <{size = 3 : i64, type = i32}> {sym_name = "c"} : (i64, i64) -> ()
+      "silly.declare"(%c1_i64_5) <{type = i16}> {sym_name = "b"} : (i64) -> ()
+      "silly.declare"(%c1_i64_6) <{type = i8}> {sym_name = "a"} : (i64) -> ()
+```
+  * Adjust bitwiseop.perl compareop.perl to use the new multi-argument PRINT support in all the generated tests.
 
 ## tag: V7 (Jan 4, 2025)
 

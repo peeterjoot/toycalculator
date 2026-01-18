@@ -1,8 +1,8 @@
 ## TODO
 
 ----------------------------------
-* Next TODO:
-  - Array initializer syntax: grammar done.  next is parser.  Also write some tests that use it to see if the parser chokes.
+* Assignment like initialization syntax is not available for array variables.  That should trigger an error.
+* Initialization syntax is not implemented for strings (not even in the grammar.)
 
 ----------------------------------
 * Bugs:

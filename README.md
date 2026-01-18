@@ -221,15 +221,15 @@ Scalar and array declarations with explicit types and optional initialization:
 
 ```text
 INT8   a;
-INT16  b;
-INT32  c[4];
+INT16  b{};
+INT32  c[4] {1, 2, 3};
 INT64  d = 42;
 ```
 
 #### Floating-Point Types
 
 ```text
-FLOAT32 f;
+FLOAT32 f{};
 FLOAT64 g[8];
 FLOAT32 pi = 3.14;
 ```
@@ -237,7 +237,10 @@ FLOAT32 pi = 3.14;
 #### Boolean Type
 
 ```text
-BOOL flag;
+BOOL flagUnspecifiedValue;
+BOOL flagInitialized{};
+BOOL flagInitialized2{ TRUE };
+BOOL flagInitialized3{ FALSE };
 BOOL b = FALSE;
 ```
 
@@ -249,6 +252,15 @@ Strings must be arrays (fixed-length).
 STRING name[32];
 STRING hello[32] = "world";
 ```
+
+## Initialization
+
+A C++ like uniform initialization syntax was illustrated in some of the declaration examples above.
+Some notes on this syntax:
+* Unlike C++, only literal values are allowed in initializer lists.
+* Variables that are not initialized are initialized with the specified `--init-fill` value, or the default (binary zero) fill value if `--init-fill` is not specified.
+* Assignment like initialization syntax is not available for array variables.
+* Initialization syntax is not available currently for STRING variables.
 
 ## Array Element Access
 

@@ -78,8 +78,8 @@ namespace silly
                                                      mlir::StringAttr& stringLit, mlir::Location loc, size_t strLen );
 
         /// Creates a call to the appropriate Silly print runtime function.
-        mlir::Value emitPrintArgStruct( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc, mlir::Value input,
-                                        PrintFlags flags );
+        mlir::Value emitPrintArgStruct( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
+                                        mlir::Value input, PrintFlags flags );
 
         void createAbortCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc );
 
@@ -93,7 +93,11 @@ namespace silly
                                    int paramIndex, const std::string& funcName );
 
         /// Return the PRINT args allocation for this function, big enough for the biggest PRINT list in the function.
-        mlir::LLVM::AllocaOp getPrintArgs( const std::string & funcName );
+        mlir::LLVM::AllocaOp getPrintArgs( const std::string& funcName );
+
+        void generateAssignment( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter, mlir::Value value,
+                                 mlir::Type elemType, mlir::LLVM::AllocaOp allocaOp, unsigned alignment,
+                                 mlir::TypedValue<mlir::IndexType> optIndex );
 
         /// Casts a value to the target element type, performing necessary conversions.
         mlir::Value castToElemType( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter, mlir::Value value,
