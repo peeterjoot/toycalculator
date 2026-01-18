@@ -173,8 +173,10 @@ foreach my $v1 ( sort keys %v1 )
             $e = ( $a ^ $b );
         }
 
-        print $esilly "$v1 ${op} $v2\n$e\n";
-        print $silly "PRINT \"$v1 ${op} $v2\";\nr = $v1 ${op} $v2;\nPRINT r;\n";
+        print $esilly "$v1 ${op} $v2 = $e\n";
+
+        print $silly "r = $v1 ${op} $v2;\n" .
+                     "PRINT \"$v1 ${op} $v2 = \", r;\n";
     }
 }
 

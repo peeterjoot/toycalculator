@@ -1,676 +1,338 @@
-f32 NE g32
-1
-g32 NE f32
-1
-f32 NE g64
-1
-g64 NE f32
-1
-f32 NE j1
-1
-j1 NE f32
-1
-f32 NE j16
-1
-j16 NE f32
-1
-f32 NE j32
-1
-j32 NE f32
-1
-f32 NE j64
-1
-j64 NE f32
-1
-f32 NE j8
-1
-j8 NE f32
-1
-f32 NE l16
-1
-l16 NE f32
-1
-f32 NE l32
-1
-l32 NE f32
-1
-f32 NE l64
-1
-l64 NE f32
-1
-f32 NE l8
-1
-l8 NE f32
-1
-f32 NE m32
-1
-m32 NE f32
-1
-f32 NE m64
-1
-m64 NE f32
-1
-f64 NE g32
-1
-g32 NE f64
-1
-f64 NE g64
-1
-g64 NE f64
-1
-f64 NE j1
-1
-j1 NE f64
-1
-f64 NE j16
-1
-j16 NE f64
-1
-f64 NE j32
-1
-j32 NE f64
-1
-f64 NE j64
-1
-j64 NE f64
-1
-f64 NE j8
-1
-j8 NE f64
-1
-f64 NE l16
-1
-l16 NE f64
-1
-f64 NE l32
-1
-l32 NE f64
-1
-f64 NE l64
-1
-l64 NE f64
-1
-f64 NE l8
-1
-l8 NE f64
-1
-f64 NE m32
-1
-m32 NE f64
-1
-f64 NE m64
-1
-m64 NE f64
-1
-h32 NE g32
-1
-g32 NE h32
-1
-h32 NE g64
-1
-g64 NE h32
-1
-h32 NE j1
-1
-j1 NE h32
-1
-h32 NE j16
-1
-j16 NE h32
-1
-h32 NE j32
-1
-j32 NE h32
-1
-h32 NE j64
-1
-j64 NE h32
-1
-h32 NE j8
-1
-j8 NE h32
-1
-h32 NE l16
-1
-l16 NE h32
-1
-h32 NE l32
-1
-l32 NE h32
-1
-h32 NE l64
-1
-l64 NE h32
-1
-h32 NE l8
-1
-l8 NE h32
-1
-h32 NE m32
-1
-m32 NE h32
-1
-h32 NE m64
-1
-m64 NE h32
-1
-h64 NE g32
-1
-g32 NE h64
-1
-h64 NE g64
-1
-g64 NE h64
-1
-h64 NE j1
-1
-j1 NE h64
-1
-h64 NE j16
-1
-j16 NE h64
-1
-h64 NE j32
-1
-j32 NE h64
-1
-h64 NE j64
-1
-j64 NE h64
-1
-h64 NE j8
-1
-j8 NE h64
-1
-h64 NE l16
-1
-l16 NE h64
-1
-h64 NE l32
-1
-l32 NE h64
-1
-h64 NE l64
-1
-l64 NE h64
-1
-h64 NE l8
-1
-l8 NE h64
-1
-h64 NE m32
-1
-m32 NE h64
-1
-h64 NE m64
-1
-m64 NE h64
-1
-i1 NE g32
-0
-g32 NE i1
-0
-i1 NE g64
-1
-g64 NE i1
-1
-i1 NE j1
-1
-j1 NE i1
-1
-i1 NE j16
-1
-j16 NE i1
-1
-i1 NE j32
-1
-j32 NE i1
-1
-i1 NE j64
-1
-j64 NE i1
-1
-i1 NE j8
-0
-j8 NE i1
-0
-i1 NE l16
-1
-l16 NE i1
-1
-i1 NE l32
-1
-l32 NE i1
-1
-i1 NE l64
-1
-l64 NE i1
-1
-i1 NE l8
-1
-l8 NE i1
-1
-i1 NE m32
-1
-m32 NE i1
-1
-i1 NE m64
-1
-m64 NE i1
-1
-i16 NE g32
-1
-g32 NE i16
-1
-i16 NE g64
-1
-g64 NE i16
-1
-i16 NE j1
-1
-j1 NE i16
-1
-i16 NE j16
-1
-j16 NE i16
-1
-i16 NE j32
-1
-j32 NE i16
-1
-i16 NE j64
-1
-j64 NE i16
-1
-i16 NE j8
-1
-j8 NE i16
-1
-i16 NE l16
-1
-l16 NE i16
-1
-i16 NE l32
-1
-l32 NE i16
-1
-i16 NE l64
-1
-l64 NE i16
-1
-i16 NE l8
-1
-l8 NE i16
-1
-i16 NE m32
-1
-m32 NE i16
-1
-i16 NE m64
-1
-m64 NE i16
-1
-i32 NE g32
-1
-g32 NE i32
-1
-i32 NE g64
-1
-g64 NE i32
-1
-i32 NE j1
-1
-j1 NE i32
-1
-i32 NE j16
-1
-j16 NE i32
-1
-i32 NE j32
-1
-j32 NE i32
-1
-i32 NE j64
-1
-j64 NE i32
-1
-i32 NE j8
-1
-j8 NE i32
-1
-i32 NE l16
-1
-l16 NE i32
-1
-i32 NE l32
-1
-l32 NE i32
-1
-i32 NE l64
-1
-l64 NE i32
-1
-i32 NE l8
-1
-l8 NE i32
-1
-i32 NE m32
-1
-m32 NE i32
-1
-i32 NE m64
-1
-m64 NE i32
-1
-i64 NE g32
-1
-g32 NE i64
-1
-i64 NE g64
-1
-g64 NE i64
-1
-i64 NE j1
-1
-j1 NE i64
-1
-i64 NE j16
-1
-j16 NE i64
-1
-i64 NE j32
-1
-j32 NE i64
-1
-i64 NE j64
-1
-j64 NE i64
-1
-i64 NE j8
-1
-j8 NE i64
-1
-i64 NE l16
-1
-l16 NE i64
-1
-i64 NE l32
-1
-l32 NE i64
-1
-i64 NE l64
-1
-l64 NE i64
-1
-i64 NE l8
-1
-l8 NE i64
-1
-i64 NE m32
-1
-m32 NE i64
-1
-i64 NE m64
-1
-m64 NE i64
-1
-i8 NE g32
-1
-g32 NE i8
-1
-i8 NE g64
-1
-g64 NE i8
-1
-i8 NE j1
-1
-j1 NE i8
-1
-i8 NE j16
-1
-j16 NE i8
-1
-i8 NE j32
-1
-j32 NE i8
-1
-i8 NE j64
-1
-j64 NE i8
-1
-i8 NE j8
-1
-j8 NE i8
-1
-i8 NE l16
-1
-l16 NE i8
-1
-i8 NE l32
-1
-l32 NE i8
-1
-i8 NE l64
-1
-l64 NE i8
-1
-i8 NE l8
-1
-l8 NE i8
-1
-i8 NE m32
-1
-m32 NE i8
-1
-i8 NE m64
-1
-m64 NE i8
-1
-k16 NE g32
-1
-g32 NE k16
-1
-k16 NE g64
-1
-g64 NE k16
-1
-k16 NE j1
-1
-j1 NE k16
-1
-k16 NE j16
-1
-j16 NE k16
-1
-k16 NE j32
-1
-j32 NE k16
-1
-k16 NE j64
-1
-j64 NE k16
-1
-k16 NE j8
-1
-j8 NE k16
-1
-k16 NE l16
-1
-l16 NE k16
-1
-k16 NE l32
-1
-l32 NE k16
-1
-k16 NE l64
-1
-l64 NE k16
-1
-k16 NE l8
-1
-l8 NE k16
-1
-k16 NE m32
-1
-m32 NE k16
-1
-k16 NE m64
-1
-m64 NE k16
-1
-k32 NE g32
-1
-g32 NE k32
-1
-k32 NE g64
-1
-g64 NE k32
-1
-k32 NE j1
-1
-j1 NE k32
-1
-k32 NE j16
-1
-j16 NE k32
-1
-k32 NE j32
-1
-j32 NE k32
-1
-k32 NE j64
-1
-j64 NE k32
-1
-k32 NE j8
-1
-j8 NE k32
-1
-k32 NE l16
-1
-l16 NE k32
-1
-k32 NE l32
-1
-l32 NE k32
-1
-k32 NE l64
-1
-l64 NE k32
-1
-k32 NE l8
-1
-l8 NE k32
-1
-k32 NE m32
-1
-m32 NE k32
-1
-k32 NE m64
-1
-m64 NE k32
-1
-k64 NE g32
-1
-g32 NE k64
-1
-k64 NE g64
-1
-g64 NE k64
-1
-k64 NE j1
-1
-j1 NE k64
-1
-k64 NE j16
-1
-j16 NE k64
-1
-k64 NE j32
-1
-j32 NE k64
-1
-k64 NE j64
-1
-j64 NE k64
-1
-k64 NE j8
-1
-j8 NE k64
-1
-k64 NE l16
-1
-l16 NE k64
-1
-k64 NE l32
-1
-l32 NE k64
-1
-k64 NE l64
-1
-l64 NE k64
-1
-k64 NE l8
-1
-l8 NE k64
-1
-k64 NE m32
-1
-m32 NE k64
-1
-k64 NE m64
-1
-m64 NE k64
-1
-k8 NE g32
-1
-g32 NE k8
-1
-k8 NE g64
-1
-g64 NE k8
-1
-k8 NE j1
-1
-j1 NE k8
-1
-k8 NE j16
-1
-j16 NE k8
-1
-k8 NE j32
-1
-j32 NE k8
-1
-k8 NE j64
-1
-j64 NE k8
-1
-k8 NE j8
-1
-j8 NE k8
-1
-k8 NE l16
-1
-l16 NE k8
-1
-k8 NE l32
-1
-l32 NE k8
-1
-k8 NE l64
-1
-l64 NE k8
-1
-k8 NE l8
-1
-l8 NE k8
-1
-k8 NE m32
-1
-m32 NE k8
-1
-k8 NE m64
-1
-m64 NE k8
-1
+f32 NE g32 = 1
+g32 NE f32 = 1
+f32 NE g64 = 1
+g64 NE f32 = 1
+f32 NE j1 = 1
+j1 NE f32 = 1
+f32 NE j16 = 1
+j16 NE f32 = 1
+f32 NE j32 = 1
+j32 NE f32 = 1
+f32 NE j64 = 1
+j64 NE f32 = 1
+f32 NE j8 = 1
+j8 NE f32 = 1
+f32 NE l16 = 1
+l16 NE f32 = 1
+f32 NE l32 = 1
+l32 NE f32 = 1
+f32 NE l64 = 1
+l64 NE f32 = 1
+f32 NE l8 = 1
+l8 NE f32 = 1
+f32 NE m32 = 1
+m32 NE f32 = 1
+f32 NE m64 = 1
+m64 NE f32 = 1
+f64 NE g32 = 1
+g32 NE f64 = 1
+f64 NE g64 = 1
+g64 NE f64 = 1
+f64 NE j1 = 1
+j1 NE f64 = 1
+f64 NE j16 = 1
+j16 NE f64 = 1
+f64 NE j32 = 1
+j32 NE f64 = 1
+f64 NE j64 = 1
+j64 NE f64 = 1
+f64 NE j8 = 1
+j8 NE f64 = 1
+f64 NE l16 = 1
+l16 NE f64 = 1
+f64 NE l32 = 1
+l32 NE f64 = 1
+f64 NE l64 = 1
+l64 NE f64 = 1
+f64 NE l8 = 1
+l8 NE f64 = 1
+f64 NE m32 = 1
+m32 NE f64 = 1
+f64 NE m64 = 1
+m64 NE f64 = 1
+h32 NE g32 = 1
+g32 NE h32 = 1
+h32 NE g64 = 1
+g64 NE h32 = 1
+h32 NE j1 = 1
+j1 NE h32 = 1
+h32 NE j16 = 1
+j16 NE h32 = 1
+h32 NE j32 = 1
+j32 NE h32 = 1
+h32 NE j64 = 1
+j64 NE h32 = 1
+h32 NE j8 = 1
+j8 NE h32 = 1
+h32 NE l16 = 1
+l16 NE h32 = 1
+h32 NE l32 = 1
+l32 NE h32 = 1
+h32 NE l64 = 1
+l64 NE h32 = 1
+h32 NE l8 = 1
+l8 NE h32 = 1
+h32 NE m32 = 1
+m32 NE h32 = 1
+h32 NE m64 = 1
+m64 NE h32 = 1
+h64 NE g32 = 1
+g32 NE h64 = 1
+h64 NE g64 = 1
+g64 NE h64 = 1
+h64 NE j1 = 1
+j1 NE h64 = 1
+h64 NE j16 = 1
+j16 NE h64 = 1
+h64 NE j32 = 1
+j32 NE h64 = 1
+h64 NE j64 = 1
+j64 NE h64 = 1
+h64 NE j8 = 1
+j8 NE h64 = 1
+h64 NE l16 = 1
+l16 NE h64 = 1
+h64 NE l32 = 1
+l32 NE h64 = 1
+h64 NE l64 = 1
+l64 NE h64 = 1
+h64 NE l8 = 1
+l8 NE h64 = 1
+h64 NE m32 = 1
+m32 NE h64 = 1
+h64 NE m64 = 1
+m64 NE h64 = 1
+i1 NE g32 = 0
+g32 NE i1 = 0
+i1 NE g64 = 1
+g64 NE i1 = 1
+i1 NE j1 = 1
+j1 NE i1 = 1
+i1 NE j16 = 1
+j16 NE i1 = 1
+i1 NE j32 = 1
+j32 NE i1 = 1
+i1 NE j64 = 1
+j64 NE i1 = 1
+i1 NE j8 = 0
+j8 NE i1 = 0
+i1 NE l16 = 1
+l16 NE i1 = 1
+i1 NE l32 = 1
+l32 NE i1 = 1
+i1 NE l64 = 1
+l64 NE i1 = 1
+i1 NE l8 = 1
+l8 NE i1 = 1
+i1 NE m32 = 1
+m32 NE i1 = 1
+i1 NE m64 = 1
+m64 NE i1 = 1
+i16 NE g32 = 1
+g32 NE i16 = 1
+i16 NE g64 = 1
+g64 NE i16 = 1
+i16 NE j1 = 1
+j1 NE i16 = 1
+i16 NE j16 = 1
+j16 NE i16 = 1
+i16 NE j32 = 1
+j32 NE i16 = 1
+i16 NE j64 = 1
+j64 NE i16 = 1
+i16 NE j8 = 1
+j8 NE i16 = 1
+i16 NE l16 = 1
+l16 NE i16 = 1
+i16 NE l32 = 1
+l32 NE i16 = 1
+i16 NE l64 = 1
+l64 NE i16 = 1
+i16 NE l8 = 1
+l8 NE i16 = 1
+i16 NE m32 = 1
+m32 NE i16 = 1
+i16 NE m64 = 1
+m64 NE i16 = 1
+i32 NE g32 = 1
+g32 NE i32 = 1
+i32 NE g64 = 1
+g64 NE i32 = 1
+i32 NE j1 = 1
+j1 NE i32 = 1
+i32 NE j16 = 1
+j16 NE i32 = 1
+i32 NE j32 = 1
+j32 NE i32 = 1
+i32 NE j64 = 1
+j64 NE i32 = 1
+i32 NE j8 = 1
+j8 NE i32 = 1
+i32 NE l16 = 1
+l16 NE i32 = 1
+i32 NE l32 = 1
+l32 NE i32 = 1
+i32 NE l64 = 1
+l64 NE i32 = 1
+i32 NE l8 = 1
+l8 NE i32 = 1
+i32 NE m32 = 1
+m32 NE i32 = 1
+i32 NE m64 = 1
+m64 NE i32 = 1
+i64 NE g32 = 1
+g32 NE i64 = 1
+i64 NE g64 = 1
+g64 NE i64 = 1
+i64 NE j1 = 1
+j1 NE i64 = 1
+i64 NE j16 = 1
+j16 NE i64 = 1
+i64 NE j32 = 1
+j32 NE i64 = 1
+i64 NE j64 = 1
+j64 NE i64 = 1
+i64 NE j8 = 1
+j8 NE i64 = 1
+i64 NE l16 = 1
+l16 NE i64 = 1
+i64 NE l32 = 1
+l32 NE i64 = 1
+i64 NE l64 = 1
+l64 NE i64 = 1
+i64 NE l8 = 1
+l8 NE i64 = 1
+i64 NE m32 = 1
+m32 NE i64 = 1
+i64 NE m64 = 1
+m64 NE i64 = 1
+i8 NE g32 = 1
+g32 NE i8 = 1
+i8 NE g64 = 1
+g64 NE i8 = 1
+i8 NE j1 = 1
+j1 NE i8 = 1
+i8 NE j16 = 1
+j16 NE i8 = 1
+i8 NE j32 = 1
+j32 NE i8 = 1
+i8 NE j64 = 1
+j64 NE i8 = 1
+i8 NE j8 = 1
+j8 NE i8 = 1
+i8 NE l16 = 1
+l16 NE i8 = 1
+i8 NE l32 = 1
+l32 NE i8 = 1
+i8 NE l64 = 1
+l64 NE i8 = 1
+i8 NE l8 = 1
+l8 NE i8 = 1
+i8 NE m32 = 1
+m32 NE i8 = 1
+i8 NE m64 = 1
+m64 NE i8 = 1
+k16 NE g32 = 1
+g32 NE k16 = 1
+k16 NE g64 = 1
+g64 NE k16 = 1
+k16 NE j1 = 1
+j1 NE k16 = 1
+k16 NE j16 = 1
+j16 NE k16 = 1
+k16 NE j32 = 1
+j32 NE k16 = 1
+k16 NE j64 = 1
+j64 NE k16 = 1
+k16 NE j8 = 1
+j8 NE k16 = 1
+k16 NE l16 = 1
+l16 NE k16 = 1
+k16 NE l32 = 1
+l32 NE k16 = 1
+k16 NE l64 = 1
+l64 NE k16 = 1
+k16 NE l8 = 1
+l8 NE k16 = 1
+k16 NE m32 = 1
+m32 NE k16 = 1
+k16 NE m64 = 1
+m64 NE k16 = 1
+k32 NE g32 = 1
+g32 NE k32 = 1
+k32 NE g64 = 1
+g64 NE k32 = 1
+k32 NE j1 = 1
+j1 NE k32 = 1
+k32 NE j16 = 1
+j16 NE k32 = 1
+k32 NE j32 = 1
+j32 NE k32 = 1
+k32 NE j64 = 1
+j64 NE k32 = 1
+k32 NE j8 = 1
+j8 NE k32 = 1
+k32 NE l16 = 1
+l16 NE k32 = 1
+k32 NE l32 = 1
+l32 NE k32 = 1
+k32 NE l64 = 1
+l64 NE k32 = 1
+k32 NE l8 = 1
+l8 NE k32 = 1
+k32 NE m32 = 1
+m32 NE k32 = 1
+k32 NE m64 = 1
+m64 NE k32 = 1
+k64 NE g32 = 1
+g32 NE k64 = 1
+k64 NE g64 = 1
+g64 NE k64 = 1
+k64 NE j1 = 1
+j1 NE k64 = 1
+k64 NE j16 = 1
+j16 NE k64 = 1
+k64 NE j32 = 1
+j32 NE k64 = 1
+k64 NE j64 = 1
+j64 NE k64 = 1
+k64 NE j8 = 1
+j8 NE k64 = 1
+k64 NE l16 = 1
+l16 NE k64 = 1
+k64 NE l32 = 1
+l32 NE k64 = 1
+k64 NE l64 = 1
+l64 NE k64 = 1
+k64 NE l8 = 1
+l8 NE k64 = 1
+k64 NE m32 = 1
+m32 NE k64 = 1
+k64 NE m64 = 1
+m64 NE k64 = 1
+k8 NE g32 = 1
+g32 NE k8 = 1
+k8 NE g64 = 1
+g64 NE k8 = 1
+k8 NE j1 = 1
+j1 NE k8 = 1
+k8 NE j16 = 1
+j16 NE k8 = 1
+k8 NE j32 = 1
+j32 NE k8 = 1
+k8 NE j64 = 1
+j64 NE k8 = 1
+k8 NE j8 = 1
+j8 NE k8 = 1
+k8 NE l16 = 1
+l16 NE k8 = 1
+k8 NE l32 = 1
+l32 NE k8 = 1
+k8 NE l64 = 1
+l64 NE k8 = 1
+k8 NE l8 = 1
+l8 NE k8 = 1
+k8 NE m32 = 1
+m32 NE k8 = 1
+k8 NE m64 = 1
+m64 NE k8 = 1

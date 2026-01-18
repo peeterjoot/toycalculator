@@ -1,676 +1,338 @@
-f32 EQ g32
-0
-g32 EQ f32
-0
-f32 EQ g64
-0
-g64 EQ f32
-0
-f32 EQ j1
-0
-j1 EQ f32
-0
-f32 EQ j16
-0
-j16 EQ f32
-0
-f32 EQ j32
-0
-j32 EQ f32
-0
-f32 EQ j64
-0
-j64 EQ f32
-0
-f32 EQ j8
-0
-j8 EQ f32
-0
-f32 EQ l16
-0
-l16 EQ f32
-0
-f32 EQ l32
-0
-l32 EQ f32
-0
-f32 EQ l64
-0
-l64 EQ f32
-0
-f32 EQ l8
-0
-l8 EQ f32
-0
-f32 EQ m32
-0
-m32 EQ f32
-0
-f32 EQ m64
-0
-m64 EQ f32
-0
-f64 EQ g32
-0
-g32 EQ f64
-0
-f64 EQ g64
-0
-g64 EQ f64
-0
-f64 EQ j1
-0
-j1 EQ f64
-0
-f64 EQ j16
-0
-j16 EQ f64
-0
-f64 EQ j32
-0
-j32 EQ f64
-0
-f64 EQ j64
-0
-j64 EQ f64
-0
-f64 EQ j8
-0
-j8 EQ f64
-0
-f64 EQ l16
-0
-l16 EQ f64
-0
-f64 EQ l32
-0
-l32 EQ f64
-0
-f64 EQ l64
-0
-l64 EQ f64
-0
-f64 EQ l8
-0
-l8 EQ f64
-0
-f64 EQ m32
-0
-m32 EQ f64
-0
-f64 EQ m64
-0
-m64 EQ f64
-0
-h32 EQ g32
-0
-g32 EQ h32
-0
-h32 EQ g64
-0
-g64 EQ h32
-0
-h32 EQ j1
-0
-j1 EQ h32
-0
-h32 EQ j16
-0
-j16 EQ h32
-0
-h32 EQ j32
-0
-j32 EQ h32
-0
-h32 EQ j64
-0
-j64 EQ h32
-0
-h32 EQ j8
-0
-j8 EQ h32
-0
-h32 EQ l16
-0
-l16 EQ h32
-0
-h32 EQ l32
-0
-l32 EQ h32
-0
-h32 EQ l64
-0
-l64 EQ h32
-0
-h32 EQ l8
-0
-l8 EQ h32
-0
-h32 EQ m32
-0
-m32 EQ h32
-0
-h32 EQ m64
-0
-m64 EQ h32
-0
-h64 EQ g32
-0
-g32 EQ h64
-0
-h64 EQ g64
-0
-g64 EQ h64
-0
-h64 EQ j1
-0
-j1 EQ h64
-0
-h64 EQ j16
-0
-j16 EQ h64
-0
-h64 EQ j32
-0
-j32 EQ h64
-0
-h64 EQ j64
-0
-j64 EQ h64
-0
-h64 EQ j8
-0
-j8 EQ h64
-0
-h64 EQ l16
-0
-l16 EQ h64
-0
-h64 EQ l32
-0
-l32 EQ h64
-0
-h64 EQ l64
-0
-l64 EQ h64
-0
-h64 EQ l8
-0
-l8 EQ h64
-0
-h64 EQ m32
-0
-m32 EQ h64
-0
-h64 EQ m64
-0
-m64 EQ h64
-0
-i1 EQ g32
-1
-g32 EQ i1
-1
-i1 EQ g64
-0
-g64 EQ i1
-0
-i1 EQ j1
-0
-j1 EQ i1
-0
-i1 EQ j16
-0
-j16 EQ i1
-0
-i1 EQ j32
-0
-j32 EQ i1
-0
-i1 EQ j64
-0
-j64 EQ i1
-0
-i1 EQ j8
-1
-j8 EQ i1
-1
-i1 EQ l16
-0
-l16 EQ i1
-0
-i1 EQ l32
-0
-l32 EQ i1
-0
-i1 EQ l64
-0
-l64 EQ i1
-0
-i1 EQ l8
-0
-l8 EQ i1
-0
-i1 EQ m32
-0
-m32 EQ i1
-0
-i1 EQ m64
-0
-m64 EQ i1
-0
-i16 EQ g32
-0
-g32 EQ i16
-0
-i16 EQ g64
-0
-g64 EQ i16
-0
-i16 EQ j1
-0
-j1 EQ i16
-0
-i16 EQ j16
-0
-j16 EQ i16
-0
-i16 EQ j32
-0
-j32 EQ i16
-0
-i16 EQ j64
-0
-j64 EQ i16
-0
-i16 EQ j8
-0
-j8 EQ i16
-0
-i16 EQ l16
-0
-l16 EQ i16
-0
-i16 EQ l32
-0
-l32 EQ i16
-0
-i16 EQ l64
-0
-l64 EQ i16
-0
-i16 EQ l8
-0
-l8 EQ i16
-0
-i16 EQ m32
-0
-m32 EQ i16
-0
-i16 EQ m64
-0
-m64 EQ i16
-0
-i32 EQ g32
-0
-g32 EQ i32
-0
-i32 EQ g64
-0
-g64 EQ i32
-0
-i32 EQ j1
-0
-j1 EQ i32
-0
-i32 EQ j16
-0
-j16 EQ i32
-0
-i32 EQ j32
-0
-j32 EQ i32
-0
-i32 EQ j64
-0
-j64 EQ i32
-0
-i32 EQ j8
-0
-j8 EQ i32
-0
-i32 EQ l16
-0
-l16 EQ i32
-0
-i32 EQ l32
-0
-l32 EQ i32
-0
-i32 EQ l64
-0
-l64 EQ i32
-0
-i32 EQ l8
-0
-l8 EQ i32
-0
-i32 EQ m32
-0
-m32 EQ i32
-0
-i32 EQ m64
-0
-m64 EQ i32
-0
-i64 EQ g32
-0
-g32 EQ i64
-0
-i64 EQ g64
-0
-g64 EQ i64
-0
-i64 EQ j1
-0
-j1 EQ i64
-0
-i64 EQ j16
-0
-j16 EQ i64
-0
-i64 EQ j32
-0
-j32 EQ i64
-0
-i64 EQ j64
-0
-j64 EQ i64
-0
-i64 EQ j8
-0
-j8 EQ i64
-0
-i64 EQ l16
-0
-l16 EQ i64
-0
-i64 EQ l32
-0
-l32 EQ i64
-0
-i64 EQ l64
-0
-l64 EQ i64
-0
-i64 EQ l8
-0
-l8 EQ i64
-0
-i64 EQ m32
-0
-m32 EQ i64
-0
-i64 EQ m64
-0
-m64 EQ i64
-0
-i8 EQ g32
-0
-g32 EQ i8
-0
-i8 EQ g64
-0
-g64 EQ i8
-0
-i8 EQ j1
-0
-j1 EQ i8
-0
-i8 EQ j16
-0
-j16 EQ i8
-0
-i8 EQ j32
-0
-j32 EQ i8
-0
-i8 EQ j64
-0
-j64 EQ i8
-0
-i8 EQ j8
-0
-j8 EQ i8
-0
-i8 EQ l16
-0
-l16 EQ i8
-0
-i8 EQ l32
-0
-l32 EQ i8
-0
-i8 EQ l64
-0
-l64 EQ i8
-0
-i8 EQ l8
-0
-l8 EQ i8
-0
-i8 EQ m32
-0
-m32 EQ i8
-0
-i8 EQ m64
-0
-m64 EQ i8
-0
-k16 EQ g32
-0
-g32 EQ k16
-0
-k16 EQ g64
-0
-g64 EQ k16
-0
-k16 EQ j1
-0
-j1 EQ k16
-0
-k16 EQ j16
-0
-j16 EQ k16
-0
-k16 EQ j32
-0
-j32 EQ k16
-0
-k16 EQ j64
-0
-j64 EQ k16
-0
-k16 EQ j8
-0
-j8 EQ k16
-0
-k16 EQ l16
-0
-l16 EQ k16
-0
-k16 EQ l32
-0
-l32 EQ k16
-0
-k16 EQ l64
-0
-l64 EQ k16
-0
-k16 EQ l8
-0
-l8 EQ k16
-0
-k16 EQ m32
-0
-m32 EQ k16
-0
-k16 EQ m64
-0
-m64 EQ k16
-0
-k32 EQ g32
-0
-g32 EQ k32
-0
-k32 EQ g64
-0
-g64 EQ k32
-0
-k32 EQ j1
-0
-j1 EQ k32
-0
-k32 EQ j16
-0
-j16 EQ k32
-0
-k32 EQ j32
-0
-j32 EQ k32
-0
-k32 EQ j64
-0
-j64 EQ k32
-0
-k32 EQ j8
-0
-j8 EQ k32
-0
-k32 EQ l16
-0
-l16 EQ k32
-0
-k32 EQ l32
-0
-l32 EQ k32
-0
-k32 EQ l64
-0
-l64 EQ k32
-0
-k32 EQ l8
-0
-l8 EQ k32
-0
-k32 EQ m32
-0
-m32 EQ k32
-0
-k32 EQ m64
-0
-m64 EQ k32
-0
-k64 EQ g32
-0
-g32 EQ k64
-0
-k64 EQ g64
-0
-g64 EQ k64
-0
-k64 EQ j1
-0
-j1 EQ k64
-0
-k64 EQ j16
-0
-j16 EQ k64
-0
-k64 EQ j32
-0
-j32 EQ k64
-0
-k64 EQ j64
-0
-j64 EQ k64
-0
-k64 EQ j8
-0
-j8 EQ k64
-0
-k64 EQ l16
-0
-l16 EQ k64
-0
-k64 EQ l32
-0
-l32 EQ k64
-0
-k64 EQ l64
-0
-l64 EQ k64
-0
-k64 EQ l8
-0
-l8 EQ k64
-0
-k64 EQ m32
-0
-m32 EQ k64
-0
-k64 EQ m64
-0
-m64 EQ k64
-0
-k8 EQ g32
-0
-g32 EQ k8
-0
-k8 EQ g64
-0
-g64 EQ k8
-0
-k8 EQ j1
-0
-j1 EQ k8
-0
-k8 EQ j16
-0
-j16 EQ k8
-0
-k8 EQ j32
-0
-j32 EQ k8
-0
-k8 EQ j64
-0
-j64 EQ k8
-0
-k8 EQ j8
-0
-j8 EQ k8
-0
-k8 EQ l16
-0
-l16 EQ k8
-0
-k8 EQ l32
-0
-l32 EQ k8
-0
-k8 EQ l64
-0
-l64 EQ k8
-0
-k8 EQ l8
-0
-l8 EQ k8
-0
-k8 EQ m32
-0
-m32 EQ k8
-0
-k8 EQ m64
-0
-m64 EQ k8
-0
+f32 EQ g32 = 0
+g32 EQ f32 = 0
+f32 EQ g64 = 0
+g64 EQ f32 = 0
+f32 EQ j1 = 0
+j1 EQ f32 = 0
+f32 EQ j16 = 0
+j16 EQ f32 = 0
+f32 EQ j32 = 0
+j32 EQ f32 = 0
+f32 EQ j64 = 0
+j64 EQ f32 = 0
+f32 EQ j8 = 0
+j8 EQ f32 = 0
+f32 EQ l16 = 0
+l16 EQ f32 = 0
+f32 EQ l32 = 0
+l32 EQ f32 = 0
+f32 EQ l64 = 0
+l64 EQ f32 = 0
+f32 EQ l8 = 0
+l8 EQ f32 = 0
+f32 EQ m32 = 0
+m32 EQ f32 = 0
+f32 EQ m64 = 0
+m64 EQ f32 = 0
+f64 EQ g32 = 0
+g32 EQ f64 = 0
+f64 EQ g64 = 0
+g64 EQ f64 = 0
+f64 EQ j1 = 0
+j1 EQ f64 = 0
+f64 EQ j16 = 0
+j16 EQ f64 = 0
+f64 EQ j32 = 0
+j32 EQ f64 = 0
+f64 EQ j64 = 0
+j64 EQ f64 = 0
+f64 EQ j8 = 0
+j8 EQ f64 = 0
+f64 EQ l16 = 0
+l16 EQ f64 = 0
+f64 EQ l32 = 0
+l32 EQ f64 = 0
+f64 EQ l64 = 0
+l64 EQ f64 = 0
+f64 EQ l8 = 0
+l8 EQ f64 = 0
+f64 EQ m32 = 0
+m32 EQ f64 = 0
+f64 EQ m64 = 0
+m64 EQ f64 = 0
+h32 EQ g32 = 0
+g32 EQ h32 = 0
+h32 EQ g64 = 0
+g64 EQ h32 = 0
+h32 EQ j1 = 0
+j1 EQ h32 = 0
+h32 EQ j16 = 0
+j16 EQ h32 = 0
+h32 EQ j32 = 0
+j32 EQ h32 = 0
+h32 EQ j64 = 0
+j64 EQ h32 = 0
+h32 EQ j8 = 0
+j8 EQ h32 = 0
+h32 EQ l16 = 0
+l16 EQ h32 = 0
+h32 EQ l32 = 0
+l32 EQ h32 = 0
+h32 EQ l64 = 0
+l64 EQ h32 = 0
+h32 EQ l8 = 0
+l8 EQ h32 = 0
+h32 EQ m32 = 0
+m32 EQ h32 = 0
+h32 EQ m64 = 0
+m64 EQ h32 = 0
+h64 EQ g32 = 0
+g32 EQ h64 = 0
+h64 EQ g64 = 0
+g64 EQ h64 = 0
+h64 EQ j1 = 0
+j1 EQ h64 = 0
+h64 EQ j16 = 0
+j16 EQ h64 = 0
+h64 EQ j32 = 0
+j32 EQ h64 = 0
+h64 EQ j64 = 0
+j64 EQ h64 = 0
+h64 EQ j8 = 0
+j8 EQ h64 = 0
+h64 EQ l16 = 0
+l16 EQ h64 = 0
+h64 EQ l32 = 0
+l32 EQ h64 = 0
+h64 EQ l64 = 0
+l64 EQ h64 = 0
+h64 EQ l8 = 0
+l8 EQ h64 = 0
+h64 EQ m32 = 0
+m32 EQ h64 = 0
+h64 EQ m64 = 0
+m64 EQ h64 = 0
+i1 EQ g32 = 1
+g32 EQ i1 = 1
+i1 EQ g64 = 0
+g64 EQ i1 = 0
+i1 EQ j1 = 0
+j1 EQ i1 = 0
+i1 EQ j16 = 0
+j16 EQ i1 = 0
+i1 EQ j32 = 0
+j32 EQ i1 = 0
+i1 EQ j64 = 0
+j64 EQ i1 = 0
+i1 EQ j8 = 1
+j8 EQ i1 = 1
+i1 EQ l16 = 0
+l16 EQ i1 = 0
+i1 EQ l32 = 0
+l32 EQ i1 = 0
+i1 EQ l64 = 0
+l64 EQ i1 = 0
+i1 EQ l8 = 0
+l8 EQ i1 = 0
+i1 EQ m32 = 0
+m32 EQ i1 = 0
+i1 EQ m64 = 0
+m64 EQ i1 = 0
+i16 EQ g32 = 0
+g32 EQ i16 = 0
+i16 EQ g64 = 0
+g64 EQ i16 = 0
+i16 EQ j1 = 0
+j1 EQ i16 = 0
+i16 EQ j16 = 0
+j16 EQ i16 = 0
+i16 EQ j32 = 0
+j32 EQ i16 = 0
+i16 EQ j64 = 0
+j64 EQ i16 = 0
+i16 EQ j8 = 0
+j8 EQ i16 = 0
+i16 EQ l16 = 0
+l16 EQ i16 = 0
+i16 EQ l32 = 0
+l32 EQ i16 = 0
+i16 EQ l64 = 0
+l64 EQ i16 = 0
+i16 EQ l8 = 0
+l8 EQ i16 = 0
+i16 EQ m32 = 0
+m32 EQ i16 = 0
+i16 EQ m64 = 0
+m64 EQ i16 = 0
+i32 EQ g32 = 0
+g32 EQ i32 = 0
+i32 EQ g64 = 0
+g64 EQ i32 = 0
+i32 EQ j1 = 0
+j1 EQ i32 = 0
+i32 EQ j16 = 0
+j16 EQ i32 = 0
+i32 EQ j32 = 0
+j32 EQ i32 = 0
+i32 EQ j64 = 0
+j64 EQ i32 = 0
+i32 EQ j8 = 0
+j8 EQ i32 = 0
+i32 EQ l16 = 0
+l16 EQ i32 = 0
+i32 EQ l32 = 0
+l32 EQ i32 = 0
+i32 EQ l64 = 0
+l64 EQ i32 = 0
+i32 EQ l8 = 0
+l8 EQ i32 = 0
+i32 EQ m32 = 0
+m32 EQ i32 = 0
+i32 EQ m64 = 0
+m64 EQ i32 = 0
+i64 EQ g32 = 0
+g32 EQ i64 = 0
+i64 EQ g64 = 0
+g64 EQ i64 = 0
+i64 EQ j1 = 0
+j1 EQ i64 = 0
+i64 EQ j16 = 0
+j16 EQ i64 = 0
+i64 EQ j32 = 0
+j32 EQ i64 = 0
+i64 EQ j64 = 0
+j64 EQ i64 = 0
+i64 EQ j8 = 0
+j8 EQ i64 = 0
+i64 EQ l16 = 0
+l16 EQ i64 = 0
+i64 EQ l32 = 0
+l32 EQ i64 = 0
+i64 EQ l64 = 0
+l64 EQ i64 = 0
+i64 EQ l8 = 0
+l8 EQ i64 = 0
+i64 EQ m32 = 0
+m32 EQ i64 = 0
+i64 EQ m64 = 0
+m64 EQ i64 = 0
+i8 EQ g32 = 0
+g32 EQ i8 = 0
+i8 EQ g64 = 0
+g64 EQ i8 = 0
+i8 EQ j1 = 0
+j1 EQ i8 = 0
+i8 EQ j16 = 0
+j16 EQ i8 = 0
+i8 EQ j32 = 0
+j32 EQ i8 = 0
+i8 EQ j64 = 0
+j64 EQ i8 = 0
+i8 EQ j8 = 0
+j8 EQ i8 = 0
+i8 EQ l16 = 0
+l16 EQ i8 = 0
+i8 EQ l32 = 0
+l32 EQ i8 = 0
+i8 EQ l64 = 0
+l64 EQ i8 = 0
+i8 EQ l8 = 0
+l8 EQ i8 = 0
+i8 EQ m32 = 0
+m32 EQ i8 = 0
+i8 EQ m64 = 0
+m64 EQ i8 = 0
+k16 EQ g32 = 0
+g32 EQ k16 = 0
+k16 EQ g64 = 0
+g64 EQ k16 = 0
+k16 EQ j1 = 0
+j1 EQ k16 = 0
+k16 EQ j16 = 0
+j16 EQ k16 = 0
+k16 EQ j32 = 0
+j32 EQ k16 = 0
+k16 EQ j64 = 0
+j64 EQ k16 = 0
+k16 EQ j8 = 0
+j8 EQ k16 = 0
+k16 EQ l16 = 0
+l16 EQ k16 = 0
+k16 EQ l32 = 0
+l32 EQ k16 = 0
+k16 EQ l64 = 0
+l64 EQ k16 = 0
+k16 EQ l8 = 0
+l8 EQ k16 = 0
+k16 EQ m32 = 0
+m32 EQ k16 = 0
+k16 EQ m64 = 0
+m64 EQ k16 = 0
+k32 EQ g32 = 0
+g32 EQ k32 = 0
+k32 EQ g64 = 0
+g64 EQ k32 = 0
+k32 EQ j1 = 0
+j1 EQ k32 = 0
+k32 EQ j16 = 0
+j16 EQ k32 = 0
+k32 EQ j32 = 0
+j32 EQ k32 = 0
+k32 EQ j64 = 0
+j64 EQ k32 = 0
+k32 EQ j8 = 0
+j8 EQ k32 = 0
+k32 EQ l16 = 0
+l16 EQ k32 = 0
+k32 EQ l32 = 0
+l32 EQ k32 = 0
+k32 EQ l64 = 0
+l64 EQ k32 = 0
+k32 EQ l8 = 0
+l8 EQ k32 = 0
+k32 EQ m32 = 0
+m32 EQ k32 = 0
+k32 EQ m64 = 0
+m64 EQ k32 = 0
+k64 EQ g32 = 0
+g32 EQ k64 = 0
+k64 EQ g64 = 0
+g64 EQ k64 = 0
+k64 EQ j1 = 0
+j1 EQ k64 = 0
+k64 EQ j16 = 0
+j16 EQ k64 = 0
+k64 EQ j32 = 0
+j32 EQ k64 = 0
+k64 EQ j64 = 0
+j64 EQ k64 = 0
+k64 EQ j8 = 0
+j8 EQ k64 = 0
+k64 EQ l16 = 0
+l16 EQ k64 = 0
+k64 EQ l32 = 0
+l32 EQ k64 = 0
+k64 EQ l64 = 0
+l64 EQ k64 = 0
+k64 EQ l8 = 0
+l8 EQ k64 = 0
+k64 EQ m32 = 0
+m32 EQ k64 = 0
+k64 EQ m64 = 0
+m64 EQ k64 = 0
+k8 EQ g32 = 0
+g32 EQ k8 = 0
+k8 EQ g64 = 0
+g64 EQ k8 = 0
+k8 EQ j1 = 0
+j1 EQ k8 = 0
+k8 EQ j16 = 0
+j16 EQ k8 = 0
+k8 EQ j32 = 0
+j32 EQ k8 = 0
+k8 EQ j64 = 0
+j64 EQ k8 = 0
+k8 EQ j8 = 0
+j8 EQ k8 = 0
+k8 EQ l16 = 0
+l16 EQ k8 = 0
+k8 EQ l32 = 0
+l32 EQ k8 = 0
+k8 EQ l64 = 0
+l64 EQ k8 = 0
+k8 EQ l8 = 0
+l8 EQ k8 = 0
+k8 EQ m32 = 0
+m32 EQ k8 = 0
+k8 EQ m64 = 0
+m64 EQ k8 = 0

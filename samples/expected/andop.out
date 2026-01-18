@@ -1,50 +1,25 @@
-i1 AND j1
-0
-i1 AND j16
-0
-i1 AND j32
-0
-i1 AND j64
-0
-i1 AND j8
-1
-i16 AND j1
-0
-i16 AND j16
-96
-i16 AND j32
-768
-i16 AND j64
-0
-i16 AND j8
-0
-i32 AND j1
-0
-i32 AND j16
-32
-i32 AND j32
-1536
-i32 AND j64
-99328
-i32 AND j8
-0
-i64 AND j1
-0
-i64 AND j16
-0
-i64 AND j32
-8192
-i64 AND j64
-9663864832
-i64 AND j8
-0
-i8 AND j1
-0
-i8 AND j16
-0
-i8 AND j32
-0
-i8 AND j64
-0
-i8 AND j8
-0
+i1 AND j1 = 0
+i1 AND j16 = 0
+i1 AND j32 = 0
+i1 AND j64 = 0
+i1 AND j8 = 1
+i16 AND j1 = 0
+i16 AND j16 = 96
+i16 AND j32 = 768
+i16 AND j64 = 0
+i16 AND j8 = 0
+i32 AND j1 = 0
+i32 AND j16 = 32
+i32 AND j32 = 1536
+i32 AND j64 = 99328
+i32 AND j8 = 0
+i64 AND j1 = 0
+i64 AND j16 = 0
+i64 AND j32 = 8192
+i64 AND j64 = 9663864832
+i64 AND j8 = 0
+i8 AND j1 = 0
+i8 AND j16 = 0
+i8 AND j32 = 0
+i8 AND j64 = 0
+i8 AND j8 = 0

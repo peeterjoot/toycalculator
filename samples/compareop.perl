@@ -210,11 +210,13 @@ foreach my $v1 ( sort keys %v1 )
             $f = ( $b != $a ) ? 1 : 0;
         }
 
-        print $esilly "$v1 ${op} $v2\n$e\n";
-        print $silly "PRINT \"$v1 ${op} $v2\";\nb = $v1 ${op} $v2;\nPRINT b;\n";
+        print $esilly "$v1 ${op} $v2 = $e\n";
+        print $silly "b = $v1 ${op} $v2;\n" .
+                     "PRINT \"$v1 ${op} $v2 = \", b;\n";
 
-        print $esilly "$v2 ${op} $v1\n$f\n";
-        print $silly "PRINT \"$v2 ${op} $v1\";\nb = $v2 ${op} $v1;\nPRINT b;\n";
+        print $esilly "$v2 ${op} $v1 = $f\n";
+        print $silly "b = $v2 ${op} $v1;\n" .
+                     "PRINT \"$v2 ${op} $v1 = \", b;\n";
     }
 }
 
