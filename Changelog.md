@@ -263,6 +263,7 @@ we lower to:
       "silly.declare"(%c1_i64_6) <{type = i8}> {sym_name = "a"} : (i64) -> ()
 ```
   * Adjust bitwiseop.perl compareop.perl to use the new multi-argument PRINT support in all the generated tests.
+  * initializer-syntax now works all the way from grammar to lowering.  Documented it in the README.
 
 ## tag: V7 (Jan 4, 2025)
 
