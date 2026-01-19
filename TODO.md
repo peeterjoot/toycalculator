@@ -2,7 +2,6 @@
 
 ----------------------------------
 * Assignment like initialization syntax is not available for array variables.  That should trigger an error.
-* Initialization syntax is not implemented for strings (not even in the grammar.)
 
 ----------------------------------
 * Bugs:

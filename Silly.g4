@@ -97,7 +97,8 @@ floatDeclare
   ;
 
 stringDeclare
-  : STRING_TOKEN IDENTIFIER arrayBoundsExpression (EQUALS_TOKEN STRING_PATTERN)?
+  : STRING_TOKEN IDENTIFIER arrayBoundsExpression
+    ((EQUALS_TOKEN STRING_PATTERN) | (LEFT_CURLY_BRACKET_TOKEN STRING_PATTERN RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
 // A print statement that outputs a list of variables, literals, or expressions (e.g., 'PRINT x, y, z;'), followed by a (optional) newline.

@@ -1,0 +1,3 @@
+STRING s[5] {"hi"};
+
+PRINT s;

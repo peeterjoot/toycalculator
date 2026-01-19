@@ -264,6 +264,7 @@ we lower to:
 ```
   * Adjust bitwiseop.perl compareop.perl to use the new multi-argument PRINT support in all the generated tests.
   * initializer-syntax now works all the way from grammar to lowering.  Documented it in the README.
+  * Initialization syntax implemented for strings too.  test case: initstring.silly
 
 ## tag: V7 (Jan 4, 2025)
 

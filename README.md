@@ -251,6 +251,7 @@ Strings must be arrays (fixed-length).
 ```text
 STRING name[32];
 STRING hello[32] = "world";
+STRING foo[32] = "goo";
 ```
 
 ## Initialization
@@ -259,8 +260,7 @@ A C++ like uniform initialization syntax was illustrated in some of the declarat
 Some notes on this syntax:
 * Unlike C++, only literal values are allowed in initializer lists.
 * Variables that are not initialized are initialized with the specified `--init-fill` value, or the default (binary zero) fill value if `--init-fill` is not specified.
-* Assignment like initialization syntax is not available for array variables.
-* Initialization syntax is not available currently for STRING variables.
+* Arrays can be initialized with an initializer list, but not the original assignment syntax.
 
 ## Array Element Access
 

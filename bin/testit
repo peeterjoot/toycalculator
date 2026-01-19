@@ -168,6 +168,7 @@ init
 initarray
 initlist
 inits
+initstring
 intarray
 lessbug
 lessbug2
