@@ -250,7 +250,7 @@ namespace silly
 
             ssize_t remaining = numElements - initializers.size();
             mlir::Value fill{};
-            for ( ssize_t i = 0 ; i < remaining ; i++ )
+            for ( ssize_t i = 0; i < remaining; i++ )
             {
                 if ( i == 0 )
                 {
@@ -284,7 +284,7 @@ namespace silly
 
             ssize_t remaining = numElements - initializers.size();
             mlir::Value fill{};
-            for ( ssize_t i = 0 ; i < remaining ; i++ )
+            for ( ssize_t i = 0; i < remaining; i++ )
             {
                 if ( i == 0 )
                 {
@@ -322,7 +322,7 @@ namespace silly
 
             ssize_t remaining = numElements - initializers.size();
             mlir::Value fill{};
-            for ( ssize_t i = 0 ; i < remaining ; i++ )
+            for ( ssize_t i = 0; i < remaining; i++ )
             {
                 if ( i == 0 )
                 {
@@ -358,82 +358,18 @@ namespace silly
         builder.restoreInsertionPoint( savedIP );
     }
 
-    mlir::Value MLIRListener::buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode,
-                                                    tNode *floatNode,
-                                                    SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
-                                                    SillyParser::CallExpressionContext *callNode, tNode *stringNode,
-                                                    bool isPrint )
+    inline mlir::Value MLIRListener::parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx,
+                                                      mlir::Type opType )
     {
-        mlir::Value value{};
+        return parseOr( loc, ctx, opType );
+    }
 
-        if ( callNode )
-        {
-            value = handleCall( callNode );
-        }
-        else if ( booleanNode )
-        {
-            value = parseBoolean( loc, booleanNode->getText() );
-        }
-        else if ( integerNode )
-        {
-            value = parseInteger( loc, 64, integerNode->getText() );
-        }
-        else if ( floatNode )
-        {
-            value = parseFloat( loc, tyF64, floatNode->getText() );
-        }
-        else if ( scalarOrArrayElement )
-        {
-            tNode *variableNode = scalarOrArrayElement->IDENTIFIER();
-            assert( variableNode );
-            std::string varName = variableNode->getText();
+    inline mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
+                                                  mlir::Type opType )
+    {
+        assert( ctx && ctx->expression() );
 
-            silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
-
-            mlir::Type varType = declareOp.getTypeAttr().getValue();
-
-            mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
-
-            if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
-            {
-                value = parseRvalue( loc, indexExpr->rvalueExpression(), varType );
-
-                mlir::Value i = indexTypeCast( loc, value );
-
-                value = builder.create<silly::LoadOp>( loc, varType, symRef, i );
-            }
-            else
-            {
-                if ( isPrint && declareOp.getSizeAttr() )
-                {
-                    if ( mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( varType ) )
-                    {
-                        unsigned w = ity.getWidth();
-                        if ( w == 8 )
-                        {
-                            varType = tyPtr;
-                        }
-                    }
-                }
-                value = builder.create<silly::LoadOp>( loc, varType, symRef, mlir::Value{} );
-            }
-        }
-        else if ( stringNode )
-        {
-            std::string s = stripQuotes( loc, stringNode->getText() );
-
-            mlir::StringAttr strAttr = builder.getStringAttr( s );
-            silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
-
-            value = stringLiteral.getResult();
-        }
-        else
-        {
-            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                        std::format( "{}internal error: Invalid operand\n", formatLocation( loc ) ) );
-        }
-
-        return value;
+        return parseExpression( loc, ctx->expression(), opType );
     }
 
     void MLIRListener::syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
@@ -738,6 +674,7 @@ namespace silly
             for ( SillyParser::ParameterExpressionContext *e : params->parameterExpression() )
             {
                 SillyParser::RvalueExpressionContext *p = e->rvalueExpression();
+                assert( p );
                 std::string paramText = p->getText();
                 std::cout << std::format( "CALL function {}: param: {}\n", funcName, paramText );
 
@@ -932,113 +869,11 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    mlir::Value MLIRListener::parsePredicate( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue )
-    {
-        // booleanValue
-        //   : booleanElement | (binaryElement predicateOperator binaryElement)
-        //   ;
-
-        mlir::Value conditionPredicate{};
-
-        assert( booleanValue );
-        if ( SillyParser::BooleanElementContext *boolElement = booleanValue->booleanElement() )
-        {
-            SillyParser::BooleanLiteralContext *lit = boolElement->booleanLiteral();
-            conditionPredicate = buildUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
-                                                       /*lit ? lit->INTEGER_PATTERN() :*/ nullptr, nullptr,
-                                                       boolElement->scalarOrArrayElement(), nullptr, nullptr, false );
-        }
-        else
-        {
-            // binaryElement : numericLiteral | unaryOperator? IDENTIFIER
-
-            std::vector<SillyParser::BinaryElementContext *> operands = booleanValue->binaryElement();
-            if ( operands.size() == 2 )
-            {
-                mlir::Value lhsValue;
-                mlir::Value rhsValue;
-                SillyParser::BinaryElementContext *lhs = operands[0];
-                assert( lhs );
-                SillyParser::BinaryElementContext *rhs = operands[1];
-                assert( rhs );
-
-                SillyParser::NumericLiteralContext *llit = lhs->numericLiteral();
-                lhsValue = buildUnaryExpression( loc, nullptr,    // booleanNode
-                                                 llit ? llit->INTEGER_PATTERN() : nullptr,
-                                                 llit ? llit->FLOAT_PATTERN() : nullptr, lhs->scalarOrArrayElement(),
-                                                 nullptr, nullptr, false );
-
-                SillyParser::NumericLiteralContext *rlit = rhs->numericLiteral();
-                rhsValue = buildUnaryExpression( loc, nullptr,    // booleanNode
-                                                 rlit ? rlit->INTEGER_PATTERN() : nullptr,
-                                                 rlit ? rlit->FLOAT_PATTERN() : nullptr, rhs->scalarOrArrayElement(),
-                                                 nullptr, nullptr, false );
-
-                assert( booleanValue );
-                SillyParser::PredicateOperatorContext *op = booleanValue->predicateOperator();
-                assert( op );
-                if ( op->LESSTHAN_TOKEN() )
-                {
-                    conditionPredicate = builder.create<silly::LessOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
-                }
-                else if ( op->GREATERTHAN_TOKEN() )
-                {
-                    conditionPredicate = builder.create<silly::LessOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
-                }
-                else if ( op->LESSEQUAL_TOKEN() )
-                {
-                    conditionPredicate =
-                        builder.create<silly::LessEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
-                }
-                else if ( op->GREATEREQUAL_TOKEN() )
-                {
-                    conditionPredicate =
-                        builder.create<silly::LessEqualOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
-                }
-                else if ( op->EQUALITY_TOKEN() )
-                {
-                    conditionPredicate = builder.create<silly::EqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
-                }
-                else if ( op->NOTEQUAL_TOKEN() )
-                {
-                    conditionPredicate = builder.create<silly::NotEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
-                }
-                else
-                {
-                    throw ExceptionWithContext(
-                        __FILE__, __LINE__, __func__,
-                        std::format( "{}internal error: Unsupported binary operator in if condition.\n",
-                                     formatLocation( loc ) ) );
-                }
-            }
-            else
-            {
-                throw ExceptionWithContext(
-                    __FILE__, __LINE__, __func__,
-                    std::format( "{}internal error: Only binary operators supported in if condition (for now).\n",
-                                 formatLocation( loc ) ) );
-            }
-        }
-
-        LLVM_DEBUG( {
-            llvm::errs() << "Predicate:\n";
-            conditionPredicate.dump();
-        } );
-
-        // Ensure the predicate has type i1
-        if ( !conditionPredicate.getType().isInteger( 1 ) )
-        {
-            throw ExceptionWithContext(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: if condition must be i1\n", formatLocation( loc ) ) );
-        }
-
-        return conditionPredicate;
-    }
-
     void MLIRListener::createIf( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue, bool saveIP )
     {
-        mlir::Value conditionPredicate = parsePredicate( loc, booleanValue );
+        SillyParser::BoolAsExprContext *bc = dynamic_cast<SillyParser::BoolAsExprContext *>( booleanValue );
+
+        mlir::Value conditionPredicate = parseExpression( loc, bc->expression(), tyI1 );
 
         if ( saveIP )
         {
@@ -1542,154 +1377,577 @@ namespace silly
         return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
     }
 
-    mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
-                                           mlir::Type opType )
+    mlir::Value MLIRListener::parseOr( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
     {
-        mlir::Value resultValue;
-        mlir::Value lhsValue;
-        size_t bsz = ctx->binaryElement().size();
-        bool isPrint = ( opType == mlir::Type{} );
-
-        if ( bsz == 0 )
+        SillyParser::ExprLowestContext *expr = dynamic_cast<SillyParser::ExprLowestContext *>( ctx );
+        if ( !expr )
         {
-            SillyParser::LiteralContext *lit = ctx->literal();
-
-            mlir::Value lhsValue = buildUnaryExpression(
-                loc, lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
-                lit ? lit->FLOAT_PATTERN() : nullptr, ctx->scalarOrArrayElement(), ctx->callExpression(),
-                lit ? lit->STRING_PATTERN() : nullptr, isPrint );
-
-            resultValue = lhsValue;
-            if ( SillyParser::UnaryOperatorContext *unaryOp = ctx->unaryOperator() )
-            {
-                if ( isPrint )
-                {
-                    opType = lhsValue.getType();
-                }
-
-                std::string opText = unaryOp->getText();
-                if ( opText == "-" )
-                {
-                    silly::NegOp op = builder.create<silly::NegOp>( loc, opType, lhsValue );
-                    resultValue = op.getResult();
-                }
-                else if ( opText == "NOT" )
-                {
-                    mlir::arith::ConstantIntOp rhsValue = builder.create<mlir::arith::ConstantIntOp>( loc, 0, 64 );
-
-                    silly::EqualOp b = builder.create<silly::EqualOp>( loc, opType, lhsValue, rhsValue );
-                    resultValue = b.getResult();
-                }
-            }
+            throw ExceptionWithContext(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}internal error: unexpected ExpressionContext alternative: {}.\n", formatLocation( loc ),
+                             ctx->getText() ) );
         }
-        else
+
+        SillyParser::BinaryExpressionLowestContext *lowest = expr->binaryExpressionLowest();
+        assert( lowest );
+
+        SillyParser::OrExprContext *orCtx = dynamic_cast<SillyParser::OrExprContext *>( lowest );
+        if ( !orCtx )
         {
-            if ( bsz != 2 )
+            // No OR: just descend to the next level (XOR / single-term)
+            return parseXor( loc, lowest, opType );
+        }
+
+        // We have at least one OR
+        std::vector<SillyParser::BinaryExpressionOrContext *> orOperands = orCtx->binaryExpressionOr();
+
+        // First operand (no special case needed)
+        mlir::Value value = parseXor( loc, orOperands[0], opType );
+
+        for ( size_t i = 1; i < orOperands.size(); ++i )
+        {
+            mlir::Value rhs = parseXor( loc, orOperands[i], opType );
+
+            value = builder.create<silly::OrOp>( loc, opType, value, rhs ).getResult();
+        }
+
+        return value;
+    }
+
+    mlir::Value MLIRListener::parseXor( mlir::Location loc, antlr4::ParserRuleContext *ctx,
+                                        mlir::Type opType )
+    {
+        assert( ctx );
+
+        if ( SillyParser::XorExprContext *xorCtx = dynamic_cast<SillyParser::XorExprContext *>( ctx ) )
+        {
+            // Has XOR operator(s)
+            std::vector<SillyParser::BinaryExpressionXorContext *> xorOperands = xorCtx->binaryExpressionXor();
+
+            mlir::Value value = parseAnd( loc, xorOperands[0], opType );
+
+            for ( size_t i = 1; i < xorOperands.size(); ++i )
             {
-                throw ExceptionWithContext(
-                    __FILE__, __LINE__, __func__,
-                    std::format( "{}internal error: binaryElement size != 2\n", formatLocation( loc ) ) );
+                mlir::Value rhs = parseAnd( loc, xorOperands[i], opType );
+                value = builder.create<silly::XorOp>( loc, opType, value, rhs ).getResult();
             }
 
-            SillyParser::BinaryElementContext *lhs = ctx->binaryElement()[0];
-            assert( lhs );
-            SillyParser::BinaryElementContext *rhs = ctx->binaryElement()[1];
-            assert( rhs );
-            std::string opText = ctx->binaryOperator()->getText();
+            return value;
+        }
 
-            SillyParser::NumericLiteralContext *llit = lhs->numericLiteral();
-            lhsValue =
-                buildUnaryExpression( loc, nullptr,    // booleanNode
-                                      llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
-                                      lhs->scalarOrArrayElement(), lhs->callExpression(), nullptr, isPrint );
+        // No XOR: descend to AND level
+        return parseAnd( loc, ctx, opType );
+    }
 
-            mlir::Value rhsValue;
-            SillyParser::NumericLiteralContext *rlit = rhs->numericLiteral();
-            rhsValue =
-                buildUnaryExpression( loc, nullptr,    // booleanNode
-                                      rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
-                                      rhs->scalarOrArrayElement(), rhs->callExpression(), nullptr, isPrint );
+    mlir::Value MLIRListener::parseAnd( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
+    {
+        assert( ctx );
 
-            if ( isPrint )
+        // Check whether this context actually contains AND operators
+        SillyParser::AndExprContext *andCtx = dynamic_cast<SillyParser::AndExprContext *>( ctx );
+
+        if ( andCtx )
+        {
+            // We have one or more AND operators
+            std::vector<SillyParser::BinaryExpressionAndContext *> andOperands = andCtx->binaryExpressionAnd();
+
+            // First operand
+            mlir::Value value = parseEquality( loc, andOperands[0], opType );
+
+            // Fold the remaining ANDs (left associative)
+            for ( size_t i = 1; i < andOperands.size(); ++i )
             {
-                opType = biggestTypeOf( lhsValue.getType(), rhsValue.getType() );
+                mlir::Value rhs = parseEquality( loc, andOperands[i], opType );
+
+                value = builder.create<silly::AndOp>( loc, opType, value, rhs ).getResult();
             }
 
-            // Create the binary operator (supports +, -, *, /)
-            if ( opText == "+" )
+            return value;
+        }
+
+        // No AND operator: descend directly to the next level (equality)
+        return parseEquality( loc, ctx, opType );
+    }
+
+    mlir::Value MLIRListener::parseEquality( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
+    {
+        assert( ctx );
+        mlir::Value value{};
+
+        // Check if this is the concrete alternative that has EQ / NE operators
+        SillyParser::EqNeExprContext *eqNeCtx = dynamic_cast<SillyParser::EqNeExprContext *>( ctx );
+
+        if ( eqNeCtx )
+        {
+            // We have one or more EQ / NE operators
+            std::vector<SillyParser::BinaryExpressionCompareContext *> operands = eqNeCtx->binaryExpressionCompare();
+
+            // First (leftmost) operand
+            value = parseComparison( loc, operands[0], opType );
+
+            // Fold left-associatively
+            for ( size_t i = 1; i < operands.size(); ++i )
             {
-                silly::AddOp b = builder.create<silly::AddOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
+                mlir::Value rhs = parseComparison( loc, operands[i], opType );
+
+                // Determine which operator was used at position (i-1)
+                antlr4::tree::TerminalNode *opToken = nullptr;
+                std::string opText;
+
+                if ( i - 1 < eqNeCtx->EQUALITY_TOKEN().size() )
+                {
+                    opToken = eqNeCtx->EQUALITY_TOKEN( i - 1 );
+                    opText = "EQ";
+                }
+                else if ( i - 1 < eqNeCtx->NOTEQUAL_TOKEN().size() )
+                {
+                    opToken = eqNeCtx->NOTEQUAL_TOKEN( i - 1 );
+                    opText = "NE";
+                }
+
+                if ( !opToken )
+                {
+                    throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                                std::format( "{}internal error: missing EQ or NE token at index {}\n",
+                                                             formatLocation( loc ), i - 1 ) );
+                }
+
+                mlir::Value equalityResult;
+
+                if ( opText == "EQ" )
+                {
+                    equalityResult = builder.create<silly::EqualOp>( loc, tyI1, value, rhs ).getResult();
+                }
+                else if ( opText == "NE" )
+                {
+                    equalityResult = builder.create<silly::NotEqualOp>( loc, tyI1, value, rhs ).getResult();
+                }
+                else
+                {
+                    throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                                std::format( "{}internal error: unexpected equality operator: {}\n",
+                                                             formatLocation( loc ), opText ) );
+                }
+
+                value = equalityResult;
             }
-            else if ( opText == "-" )
+
+            return value;
+        }
+
+        // No EQ or NE operators: descend directly to comparison level
+        SillyParser::BinaryExpressionCompareContext *single =
+            ctx->getRuleContext<SillyParser::BinaryExpressionCompareContext>( 0 );
+        assert( single );
+        return parseComparison( loc, single, opType );
+    }
+
+    mlir::Value MLIRListener::parseComparison( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
+    {
+        assert( ctx );
+        mlir::Value value{};
+
+        // Check if this context actually contains comparison operators
+        // (the # compareExpr alternative has the repetition)
+        SillyParser::CompareExprContext *compareCtx = dynamic_cast<SillyParser::CompareExprContext *>( ctx );
+
+        if ( compareCtx )
+        {
+            // We have one or more comparison operators
+            std::vector<SillyParser::BinaryExpressionAddSubContext *> operands = compareCtx->binaryExpressionAddSub();
+
+            // First (leftmost) operand
+            value = parseAdditive( loc, operands[0], opType );
+
+            // Fold left-associatively (though chained comparisons are rare in practice)
+            for ( size_t i = 1; i < operands.size(); ++i )
             {
-                silly::SubOp b = builder.create<silly::SubOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
+                mlir::Value rhs = parseAdditive( loc, operands[i], opType );
+
+                // Determine which operator was used at position (i-1)
+                antlr4::tree::TerminalNode *opToken = nullptr;
+                std::string opText;
+
+                if ( i - 1 < compareCtx->LESSTHAN_TOKEN().size() )
+                {
+                    opToken = compareCtx->LESSTHAN_TOKEN( i - 1 );
+                    opText = "<";
+                }
+                else if ( i - 1 < compareCtx->GREATERTHAN_TOKEN().size() )
+                {
+                    opToken = compareCtx->GREATERTHAN_TOKEN( i - 1 );
+                    opText = ">";
+                }
+                else if ( i - 1 < compareCtx->LESSEQUAL_TOKEN().size() )
+                {
+                    opToken = compareCtx->LESSEQUAL_TOKEN( i - 1 );
+                    opText = "<=";
+                }
+                else if ( i - 1 < compareCtx->GREATEREQUAL_TOKEN().size() )
+                {
+                    opToken = compareCtx->GREATEREQUAL_TOKEN( i - 1 );
+                    opText = ">=";
+                }
+
+                if ( !opToken )
+                {
+                    throw ExceptionWithContext(
+                        __FILE__, __LINE__, __func__,
+                        std::format( "{}internal error: missing comparison operator at index {}\n",
+                                     formatLocation( loc ), i - 1 ) );
+                }
+
+                if ( opText == "<" )
+                {
+                    value = builder.create<silly::LessOp>( loc, tyI1, value, rhs ).getResult();
+                }
+                else if ( opText == ">" )
+                {
+                    value = builder.create<silly::LessOp>( loc, tyI1, rhs, value ).getResult();
+                }
+                else if ( opText == "<=" )
+                {
+                    value = builder.create<silly::LessEqualOp>( loc, tyI1, value, rhs ).getResult();
+                }
+                else if ( opText == ">=" )
+                {
+                    value = builder.create<silly::LessEqualOp>( loc, tyI1, rhs, value ).getResult();
+                }
+                else
+                {
+                    throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                                std::format( "{}internal error: unexpected comparison operator: {}\n",
+                                                             formatLocation( loc ), opText ) );
+                }
             }
-            else if ( opText == "*" )
+
+            return value;
+        }
+
+        // No comparison operators : descend directly to additive level
+        SillyParser::BinaryExpressionAddSubContext *single =
+            ctx->getRuleContext<SillyParser::BinaryExpressionAddSubContext>( 0 );
+        assert( single );
+        return parseAdditive( loc, single, opType );
+    }
+
+    inline SillyParser::BinaryExpressionMulDivContext *getSingleMulDiv( antlr4::ParserRuleContext *ctx )
+    {
+        SillyParser::BinaryExpressionAddSubContext *addSub =
+            dynamic_cast<SillyParser::BinaryExpressionAddSubContext *>( ctx );
+        assert( addSub->children.size() == 1 );
+        return dynamic_cast<SillyParser::BinaryExpressionMulDivContext *>( addSub->children[0] );
+    }
+
+    mlir::Value MLIRListener::parseAdditive( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
+    {
+        assert( ctx );
+        mlir::Value value{};
+
+        // Check if this context actually contains + or - operators
+        // (AddSubExprContext is the alternative that has the repetition)
+        SillyParser::AddSubExprContext *addSubCtx = dynamic_cast<SillyParser::AddSubExprContext *>( ctx );
+
+        if ( addSubCtx )
+        {
+            // We have one or more + or - operators
+            std::vector<SillyParser::BinaryExpressionMulDivContext *> operands = addSubCtx->binaryExpressionMulDiv();
+
+            // First operand
+            value = parseMultiplicative( loc, operands[0], opType );
+
+            // Fold the remaining additions/subtractions left-associatively
+            for ( size_t i = 1; i < operands.size(); ++i )
             {
-                silly::MulOp b = builder.create<silly::MulOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
+                mlir::Value rhs = parseMultiplicative( loc, operands[i], opType );
+
+                // Determine operator from the token at position (i-1)
+                antlr4::tree::TerminalNode *opToken = nullptr;
+                if ( i - 1 < addSubCtx->PLUSCHAR_TOKEN().size() )
+                {
+                    opToken = addSubCtx->PLUSCHAR_TOKEN( i - 1 );
+                }
+                else if ( i - 1 < addSubCtx->MINUS_TOKEN().size() )
+                {
+                    opToken = addSubCtx->MINUS_TOKEN( i - 1 );
+                }
+
+                if ( !opToken )
+                {
+                    throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                                std::format( "{}internal error: missing + or - operator at index {}\n",
+                                                             formatLocation( loc ), i - 1 ) );
+                }
+
+                std::string opText = opToken->getText();
+
+                if ( !opType )
+                {
+                    opType = biggestTypeOf( value.getType(), rhs.getType() );
+                }
+
+                if ( opText == "+" )
+                {
+                    value = builder.create<silly::AddOp>( loc, opType, value, rhs ).getResult();
+                }
+                else if ( opText == "-" )
+                {
+                    value = builder.create<silly::SubOp>( loc, opType, value, rhs ).getResult();
+                }
+                else
+                {
+                    throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                                std::format( "{}internal error: unexpected additive operator: {}\n",
+                                                             formatLocation( loc ), opText ) );
+                }
             }
-            else if ( opText == "/" )
+
+            return value;
+        }
+        // Descend directly to multiplicative level if no +-
+        SillyParser::BinaryExpressionMulDivContext *single = getSingleMulDiv( ctx );
+        assert( single );
+        return parseMultiplicative( loc, single, opType );
+    }
+
+    inline SillyParser::UnaryExpressionContext *getSingleUnary( antlr4::ParserRuleContext *ctx )
+    {
+        SillyParser::BinaryExpressionMulDivContext *mulDiv =
+            dynamic_cast<SillyParser::BinaryExpressionMulDivContext *>( ctx );
+        assert( mulDiv->children.size() == 1 );
+        return dynamic_cast<SillyParser::UnaryExpressionContext *>( mulDiv->children[0] );
+    }
+
+    mlir::Value MLIRListener::parseMultiplicative( mlir::Location loc, antlr4::ParserRuleContext *ctx,
+                                                   mlir::Type opType )
+    {
+        assert( ctx );
+        mlir::Value value{};
+
+        // Check whether this context actually contains * or / operators
+        // (MulDivExprContext is the alternative that has the repetition)
+        SillyParser::MulDivExprContext *mulDivCtx = dynamic_cast<SillyParser::MulDivExprContext *>( ctx );
+
+        if ( mulDivCtx )
+        {
+            // We have one or more * or / operators
+            std::vector<SillyParser::UnaryExpressionContext *> operands = mulDivCtx->unaryExpression();
+
+            // First operand
+            value = parseUnary( loc, operands[0], opType );
+
+            // Fold the remaining multiplications/divisions left-associatively
+            for ( size_t i = 1; i < operands.size(); ++i )
             {
-                silly::DivOp b = builder.create<silly::DivOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
+                mlir::Value rhs = parseUnary( loc, operands[i], opType );
+
+                // Determine operator from the token at position (i-1)
+                antlr4::tree::TerminalNode *opToken = nullptr;
+                if ( ( i - 1 ) < mulDivCtx->TIMES_TOKEN().size() )
+                {
+                    opToken = mulDivCtx->TIMES_TOKEN( i - 1 );
+                }
+                else if ( ( i - 1 ) < mulDivCtx->DIV_TOKEN().size() )
+                {
+                    opToken = mulDivCtx->DIV_TOKEN( i - 1 );
+                }
+
+                if ( !opToken )
+                {
+                    throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                                std::format( "{}internal error: missing * or / operator at index {}\n",
+                                                             formatLocation( loc ), i - 1 ) );
+                }
+
+                std::string opText = opToken->getText();
+
+                if ( !opType )
+                {
+                    opType = biggestTypeOf( value.getType(), rhs.getType() );
+                }
+
+                if ( opText == "*" )
+                {
+                    value = builder.create<silly::MulOp>( loc, opType, value, rhs ).getResult();
+                }
+                else if ( opText == "/" )
+                {
+                    value = builder.create<silly::DivOp>( loc, opType, value, rhs ).getResult();
+                }
+                else
+                {
+                    throw ExceptionWithContext(
+                        __FILE__, __LINE__, __func__,
+                        std::format( "{}internal error: unexpected multiplicative operator: {}\n",
+                                     formatLocation( loc ), opText ) );
+                }
             }
-            else if ( opText == "<" )
+
+            return value;
+        }
+
+        // Descend directly to unary level if no * or /
+        SillyParser::UnaryExpressionContext *single = getSingleUnary( ctx );
+        assert( single );
+        return parseUnary( loc, single, opType );
+    }
+
+    mlir::Value MLIRListener::parseUnary( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
+    {
+        assert( ctx );
+        mlir::Value value{};
+
+        if ( SillyParser::UnaryOpContext *unaryOpCtx = dynamic_cast<SillyParser::UnaryOpContext *>( ctx ) )
+        {
+            // Case 1: unary operator applied to another unary expression (# unaryOp)
+            SillyParser::UnaryOperatorContext *unaryOp = unaryOpCtx->unaryOperator();
+            assert( unaryOp );
+
+            // Recurse to the inner unary expression
+            value = parseUnary( loc, unaryOpCtx->unaryExpression(), opType );
+
+            std::string opText = unaryOp->getText();
+
+            if ( opText == "-" )
             {
-                silly::LessOp b = builder.create<silly::LessOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
+                // Negation
+                value = builder.create<silly::NegOp>( loc, value.getType(), value ).getResult();
             }
-            else if ( opText == ">" )
+            else if ( opText == "+" )
             {
-                silly::LessOp b = builder.create<silly::LessOp>( loc, opType, rhsValue, lhsValue );
-                resultValue = b.getResult();
+                // Unary plus: identity (no-op)
             }
-            else if ( opText == "<=" )
+            else if ( opText == "NOT" )
             {
-                silly::LessEqualOp b = builder.create<silly::LessEqualOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == ">=" )
-            {
-                silly::LessEqualOp b = builder.create<silly::LessEqualOp>( loc, opType, rhsValue, lhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == "EQ" )
-            {
-                silly::EqualOp b = builder.create<silly::EqualOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == "NE" )
-            {
-                silly::NotEqualOp b = builder.create<silly::NotEqualOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == "AND" )
-            {
-                silly::AndOp b = builder.create<silly::AndOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == "OR" )
-            {
-                silly::OrOp b = builder.create<silly::OrOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == "XOR" )
-            {
-                silly::XorOp b = builder.create<silly::XorOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
+                // NOT x: (x == 0)
+                mlir::Value zero =
+                    builder.create<mlir::arith::ConstantIntOp>( loc, 0, value.getType().getIntOrFloatBitWidth() );
+                value = builder.create<silly::EqualOp>( loc, tyI1, value, zero ).getResult();
             }
             else
             {
                 throw ExceptionWithContext(
                     __FILE__, __LINE__, __func__,
-                    std::format( "{}internal error: Invalid binary operator {}\n", formatLocation( loc ), opText ) );
+                    std::format( "{}internal error: unknown unary operator: {}\n", formatLocation( loc ), opText ) );
             }
         }
+        else if ( SillyParser::PrimaryContext *primaryCtx = dynamic_cast<SillyParser::PrimaryContext *>( ctx ) )
+        {
+            // Case 2: no unary operator, just a primary (# primary)
+            value = parsePrimary( loc, primaryCtx->primaryExpression(), opType );
+        }
+        else
+        {
+            throw ExceptionWithContext(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}internal error: unknown unary context: {}\n", formatLocation( loc ), ctx->getText() ) );
+        }
 
-        return resultValue;
+        assert( value );
+        return value;
+    }
+
+    mlir::Value MLIRListener::parsePrimary( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
+    {
+        assert( ctx );
+        mlir::Value value{};
+
+        bool deduceTypeFromOperands = ( opType == mlir::Type{} );
+
+        if ( SillyParser::LitPrimaryContext *litCtx = dynamic_cast<SillyParser::LitPrimaryContext *>( ctx ) )
+        {
+            // Literal case (# litPrimary)
+            SillyParser::LiteralContext *lit = litCtx->literal();
+            assert( lit );
+
+            if ( tNode *booleanNode = lit->BOOLEAN_PATTERN() )
+            {
+                value = parseBoolean( loc, booleanNode->getText() );
+            }
+            else if ( tNode *integerNode = lit->INTEGER_PATTERN() )
+            {
+                value = parseInteger( loc, 64, integerNode->getText() );
+            }
+            else if ( tNode *floatNode = lit->FLOAT_PATTERN() )
+            {
+                value = parseFloat( loc, tyF64, floatNode->getText() );
+            }
+            else if ( tNode *stringNode = lit->STRING_PATTERN() )
+            {
+                std::string s = stripQuotes( loc, stringNode->getText() );
+
+                mlir::StringAttr strAttr = builder.getStringAttr( s );
+                silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
+
+                value = stringLiteral.getResult();
+            }
+            else
+            {
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                            std::format( "{}internal error: unknown literal type in primary: {}.\n",
+                                                         formatLocation( loc ), ctx->getText() ) );
+            }
+        }
+        else if ( SillyParser::VarPrimaryContext *varCtx = dynamic_cast<SillyParser::VarPrimaryContext *>( ctx ) )
+        {
+            // Variable / array element (# varPrimary)
+            SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = varCtx->scalarOrArrayElement();
+            assert( scalarOrArrayElement );
+
+            tNode *variableNode = scalarOrArrayElement->IDENTIFIER();
+            assert( variableNode );
+            std::string varName = variableNode->getText();
+
+            silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+
+            mlir::Type varType = declareOp.getTypeAttr().getValue();
+
+            mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+
+            if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
+            {
+                value = parseRvalue( loc, indexExpr->rvalueExpression(), varType );
+
+                mlir::Value i = indexTypeCast( loc, value );
+
+                value = builder.create<silly::LoadOp>( loc, varType, symRef, i );
+            }
+            else
+            {
+                if ( deduceTypeFromOperands && declareOp.getSizeAttr() )    // PRINT.
+                {
+                    if ( mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( varType ) )
+                    {
+                        unsigned w = ity.getWidth();
+                        if ( w == 8 )
+                        {
+                            varType = tyPtr;
+                        }
+                    }
+                }
+
+                value = builder.create<silly::LoadOp>( loc, varType, symRef, mlir::Value{} );
+            }
+        }
+        else if ( SillyParser::CallPrimaryContext *callCtx = dynamic_cast<SillyParser::CallPrimaryContext *>( ctx ) )
+        {
+            // Function call (# callPrimary)
+            value = handleCall( callCtx->callExpression() );
+        }
+        else if ( SillyParser::ParenExprContext *parenCtx = dynamic_cast<SillyParser::ParenExprContext *>( ctx ) )
+        {
+            // Parenthesized expression (# parenExpr)
+            value = parseOr( loc, parenCtx->expression(), opType );    // lowest.
+        }
+        else
+        {
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "{}internal error: unknown primary expression: {}.\n",
+                                                     formatLocation( loc ), ctx->getText() ) );
+        }
+
+        assert( value );
+        return value;
     }
 }    // namespace silly
 

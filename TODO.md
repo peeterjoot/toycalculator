@@ -1,11 +1,10 @@
 ## TODO
 
 ----------------------------------
-* Assignment like initialization syntax is not available for array variables.  That should trigger an error.
+* need lots of test for the new complex expressions support.
 
 ----------------------------------
 * Bugs:
-  - Removing varstates breaks: `error_redeclare`.  This should still be an error.
   - `error_intarray_bad_constaccess.silly` should fail but doesn't.
   - Have ABORT builtin now to implement failure codepath for runtime array range checking.  Could also use this for assignment to bool from source value > 1.
   - line stepping over a multi-argument print statement is getting a new line entry for each individual runtime call:
@@ -72,10 +71,10 @@ c[1] = 0 ( = 2 * 0 )
 
 ----------------------------------
 * Expressions:
-  - Get rid of CALL and support calls in binary expressions: r = v * foo()?
-  - Implement more complex expressions (chains of operators...)
+  - Assignment like initialization syntax is not available for array variables.  That should trigger an error.
+  - Maybe: Get rid of CALL and support calls in binary expressions: r = v * foo().
   - Expressions that aren't parsed properly (like `CALL factorial(v - 1)` used to) lead to mysterious seeming parse error: Should do better.
-  - Review the parser... any other places where buildUnary is called that ought to be parseRvalue?
+  - Review the parser... any other places where buildUnary is called that ought to be parseRvalue? -- many of those now dealt with.
   - declaration scope is weird, persisting beyond the declaring block (see: scopebug.silly and the README)
   - NOT should be allowed for boolean expressions in IF/ELIF predicates.
   - no test case for CALL in booleanExpression

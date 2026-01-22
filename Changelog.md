@@ -265,6 +265,17 @@ we lower to:
   * Adjust bitwiseop.perl compareop.perl to use the new multi-argument PRINT support in all the generated tests.
   * initializer-syntax now works all the way from grammar to lowering.  Documented it in the README.
   * Initialization syntax implemented for strings too.  test case: initstring.silly
+  * (branch peeter/old/complex-expressions -- squashed and cherry-picked to master).  Implemented more complex expressions (chains of operators...).  Examples:
+
+```
+DCL x;
+x = 5 + 3 * 2;
+PRINT x;
+PRINT 1 + 2 * (3 - 4);  // -1
+PRINT - - 5;            // 5
+PRINT NOT TRUE;         // 0 (FALSE)
+PRINT (10 < 20) EQ 1;   // 1 (TRUE)
+```
 
 ## tag: V7 (Jan 4, 2025)
 
