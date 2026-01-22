@@ -57,10 +57,9 @@ function
     RIGHT_CURLY_BRACKET_TOKEN
   ;
 
+// note: '# boolAsExpr' is not a second comment style, but an ANTLR4 directive.
 booleanValue
-  : booleanElement
-  | (binaryElement predicateOperator binaryElement)
-  | callExpression
+  : expression                                                    # boolAsExpr
   ;
 
 // A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').  These are currently implicitly double.
@@ -182,15 +181,6 @@ parameterExpression
   : rvalueExpression
   ;
 
-binaryElement
-  : numericLiteral
-  | unaryOperator? (scalarOrArrayElement | callExpression)
-  ;
-
-booleanElement
-  : booleanLiteral | scalarOrArrayElement
-  ;
-
 scalarOrArrayElement
   : IDENTIFIER (indexExpression)?
   ;
@@ -199,12 +189,57 @@ indexExpression
   : ARRAY_START_TOKEN rvalueExpression ARRAY_END_TOKEN
   ;
 
-// The right-hand side of an assignment or a parameter, either a binary or unary expression.
+// ─────────────────────────────────────────────────────────────
+//   New expression hierarchy — add / replace in parser rules
+// ─────────────────────────────────────────────────────────────
+
 rvalueExpression
-  : literal
-  | unaryOperator? (scalarOrArrayElement | callExpression)
-  | binaryElement binaryOperator binaryElement
-  ;
+    : expression
+    ;
+
+expression
+    : binaryExpressionLowest                      # exprLowest
+    ;
+
+binaryExpressionLowest
+    : binaryExpressionOr (BOOLEANOR_TOKEN binaryExpressionOr)*     # orExpr
+    ;
+
+binaryExpressionOr
+    : binaryExpressionAnd (BOOLEANAND_TOKEN binaryExpressionAnd)*  # andExpr
+    ;
+
+binaryExpressionAnd
+    : binaryExpressionCompare ( (EQUALITY_TOKEN | NOTEQUAL_TOKEN) binaryExpressionCompare )*   # eqNeExpr
+    ;
+
+binaryExpressionCompare
+    : binaryExpressionAddSub
+      ( (LESSTHAN_TOKEN | LESSEQUAL_TOKEN | GREATERTHAN_TOKEN | GREATEREQUAL_TOKEN)
+        binaryExpressionAddSub )*                                      # compareExpr
+    ;
+
+binaryExpressionAddSub
+    : binaryExpressionMulDiv
+      ( (PLUSCHAR_TOKEN | MINUS_TOKEN) binaryExpressionMulDiv )*      # addSubExpr
+    ;
+
+binaryExpressionMulDiv
+    : unaryExpression
+      ( (TIMES_TOKEN | DIV_TOKEN) unaryExpression )*                  # mulDivExpr
+    ;
+
+unaryExpression
+    : unaryOperator unaryExpression                                 # unaryOp
+    | primaryExpression                                             # primary
+    ;
+
+primaryExpression
+    : literal                                                       # litPrimary
+    | scalarOrArrayElement                                          # varPrimary
+    | callExpression                                                # callPrimary
+    | BRACE_START_TOKEN expression BRACE_END_TOKEN                  # parenExpr
+    ;
 
 // A single-line comment
 comment
