@@ -358,6 +358,15 @@ namespace silly
         builder.restoreInsertionPoint( savedIP );
     }
 
+    inline mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
+                                           mlir::Type opType )
+    {
+        assert( ctx && ctx->expression() );
+
+        return parseLogicalOr( loc, ctx->expression(), opType );
+    }
+
+    // FIXME: probably won't need this when the rework is done.
     mlir::Value MLIRListener::buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode,
                                                     tNode *floatNode,
                                                     SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
@@ -1546,12 +1555,10 @@ namespace silly
         return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
     }
 
-    mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
-                                           mlir::Type opType )
+    mlir::Value MLIRListener::parseLogicalOr( mlir::Location loc, SillyParser::ExpressionContext *ctx,
+                                              mlir::Type opType )
     {
-        assert( ctx && ctx->expression() );
-
-        SillyParser::ExprLowestContext *expr = dynamic_cast<SillyParser::ExprLowestContext *>( ctx->expression() );
+        SillyParser::ExprLowestContext *expr = dynamic_cast<SillyParser::ExprLowestContext *>( ctx );
         if ( !expr )
         {
             llvm_unreachable( "unexpected ExpressionContext alternative" );
@@ -1559,6 +1566,7 @@ namespace silly
 
         SillyParser::BinaryExpressionLowestContext *lowest = expr->binaryExpressionLowest();
         assert( lowest );
+
         SillyParser::OrExprContext *orCtx = dynamic_cast<SillyParser::OrExprContext *>( lowest );
         if ( !orCtx )
         {
@@ -1567,14 +1575,16 @@ namespace silly
         }
 
         // We have at least one OR
-        std::vector<SillyParser::BinaryExpressionOrContext *> orExpressions = orCtx->binaryExpressionOr();
-        mlir::Value result =
-            parseBinaryAnd( loc, dynamic_cast<SillyParser::BinaryExpressionAndContext *>( orExpressions[0] ), tyI1 );
+        std::vector<SillyParser::BinaryExpressionOrContext *> orOperands = orCtx->binaryExpressionOr();
 
-        for ( size_t i = 1; i < orExpressions.size(); ++i )
+        // First operand (no special case needed)
+        mlir::Value result =
+            parseBinaryAnd( loc, dynamic_cast<SillyParser::BinaryExpressionAndContext *>( orOperands[0] ), tyI1 );
+
+        for ( size_t i = 1; i < orOperands.size(); ++i )
         {
             mlir::Value rhs = parseBinaryAnd(
-                loc, dynamic_cast<SillyParser::BinaryExpressionAndContext *>( orExpressions[i] ), tyI1 );
+                loc, dynamic_cast<SillyParser::BinaryExpressionAndContext *>( orOperands[i] ), tyI1 );
 
             result = builder.create<silly::OrOp>( loc, tyI1, result, rhs ).getResult();
         }
@@ -1586,7 +1596,41 @@ namespace silly
                                               mlir::Type opType )
     {
         assert( ctx );
-        llvm_unreachable( "parseBinaryOr: NYI" );
+
+        // Check whether this context actually contains AND operators
+        SillyParser::AndExprContext *andCtx = dynamic_cast<SillyParser::AndExprContext *>( ctx );
+
+        if ( !andCtx )
+        {
+            // No AND operator → descend directly to the next level (equality)
+            return parseEquality( loc, dynamic_cast<SillyParser::BinaryExpressionCompareContext *>( ctx ),
+                                  opType );
+        }
+
+        // We have one or more AND operators
+        std::vector<SillyParser::BinaryExpressionAndContext *> andOperands = andCtx->binaryExpressionAnd();
+
+        // First operand
+        mlir::Value result =
+            parseEquality( loc, dynamic_cast<SillyParser::BinaryExpressionCompareContext *>( andOperands[0] ), tyI1 );
+
+        // Fold the remaining ANDs (left associative)
+        for ( size_t i = 1; i < andOperands.size(); ++i )
+        {
+            mlir::Value rhs = parseEquality(
+                loc, dynamic_cast<SillyParser::BinaryExpressionCompareContext *>( andOperands[i] ), tyI1 );
+
+            result = builder.create<silly::AndOp>( loc, tyI1, result, rhs ).getResult();
+        }
+
+        return castOpIfRequired( loc, result, opType );
+    }
+
+    mlir::Value MLIRListener::parseEquality( mlir::Location loc, SillyParser::BinaryExpressionCompareContext *ctx,
+                                             mlir::Type opType )
+    {
+        assert( ctx );
+        llvm_unreachable( "parseEquality: NYI" );
         return nullptr;
     }
 
