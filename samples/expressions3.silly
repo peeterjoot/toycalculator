@@ -1,0 +1,35 @@
+// expressions3.silly
+// Test file covering a range of expression complexity, operators, and precedence.
+// Expected outputs are commented next to each PRINT statement.
+// Assumes PRINT outputs the computed value correctly (integers as int, floats as float, bool as 0/1).
+
+// Basic variables for testing
+INT64 a = 5;
+INT64 b = 3;
+FLOAT64 c = 2.5;
+BOOL trueVal = TRUE;
+BOOL falseVal = FALSE;
+
+// 1. Basic arithmetic with precedence (mul/div before add/sub)
+PRINT 1 + 2 * 3; // Expected: 7
+PRINT 10 / 2 - 1; // Expected: 4
+PRINT (1 + 2) * 3; // Expected: 9 (parens override precedence)
+PRINT 8 - 4 / 2; // Expected: 6
+
+// 2. Unary operators
+PRINT -a; // Expected: -5
+PRINT +b; // Expected: 3
+PRINT NOT trueVal; // Expected: 0 (FALSE)
+PRINT NOT falseVal; // Expected: 1 (TRUE)
+PRINT - -a; // Expected: 5 (unary chaining, right-associative)
+PRINT NOT NOT trueVal; // Expected: 1 (TRUE)
+
+// 3. Comparisons
+PRINT a < b; // Expected: 0 (FALSE)
+PRINT a > b; // Expected: 1 (TRUE)
+PRINT a <= 5; // Expected: 1 (TRUE)
+PRINT b >= 4; // Expected: 0 (FALSE)
+PRINT a EQ 5; // Expected: 1 (TRUE)
+PRINT "a = ", a, ", b = ", b, ", a NE b = ", a NE b; // Expected: 1 (TRUE)
+
+PRINT "DONE";

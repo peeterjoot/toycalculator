@@ -1,0 +1,12 @@
+// minimal broken example of expressions4.silly failure.
+PRINT TRUE AND FALSE; // Expected: 0
+PRINT FALSE AND TRUE; // Expected: 0
+PRINT TRUE AND TRUE; // Expected: 1
+PRINT FALSE AND FALSE; // Expected: 0
+
+BOOL trueVal = TRUE;
+BOOL falseVal = FALSE;
+PRINT trueVal AND falseVal; // Expected: 0
+PRINT falseVal AND trueVal; // Expected: 0
+PRINT trueVal AND trueVal; // Expected: 1
+PRINT falseVal AND falseVal; // Expected: 0

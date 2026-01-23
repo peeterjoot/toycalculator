@@ -2,6 +2,7 @@
 
 ----------------------------------
 * need lots of test for the new complex expressions support.
+* grammar probably allows for function declared in a function.  prohibit that or at least test for it?
 
 ----------------------------------
 * Bugs:

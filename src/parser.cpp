@@ -1403,12 +1403,18 @@ namespace silly
 
         // First operand (no special case needed)
         mlir::Value value = parseXor( loc, orOperands[0], opType );
+        mlir::Type orType = opType;
+
+        if ( !orType )
+        {
+            orType = tyI1;
+        }
 
         for ( size_t i = 1; i < orOperands.size(); ++i )
         {
             mlir::Value rhs = parseXor( loc, orOperands[i], opType );
 
-            value = builder.create<silly::OrOp>( loc, opType, value, rhs ).getResult();
+            value = builder.create<silly::OrOp>( loc, orType, value, rhs ).getResult();
         }
 
         return value;
@@ -1420,6 +1426,13 @@ namespace silly
 
         if ( SillyParser::XorExprContext *xorCtx = dynamic_cast<SillyParser::XorExprContext *>( ctx ) )
         {
+            mlir::Type xorType = opType;
+
+            if ( !xorType )
+            {
+                xorType = tyI1;
+            }
+
             // Has XOR operator(s)
             std::vector<SillyParser::BinaryExpressionXorContext *> xorOperands = xorCtx->binaryExpressionXor();
 
@@ -1428,7 +1441,7 @@ namespace silly
             for ( size_t i = 1; i < xorOperands.size(); ++i )
             {
                 mlir::Value rhs = parseAnd( loc, xorOperands[i], opType );
-                value = builder.create<silly::XorOp>( loc, opType, value, rhs ).getResult();
+                value = builder.create<silly::XorOp>( loc, xorType, value, rhs ).getResult();
             }
 
             return value;
@@ -1447,6 +1460,13 @@ namespace silly
 
         if ( andCtx )
         {
+            mlir::Type andType = opType;
+
+            if ( !andType )
+            {
+                andType = tyI1;
+            }
+
             // We have one or more AND operators
             std::vector<SillyParser::BinaryExpressionAndContext *> andOperands = andCtx->binaryExpressionAnd();
 
@@ -1458,7 +1478,7 @@ namespace silly
             {
                 mlir::Value rhs = parseEquality( loc, andOperands[i], opType );
 
-                value = builder.create<silly::AndOp>( loc, opType, value, rhs ).getResult();
+                value = builder.create<silly::AndOp>( loc, andType, value, rhs ).getResult();
             }
 
             return value;
