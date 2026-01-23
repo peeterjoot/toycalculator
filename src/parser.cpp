@@ -1531,10 +1531,7 @@ namespace silly
         }
 
         // No EQ or NE operators: descend directly to comparison level
-        SillyParser::BinaryExpressionCompareContext *single =
-            ctx->getRuleContext<SillyParser::BinaryExpressionCompareContext>( 0 );
-        assert( single );
-        return parseComparison( loc, single, opType );
+        return parseComparison( loc, ctx, opType );
     }
 
     mlir::Value MLIRListener::parseComparison( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
@@ -1589,18 +1586,7 @@ namespace silly
         }
 
         // No comparison operators : descend directly to additive level
-        SillyParser::BinaryExpressionAddSubContext *single =
-            ctx->getRuleContext<SillyParser::BinaryExpressionAddSubContext>( 0 );
-        assert( single );
-        return parseAdditive( loc, single, opType );
-    }
-
-    inline SillyParser::BinaryExpressionMulDivContext *getSingleMulDiv( antlr4::ParserRuleContext *ctx )
-    {
-        SillyParser::BinaryExpressionAddSubContext *addSub =
-            dynamic_cast<SillyParser::BinaryExpressionAddSubContext *>( ctx );
-        assert( addSub->children.size() == 1 );
-        return dynamic_cast<SillyParser::BinaryExpressionMulDivContext *>( addSub->children[0] );
+        return parseAdditive( loc, ctx, opType );
     }
 
     mlir::Value MLIRListener::parseAdditive( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
@@ -1669,17 +1655,7 @@ namespace silly
             return value;
         }
         // Descend directly to multiplicative level if no +-
-        SillyParser::BinaryExpressionMulDivContext *single = getSingleMulDiv( ctx );
-        assert( single );
-        return parseMultiplicative( loc, single, opType );
-    }
-
-    inline SillyParser::UnaryExpressionContext *getSingleUnary( antlr4::ParserRuleContext *ctx )
-    {
-        SillyParser::BinaryExpressionMulDivContext *mulDiv =
-            dynamic_cast<SillyParser::BinaryExpressionMulDivContext *>( ctx );
-        assert( mulDiv->children.size() == 1 );
-        return dynamic_cast<SillyParser::UnaryExpressionContext *>( mulDiv->children[0] );
+        return parseMultiplicative( loc, ctx, opType );
     }
 
     mlir::Value MLIRListener::parseMultiplicative( mlir::Location loc, antlr4::ParserRuleContext *ctx,
@@ -1752,9 +1728,7 @@ namespace silly
         }
 
         // Descend directly to unary level if no * or /
-        SillyParser::UnaryExpressionContext *single = getSingleUnary( ctx );
-        assert( single );
-        return parseUnary( loc, single, opType );
+        return parseUnary( loc, ctx, opType );
     }
 
     mlir::Value MLIRListener::parseUnary( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
