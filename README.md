@@ -632,11 +632,12 @@ Single-line comments begin with `//` and extend to the end of the line.
 
 ## Summary of Core Operations
 
-- Variable declaration (implicit-float and explicit-types), scalar or arrays.
-- Scalar and array assignment
-- Unary and binary arithmetic
+- Variable declaration (implicit-float and explicit-types), scalar or arrays
+- Scalar and array element assignment
+- String variables and literals
+- General expression elements with usual precedence, associativity, and parentheses rules.
 - Boolean logic and comparisons
-- Conditional execution (`IF / ELIF / ELSE`).
+- Conditional execution (`IF / ELIF / ELSE`)
 - Range-based `FOR` loops
 - Functions and calls
 - Input (`GET`) and output (`PRINT`, `ERROR`)
