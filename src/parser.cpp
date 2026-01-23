@@ -361,7 +361,7 @@ namespace silly
     inline mlir::Value MLIRListener::parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx,
                                                       mlir::Type opType )
     {
-        return parseLogicalOr( loc, ctx, opType );
+        return parseBinaryOr( loc, ctx, opType );
     }
 
     inline mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
@@ -1377,7 +1377,7 @@ namespace silly
         return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
     }
 
-    mlir::Value MLIRListener::parseLogicalOr( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
+    mlir::Value MLIRListener::parseBinaryOr( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
     {
         SillyParser::ExprLowestContext *expr = dynamic_cast<SillyParser::ExprLowestContext *>( ctx );
         if ( !expr )
@@ -1411,13 +1411,6 @@ namespace silly
             value = builder.create<silly::OrOp>( loc, opType, value, rhs ).getResult();
         }
 
-#if 0
-        if ( opType )
-        {
-            value = castOpIfRequired( loc, value, opType );
-        }
-#endif
-
         return value;
     }
 
@@ -1448,13 +1441,6 @@ namespace silly
             value = builder.create<silly::AndOp>( loc, opType, value, rhs ).getResult();
         }
 
-#if 0
-        if ( opType )
-        {
-            value = castOpIfRequired( loc, value, opType );
-        }
-#endif
-
         return value;
     }
 
@@ -1484,13 +1470,6 @@ namespace silly
         // Fold left-associatively
         for ( size_t i = 1; i < operands.size(); ++i )
         {
-#if 0
-            if ( !opType )
-            {
-                opType = value.getType();
-            }
-#endif
-
             mlir::Value rhs = parseComparison( loc, operands[i], opType );
 
             // Determine which operator was used at position (i-1)
@@ -1534,14 +1513,6 @@ namespace silly
 
             value = equalityResult;
         }
-
-#if 0
-        // Final cast if caller specified a desired type (rare for equality)
-        if ( opType )
-        {
-            value = castOpIfRequired( loc, value, opType );
-        }
-#endif
 
         return value;
     }
@@ -1631,14 +1602,6 @@ namespace silly
             }
         }
 
-#if 0
-        // Final cast (rarely needed for comparisons, but kept for consistency)
-        if ( opType )
-        {
-            value = castOpIfRequired( loc, value, opType );
-        }
-#endif
-
         return value;
     }
 
@@ -1717,14 +1680,6 @@ namespace silly
                                                          formatLocation( loc ), opText ) );
             }
         }
-
-#if 0
-        // Final cast if caller (e.g. assignment) specified a desired type
-        if ( opType )
-        {
-            value = castOpIfRequired( loc, value, opType );
-        }
-#endif
 
         return value;
     }
@@ -1805,13 +1760,6 @@ namespace silly
                                                          formatLocation( loc ), opText ) );
             }
         }
-
-#if 0
-        if ( opType )
-        {
-            value = castOpIfRequired( loc, value, opType );
-        }
-#endif
 
         return value;
     }
@@ -1961,7 +1909,7 @@ namespace silly
         else if ( SillyParser::ParenExprContext *parenCtx = dynamic_cast<SillyParser::ParenExprContext *>( ctx ) )
         {
             // Parenthesized expression (# parenExpr)
-            value = parseLogicalOr( loc, parenCtx->expression(), opType );
+            value = parseBinaryOr( loc, parenCtx->expression(), opType ); // lowest.
         }
         else
         {
@@ -1969,13 +1917,6 @@ namespace silly
                                         std::format( "{}internal error: unknown primary expression: {}.\n",
                                                      formatLocation( loc ), ctx->getText() ) );
         }
-
-#if 0
-        if ( opType != mlir::Type{} )
-        {
-            value = castOpIfRequired( loc, value, opType );
-        }
-#endif
 
         assert( value );
         return value;

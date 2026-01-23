@@ -286,6 +286,10 @@ namespace silly
         inline mlir::Value parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
                                         mlir::Type opType );
 
+        // alias for parseBinaryOr for clarity
+        inline mlir::Value parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx,
+                                            mlir::Type opType );
+
         /// Parse the logical OR level (lowest precedence binary operator).
         /// Handles expressions of the form: expr OR expr OR expr ...
         /// Left-associative folding. If no OR is present, descends to the AND level.
@@ -293,11 +297,9 @@ namespace silly
         /// @param ctx The ExpressionContext (usually ExprLowestContext)
         /// @param opType Desired result type
         /// @return The resulting Value (typically i1 for logical OR)
-        mlir::Value parseLogicalOr( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
+        mlir::Value parseBinaryOr( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
 
-        // alias for parseLogicalOr for clarity
-        inline mlir::Value parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx,
-                                            mlir::Type opType );
+        mlir::Value parseBinaryXor( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
 
         /// Parse the logical AND level.
         /// Handles expressions of the form: term AND term AND term ...
