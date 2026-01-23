@@ -194,56 +194,68 @@ indexExpression
 // ─────────────────────────────────────────────────────────────
 
 rvalueExpression
-    : expression
-    ;
+  : expression
+  ;
 
 expression
-    : binaryExpressionLowest                      # exprLowest
-    ;
+  : binaryExpressionLowest                      # exprLowest
+  ;
 
 binaryExpressionLowest
-    : binaryExpressionOr (BOOLEANOR_TOKEN binaryExpressionOr)*     # orExpr
-    ;
+  : binaryExpressionOr (BOOLEANOR_TOKEN binaryExpressionOr)*     # orExpr
+  ;
 
 binaryExpressionOr
-    : binaryExpressionXor (BOOLEANXOR_TOKEN binaryExpressionXor)*  # xorExpr
-    ;
+  : binaryExpressionXor (BOOLEANXOR_TOKEN binaryExpressionXor)*  # xorExpr
+  ;
 
 binaryExpressionXor
-    : binaryExpressionAnd (BOOLEANAND_TOKEN binaryExpressionAnd)*  # andExpr
-    ;
+  : binaryExpressionAnd (BOOLEANAND_TOKEN binaryExpressionAnd)*  # andExpr
+  ;
 
 binaryExpressionAnd
-    : binaryExpressionCompare ( (EQUALITY_TOKEN | NOTEQUAL_TOKEN) binaryExpressionCompare )?   # eqNeExpr
-    ;
+  : binaryExpressionCompare (equalityOperator binaryExpressionCompare )?   # eqNeExpr
+  ;
+
+equalityOperator
+  : EQUALITY_TOKEN | NOTEQUAL_TOKEN
+  ;
 
 binaryExpressionCompare
-    : binaryExpressionAddSub
-      ( (LESSTHAN_TOKEN | LESSEQUAL_TOKEN | GREATERTHAN_TOKEN | GREATEREQUAL_TOKEN)
-        binaryExpressionAddSub )?                                      # compareExpr
-    ;
+  : binaryExpressionAddSub (relationalOperator binaryExpressionAddSub )?   # compareExpr
+  ;
+
+relationalOperator
+  : LESSTHAN_TOKEN | LESSEQUAL_TOKEN | GREATERTHAN_TOKEN | GREATEREQUAL_TOKEN
+  ;
 
 binaryExpressionAddSub
-    : binaryExpressionMulDiv
-      ( (PLUSCHAR_TOKEN | MINUS_TOKEN) binaryExpressionMulDiv )*      # addSubExpr
-    ;
+  : binaryExpressionMulDiv (additionOperator binaryExpressionMulDiv )*      # addSubExpr
+  ;
+
+additionOperator
+  : PLUSCHAR_TOKEN | MINUS_TOKEN
+  ;
 
 binaryExpressionMulDiv
-    : unaryExpression
-      ( (TIMES_TOKEN | DIV_TOKEN) unaryExpression )*                  # mulDivExpr
-    ;
+  : unaryExpression ( multiplicativeOperator unaryExpression )*                  # mulDivExpr
+  ;
+
+multiplicativeOperator
+  : TIMES_TOKEN | DIV_TOKEN
+  ;
 
 unaryExpression
-    : unaryOperator unaryExpression                                 # unaryOp
-    | primaryExpression                                             # primary
-    ;
+  : unaryOperator unaryExpression                                 # unaryOp
+  | primaryExpression                                             # primary
+  ;
 
 primaryExpression
-    : literal                                                       # litPrimary
-    | scalarOrArrayElement                                          # varPrimary
-    | callExpression                                                # callPrimary
-    | BRACE_START_TOKEN expression BRACE_END_TOKEN                  # parenExpr
-    ;
+  : literal                                                       # litPrimary
+  | scalarOrArrayElement                                          # varPrimary
+  | callExpression                                                # callPrimary
+  | BRACE_START_TOKEN expression BRACE_END_TOKEN                  # parenExpr
+  ;
 
 // A single-line comment
 comment

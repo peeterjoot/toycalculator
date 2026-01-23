@@ -1511,11 +1511,11 @@ namespace silly
             {
                 mlir::Value rhs = parseComparison( loc, operands[1], opType );
 
-                if ( eqNeCtx->EQUALITY_TOKEN() )
+                if ( eqNeCtx->equalityOperator()->EQUALITY_TOKEN() )
                 {
                     value = builder.create<silly::EqualOp>( loc, tyI1, value, rhs ).getResult();
                 }
-                else if ( eqNeCtx->NOTEQUAL_TOKEN() )
+                else if ( eqNeCtx->equalityOperator()->NOTEQUAL_TOKEN() )
                 {
                     value = builder.create<silly::NotEqualOp>( loc, tyI1, value, rhs ).getResult();
                 }
@@ -1557,28 +1557,30 @@ namespace silly
             {
                 mlir::Value rhs = parseAdditive( loc, operands[1], opType );
 
-                if ( compareCtx->LESSTHAN_TOKEN() )
+                SillyParser::RelationalOperatorContext *op = compareCtx->relationalOperator();
+                assert( op );
+
+                if ( op->LESSTHAN_TOKEN() )
                 {
                     value = builder.create<silly::LessOp>( loc, tyI1, value, rhs ).getResult();
                 }
-                else if ( compareCtx->GREATERTHAN_TOKEN() )
+                else if ( op->GREATERTHAN_TOKEN() )
                 {
                     value = builder.create<silly::LessOp>( loc, tyI1, rhs, value ).getResult();
                 }
-                else if ( compareCtx->LESSEQUAL_TOKEN() )
+                else if ( op->LESSEQUAL_TOKEN() )
                 {
                     value = builder.create<silly::LessEqualOp>( loc, tyI1, value, rhs ).getResult();
                 }
-                else if ( compareCtx->GREATEREQUAL_TOKEN() )
+                else if ( op->GREATEREQUAL_TOKEN() )
                 {
                     value = builder.create<silly::LessEqualOp>( loc, tyI1, rhs, value ).getResult();
                 }
                 else
                 {
-                    throw ExceptionWithContext(
-                        __FILE__, __LINE__, __func__,
-                        std::format( "{}internal error: missing comparison operator: {}\n",
-                                     formatLocation( loc ), ctx->getText() ) );
+                    throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                                std::format( "{}internal error: missing comparison operator: {}\n",
+                                                             formatLocation( loc ), ctx->getText() ) );
                 }
             }
 
@@ -1600,35 +1602,21 @@ namespace silly
 
         if ( addSubCtx )
         {
+            std::vector<SillyParser::AdditionOperatorContext *> ops = addSubCtx->additionOperator();
+
             // We have one or more + or - operators
             std::vector<SillyParser::BinaryExpressionMulDivContext *> operands = addSubCtx->binaryExpressionMulDiv();
+            size_t numOperands = operands.size();
+            assert( ( ops.size() + 1 ) == numOperands );
 
             // First operand
             value = parseMultiplicative( loc, operands[0], opType );
 
             // Fold the remaining additions/subtractions left-associatively
-            for ( size_t i = 1; i < operands.size(); ++i )
+            for ( size_t i = 1; i < numOperands; ++i )
             {
                 mlir::Value rhs = parseMultiplicative( loc, operands[i], opType );
 
-                // Determine operator from the token at position (i-1)
-                antlr4::tree::TerminalNode *opToken = nullptr;
-                if ( i - 1 < addSubCtx->PLUSCHAR_TOKEN().size() )
-                {
-                    opToken = addSubCtx->PLUSCHAR_TOKEN( i - 1 );
-                }
-                else if ( i - 1 < addSubCtx->MINUS_TOKEN().size() )
-                {
-                    opToken = addSubCtx->MINUS_TOKEN( i - 1 );
-                }
-                else
-                {
-                    throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                                std::format( "{}internal error: missing + or - operator at index {}: {}\n",
-                                                             formatLocation( loc ), i - 1, ctx->getText() ) );
-                }
-
-                std::string opText = opToken->getText();
                 mlir::Type ty = opType;
 
                 if ( !ty )
@@ -1636,19 +1624,21 @@ namespace silly
                     ty = biggestTypeOf( value.getType(), rhs.getType() );
                 }
 
-                if ( opText == "+" )
+                SillyParser::AdditionOperatorContext *op = ops[i - 1];
+                if ( op->PLUSCHAR_TOKEN() )
                 {
                     value = builder.create<silly::AddOp>( loc, ty, value, rhs ).getResult();
                 }
-                else if ( opText == "-" )
+                else if ( op->MINUS_TOKEN() )
                 {
                     value = builder.create<silly::SubOp>( loc, ty, value, rhs ).getResult();
                 }
                 else
                 {
-                    throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                                std::format( "{}internal error: unexpected additive operator: {}\n",
-                                                             formatLocation( loc ), opText ) );
+                    throw ExceptionWithContext(
+                        __FILE__, __LINE__, __func__,
+                        std::format( "{}internal error: missing + or - operator at index {}: {}\n",
+                                     formatLocation( loc ), i - 1, ctx->getText() ) );
                 }
             }
 
@@ -1670,36 +1660,21 @@ namespace silly
 
         if ( mulDivCtx )
         {
+            std::vector<SillyParser::MultiplicativeOperatorContext *> ops = mulDivCtx->multiplicativeOperator();
+
             // We have one or more * or / operators
             std::vector<SillyParser::UnaryExpressionContext *> operands = mulDivCtx->unaryExpression();
+            size_t numOperands = operands.size();
+            assert( ( ops.size() + 1 ) == numOperands );
 
             // First operand
             value = parseUnary( loc, operands[0], opType );
 
             // Fold the remaining multiplications/divisions left-associatively
-            for ( size_t i = 1; i < operands.size(); ++i )
+            for ( size_t i = 1; i < numOperands; ++i )
             {
                 mlir::Value rhs = parseUnary( loc, operands[i], opType );
 
-                // Determine operator from the token at position (i-1)
-                antlr4::tree::TerminalNode *opToken = nullptr;
-                if ( ( i - 1 ) < mulDivCtx->TIMES_TOKEN().size() )
-                {
-                    opToken = mulDivCtx->TIMES_TOKEN( i - 1 );
-                }
-                else if ( ( i - 1 ) < mulDivCtx->DIV_TOKEN().size() )
-                {
-                    opToken = mulDivCtx->DIV_TOKEN( i - 1 );
-                }
-
-                if ( !opToken )
-                {
-                    throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                                std::format( "{}internal error: missing * or / operator at index {}\n",
-                                                             formatLocation( loc ), i - 1 ) );
-                }
-
-                std::string opText = opToken->getText();
                 mlir::Type ty = opType;
 
                 if ( !ty )
@@ -1707,20 +1682,21 @@ namespace silly
                     ty = biggestTypeOf( value.getType(), rhs.getType() );
                 }
 
-                if ( opText == "*" )
+                SillyParser::MultiplicativeOperatorContext *op = ops[i - 1];
+
+                if ( op->TIMES_TOKEN() )
                 {
                     value = builder.create<silly::MulOp>( loc, ty, value, rhs ).getResult();
                 }
-                else if ( opText == "/" )
+                else if ( op->DIV_TOKEN() )
                 {
                     value = builder.create<silly::DivOp>( loc, ty, value, rhs ).getResult();
                 }
                 else
                 {
-                    throw ExceptionWithContext(
-                        __FILE__, __LINE__, __func__,
-                        std::format( "{}internal error: unexpected multiplicative operator: {}\n",
-                                     formatLocation( loc ), opText ) );
+                    throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                                std::format( "{}internal error: missing * or / operator at index {}\n",
+                                                             formatLocation( loc ), i - 1 ) );
                 }
             }
 

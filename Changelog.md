@@ -278,6 +278,19 @@ PRINT (10 < 20) EQ 1;   // 1 (TRUE)
 ```
   * Prohibit NOT on non-integer type.  t/c: `error_notfloat.silly`
   * [grammar/parser] Prohibit chaining of Comparison operators (examples: `1 < 2 < 3', `1 EQ 1 NE 1`).
+  * [grammar/parser] Introduce operator grammar elements so that I don't have ambiguous arrays of terminal-nodes.  Example:
+
+``` 
+binaryExpressionMulDiv
+  : unaryExpression ( multiplicativeOperator unaryExpression )*                  # mulDivExpr
+  ;
+ 
+multiplicativeOperator
+  : TIMES_TOKEN | DIV_TOKEN
+  ;
+``` 
+ 
+  This way I get an array of multiplicativeOperator, each with it's own terminal node.  This fixes samples/expression5.silly, now enabled in the regression suite.
 
 ## tag: V7 (Jan 4, 2025)
 
