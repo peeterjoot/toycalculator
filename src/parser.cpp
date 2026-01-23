@@ -1649,14 +1649,17 @@ namespace silly
         return nullptr;
     }
 
+    inline SillyParser::BinaryExpressionMulDivContext *getSingleMulDiv( SillyParser::BinaryExpressionAddSubContext *ctx )
+    {
+        assert( ctx->children.size() == 1 );
+        return dynamic_cast<SillyParser::BinaryExpressionMulDivContext *>( ctx->children[0] );
+    }
+
     mlir::Value MLIRListener::parseAdditive( mlir::Location loc, SillyParser::BinaryExpressionAddSubContext *ctx,
                                              mlir::Type opType )
     {
         assert( ctx );
         mlir::Value value{};
-
-#if 0
-        bool deduceTypeFromOperands = ( opType == mlir::Type{} );
 
         // Check if this context actually contains + or - operators
         // (AddSubExprContext is the alternative that has the repetition)
@@ -1665,8 +1668,10 @@ namespace silly
 
         if ( !addSubCtx )
         {
-            // No + or - → descend directly to multiplicative level
-            return parseMultiplicative( loc, ctx->binaryExpressionMulDiv(), opType );
+            // Descend directly to multiplicative level if no +-
+            SillyParser::BinaryExpressionMulDivContext *single = getSingleMulDiv( ctx );
+            assert( single );
+            return parseMultiplicative( loc, single, opType );
         }
 
         // We have one or more + or - operators
@@ -1702,13 +1707,18 @@ namespace silly
 
             std::string opText = opToken->getText();
 
+            if ( !opType )
+            {
+                opType = biggestTypeOf( value.getType(), rhs.getType() );
+            }
+
             if ( opText == "+" )
             {
-                value = builder.create<silly::AddOp>( loc, value.getType(), value, rhs ).getResult();
+                value = builder.create<silly::AddOp>( loc, opType, value, rhs ).getResult();
             }
             else if ( opText == "-" )
             {
-                value = builder.create<silly::SubOp>( loc, value.getType(), value, rhs ).getResult();
+                value = builder.create<silly::SubOp>( loc, opType, value, rhs ).getResult();
             }
             else
             {
@@ -1717,10 +1727,6 @@ namespace silly
                     std::format( "{}internal error: unexpected additive operator: {}\n",
                                  formatLocation( loc ), opText ) );
             }
-
-            // Optional: if this is a print-like context and you later want to promote
-            // intermediate values, you could insert logic here.
-            // For now we keep it simple (type follows left operand).
         }
 
         // Final cast if caller (e.g. assignment) specified a desired type
@@ -1728,7 +1734,6 @@ namespace silly
         {
             value = castOpIfRequired( loc, value, opType );
         }
-#endif
 
         return value;
     }
@@ -1738,7 +1743,6 @@ namespace silly
         assert( ctx->children.size() == 1 );
         return dynamic_cast<SillyParser::UnaryExpressionContext *>( ctx->children[0] );
     }
-
 
     mlir::Value MLIRListener::parseMultiplicative( mlir::Location loc, SillyParser::BinaryExpressionMulDivContext *ctx,
                                                    mlir::Type opType )
@@ -1753,9 +1757,9 @@ namespace silly
         if ( !mulDivCtx )
         {
             // Descend directly to unary level if no * or /
-            SillyParser::UnaryExpressionContext *singleUnary = getSingleUnary( ctx );
-            assert( singleUnary );
-            return parseUnary( loc, singleUnary, opType );
+            SillyParser::UnaryExpressionContext *single = getSingleUnary( ctx );
+            assert( single );
+            return parseUnary( loc, single, opType );
         }
 
         // We have one or more * or / operators
@@ -1789,13 +1793,18 @@ namespace silly
 
             std::string opText = opToken->getText();
 
+            if ( !opType )
+            {
+                opType = biggestTypeOf( value.getType(), rhs.getType() );
+            }
+
             if ( opText == "*" )
             {
-                value = builder.create<silly::MulOp>( loc, value.getType(), value, rhs ).getResult();
+                value = builder.create<silly::MulOp>( loc, opType, value, rhs ).getResult();
             }
             else if ( opText == "/" )
             {
-                value = builder.create<silly::DivOp>( loc, value.getType(), value, rhs ).getResult();
+                value = builder.create<silly::DivOp>( loc, opType, value, rhs ).getResult();
             }
             else
             {
