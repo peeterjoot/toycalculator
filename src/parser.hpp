@@ -296,7 +296,8 @@ namespace silly
         mlir::Value parseLogicalOr( mlir::Location loc, SillyParser::ExpressionContext *ctx, mlir::Type opType );
 
         // alias for parseLogicalOr for clarity
-        inline mlir::Value parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx, mlir::Type opType );
+        inline mlir::Value parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx,
+                                            mlir::Type opType );
 
         /// Parse the logical AND level.
         /// Handles expressions of the form: term AND term AND term ...
