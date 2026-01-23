@@ -75,7 +75,6 @@ c[1] = 0 ( = 2 * 0 )
   - Assignment like initialization syntax is not available for array variables.  That should trigger an error.
   - Maybe: Get rid of CALL and support calls in binary expressions: r = v * foo().
   - Expressions that aren't parsed properly (like `CALL factorial(v - 1)` used to) lead to mysterious seeming parse error: Should do better.
-  - Review the parser... any other places where buildUnary is called that ought to be parseRvalue? -- many of those now dealt with.
   - declaration scope is weird, persisting beyond the declaring block (see: scopebug.silly and the README)
   - NOT should be allowed for boolean expressions in IF/ELIF predicates.
   - no test case for CALL in booleanExpression
