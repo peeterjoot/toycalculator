@@ -217,32 +217,16 @@ binaryExpressionAnd
   : binaryExpressionCompare (equalityOperator binaryExpressionCompare )?   # eqNeExpr
   ;
 
-equalityOperator
-  : EQUALITY_TOKEN | NOTEQUAL_TOKEN
-  ;
-
 binaryExpressionCompare
   : binaryExpressionAddSub (relationalOperator binaryExpressionAddSub )?   # compareExpr
-  ;
-
-relationalOperator
-  : LESSTHAN_TOKEN | LESSEQUAL_TOKEN | GREATERTHAN_TOKEN | GREATEREQUAL_TOKEN
   ;
 
 binaryExpressionAddSub
   : binaryExpressionMulDiv (additionOperator binaryExpressionMulDiv )*      # addSubExpr
   ;
 
-additionOperator
-  : PLUSCHAR_TOKEN | MINUS_TOKEN
-  ;
-
 binaryExpressionMulDiv
   : unaryExpression ( multiplicativeOperator unaryExpression )*                  # mulDivExpr
-  ;
-
-multiplicativeOperator
-  : TIMES_TOKEN | DIV_TOKEN
   ;
 
 unaryExpression
@@ -255,6 +239,23 @@ primaryExpression
   | scalarOrArrayElement                                          # varPrimary
   | callExpression                                                # callPrimary
   | BRACE_START_TOKEN expression BRACE_END_TOKEN                  # parenExpr
+  ;
+
+// Dedicated operator rules to provide a clean vector of operators in visitor
+equalityOperator
+  : EQUALITY_TOKEN | NOTEQUAL_TOKEN
+  ;
+
+relationalOperator
+  : LESSTHAN_TOKEN | LESSEQUAL_TOKEN | GREATERTHAN_TOKEN | GREATEREQUAL_TOKEN
+  ;
+
+additionOperator
+  : PLUSCHAR_TOKEN | MINUS_TOKEN
+  ;
+
+multiplicativeOperator
+  : TIMES_TOKEN | DIV_TOKEN
   ;
 
 // A single-line comment
