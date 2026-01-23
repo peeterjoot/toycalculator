@@ -1549,40 +1549,43 @@ namespace silly
     mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
                                            mlir::Type opType )
     {
-        assert( ctx );
+        assert( ctx && ctx->expression() );
 
-        if ( SillyParser::ExprLowestContext *lowest =
-                 dynamic_cast<SillyParser::ExprLowestContext *>( ctx->expression() ) )
+        SillyParser::ExprLowestContext *expr = dynamic_cast<SillyParser::ExprLowestContext *>( ctx->expression() );
+        if ( !expr )
         {
-            if ( auto *orCtx = dynamic_cast<SillyParser::OrExprContext *>( lowest->binaryExpressionLowest() ) )
-            {
-                std::vector<SillyParser::BinaryExpressionOrContext *> orExpressions = orCtx->binaryExpressionOr();
-
-                mlir::Value left{};
-
-                for ( SillyParser::BinaryExpressionOrContext *e : orExpressions )
-                {
-                    if ( left == mlir::Value{} )
-                    {
-                        left = parseBinaryAnd( loc, e, opType );
-                        assert( left != mlir::Value{} );
-
-                        continue;
-                    }
-
-                    mlir::Value right = parseBinaryAnd( loc, e, opType );
-                    left = builder.create<silly::OrOp>( loc, opType, left, right );
-                }
-
-                return left;
-            }
+            llvm_unreachable( "unexpected ExpressionContext alternative" );
         }
-        llvm_unreachable( "unexpected ExpressionContext" );
+
+        SillyParser::BinaryExpressionLowestContext *lowest = expr->binaryExpressionLowest();
+        assert( lowest );
+        SillyParser::OrExprContext *orCtx = dynamic_cast<SillyParser::OrExprContext *>( lowest );
+        if ( !orCtx )
+        {
+            // No OR: just descend to the next level (AND / single-term)
+            return parseBinaryAnd( loc, dynamic_cast<SillyParser::BinaryExpressionAndContext *>( lowest ), opType );
+        }
+
+        // We have at least one OR
+        std::vector<SillyParser::BinaryExpressionOrContext *> orExpressions = orCtx->binaryExpressionOr();
+        mlir::Value result =
+            parseBinaryAnd( loc, dynamic_cast<SillyParser::BinaryExpressionAndContext *>( orExpressions[0] ), tyI1 );
+
+        for ( size_t i = 1; i < orExpressions.size(); ++i )
+        {
+            mlir::Value rhs = parseBinaryAnd(
+                loc, dynamic_cast<SillyParser::BinaryExpressionAndContext *>( orExpressions[i] ), tyI1 );
+
+            result = builder.create<silly::OrOp>( loc, tyI1, result, rhs ).getResult();
+        }
+
+        return castOpIfRequired( loc, result, opType );
     }
 
     mlir::Value MLIRListener::parseBinaryAnd( mlir::Location loc, SillyParser::BinaryExpressionAndContext *ctx,
                                               mlir::Type opType )
     {
+        assert( ctx );
         llvm_unreachable( "parseBinaryOr: NYI" );
         return nullptr;
     }
