@@ -358,91 +358,18 @@ namespace silly
         builder.restoreInsertionPoint( savedIP );
     }
 
+    inline mlir::Value MLIRListener::parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx,
+                                                      mlir::Type opType )
+    {
+        return parseLogicalOr( loc, ctx, opType );
+    }
+
     inline mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
                                                   mlir::Type opType )
     {
         assert( ctx && ctx->expression() );
 
-        return parseLogicalOr( loc, ctx->expression(), opType );
-    }
-
-    // FIXME: probably won't need this when the rework is done.
-    mlir::Value MLIRListener::buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode,
-                                                    tNode *floatNode,
-                                                    SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
-                                                    SillyParser::CallExpressionContext *callNode, tNode *stringNode,
-                                                    bool isPrint )
-    {
-        mlir::Value value{};
-
-        if ( callNode )
-        {
-            value = handleCall( callNode );
-        }
-        else if ( booleanNode )
-        {
-            value = parseBoolean( loc, booleanNode->getText() );
-        }
-        else if ( integerNode )
-        {
-            value = parseInteger( loc, 64, integerNode->getText() );
-        }
-        else if ( floatNode )
-        {
-            value = parseFloat( loc, tyF64, floatNode->getText() );
-        }
-        else if ( scalarOrArrayElement )
-        {
-            tNode *variableNode = scalarOrArrayElement->IDENTIFIER();
-            assert( variableNode );
-            std::string varName = variableNode->getText();
-
-            silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
-
-            mlir::Type varType = declareOp.getTypeAttr().getValue();
-
-            mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
-
-            if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
-            {
-                value = parseRvalue( loc, indexExpr->rvalueExpression(), varType );
-
-                mlir::Value i = indexTypeCast( loc, value );
-
-                value = builder.create<silly::LoadOp>( loc, varType, symRef, i );
-            }
-            else
-            {
-                if ( isPrint && declareOp.getSizeAttr() )
-                {
-                    if ( mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( varType ) )
-                    {
-                        unsigned w = ity.getWidth();
-                        if ( w == 8 )
-                        {
-                            varType = tyPtr;
-                        }
-                    }
-                }
-                value = builder.create<silly::LoadOp>( loc, varType, symRef, mlir::Value{} );
-            }
-        }
-        else if ( stringNode )
-        {
-            std::string s = stripQuotes( loc, stringNode->getText() );
-
-            mlir::StringAttr strAttr = builder.getStringAttr( s );
-            silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
-
-            value = stringLiteral.getResult();
-        }
-        else
-        {
-            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                        std::format( "{}internal error: Invalid operand\n", formatLocation( loc ) ) );
-        }
-
-        return value;
+        return parseExpression( loc, ctx->expression(), opType );
     }
 
     void MLIRListener::syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
@@ -942,116 +869,11 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    mlir::Value MLIRListener::parsePredicate( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue )
-    {
-        // booleanValue
-        //   : booleanElement | (binaryElement predicateOperator binaryElement)
-        //   ;
-
-        mlir::Value conditionPredicate{};
-#if 0
-
-        assert( booleanValue );
-        if ( SillyParser::BooleanElementContext *boolElement = booleanValue->booleanElement() )
-        {
-            SillyParser::BooleanLiteralContext *lit = boolElement->booleanLiteral();
-            conditionPredicate = buildUnaryExpression( loc, lit ? lit->BOOLEAN_PATTERN() : nullptr,
-                                                       /*lit ? lit->INTEGER_PATTERN() :*/ nullptr, nullptr,
-                                                       boolElement->scalarOrArrayElement(), nullptr, nullptr, false );
-        }
-        else
-        {
-            // binaryElement : numericLiteral | unaryOperator? IDENTIFIER
-
-            std::vector<SillyParser::BinaryElementContext *> operands = booleanValue->binaryElement();
-            if ( operands.size() == 2 )
-            {
-                mlir::Value lhsValue;
-                mlir::Value rhsValue;
-                SillyParser::BinaryElementContext *lhs = operands[0];
-                assert( lhs );
-                SillyParser::BinaryElementContext *rhs = operands[1];
-                assert( rhs );
-
-                SillyParser::NumericLiteralContext *llit = lhs->numericLiteral();
-                lhsValue = buildUnaryExpression( loc, nullptr,    // booleanNode
-                                                 llit ? llit->INTEGER_PATTERN() : nullptr,
-                                                 llit ? llit->FLOAT_PATTERN() : nullptr, lhs->scalarOrArrayElement(),
-                                                 nullptr, nullptr, false );
-
-                SillyParser::NumericLiteralContext *rlit = rhs->numericLiteral();
-                rhsValue = buildUnaryExpression( loc, nullptr,    // booleanNode
-                                                 rlit ? rlit->INTEGER_PATTERN() : nullptr,
-                                                 rlit ? rlit->FLOAT_PATTERN() : nullptr, rhs->scalarOrArrayElement(),
-                                                 nullptr, nullptr, false );
-
-                assert( booleanValue );
-                SillyParser::PredicateOperatorContext *op = booleanValue->predicateOperator();
-                assert( op );
-                if ( op->LESSTHAN_TOKEN() )
-                {
-                    conditionPredicate = builder.create<silly::LessOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
-                }
-                else if ( op->GREATERTHAN_TOKEN() )
-                {
-                    conditionPredicate = builder.create<silly::LessOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
-                }
-                else if ( op->LESSEQUAL_TOKEN() )
-                {
-                    conditionPredicate =
-                        builder.create<silly::LessEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
-                }
-                else if ( op->GREATEREQUAL_TOKEN() )
-                {
-                    conditionPredicate =
-                        builder.create<silly::LessEqualOp>( loc, tyI1, rhsValue, lhsValue ).getResult();
-                }
-                else if ( op->EQUALITY_TOKEN() )
-                {
-                    conditionPredicate = builder.create<silly::EqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
-                }
-                else if ( op->NOTEQUAL_TOKEN() )
-                {
-                    conditionPredicate = builder.create<silly::NotEqualOp>( loc, tyI1, lhsValue, rhsValue ).getResult();
-                }
-                else
-                {
-                    throw ExceptionWithContext(
-                        __FILE__, __LINE__, __func__,
-                        std::format( "{}internal error: Unsupported binary operator in if condition.\n",
-                                     formatLocation( loc ) ) );
-                }
-            }
-            else
-            {
-                throw ExceptionWithContext(
-                    __FILE__, __LINE__, __func__,
-                    std::format( "{}internal error: Only binary operators supported in if condition (for now).\n",
-                                 formatLocation( loc ) ) );
-            }
-        }
-
-        LLVM_DEBUG( {
-            llvm::errs() << "Predicate:\n";
-            conditionPredicate.dump();
-        } );
-
-        // Ensure the predicate has type i1
-        if ( !conditionPredicate.getType().isInteger( 1 ) )
-        {
-            throw ExceptionWithContext(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: if condition must be i1\n", formatLocation( loc ) ) );
-        }
-#endif
-        assert( 0 && "NYI" );
-
-        return conditionPredicate;
-    }
-
     void MLIRListener::createIf( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue, bool saveIP )
     {
-        mlir::Value conditionPredicate = parsePredicate( loc, booleanValue );
+        SillyParser::BoolAsExprContext *bc = dynamic_cast<SillyParser::BoolAsExprContext *>( booleanValue );
+
+        mlir::Value conditionPredicate = parseExpression( loc, bc->expression(), tyI1 );
 
         if ( saveIP )
         {

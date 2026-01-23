@@ -213,12 +213,6 @@ namespace silly
         void createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp func,
                           const std::string &funcName, const std::vector<std::string> &paramNames );
 
-        /// Builds MLIR value from unary expression (literals/variables).
-        mlir::Value buildUnaryExpression( mlir::Location loc, tNode *booleanNode, tNode *integerNode, tNode *floatNode,
-                                          SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement,
-                                          SillyParser::CallExpressionContext *callNode, tNode *stringNode,
-                                          bool isPrint );
-
         /// Emits a silly::CallOp for a function call.
         mlir::Value handleCall( SillyParser::CallExpressionContext *ctx );
 
@@ -264,9 +258,6 @@ namespace silly
         /// Figure out the bigger of two types for implicit cast-like purposes
         static mlir::Type biggestTypeOf( mlir::Type ty1, mlir::Type ty2 );
 
-        /// Builds i1 predicate from booleanValue context.
-        mlir::Value parsePredicate( mlir::Location loc, SillyParser::BooleanValueContext *ctx );
-
         /// Casts index value to index type.
         mlir::Value indexTypeCast( mlir::Location loc, mlir::Value val );
 
@@ -303,6 +294,9 @@ namespace silly
         /// @param opType Desired result type
         /// @return The resulting Value (typically i1 for logical OR)
         mlir::Value parseLogicalOr( mlir::Location loc, SillyParser::ExpressionContext *ctx, mlir::Type opType );
+
+        // alias for parseLogicalOr for clarity
+        inline mlir::Value parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx, mlir::Type opType );
 
         /// Parse the logical AND level.
         /// Handles expressions of the form: term AND term AND term ...
