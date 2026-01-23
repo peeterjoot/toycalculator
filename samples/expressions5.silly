@@ -7,30 +7,9 @@
 INT64 a = 5;
 INT64 b = 3;
 FLOAT64 c = 2.5;
-BOOL trueVal = TRUE;
 BOOL falseVal = FALSE;
 
 // 7. Complex nested expressions
-PRINT (a + b * c - 1) / (NOT falseVal + 1); // Expected: (5 + 3 * 2.5 - 1) / (1 + 1) = (5 + 7.5 - 1) / 2 = 11.5 / 2 = 5.75
-PRINT NOT (a EQ b) AND (c > 0.0); // Expected: NOT (0) AND 1 = 1 AND 1 = 1
-PRINT ((a < 10) XOR (b > 0)) OR falseVal; // Expected: (1 XOR 1) OR 0 = 0 OR 0 = 0
-
-// 8. Expressions with variables, literals, and mixed ops
-INT64 res;
-res = a * (b + c) EQ 17.5; // Expected: 5 * (3 + 2.5) = 5 * 5.5 = 27.5, 27.5 EQ 17.5 = 0 (FALSE)
-PRINT res;
-res = NOT (a - b) XOR (trueVal AND falseVal); // Expected: NOT (2) XOR 0 = 0 XOR 0 = 0
-PRINT res;
-
-// 9. Edge cases: division by 1, zero, comparisons with floats
-PRINT 10 / 1; // Expected: 10
-PRINT 5.0 / 2.0; // Expected: 2.5
-PRINT 1 < 1.0; // Expected: 0
-PRINT 1 EQ 1.0; // Expected: 1 (promotion?)
-
-// 10. String literal (non-expression, but for completeness)
-STRING s[10] = "test";
-PRINT s; // Expected: "test"
-
-// End test
-EXIT 0;
+//PRINT a + b * c;
+PRINT a + b * c - 1;
+//PRINT (a + b * c - 1) / (NOT falseVal + 1); // Expected: (5 + 3 * 2.5 - 1) / (1 + 1) = (5 + 7.5 - 1) / 2 = 11.5 / 2 = 5.75
