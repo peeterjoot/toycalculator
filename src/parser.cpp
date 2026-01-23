@@ -250,7 +250,7 @@ namespace silly
 
             ssize_t remaining = numElements - initializers.size();
             mlir::Value fill{};
-            for ( ssize_t i = 0 ; i < remaining ; i++ )
+            for ( ssize_t i = 0; i < remaining; i++ )
             {
                 if ( i == 0 )
                 {
@@ -284,7 +284,7 @@ namespace silly
 
             ssize_t remaining = numElements - initializers.size();
             mlir::Value fill{};
-            for ( ssize_t i = 0 ; i < remaining ; i++ )
+            for ( ssize_t i = 0; i < remaining; i++ )
             {
                 if ( i == 0 )
                 {
@@ -322,7 +322,7 @@ namespace silly
 
             ssize_t remaining = numElements - initializers.size();
             mlir::Value fill{};
-            for ( ssize_t i = 0 ; i < remaining ; i++ )
+            for ( ssize_t i = 0; i < remaining; i++ )
             {
                 if ( i == 0 )
                 {
@@ -738,6 +738,7 @@ namespace silly
             for ( SillyParser::ParameterExpressionContext *e : params->parameterExpression() )
             {
                 SillyParser::RvalueExpressionContext *p = e->rvalueExpression();
+                assert( p );
                 std::string paramText = p->getText();
                 std::cout << std::format( "CALL function {}: param: {}\n", funcName, paramText );
 
@@ -939,6 +940,7 @@ namespace silly
         //   ;
 
         mlir::Value conditionPredicate{};
+#if 0
 
         assert( booleanValue );
         if ( SillyParser::BooleanElementContext *boolElement = booleanValue->booleanElement() )
@@ -1032,6 +1034,8 @@ namespace silly
                 __FILE__, __LINE__, __func__,
                 std::format( "{}internal error: if condition must be i1\n", formatLocation( loc ) ) );
         }
+#endif
+        assert( 0 && "NYI" );
 
         return conditionPredicate;
     }
@@ -1545,8 +1549,50 @@ namespace silly
     mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
                                            mlir::Type opType )
     {
-        mlir::Value resultValue;
-        mlir::Value lhsValue;
+        assert( ctx );
+
+        if ( SillyParser::ExprLowestContext *lowest =
+                 dynamic_cast<SillyParser::ExprLowestContext *>( ctx->expression() ) )
+        {
+            if ( auto *orCtx = dynamic_cast<SillyParser::OrExprContext *>( lowest->binaryExpressionLowest() ) )
+            {
+                std::vector<SillyParser::BinaryExpressionOrContext *> orExpressions = orCtx->binaryExpressionOr();
+
+                mlir::Value left{};
+
+                for ( SillyParser::BinaryExpressionOrContext *e : orExpressions )
+                {
+                    if ( left == mlir::Value{} )
+                    {
+                        left = parseBinaryOr( loc, e, opType );
+                        assert( left != mlir::Value{} );
+
+                        continue;
+                    }
+
+                    mlir::Value right = parseBinaryOr( loc, e, opType );
+                    left = builder.create<silly::OrOp>( loc, opType, left, right );
+                }
+
+                return left;
+            }
+        }
+        llvm_unreachable( "unexpected ExpressionContext" );
+    }
+
+    mlir::Value MLIRListener::parseBinaryOr( mlir::Location loc, SillyParser::BinaryExpressionOrContext *ctx,
+                                             mlir::Type opType )
+    {
+        llvm_unreachable( "parseBinaryOr: NYI" );
+        return nullptr;
+    }
+
+#if 0
+    mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::ExpressionContext *ctx,
+                                               mlir::Type opType )
+    {
+        mlir::Value resultValue{};
+        mlir::Value lhsValue{};
         size_t bsz = ctx->binaryElement().size();
         bool isPrint = ( opType == mlir::Type{} );
 
@@ -1688,9 +1734,11 @@ namespace silly
                     std::format( "{}internal error: Invalid binary operator {}\n", formatLocation( loc ), opText ) );
             }
         }
+        assert( 0 && "NYI" );
 
         return resultValue;
     }
+#endif
 }    // namespace silly
 
 // vim: et ts=4 sw=4
