@@ -1561,7 +1561,10 @@ namespace silly
         SillyParser::ExprLowestContext *expr = dynamic_cast<SillyParser::ExprLowestContext *>( ctx );
         if ( !expr )
         {
-            llvm_unreachable( "unexpected ExpressionContext alternative" );
+            throw ExceptionWithContext(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}internal error: unexpected ExpressionContext alternative: {}.\n", formatLocation( loc ),
+                             ctx->getText() ) );
         }
 
         SillyParser::BinaryExpressionLowestContext *lowest = expr->binaryExpressionLowest();
@@ -1589,7 +1592,12 @@ namespace silly
             result = builder.create<silly::OrOp>( loc, tyI1, result, rhs ).getResult();
         }
 
-        return castOpIfRequired( loc, result, opType );
+        if ( opType )
+        {
+            result = castOpIfRequired( loc, result, opType );
+        }
+
+        return result;
     }
 
     mlir::Value MLIRListener::parseBinaryAnd( mlir::Location loc, SillyParser::BinaryExpressionAndContext *ctx,
@@ -1669,162 +1677,109 @@ namespace silly
                                             mlir::Type opType )
     {
         assert( ctx );
-        llvm_unreachable( "parsePrimary: NYI" );
-        return nullptr;
-    }
+        mlir::Value value{};
 
-#if 0
-    mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::ExpressionContext *ctx,
-                                               mlir::Type opType )
-    {
-        mlir::Value resultValue{};
-        mlir::Value lhsValue{};
-        size_t bsz = ctx->binaryElement().size();
-        bool isPrint = ( opType == mlir::Type{} );
+        bool deduceTypeFromOperands = ( opType == mlir::Type{} );
 
-        if ( bsz == 0 )
+        if ( SillyParser::LitPrimaryContext *litCtx = dynamic_cast<SillyParser::LitPrimaryContext *>( ctx ) )
         {
-            SillyParser::LiteralContext *lit = ctx->literal();
+            // Literal case (# litPrimary)
+            SillyParser::LiteralContext *lit = litCtx->literal();
+            assert( lit );
 
-            mlir::Value lhsValue = buildUnaryExpression(
-                loc, lit ? lit->BOOLEAN_PATTERN() : nullptr, lit ? lit->INTEGER_PATTERN() : nullptr,
-                lit ? lit->FLOAT_PATTERN() : nullptr, ctx->scalarOrArrayElement(), ctx->callExpression(),
-                lit ? lit->STRING_PATTERN() : nullptr, isPrint );
+            if ( tNode *booleanNode = lit->BOOLEAN_PATTERN() )
+            {
+                value = parseBoolean( loc, booleanNode->getText() );
+            }
+            else if ( tNode *integerNode = lit->INTEGER_PATTERN() )
+            {
+                value = parseInteger( loc, 64, integerNode->getText() );
+            }
+            else if ( tNode *floatNode = lit->FLOAT_PATTERN() )
+            {
+                value = parseFloat( loc, tyF64, floatNode->getText() );
+            }
+            else if ( tNode *stringNode = lit->STRING_PATTERN() )
+            {
+                std::string s = stripQuotes( loc, stringNode->getText() );
 
-            resultValue = lhsValue;
-            if ( SillyParser::UnaryOperatorContext *unaryOp = ctx->unaryOperator() )
-            {
-                if ( isPrint )
-                {
-                    opType = lhsValue.getType();
-                }
+                mlir::StringAttr strAttr = builder.getStringAttr( s );
+                silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
 
-                std::string opText = unaryOp->getText();
-                if ( opText == "-" )
-                {
-                    silly::NegOp op = builder.create<silly::NegOp>( loc, opType, lhsValue );
-                    resultValue = op.getResult();
-                }
-                else if ( opText == "NOT" )
-                {
-                    mlir::arith::ConstantIntOp rhsValue = builder.create<mlir::arith::ConstantIntOp>( loc, 0, 64 );
-
-                    silly::EqualOp b = builder.create<silly::EqualOp>( loc, opType, lhsValue, rhsValue );
-                    resultValue = b.getResult();
-                }
-            }
-        }
-        else
-        {
-            if ( bsz != 2 )
-            {
-                throw ExceptionWithContext(
-                    __FILE__, __LINE__, __func__,
-                    std::format( "{}internal error: binaryElement size != 2\n", formatLocation( loc ) ) );
-            }
-
-            SillyParser::BinaryElementContext *lhs = ctx->binaryElement()[0];
-            assert( lhs );
-            SillyParser::BinaryElementContext *rhs = ctx->binaryElement()[1];
-            assert( rhs );
-            std::string opText = ctx->binaryOperator()->getText();
-
-            SillyParser::NumericLiteralContext *llit = lhs->numericLiteral();
-            lhsValue =
-                buildUnaryExpression( loc, nullptr,    // booleanNode
-                                      llit ? llit->INTEGER_PATTERN() : nullptr, llit ? llit->FLOAT_PATTERN() : nullptr,
-                                      lhs->scalarOrArrayElement(), lhs->callExpression(), nullptr, isPrint );
-
-            mlir::Value rhsValue;
-            SillyParser::NumericLiteralContext *rlit = rhs->numericLiteral();
-            rhsValue =
-                buildUnaryExpression( loc, nullptr,    // booleanNode
-                                      rlit ? rlit->INTEGER_PATTERN() : nullptr, rlit ? rlit->FLOAT_PATTERN() : nullptr,
-                                      rhs->scalarOrArrayElement(), rhs->callExpression(), nullptr, isPrint );
-
-            if ( isPrint )
-            {
-                opType = biggestTypeOf( lhsValue.getType(), rhsValue.getType() );
-            }
-
-            // Create the binary operator (supports +, -, *, /)
-            if ( opText == "+" )
-            {
-                silly::AddOp b = builder.create<silly::AddOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == "-" )
-            {
-                silly::SubOp b = builder.create<silly::SubOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == "*" )
-            {
-                silly::MulOp b = builder.create<silly::MulOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == "/" )
-            {
-                silly::DivOp b = builder.create<silly::DivOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == "<" )
-            {
-                silly::LessOp b = builder.create<silly::LessOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == ">" )
-            {
-                silly::LessOp b = builder.create<silly::LessOp>( loc, opType, rhsValue, lhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == "<=" )
-            {
-                silly::LessEqualOp b = builder.create<silly::LessEqualOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == ">=" )
-            {
-                silly::LessEqualOp b = builder.create<silly::LessEqualOp>( loc, opType, rhsValue, lhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == "EQ" )
-            {
-                silly::EqualOp b = builder.create<silly::EqualOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == "NE" )
-            {
-                silly::NotEqualOp b = builder.create<silly::NotEqualOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == "AND" )
-            {
-                silly::AndOp b = builder.create<silly::AndOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == "OR" )
-            {
-                silly::OrOp b = builder.create<silly::OrOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
-            }
-            else if ( opText == "XOR" )
-            {
-                silly::XorOp b = builder.create<silly::XorOp>( loc, opType, lhsValue, rhsValue );
-                resultValue = b.getResult();
+                value = stringLiteral.getResult();
             }
             else
             {
-                throw ExceptionWithContext(
-                    __FILE__, __LINE__, __func__,
-                    std::format( "{}internal error: Invalid binary operator {}\n", formatLocation( loc ), opText ) );
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                            std::format( "{}internal error: unknown literal type in primary: {}.\n",
+                                                         formatLocation( loc ), ctx->getText() ) );
             }
         }
-        assert( 0 && "NYI" );
+        else if ( SillyParser::VarPrimaryContext *varCtx = dynamic_cast<SillyParser::VarPrimaryContext *>( ctx ) )
+        {
+            // Variable / array element (# varPrimary)
+            SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = varCtx->scalarOrArrayElement();
+            assert( scalarOrArrayElement );
 
-        return resultValue;
+            tNode *variableNode = scalarOrArrayElement->IDENTIFIER();
+            assert( variableNode );
+            std::string varName = variableNode->getText();
+
+            silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+
+            mlir::Type varType = declareOp.getTypeAttr().getValue();
+
+            mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+
+            if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
+            {
+                value = parseRvalue( loc, indexExpr->rvalueExpression(), varType );
+
+                mlir::Value i = indexTypeCast( loc, value );
+
+                value = builder.create<silly::LoadOp>( loc, varType, symRef, i );
+            }
+            else
+            {
+                if ( deduceTypeFromOperands && declareOp.getSizeAttr() )    // PRINT.
+                {
+                    if ( mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( varType ) )
+                    {
+                        unsigned w = ity.getWidth();
+                        if ( w == 8 )
+                        {
+                            varType = tyPtr;
+                        }
+                    }
+                }
+
+                value = builder.create<silly::LoadOp>( loc, varType, symRef, mlir::Value{} );
+            }
+        }
+        else if ( SillyParser::CallPrimaryContext *callCtx = dynamic_cast<SillyParser::CallPrimaryContext *>( ctx ) )
+        {
+            // Function call (# callPrimary)
+            value = handleCall( callCtx->callExpression() );
+        }
+        else if ( SillyParser::ParenExprContext *parenCtx = dynamic_cast<SillyParser::ParenExprContext *>( ctx ) )
+        {
+            // Parenthesized expression (# parenExpr)
+            // Recurse — pass the same opType down (assignment wants dest type)
+            // or if PRINT, let the inner expression derive its type
+            value = parseRvalue(
+                loc, parenCtx->expression()->getParent()->getRuleContext<SillyParser::RvalueExpressionContext>(),
+                opType );
+        }
+        else
+        {
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "{}internal error: unknown primary expression: {}.\n",
+                                                     formatLocation( loc ), ctx->getText() ) );
+        }
+
+        assert( value );
+        return value;
     }
-#endif
 }    // namespace silly
 
 // vim: et ts=4 sw=4
