@@ -104,24 +104,24 @@ namespace silly
         void enterIfStatement( SillyParser::IfStatementContext *ctx ) override;
         void enterElifStatement( SillyParser::ElifStatementContext *ctx ) override;
         void enterElseStatement( SillyParser::ElseStatementContext *ctx ) override;
-        void exitIfelifelse( SillyParser::IfelifelseContext *ctx ) override;
+        void exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx ) override;
 
-        void enterFunction( SillyParser::FunctionContext *ctx ) override;
+        void enterFunctionStatement( SillyParser::FunctionStatementContext *ctx ) override;
         void enterCallStatement( SillyParser::CallStatementContext *ctx ) override;
-        void exitFunction( SillyParser::FunctionContext *ctx ) override;
+        void exitFunctionStatement( SillyParser::FunctionStatementContext *ctx ) override;
         void enterReturnStatement( SillyParser::ReturnStatementContext *ctx ) override;
-        void enterDeclare( SillyParser::DeclareContext *ctx ) override;
-        void enterBoolDeclare( SillyParser::BoolDeclareContext *ctx ) override;
-        void enterIntDeclare( SillyParser::IntDeclareContext *ctx ) override;
-        void enterFloatDeclare( SillyParser::FloatDeclareContext *ctx ) override;
-        void enterStringDeclare( SillyParser::StringDeclareContext *ctx ) override;
-        void enterPrint( SillyParser::PrintContext *ctx ) override;
-        void enterError( SillyParser::ErrorContext *ctx ) override;
-        void enterAbort( SillyParser::AbortContext *ctx ) override;
-        void enterGet( SillyParser::GetContext *ctx ) override;
-        void enterFor( SillyParser::ForContext *ctx ) override;
-        void exitFor( SillyParser::ForContext *ctx ) override;
-        void enterAssignment( SillyParser::AssignmentContext *ctx ) override;
+        void enterDeclareStatement( SillyParser::DeclareStatementContext *ctx ) override;
+        void enterBoolDeclareStatement( SillyParser::BoolDeclareStatementContext *ctx ) override;
+        void enterIntDeclareStatement( SillyParser::IntDeclareStatementContext *ctx ) override;
+        void enterFloatDeclareStatement( SillyParser::FloatDeclareStatementContext *ctx ) override;
+        void enterStringDeclareStatement( SillyParser::StringDeclareStatementContext *ctx ) override;
+        void enterPrintStatement( SillyParser::PrintStatementContext *ctx ) override;
+        void enterErrorStatement( SillyParser::ErrorStatementContext *ctx ) override;
+        void enterAbortStatement( SillyParser::AbortStatementContext *ctx ) override;
+        void enterGetStatement( SillyParser::GetStatementContext *ctx ) override;
+        void enterForStatement( SillyParser::ForStatementContext *ctx ) override;
+        void exitForStatement( SillyParser::ForStatementContext *ctx ) override;
+        void enterAssignmentStatement( SillyParser::AssignmentStatementContext *ctx ) override;
         void enterExitStatement( SillyParser::ExitStatementContext *ctx ) override;
 
         /// Returns the constructed ModuleOp.

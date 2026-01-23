@@ -291,6 +291,25 @@ multiplicativeOperator
 ``` 
  
   This way I get an array of multiplicativeOperator, each with it's own terminal node.  This fixes samples/expression5.silly, now enabled in the regression suite.
+  * Make the following replacements in the grammar for consistency:
+
+```
+s,\babort\b,abortStatement,g;
+s,\bifelifelse\b,ifElifElseStatement,g;
+s,\bfor\b,forStatement,g;
+s,\bprint\b,printStatement,g;
+s,\bassignment\b,assignmentStatement,g;
+s,\bdeclare\b,declareStatement,g;
+s,\bintDeclare\b,intDeclareStatement,g;
+s,\bfloatDeclare\b,floatDeclareStatement,g;
+s,\bstringDeclare\b,stringDeclareStatement,g;
+s,\bboolDeclare\b,boolDeclareStatement,g;
+s,\bfunction\b,functionStatement,g;
+s,\bget\b,getStatement,g;
+s,\berror\b,errorStatement,g;
+```
+
+(plus various matching transformations in the parser)
 
 ## tag: V7 (Jan 4, 2025)
 

@@ -3,7 +3,6 @@
 ----------------------------------
 * need lots of test for the new complex expressions support -- have a bit of that now, but it's not robust with respect to coverage (almost all exclusively in the PRINT codepath, not assignment, function call parameters, loop range vars, ...)
 * grammar probably allows for function declared in a function.  prohibit that or at least test for it?
-* grok code review on a recent commit suggests capitalizing the rules, to match the capitalization that the ANTLR4 parser/generator does anyways with the class names.  I like that idea, but it will break parser.cpp thoroughly -- grok also suggests a 'rename symbol' operation within vscode w/ an ANTLR4 plugin to automate that -- could try it that way.
 
 ----------------------------------
 * Bugs:

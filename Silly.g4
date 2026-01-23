@@ -21,16 +21,16 @@ startRule
   : (statement|comment)* (exitStatement ENDOFSTATEMENT_TOKEN)? comment* EOF
   ;
 
-// A statement can be a declaration, assignment, print, get, error, abort, if, for, call, function or comment.
+// A statement can be a declaration, assignment, PRINT, GET, ERROR, ABORT, IF, FOR, CALL, FUNCTION or comment.
 statement
-  : (callStatement | function | ifelifelse |
-     declare | boolDeclare | intDeclare | floatDeclare | stringDeclare |
-     assignment | print | error | abort | get | for
+  : (callStatement | functionStatement | ifElifElseStatement |
+     declareStatement | boolDeclareStatement | intDeclareStatement | floatDeclareStatement | stringDeclareStatement |
+     assignmentStatement | printStatement | errorStatement | abortStatement | getStatement | forStatement
     )
     ENDOFSTATEMENT_TOKEN
   ;
 
-ifelifelse
+ifElifElseStatement
   : ifStatement
     elifStatement*
     elseStatement?
@@ -49,7 +49,7 @@ elseStatement
   ;
 
 // For now both return and parameters, can only be scalar types.
-function
+functionStatement
   : FUNCTION_TOKEN IDENTIFIER
     BRACE_START_TOKEN (variableTypeAndName (COMMA_TOKEN variableTypeAndName)*)? BRACE_END_TOKEN
     (COLON_TOKEN scalarType)?
@@ -63,14 +63,14 @@ booleanValue
   ;
 
 // A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').  These are currently implicitly double.
-declare
+declareStatement
   : (DCL_TOKEN|DECLARE_TOKEN)
     IDENTIFIER (arrayBoundsExpression)?
     ((EQUALS_TOKEN assignmentRvalue) |
      (LEFT_CURLY_BRACKET_TOKEN (numericLiteral (COMMA_TOKEN numericLiteral)*)? RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
-boolDeclare
+boolDeclareStatement
   : BOOL_TOKEN
     IDENTIFIER (arrayBoundsExpression)?
     ((EQUALS_TOKEN assignmentRvalue) |
@@ -81,41 +81,41 @@ variableTypeAndName
   : scalarType IDENTIFIER
   ;
 
-intDeclare
+intDeclareStatement
   : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN)
     IDENTIFIER (arrayBoundsExpression)?
     ((EQUALS_TOKEN assignmentRvalue) |
      (LEFT_CURLY_BRACKET_TOKEN (integerLiteral (COMMA_TOKEN integerLiteral)*)? RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
-floatDeclare
+floatDeclareStatement
   : (FLOAT32_TOKEN | FLOAT64_TOKEN)
     IDENTIFIER (arrayBoundsExpression)?
     ((EQUALS_TOKEN assignmentRvalue) |
      (LEFT_CURLY_BRACKET_TOKEN (numericLiteral (COMMA_TOKEN numericLiteral)*)? RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
-stringDeclare
+stringDeclareStatement
   : STRING_TOKEN IDENTIFIER arrayBoundsExpression
     ((EQUALS_TOKEN STRING_PATTERN) | (LEFT_CURLY_BRACKET_TOKEN STRING_PATTERN RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
-// A print statement that outputs a list of variables, literals, or expressions (e.g., 'PRINT x, y, z;'), followed by a (optional) newline.
-print
+// A printStatement statement that outputs a list of variables, literals, or expressions (e.g., 'PRINT x, y, z;'), followed by a (optional) newline.
+printStatement
   : PRINT_TOKEN rvalueExpression (COMMA_TOKEN rvalueExpression)* CONTINUE_TOKEN?
   ;
 
-error
+errorStatement
   : ERROR_TOKEN rvalueExpression (COMMA_TOKEN rvalueExpression)* CONTINUE_TOKEN?
   ;
 
-// A get statement that inputs into a scalar variable (e.g., 'GET x;', 'GET x[1]').
-get
+// GET statement inputs into a scalar variable (e.g., 'GET x;', 'GET x[1]').
+getStatement
   : GET_TOKEN scalarOrArrayElement
   ;
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
-assignment
+assignmentStatement
   : scalarOrArrayElement EQUALS_TOKEN assignmentRvalue
   ;
 
@@ -130,7 +130,7 @@ assignmentRvalue
 //
 // for ( x = 1 ; x <= 10 ; x += 1 ) { ... }
 // for ( x = 1 ; x <= 10 ; x += 2 ) { ... }
-for
+forStatement
   : FOR_TOKEN
     BRACE_START_TOKEN IDENTIFIER COLON_TOKEN
         BRACE_START_TOKEN
@@ -263,7 +263,7 @@ comment
   : COMMENT_SKIP_RULE
   ;
 
-abort
+abortStatement
   : ABORT_TOKEN
   ;
 
@@ -311,7 +311,7 @@ literal
 
 /////////////////////////////////////////////////////////////////////////////////
 //
-// Lexer Rules
+// LEXER Rules
 // ===========
 
 // Matches integer literals, optionally signed (e.g., '42', '-123', '+7').

@@ -594,14 +594,14 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterFunction( SillyParser::FunctionContext *ctx )
+    void MLIRListener::enterFunctionStatement( SillyParser::FunctionStatementContext *ctx )
     try
     {
         assert( ctx );
         LocPairs locs = getLocations( ctx );
 
         LLVM_DEBUG( {
-            llvm::errs() << std::format( "enterFunction: startLoc: {}, endLoc: {}:\n", formatLocation( locs.first ),
+            llvm::errs() << std::format( "enterFunctionStatement: startLoc: {}, endLoc: {}:\n", formatLocation( locs.first ),
                                          formatLocation( locs.second ) );
         } );
 
@@ -641,7 +641,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::exitFunction( SillyParser::FunctionContext *ctx )
+    void MLIRListener::exitFunctionStatement( SillyParser::FunctionStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -703,7 +703,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterDeclare( SillyParser::DeclareContext *ctx )
+    void MLIRListener::enterDeclareStatement( SillyParser::DeclareStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -727,7 +727,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterBoolDeclare( SillyParser::BoolDeclareContext *ctx )
+    void MLIRListener::enterBoolDeclareStatement( SillyParser::BoolDeclareStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -750,7 +750,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterIntDeclare( SillyParser::IntDeclareContext *ctx )
+    void MLIRListener::enterIntDeclareStatement( SillyParser::IntDeclareStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -799,7 +799,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterFloatDeclare( SillyParser::FloatDeclareContext *ctx )
+    void MLIRListener::enterFloatDeclareStatement( SillyParser::FloatDeclareStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -840,7 +840,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterStringDeclare( SillyParser::StringDeclareContext *ctx )
+    void MLIRListener::enterStringDeclareStatement( SillyParser::StringDeclareStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -950,7 +950,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::exitIfelifelse( SillyParser::IfelifelseContext *ctx )
+    void MLIRListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx )
     try
     {
         // Restore EXACTLY where we were before creating the scf.if
@@ -960,7 +960,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterFor( SillyParser::ForContext *ctx )
+    void MLIRListener::enterForStatement( SillyParser::ForStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1048,7 +1048,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::exitFor( SillyParser::ForContext *ctx )
+    void MLIRListener::exitForStatement( SillyParser::ForStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1072,7 +1072,7 @@ namespace silly
         builder.create<silly::PrintOp>( loc, constFlagOp, vargs );
     }
 
-    void MLIRListener::enterPrint( SillyParser::PrintContext *ctx )
+    void MLIRListener::enterPrintStatement( SillyParser::PrintStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1087,7 +1087,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterError( SillyParser::ErrorContext *ctx )
+    void MLIRListener::enterErrorStatement( SillyParser::ErrorStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1101,7 +1101,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterAbort( SillyParser::AbortContext *ctx )
+    void MLIRListener::enterAbortStatement( SillyParser::AbortStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1111,7 +1111,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterGet( SillyParser::GetContext *ctx )
+    void MLIRListener::enterGetStatement( SillyParser::GetStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1326,7 +1326,7 @@ namespace silly
         }
     }
 
-    void MLIRListener::enterAssignment( SillyParser::AssignmentContext *ctx )
+    void MLIRListener::enterAssignmentStatement( SillyParser::AssignmentStatementContext *ctx )
     try
     {
         assert( ctx );
