@@ -36,9 +36,9 @@ That initial implementation has evolved into a silly language and its compiler. 
 * An `ABORT` operation for program termination.
 * Generalized expressions with full operator precedence, parentheses, unary chaining, and support for arithmetic, comparison, logical, and bitwise operations.
 * Boolean, integer, and floating-point constants, along with expression evaluation.
-* An ASSIGNMENT operator (`=`) for assignment to scalar or array elements with expression values.
+* An ASSIGNMENT operator (`=`) for assignment of expressions to scalar or array elements.
 * DWARF instrumentation sufficient for line stepping, breakpoints, continue, and variable inspection (variable modification is likely supported but untested).
-* Comparison operators (`<`, `<=`, `==`, `!=`) yielding `BOOL` values. These work across any combinations of floating-point and integer types (including `BOOL`).
+* Comparison operators (`<`, `<=`, `EQ`, `NE`) yielding `BOOL` values. These work across any combinations of floating-point and integer types (including `BOOL`).
 * Integer bitwise operators (`OR`, `AND`, `XOR`), applicable only to integer types (including `BOOL`).
 * A `NOT` operator yielding `BOOL`.
 * Array support, including declaration, assignment, printing, returning, exiting, and element access.
