@@ -1,0 +1,9 @@
+// expressions4b.silly
+
+INT64 a = 5;
+INT64 b = 3;
+
+PRINT a XOR b; // Expected: 6 (bitwise on ints: 5 ^ 3 = 6)
+
+PRINT 1 < 2 < 3; // Expected: 0 ( (1 < 2) < 3 ) = 1 < 3 = 1, but if bool as 1, then 1 < 3 = 1 (TRUE)
+

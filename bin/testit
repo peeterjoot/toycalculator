@@ -145,8 +145,10 @@ exitx
 expressions1
 expressions2
 expressions3
-#expressions4
+expressions4
 expressions4a
+#expressions4b
+#expressions5
 f
 factorial
 factorial2
