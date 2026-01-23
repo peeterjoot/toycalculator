@@ -287,7 +287,7 @@ namespace silly
         /// Handle parsing of a RvalueExpressionContext, returning an mlir::Value
         mlir::Value parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx, mlir::Type opType );
 
-        mlir::Value parseBinaryOr( mlir::Location loc, SillyParser::BinaryExpressionOrContext *ctx, mlir::Type opType );
+        mlir::Value parseBinaryAnd( mlir::Location loc, SillyParser::BinaryExpressionAndContext *ctx, mlir::Type opType );
 
         /// Handle assignment processing, given the current var-name and index (if appropriate.)
         void processAssignment( mlir::Location loc, SillyParser::RvalueExpressionContext *exprContext,

@@ -1564,13 +1564,13 @@ namespace silly
                 {
                     if ( left == mlir::Value{} )
                     {
-                        left = parseBinaryOr( loc, e, opType );
+                        left = parseBinaryAnd( loc, e, opType );
                         assert( left != mlir::Value{} );
 
                         continue;
                     }
 
-                    mlir::Value right = parseBinaryOr( loc, e, opType );
+                    mlir::Value right = parseBinaryAnd( loc, e, opType );
                     left = builder.create<silly::OrOp>( loc, opType, left, right );
                 }
 
@@ -1580,12 +1580,13 @@ namespace silly
         llvm_unreachable( "unexpected ExpressionContext" );
     }
 
-    mlir::Value MLIRListener::parseBinaryOr( mlir::Location loc, SillyParser::BinaryExpressionOrContext *ctx,
-                                             mlir::Type opType )
+    mlir::Value MLIRListener::parseBinaryAnd( mlir::Location loc, SillyParser::BinaryExpressionAndContext *ctx,
+                                              mlir::Type opType )
     {
         llvm_unreachable( "parseBinaryOr: NYI" );
         return nullptr;
     }
+
 
 #if 0
     mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::ExpressionContext *ctx,
