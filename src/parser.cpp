@@ -1402,21 +1402,21 @@ namespace silly
         std::vector<SillyParser::BinaryExpressionOrContext *> orOperands = orCtx->binaryExpressionOr();
 
         // First operand (no special case needed)
-        mlir::Value result = parseBinaryAnd( loc, orOperands[0], tyI1 );
+        mlir::Value value = parseBinaryAnd( loc, orOperands[0], opType );
 
         for ( size_t i = 1; i < orOperands.size(); ++i )
         {
-            mlir::Value rhs = parseBinaryAnd( loc, orOperands[i], tyI1 );
+            mlir::Value rhs = parseBinaryAnd( loc, orOperands[i], opType );
 
-            result = builder.create<silly::OrOp>( loc, tyI1, result, rhs ).getResult();
+            value = builder.create<silly::OrOp>( loc, opType, value, rhs ).getResult();
         }
 
         if ( opType )
         {
-            result = castOpIfRequired( loc, result, opType );
+            value = castOpIfRequired( loc, value, opType );
         }
 
-        return result;
+        return value;
     }
 
     mlir::Value MLIRListener::parseBinaryAnd( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
@@ -1436,17 +1436,22 @@ namespace silly
         std::vector<SillyParser::BinaryExpressionAndContext *> andOperands = andCtx->binaryExpressionAnd();
 
         // First operand
-        mlir::Value result = parseEquality( loc, andOperands[0], tyI1 );
+        mlir::Value value = parseEquality( loc, andOperands[0], opType );
 
         // Fold the remaining ANDs (left associative)
         for ( size_t i = 1; i < andOperands.size(); ++i )
         {
-            mlir::Value rhs = parseEquality( loc, andOperands[i], tyI1 );
+            mlir::Value rhs = parseEquality( loc, andOperands[i], opType );
 
-            result = builder.create<silly::AndOp>( loc, tyI1, result, rhs ).getResult();
+            value = builder.create<silly::AndOp>( loc, opType, value, rhs ).getResult();
         }
 
-        return castOpIfRequired( loc, result, opType );
+        if ( opType )
+        {
+            value = castOpIfRequired( loc, value, opType );
+        }
+
+        return value;
     }
 
     mlir::Value MLIRListener::parseEquality( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )

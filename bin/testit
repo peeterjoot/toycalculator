@@ -113,8 +113,6 @@ my %testflags = (
 );
 
 my %tests = map { $_ => 1 } (qw(
-# expressions1
-# expressions2
 0minus
 a2
 addi
@@ -144,6 +142,8 @@ exit3
 exit42
 exitarrayelement
 exitx
+expressions1
+expressions2
 f
 factorial
 factorial2
