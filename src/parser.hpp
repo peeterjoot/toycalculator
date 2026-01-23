@@ -286,7 +286,7 @@ namespace silly
         inline mlir::Value parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
                                         mlir::Type opType );
 
-        // alias for parseBinaryOr for clarity
+        // alias for parseOr for clarity
         inline mlir::Value parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx,
                                             mlir::Type opType );
 
@@ -297,9 +297,9 @@ namespace silly
         /// @param ctx The ExpressionContext (usually ExprLowestContext)
         /// @param opType Desired result type
         /// @return The resulting Value (typically i1 for logical OR)
-        mlir::Value parseBinaryOr( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
+        mlir::Value parseOr( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
 
-        mlir::Value parseBinaryXor( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
+        mlir::Value parseXor( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
 
         /// Parse the logical AND level.
         /// Handles expressions of the form: term AND term AND term ...
@@ -308,7 +308,7 @@ namespace silly
         /// @param ctx BinaryExpressionAndContext from the parser
         /// @param opType Desired result type
         /// @return The resulting Value (typically i1 for logical AND)
-        mlir::Value parseBinaryAnd( mlir::Location loc, antlr4::ParserRuleContext *ctx,
+        mlir::Value parseAnd( mlir::Location loc, antlr4::ParserRuleContext *ctx,
                                     mlir::Type opType );
 
         /// Parse the equality/inequality level (== and != operators).

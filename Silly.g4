@@ -206,7 +206,7 @@ binaryExpressionLowest
     ;
 
 binaryExpressionOr
-    : binaryExpressionXor (BOOLEANAND_TOKEN binaryExpressionXor)*  # xorExpr
+    : binaryExpressionXor (BOOLEANXOR_TOKEN binaryExpressionXor)*  # xorExpr
     ;
 
 binaryExpressionXor
