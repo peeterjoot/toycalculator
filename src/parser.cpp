@@ -1411,10 +1411,12 @@ namespace silly
             value = builder.create<silly::OrOp>( loc, opType, value, rhs ).getResult();
         }
 
+#if 0
         if ( opType )
         {
             value = castOpIfRequired( loc, value, opType );
         }
+#endif
 
         return value;
     }
@@ -1446,10 +1448,12 @@ namespace silly
             value = builder.create<silly::AndOp>( loc, opType, value, rhs ).getResult();
         }
 
+#if 0
         if ( opType )
         {
             value = castOpIfRequired( loc, value, opType );
         }
+#endif
 
         return value;
     }
@@ -1531,11 +1535,13 @@ namespace silly
             value = equalityResult;
         }
 
+#if 0
         // Final cast if caller specified a desired type (rare for equality)
         if ( opType )
         {
             value = castOpIfRequired( loc, value, opType );
         }
+#endif
 
         return value;
     }
@@ -1625,11 +1631,13 @@ namespace silly
             }
         }
 
+#if 0
         // Final cast (rarely needed for comparisons, but kept for consistency)
         if ( opType )
         {
             value = castOpIfRequired( loc, value, opType );
         }
+#endif
 
         return value;
     }
@@ -1710,11 +1718,13 @@ namespace silly
             }
         }
 
+#if 0
         // Final cast if caller (e.g. assignment) specified a desired type
         if ( opType )
         {
             value = castOpIfRequired( loc, value, opType );
         }
+#endif
 
         return value;
     }
@@ -1796,10 +1806,12 @@ namespace silly
             }
         }
 
+#if 0
         if ( opType )
         {
             value = castOpIfRequired( loc, value, opType );
         }
+#endif
 
         return value;
     }
@@ -1958,10 +1970,12 @@ namespace silly
                                                      formatLocation( loc ), ctx->getText() ) );
         }
 
-        if ( opType )
+#if 0
+        if ( opType != mlir::Type{} )
         {
             value = castOpIfRequired( loc, value, opType );
         }
+#endif
 
         assert( value );
         return value;
