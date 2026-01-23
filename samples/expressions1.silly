@@ -1,0 +1,7 @@
+DCL x;
+x = 5;
+PRINT x;
+//x = 3 * 2;
+//PRINT x;
+//x = 5 + 3 * 2;
+//PRINT x;

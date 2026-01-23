@@ -113,6 +113,8 @@ my %testflags = (
 );
 
 my %tests = map { $_ => 1 } (qw(
+# expressions1
+# expressions2
 0minus
 a2
 addi

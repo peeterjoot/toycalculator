@@ -1482,10 +1482,12 @@ namespace silly
         // Fold left-associatively
         for ( size_t i = 1; i < operands.size(); ++i )
         {
+#if 0
             if ( !opType )
             {
                 opType = value.getType();
             }
+#endif
 
             mlir::Value rhs = parseComparison( loc, operands[i], opType );
 
@@ -1834,7 +1836,7 @@ namespace silly
             else if ( opText == "NOT" )
             {
                 // NOT x: (x == 0)
-                mlir::Value zero = builder.create<mlir::arith::ConstantIntOp>( loc, 0, 64 );
+                mlir::Value zero = builder.create<mlir::arith::ConstantIntOp>( loc, 0, value.getType().getIntOrFloatBitWidth() );
                 value = builder.create<silly::EqualOp>( loc, tyI1, value, zero ).getResult();
             }
             else
