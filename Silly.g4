@@ -241,7 +241,7 @@ primaryExpression
   | BRACE_START_TOKEN expression BRACE_END_TOKEN                  # parenExpr
   ;
 
-// Dedicated operator rules to provide a clean vector of operators in visitor
+// Operator rules to yield a clean vector of operator nodes (avoids separate vectors per token type)
 equalityOperator
   : EQUALITY_TOKEN | NOTEQUAL_TOKEN
   ;
