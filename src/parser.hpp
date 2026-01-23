@@ -293,7 +293,7 @@ namespace silly
         /// @param ctx The ExpressionContext (usually ExprLowestContext)
         /// @param opType Desired result type
         /// @return The resulting Value (typically i1 for logical OR)
-        mlir::Value parseLogicalOr( mlir::Location loc, SillyParser::ExpressionContext *ctx, mlir::Type opType );
+        mlir::Value parseLogicalOr( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
 
         // alias for parseLogicalOr for clarity
         inline mlir::Value parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx,
@@ -306,7 +306,7 @@ namespace silly
         /// @param ctx BinaryExpressionAndContext from the parser
         /// @param opType Desired result type
         /// @return The resulting Value (typically i1 for logical AND)
-        mlir::Value parseBinaryAnd( mlir::Location loc, SillyParser::BinaryExpressionAndContext *ctx,
+        mlir::Value parseBinaryAnd( mlir::Location loc, antlr4::ParserRuleContext *ctx,
                                     mlir::Type opType );
 
         /// Parse the equality/inequality level (== and != operators).
@@ -316,7 +316,7 @@ namespace silly
         /// @param ctx BinaryExpressionCompareContext (may be EqNeExprContext when operators present)
         /// @param opType Desired result type
         /// @return The resulting Value (typically i1 for comparisons)
-        mlir::Value parseEquality( mlir::Location loc, SillyParser::BinaryExpressionCompareContext *ctx,
+        mlir::Value parseEquality( mlir::Location loc, antlr4::ParserRuleContext *ctx,
                                    mlir::Type opType );
 
         /// Parse the comparison level (< > <= >=).
@@ -326,7 +326,7 @@ namespace silly
         /// @param ctx BinaryExpressionCompareContext (CompareExprContext when operators present)
         /// @param opType Desired result type
         /// @return The resulting Value (typically i1)
-        mlir::Value parseComparison( mlir::Location loc, SillyParser::BinaryExpressionCompareContext *ctx,
+        mlir::Value parseComparison( mlir::Location loc, antlr4::ParserRuleContext *ctx,
                                      mlir::Type opType );
 
         /// Parse the additive level (+ and - operators).
@@ -336,7 +336,7 @@ namespace silly
         /// @param ctx BinaryExpressionAddSubContext
         /// @param opType Desired result type
         /// @return The resulting Value
-        mlir::Value parseAdditive( mlir::Location loc, SillyParser::BinaryExpressionAddSubContext *ctx,
+        mlir::Value parseAdditive( mlir::Location loc, antlr4::ParserRuleContext *ctx,
                                    mlir::Type opType );
 
         /// Parse the multiplicative level (* and / operators).
@@ -346,7 +346,7 @@ namespace silly
         /// @param ctx BinaryExpressionMulDivContext
         /// @param opType Desired result type
         /// @return The resulting Value
-        mlir::Value parseMultiplicative( mlir::Location loc, SillyParser::BinaryExpressionMulDivContext *ctx,
+        mlir::Value parseMultiplicative( mlir::Location loc, antlr4::ParserRuleContext *ctx,
                                          mlir::Type opType );
 
         /// Parse unary operators (negation, NOT, etc.).
@@ -356,7 +356,7 @@ namespace silly
         /// @param ctx UnaryExpressionContext
         /// @param opType Desired result type
         /// @return The resulting Value
-        mlir::Value parseUnary( mlir::Location loc, SillyParser::UnaryExpressionContext *ctx, mlir::Type opType );
+        mlir::Value parseUnary( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
 
         /// Parse primary expressions (literals, variables, calls, parenthesized expressions).
         /// The leaves of the expression tree:
@@ -368,7 +368,7 @@ namespace silly
         /// @param ctx PrimaryExpressionContext
         /// @param opType Desired result type
         /// @return The resulting Value
-        mlir::Value parsePrimary( mlir::Location loc, SillyParser::PrimaryExpressionContext *ctx, mlir::Type opType );
+        mlir::Value parsePrimary( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
 
         /// Handle assignment processing, given the current var-name and index (if appropriate.)
         void processAssignment( mlir::Location loc, SillyParser::RvalueExpressionContext *exprContext,

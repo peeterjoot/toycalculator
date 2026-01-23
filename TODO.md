@@ -2,7 +2,7 @@
 
 ----------------------------------
 * Implement more complex expressions (chains of operators...)
-    -- in progress.
+  -- in progress: breaks most everything: debug.
 
 ----------------------------------
 * Bugs:
