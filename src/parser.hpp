@@ -290,6 +290,8 @@ namespace silly
         inline mlir::Value parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx,
                                             mlir::Type opType );
 
+        inline mlir::Value parseLowest( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
+
         /// Parse the logical OR level (lowest precedence binary operator).
         /// Handles expressions of the form: expr OR expr OR expr ...
         /// Left-associative folding. If no OR is present, descends to the AND level.
@@ -308,8 +310,7 @@ namespace silly
         /// @param ctx BinaryExpressionAndContext from the parser
         /// @param opType Desired result type
         /// @return The resulting Value (typically i1 for logical AND)
-        mlir::Value parseAnd( mlir::Location loc, antlr4::ParserRuleContext *ctx,
-                                    mlir::Type opType );
+        mlir::Value parseAnd( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
 
         /// Parse the equality/inequality level (== and != operators).
         /// Handles expressions of the form: cmp == cmp != cmp ...
@@ -318,8 +319,7 @@ namespace silly
         /// @param ctx BinaryExpressionCompareContext (may be EqNeExprContext when operators present)
         /// @param opType Desired result type
         /// @return The resulting Value (typically i1 for comparisons)
-        mlir::Value parseEquality( mlir::Location loc, antlr4::ParserRuleContext *ctx,
-                                   mlir::Type opType );
+        mlir::Value parseEquality( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
 
         /// Parse the comparison level (< > <= >=).
         /// Handles expressions of the form: add < add > add <= add ...
@@ -328,8 +328,7 @@ namespace silly
         /// @param ctx BinaryExpressionCompareContext (CompareExprContext when operators present)
         /// @param opType Desired result type
         /// @return The resulting Value (typically i1)
-        mlir::Value parseComparison( mlir::Location loc, antlr4::ParserRuleContext *ctx,
-                                     mlir::Type opType );
+        mlir::Value parseComparison( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
 
         /// Parse the additive level (+ and - operators).
         /// Handles expressions of the form: mul + mul - mul ...
@@ -338,8 +337,7 @@ namespace silly
         /// @param ctx BinaryExpressionAddSubContext
         /// @param opType Desired result type
         /// @return The resulting Value
-        mlir::Value parseAdditive( mlir::Location loc, antlr4::ParserRuleContext *ctx,
-                                   mlir::Type opType );
+        mlir::Value parseAdditive( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
 
         /// Parse the multiplicative level (* and / operators).
         /// Handles expressions of the form: unary * unary / unary ...
@@ -348,8 +346,7 @@ namespace silly
         /// @param ctx BinaryExpressionMulDivContext
         /// @param opType Desired result type
         /// @return The resulting Value
-        mlir::Value parseMultiplicative( mlir::Location loc, antlr4::ParserRuleContext *ctx,
-                                         mlir::Type opType );
+        mlir::Value parseMultiplicative( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType );
 
         /// Parse unary operators (negation, NOT, etc.).
         /// Handles expressions of the form: - unary, NOT unary, or primary.

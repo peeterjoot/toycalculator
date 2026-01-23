@@ -358,10 +358,27 @@ namespace silly
         builder.restoreInsertionPoint( savedIP );
     }
 
+    inline mlir::Value MLIRListener::parseLowest( mlir::Location loc, antlr4::ParserRuleContext *ctx,
+                                                  mlir::Type opType )
+    {
+        SillyParser::ExprLowestContext *expr = dynamic_cast<SillyParser::ExprLowestContext *>( ctx );
+        if ( !expr )
+        {
+            throw ExceptionWithContext(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}internal error: unexpected ExpressionContext alternative: {}.\n", formatLocation( loc ),
+                             ctx->getText() ) );
+        }
+
+        SillyParser::BinaryExpressionLowestContext *lowest = expr->binaryExpressionLowest();
+
+        return parseOr( loc, lowest, opType );
+    }
+
     inline mlir::Value MLIRListener::parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx,
                                                       mlir::Type opType )
     {
-        return parseOr( loc, ctx, opType );
+        return parseLowest( loc, ctx, opType );
     }
 
     inline mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
@@ -601,8 +618,8 @@ namespace silly
         LocPairs locs = getLocations( ctx );
 
         LLVM_DEBUG( {
-            llvm::errs() << std::format( "enterFunctionStatement: startLoc: {}, endLoc: {}:\n", formatLocation( locs.first ),
-                                         formatLocation( locs.second ) );
+            llvm::errs() << std::format( "enterFunctionStatement: startLoc: {}, endLoc: {}:\n",
+                                         formatLocation( locs.first ), formatLocation( locs.second ) );
         } );
 
         mainIP = builder.saveInsertionPoint();
@@ -1379,45 +1396,34 @@ namespace silly
 
     mlir::Value MLIRListener::parseOr( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
     {
-        SillyParser::ExprLowestContext *expr = dynamic_cast<SillyParser::ExprLowestContext *>( ctx );
-        if ( !expr )
+        assert( ctx );
+
+        if ( SillyParser::OrExprContext *orCtx = dynamic_cast<SillyParser::OrExprContext *>( ctx ) )
         {
-            throw ExceptionWithContext(
-                __FILE__, __LINE__, __func__,
-                std::format( "{}internal error: unexpected ExpressionContext alternative: {}.\n", formatLocation( loc ),
-                             ctx->getText() ) );
-        }
+            // We have at least one OR
+            std::vector<SillyParser::BinaryExpressionOrContext *> orOperands = orCtx->binaryExpressionOr();
 
-        SillyParser::BinaryExpressionLowestContext *lowest = expr->binaryExpressionLowest();
-        assert( lowest );
-
-        SillyParser::OrExprContext *orCtx = dynamic_cast<SillyParser::OrExprContext *>( lowest );
-        if ( !orCtx )
-        {
-            // No OR: just descend to the next level (XOR / single-term)
-            return parseXor( loc, lowest, opType );
-        }
-
-        // We have at least one OR
-        std::vector<SillyParser::BinaryExpressionOrContext *> orOperands = orCtx->binaryExpressionOr();
-
-        // First operand (no special case needed)
-        mlir::Value value = parseXor( loc, orOperands[0], opType );
-        for ( size_t i = 1; i < orOperands.size(); ++i )
-        {
-            mlir::Value rhs = parseXor( loc, orOperands[i], opType );
-
-            mlir::Type ty = opType;
-
-            if ( !ty )
+            // First operand (no special case needed)
+            mlir::Value value = parseXor( loc, orOperands[0], opType );
+            for ( size_t i = 1; i < orOperands.size(); ++i )
             {
-                ty = biggestTypeOf( value.getType(), rhs.getType() );
+                mlir::Value rhs = parseXor( loc, orOperands[i], opType );
+
+                mlir::Type ty = opType;
+
+                if ( !ty )
+                {
+                    ty = biggestTypeOf( value.getType(), rhs.getType() );
+                }
+
+                value = builder.create<silly::OrOp>( loc, ty, value, rhs ).getResult();
             }
 
-            value = builder.create<silly::OrOp>( loc, ty, value, rhs ).getResult();
+            return value;
         }
 
-        return value;
+        // No OR: just descend to the next level (XOR / single-term)
+        return parseXor( loc, ctx, opType );
     }
 
     mlir::Value MLIRListener::parseXor( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
@@ -1495,9 +1501,7 @@ namespace silly
         mlir::Value value{};
 
         // Check if this is the concrete alternative that has EQ / NE operators
-        SillyParser::EqNeExprContext *eqNeCtx = dynamic_cast<SillyParser::EqNeExprContext *>( ctx );
-
-        if ( eqNeCtx )
+        if ( SillyParser::EqNeExprContext *eqNeCtx = dynamic_cast<SillyParser::EqNeExprContext *>( ctx ) )
         {
             // We have an EQ / NE operator
             std::vector<SillyParser::BinaryExpressionCompareContext *> operands = eqNeCtx->binaryExpressionCompare();
@@ -1541,9 +1545,7 @@ namespace silly
 
         // Check if this context actually contains comparison operators
         // (the # compareExpr alternative has the repetition)
-        SillyParser::CompareExprContext *compareCtx = dynamic_cast<SillyParser::CompareExprContext *>( ctx );
-
-        if ( compareCtx )
+        if ( SillyParser::CompareExprContext *compareCtx = dynamic_cast<SillyParser::CompareExprContext *>( ctx ) )
         {
             // We have a comparison operator
             std::vector<SillyParser::BinaryExpressionAddSubContext *> operands = compareCtx->binaryExpressionAddSub();
@@ -1598,9 +1600,7 @@ namespace silly
 
         // Check if this context actually contains + or - operators
         // (AddSubExprContext is the alternative that has the repetition)
-        SillyParser::AddSubExprContext *addSubCtx = dynamic_cast<SillyParser::AddSubExprContext *>( ctx );
-
-        if ( addSubCtx )
+        if ( SillyParser::AddSubExprContext *addSubCtx = dynamic_cast<SillyParser::AddSubExprContext *>( ctx ) )
         {
             std::vector<SillyParser::AdditionOperatorContext *> ops = addSubCtx->additionOperator();
 
@@ -1656,9 +1656,7 @@ namespace silly
 
         // Check whether this context actually contains * or / operators
         // (MulDivExprContext is the alternative that has the repetition)
-        SillyParser::MulDivExprContext *mulDivCtx = dynamic_cast<SillyParser::MulDivExprContext *>( ctx );
-
-        if ( mulDivCtx )
+        if ( SillyParser::MulDivExprContext *mulDivCtx = dynamic_cast<SillyParser::MulDivExprContext *>( ctx ) )
         {
             std::vector<SillyParser::MultiplicativeOperatorContext *> ops = mulDivCtx->multiplicativeOperator();
 
@@ -1864,7 +1862,7 @@ namespace silly
         else if ( SillyParser::ParenExprContext *parenCtx = dynamic_cast<SillyParser::ParenExprContext *>( ctx ) )
         {
             // Parenthesized expression (# parenExpr)
-            value = parseOr( loc, parenCtx->expression(), opType );    // lowest.
+            value = parseExpression( loc, parenCtx->expression(), opType );    // lowest.
         }
         else
         {
