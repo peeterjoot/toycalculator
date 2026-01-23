@@ -359,7 +359,7 @@ namespace silly
     }
 
     inline mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx,
-                                           mlir::Type opType )
+                                                  mlir::Type opType )
     {
         assert( ctx && ctx->expression() );
 
@@ -1583,8 +1583,8 @@ namespace silly
 
         for ( size_t i = 1; i < orOperands.size(); ++i )
         {
-            mlir::Value rhs = parseBinaryAnd(
-                loc, dynamic_cast<SillyParser::BinaryExpressionAndContext *>( orOperands[i] ), tyI1 );
+            mlir::Value rhs =
+                parseBinaryAnd( loc, dynamic_cast<SillyParser::BinaryExpressionAndContext *>( orOperands[i] ), tyI1 );
 
             result = builder.create<silly::OrOp>( loc, tyI1, result, rhs ).getResult();
         }
@@ -1603,8 +1603,7 @@ namespace silly
         if ( !andCtx )
         {
             // No AND operator → descend directly to the next level (equality)
-            return parseEquality( loc, dynamic_cast<SillyParser::BinaryExpressionCompareContext *>( ctx ),
-                                  opType );
+            return parseEquality( loc, dynamic_cast<SillyParser::BinaryExpressionCompareContext *>( ctx ), opType );
         }
 
         // We have one or more AND operators
@@ -1634,6 +1633,45 @@ namespace silly
         return nullptr;
     }
 
+    mlir::Value MLIRListener::parseComparison( mlir::Location loc, SillyParser::BinaryExpressionCompareContext *ctx,
+                                               mlir::Type opType )
+    {
+        assert( ctx );
+        llvm_unreachable( "parseComparison: NYI" );
+        return nullptr;
+    }
+
+    mlir::Value MLIRListener::parseAdditive( mlir::Location loc, SillyParser::BinaryExpressionAddSubContext *ctx,
+                                             mlir::Type opType )
+    {
+        assert( ctx );
+        llvm_unreachable( "parseAdditive: NYI" );
+        return nullptr;
+    }
+
+    mlir::Value MLIRListener::parseMultiplicative( mlir::Location loc, SillyParser::BinaryExpressionMulDivContext *ctx,
+                                                   mlir::Type opType )
+    {
+        assert( ctx );
+        llvm_unreachable( "parseMultiplicative: NYI" );
+        return nullptr;
+    }
+
+    mlir::Value MLIRListener::parseUnary( mlir::Location loc, SillyParser::UnaryExpressionContext *ctx,
+                                          mlir::Type opType )
+    {
+        assert( ctx );
+        llvm_unreachable( "parseUnary: NYI" );
+        return nullptr;
+    }
+
+    mlir::Value MLIRListener::parsePrimary( mlir::Location loc, SillyParser::PrimaryExpressionContext *ctx,
+                                            mlir::Type opType )
+    {
+        assert( ctx );
+        llvm_unreachable( "parsePrimary: NYI" );
+        return nullptr;
+    }
 
 #if 0
     mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::ExpressionContext *ctx,
