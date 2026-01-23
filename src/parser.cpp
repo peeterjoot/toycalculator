@@ -1653,24 +1653,219 @@ namespace silly
                                              mlir::Type opType )
     {
         assert( ctx );
-        llvm_unreachable( "parseAdditive: NYI" );
-        return nullptr;
+        mlir::Value value{};
+
+#if 0
+        bool deduceTypeFromOperands = ( opType == mlir::Type{} );
+
+        // Check if this context actually contains + or - operators
+        // (AddSubExprContext is the alternative that has the repetition)
+        SillyParser::AddSubExprContext *addSubCtx =
+            dynamic_cast<SillyParser::AddSubExprContext *>( ctx );
+
+        if ( !addSubCtx )
+        {
+            // No + or - → descend directly to multiplicative level
+            return parseMultiplicative( loc, ctx->binaryExpressionMulDiv(), opType );
+        }
+
+        // We have one or more + or - operators
+        std::vector<SillyParser::BinaryExpressionMulDivContext *> operands =
+            addSubCtx->binaryExpressionMulDiv();
+
+        // First operand
+        value = parseMultiplicative( loc, operands[0], opType );
+
+        // Fold the remaining additions/subtractions left-associatively
+        for ( size_t i = 1; i < operands.size(); ++i )
+        {
+            mlir::Value rhs = parseMultiplicative( loc, operands[i], opType );
+
+            // Determine operator from the token at position (i-1)
+            antlr4::tree::TerminalNode *opToken = nullptr;
+            if ( i-1 < addSubCtx->PLUSCHAR_TOKEN().size() )
+            {
+                opToken = addSubCtx->PLUSCHAR_TOKEN(i-1);
+            }
+            else if ( i-1 < addSubCtx->MINUS_TOKEN().size() )
+            {
+                opToken = addSubCtx->MINUS_TOKEN(i-1);
+            }
+
+            if ( !opToken )
+            {
+                throw ExceptionWithContext(
+                    __FILE__, __LINE__, __func__,
+                    std::format( "{}internal error: missing + or - operator at index {}\n",
+                                 formatLocation( loc ), i-1 ) );
+            }
+
+            std::string opText = opToken->getText();
+
+            if ( opText == "+" )
+            {
+                value = builder.create<silly::AddOp>( loc, value.getType(), value, rhs ).getResult();
+            }
+            else if ( opText == "-" )
+            {
+                value = builder.create<silly::SubOp>( loc, value.getType(), value, rhs ).getResult();
+            }
+            else
+            {
+                throw ExceptionWithContext(
+                    __FILE__, __LINE__, __func__,
+                    std::format( "{}internal error: unexpected additive operator: {}\n",
+                                 formatLocation( loc ), opText ) );
+            }
+
+            // Optional: if this is a print-like context and you later want to promote
+            // intermediate values, you could insert logic here.
+            // For now we keep it simple (type follows left operand).
+        }
+
+        // Final cast if caller (e.g. assignment) specified a desired type
+        if ( opType )
+        {
+            value = castOpIfRequired( loc, value, opType );
+        }
+#endif
+
+        return value;
     }
+
+    inline SillyParser::UnaryExpressionContext *getSingleUnary( SillyParser::BinaryExpressionMulDivContext *ctx )
+    {
+        assert( ctx->children.size() == 1 );
+        return dynamic_cast<SillyParser::UnaryExpressionContext *>( ctx->children[0] );
+    }
+
 
     mlir::Value MLIRListener::parseMultiplicative( mlir::Location loc, SillyParser::BinaryExpressionMulDivContext *ctx,
                                                    mlir::Type opType )
     {
         assert( ctx );
-        llvm_unreachable( "parseMultiplicative: NYI" );
-        return nullptr;
+        mlir::Value value{};
+
+        // Check whether this context actually contains * or / operators
+        // (MulDivExprContext is the alternative that has the repetition)
+        SillyParser::MulDivExprContext *mulDivCtx = dynamic_cast<SillyParser::MulDivExprContext *>( ctx );
+
+        if ( !mulDivCtx )
+        {
+            // Descend directly to unary level if no * or /
+            SillyParser::UnaryExpressionContext *singleUnary = getSingleUnary( ctx );
+            assert( singleUnary );
+            return parseUnary( loc, singleUnary, opType );
+        }
+
+        // We have one or more * or / operators
+        std::vector<SillyParser::UnaryExpressionContext *> operands = mulDivCtx->unaryExpression();
+
+        // First operand
+        value = parseUnary( loc, operands[0], opType );
+
+        // Fold the remaining multiplications/divisions left-associatively
+        for ( size_t i = 1; i < operands.size(); ++i )
+        {
+            mlir::Value rhs = parseUnary( loc, operands[i], opType );
+
+            // Determine operator from the token at position (i-1)
+            antlr4::tree::TerminalNode *opToken = nullptr;
+            if ( ( i - 1 ) < mulDivCtx->TIMES_TOKEN().size() )
+            {
+                opToken = mulDivCtx->TIMES_TOKEN( i - 1 );
+            }
+            else if ( ( i - 1 ) < mulDivCtx->DIV_TOKEN().size() )
+            {
+                opToken = mulDivCtx->DIV_TOKEN( i - 1 );
+            }
+
+            if ( !opToken )
+            {
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                            std::format( "{}internal error: missing * or / operator at index {}\n",
+                                                         formatLocation( loc ), i - 1 ) );
+            }
+
+            std::string opText = opToken->getText();
+
+            if ( opText == "*" )
+            {
+                value = builder.create<silly::MulOp>( loc, value.getType(), value, rhs ).getResult();
+            }
+            else if ( opText == "/" )
+            {
+                value = builder.create<silly::DivOp>( loc, value.getType(), value, rhs ).getResult();
+            }
+            else
+            {
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                            std::format( "{}internal error: unexpected multiplicative operator: {}\n",
+                                                         formatLocation( loc ), opText ) );
+            }
+        }
+
+        if ( opType )
+        {
+            value = castOpIfRequired( loc, value, opType );
+        }
+
+        return value;
     }
 
     mlir::Value MLIRListener::parseUnary( mlir::Location loc, SillyParser::UnaryExpressionContext *ctx,
                                           mlir::Type opType )
     {
         assert( ctx );
-        llvm_unreachable( "parseUnary: NYI" );
-        return nullptr;
+        mlir::Value value{};
+
+        if ( SillyParser::UnaryOpContext *unaryOpCtx = dynamic_cast<SillyParser::UnaryOpContext *>( ctx ) )
+        {
+            // Case 1: unary operator applied to another unary expression (# unaryOp)
+            SillyParser::UnaryOperatorContext *unaryOp = unaryOpCtx->unaryOperator();
+            assert( unaryOp );
+
+            // Recurse to the inner unary expression
+            value = parseUnary( loc, unaryOpCtx->unaryExpression(), opType );
+
+            std::string opText = unaryOp->getText();
+
+            if ( opText == "-" )
+            {
+                // Negation
+                value = builder.create<silly::NegOp>( loc, value.getType(), value ).getResult();
+            }
+            else if ( opText == "+" )
+            {
+                // Unary plus: identity (no-op)
+            }
+            else if ( opText == "NOT" )
+            {
+                // NOT x: (x == 0)
+                mlir::Value zero = builder.create<mlir::arith::ConstantIntOp>( loc, 0, 64 );
+                value = builder.create<silly::EqualOp>( loc, tyI1, value, zero ).getResult();
+            }
+            else
+            {
+                throw ExceptionWithContext(
+                    __FILE__, __LINE__, __func__,
+                    std::format( "{}internal error: unknown unary operator: {}\n", formatLocation( loc ), opText ) );
+            }
+        }
+        else if ( SillyParser::PrimaryContext *primaryCtx = dynamic_cast<SillyParser::PrimaryContext *>( ctx ) )
+        {
+            // Case 2: no unary operator, just a primary (# primary)
+            value = parsePrimary( loc, primaryCtx->primaryExpression(), opType );
+        }
+        else
+        {
+            throw ExceptionWithContext(
+                __FILE__, __LINE__, __func__,
+                std::format( "{}internal error: unknown unary context: {}\n", formatLocation( loc ), ctx->getText() ) );
+        }
+
+        assert( value );
+        return value;
     }
 
     mlir::Value MLIRListener::parsePrimary( mlir::Location loc, SillyParser::PrimaryExpressionContext *ctx,
