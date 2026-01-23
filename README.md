@@ -34,8 +34,9 @@ That initial implementation has evolved into a silly language and its compiler. 
 * Single-line comments.
 * An `EXIT` operation.
 * An `ABORT` operation for program termination.
+* Generalized expressions with full operator precedence, parentheses, unary chaining, and support for arithmetic, comparison, logical, and bitwise operations.
 * Boolean, integer, and floating-point constants, along with expression evaluation.
-* An ASSIGNMENT operator (`=`) with unary (`+`, `-`) and binary operators (`+`, `-`, `*`, `/`).
+* An ASSIGNMENT operator (`=`) for assignment to scalar or array elements with expression values.
 * DWARF instrumentation sufficient for line stepping, breakpoints, continue, and variable inspection (variable modification is likely supported but untested).
 * Comparison operators (`<`, `<=`, `==`, `!=`) yielding `BOOL` values. These work across any combinations of floating-point and integer types (including `BOOL`).
 * Integer bitwise operators (`OR`, `AND`, `XOR`), applicable only to integer types (including `BOOL`).
@@ -200,6 +201,68 @@ A Silly program consists of zero or more **statements** and **comments**, option
 Blocks use `{ ... }`, and expressions use parentheses `( ... )`.
 
 ---
+
+## Expressions
+
+The expression grammar now supports **generalized expressions** with proper precedence, associativity, and parentheses.
+
+### Operator Precedence (highest to lowest)
+
+| Precedence | Operators                  | Associativity | Notes                               |
+|------------|----------------------------|---------------|------------------------------------ |
+| 1 (highest)| `NOT`, unary `+`, unary `-`| right         | Unary operators chain right-to-left |
+| 2          | `*`, `/`                   | left          |                                     |
+| 3          | `+`, `-`                   | left          |                                     |
+| 4          | `<`, `>`, `<=`, `>=`       | left          | Comparisons produce `BOOL`          |
+| 5          | `EQ`, `NE`                 | left          | Equality/inequality                 |
+| 6          | `AND`                      | left          | Logical/bitwise AND                 |
+| 7          | `XOR`                      | left          | Logical/bitwise XOR                 |
+| 8 (lowest) | `OR`                       | left          | Logical/bitwise OR                  |
+
+Parentheses `()` can be used to override precedence.
+
+### Type Handling in Expressions
+
+- In **assignment** contexts (`x = expr`), all intermediate operations use the type of the destination variable (`x`).
+- In **PRINT** / **ERROR** / free-standing expression contexts, types are derived bottom-up from the operands (using promotion rules in `biggestTypeOf`).
+- Comparisons and logical operations always produce `BOOL` (`i1`).
+
+Examples:
+
+```text
+x = 1 + 2 * 3;          // multiplication before addition → x = 7
+PRINT 1 + 2 * 3;        // 7 (no forced promotion)
+
+flag = (a < b) AND (c > d) OR (x EQ y);  // proper precedence and parens
+
+r = i1 XOR j64;         // XOR works across integer/boolean types
+```
+
+## Unary Operations
+
+| Operator | Meaning           | Result Type        | Associativity | Notes                             |
+|---------:|-------------------|--------------------|---------------|-----------------------------------|
+| `+`      | Unary plus        | Same as operand    | Right         | No-op (identity)                  |
+| `-`      | Unary negation    | Same as operand    | Right         | Chains right-to-left (e.g. `--x`) |
+| `NOT`    | Boolean negation  | `BOOL` (`i1`)      | Right         | Implemented as `(x == 0)`         |
+
+## Binary Operations
+
+| Operator | Meaning                    | Result Type                  | Associativity | Notes |
+|---------:|----------------------------|------------------------------|---------------|-------|
+| `*`      | Multiplication             | Promoted operand type        | Left          |       |
+| `/`      | Division                   | Promoted operand type        | Left          |       |
+| `+`      | Addition                   | Promoted operand type        | Left          |       |
+| `-`      | Subtraction                | Promoted operand type        | Left          |       |
+| `<`      | Less than                  | `BOOL`                       | Left          |       |
+| `>`      | Greater than               | `BOOL`                       | Left          |       |
+| `<=`     | Less than or equal         | `BOOL`                       | Left          |       |
+| `>=`     | Greater than or equal      | `BOOL`                       | Left          |       |
+| `EQ`     | Equal                      | `BOOL`                       | Left          |       |
+| `NE`     | Not equal                  | `BOOL`                       | Left          |       |
+| `AND`    | Logical / bitwise AND      | `BOOL` or promoted integer   | Left          | Bitwise for integers, logical for `BOOL` |
+| `XOR`    | Logical / bitwise XOR      | `BOOL` or promoted integer   | Left          | Bitwise for integers, logical for `BOOL` |
+| `OR`     | Logical / bitwise OR       | `BOOL` or promoted integer   | Left          | Bitwise for integers, logical for `BOOL` |
 
 ## Declarations
 

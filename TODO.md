@@ -1,8 +1,7 @@
 ## TODO
 
 ----------------------------------
-* Implement more complex expressions (chains of operators...)
-  -- in progress: breaks most everything: debug.
+* need lots of test for the new complex expressions support.
 
 ----------------------------------
 * Bugs:
