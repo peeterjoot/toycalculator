@@ -1637,8 +1637,85 @@ namespace silly
                                              mlir::Type opType )
     {
         assert( ctx );
-        llvm_unreachable( "parseEquality: NYI" );
-        return nullptr;
+        mlir::Value value{};
+
+        // Check if this is the concrete alternative that has EQ / NE operators
+        SillyParser::EqNeExprContext *eqNeCtx = dynamic_cast<SillyParser::EqNeExprContext *>( ctx );
+
+        if ( !eqNeCtx )
+        {
+            // No EQ or NE operators: descend directly to comparison level
+            SillyParser::BinaryExpressionCompareContext *single =
+                ctx->getRuleContext<SillyParser::BinaryExpressionCompareContext>( 0 );
+            assert( single );
+            return parseComparison( loc, single, opType );
+        }
+
+        // We have one or more EQ / NE operators
+        std::vector<SillyParser::BinaryExpressionCompareContext *> operands = eqNeCtx->binaryExpressionCompare();
+
+        // First (leftmost) operand
+        value = parseComparison( loc, operands[0], opType );
+
+        // Fold left-associatively
+        for ( size_t i = 1; i < operands.size(); ++i )
+        {
+            if ( !opType )
+            {
+                opType = value.getType();
+            }
+
+            mlir::Value rhs = parseComparison( loc, operands[i], opType );
+
+            // Determine which operator was used at position (i-1)
+            antlr4::tree::TerminalNode *opToken = nullptr;
+            std::string opText;
+
+            if ( i - 1 < eqNeCtx->EQUALITY_TOKEN().size() )
+            {
+                opToken = eqNeCtx->EQUALITY_TOKEN( i - 1 );
+                opText = "EQ";
+            }
+            else if ( i - 1 < eqNeCtx->NOTEQUAL_TOKEN().size() )
+            {
+                opToken = eqNeCtx->NOTEQUAL_TOKEN( i - 1 );
+                opText = "NE";
+            }
+
+            if ( !opToken )
+            {
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                            std::format( "{}internal error: missing EQ or NE token at index {}\n",
+                                                         formatLocation( loc ), i - 1 ) );
+            }
+
+            mlir::Value equalityResult;
+
+            if ( opText == "EQ" )
+            {
+                equalityResult = builder.create<silly::EqualOp>( loc, tyI1, value, rhs ).getResult();
+            }
+            else if ( opText == "NE" )
+            {
+                equalityResult = builder.create<silly::NotEqualOp>( loc, tyI1, value, rhs ).getResult();
+            }
+            else
+            {
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                            std::format( "{}internal error: unexpected equality operator: {}\n",
+                                                         formatLocation( loc ), opText ) );
+            }
+
+            value = equalityResult;
+        }
+
+        // Final cast if caller specified a desired type (rare for equality)
+        if ( opType )
+        {
+            value = castOpIfRequired( loc, value, opType );
+        }
+
+        return value;
     }
 
     mlir::Value MLIRListener::parseComparison( mlir::Location loc, SillyParser::BinaryExpressionCompareContext *ctx,
