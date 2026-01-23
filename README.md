@@ -80,14 +80,6 @@ FUNCTION foo()
 };
 ```
 
-## On the use of AI in this project.
-
-AI tools (Grok and ChatGPT) were used to generate some of the initial framework for this project (April 2025 timeframe.)
-At that point in time, considerable effort was required to keep both Grok and ChatGPT from hallucinating MLIR or LLVM APIs that don't exist,
-but both of those models were invaluable for getting things started.
-
-As an example of the pain of working with AI tools, here's a trivial example: I asked Grok to add comments to my grammar and fix the indenting, but it took 20 minutes to coerce it to use the grammar that I asked it to use (as it claims the ability to read internet content), but it kept making stuff up and injecting changes to the semantics and making changing grammar element name changes that would have broken my listener class.
-
 ## Interesting files
 
 * `Silly.g4`           -- The Antlr4 grammar.
