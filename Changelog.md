@@ -276,6 +276,7 @@ PRINT - - 5;            // 5
 PRINT NOT TRUE;         // 0 (FALSE)
 PRINT (10 < 20) EQ 1;   // 1 (TRUE)
 ```
+  * Prohibit NOT on non-integer type.  t/c: `error_notfloat.silly`
 
 ## tag: V7 (Jan 4, 2025)
 

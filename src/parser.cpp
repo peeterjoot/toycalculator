@@ -1819,6 +1819,11 @@ namespace silly
             }
             else if ( opText == "NOT" )
             {
+                if ( !value.getType().isInteger() ) {
+                    throw UserError( loc,
+                        std::format( "NOT on non-integer type: {}\n", ctx->getText() ) );
+                }
+
                 // NOT x: (x == 0)
                 mlir::Value zero =
                     builder.create<mlir::arith::ConstantIntOp>( loc, 0, value.getType().getIntOrFloatBitWidth() );
