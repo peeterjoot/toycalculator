@@ -1764,17 +1764,18 @@ namespace silly
         else if ( SillyParser::ParenExprContext *parenCtx = dynamic_cast<SillyParser::ParenExprContext *>( ctx ) )
         {
             // Parenthesized expression (# parenExpr)
-            // Recurse — pass the same opType down (assignment wants dest type)
-            // or if PRINT, let the inner expression derive its type
-            value = parseRvalue(
-                loc, parenCtx->expression()->getParent()->getRuleContext<SillyParser::RvalueExpressionContext>(),
-                opType );
+            value = parseLogicalOr( loc, parenCtx->expression(), opType );
         }
         else
         {
             throw ExceptionWithContext( __FILE__, __LINE__, __func__,
                                         std::format( "{}internal error: unknown primary expression: {}.\n",
                                                      formatLocation( loc ), ctx->getText() ) );
+        }
+
+        if ( opType )
+        {
+            value = castOpIfRequired( loc, value, opType );
         }
 
         assert( value );
