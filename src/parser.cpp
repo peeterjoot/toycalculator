@@ -1610,7 +1610,7 @@ namespace silly
 
         if ( !andCtx )
         {
-            // No AND operator → descend directly to the next level (equality)
+            // No AND operator: descend directly to the next level (equality)
             return parseEquality( loc, dynamic_cast<SillyParser::BinaryExpressionCompareContext *>( ctx ), opType );
         }
 
@@ -1645,11 +1645,99 @@ namespace silly
                                                mlir::Type opType )
     {
         assert( ctx );
-        llvm_unreachable( "parseComparison: NYI" );
-        return nullptr;
+        mlir::Value value{};
+
+        // Check if this context actually contains comparison operators
+        // (the # compareExpr alternative has the repetition)
+        SillyParser::CompareExprContext *compareCtx = dynamic_cast<SillyParser::CompareExprContext *>( ctx );
+
+        if ( !compareCtx )
+        {
+            // No comparison operators : descend directly to additive level
+            SillyParser::BinaryExpressionAddSubContext *single =
+                ctx->getRuleContext<SillyParser::BinaryExpressionAddSubContext>( 0 );
+            assert( single );
+            return parseAdditive( loc, single, opType );
+        }
+
+        // We have one or more comparison operators
+        std::vector<SillyParser::BinaryExpressionAddSubContext *> operands = compareCtx->binaryExpressionAddSub();
+
+        // First (leftmost) operand
+        value = parseAdditive( loc, operands[0], opType );
+
+        // Fold left-associatively (though chained comparisons are rare in practice)
+        for ( size_t i = 1; i < operands.size(); ++i )
+        {
+            mlir::Value rhs = parseAdditive( loc, operands[i], opType );
+
+            // Determine which operator was used at position (i-1)
+            antlr4::tree::TerminalNode *opToken = nullptr;
+            std::string opText;
+
+            if ( i - 1 < compareCtx->LESSTHAN_TOKEN().size() )
+            {
+                opToken = compareCtx->LESSTHAN_TOKEN( i - 1 );
+                opText = "<";
+            }
+            else if ( i - 1 < compareCtx->GREATERTHAN_TOKEN().size() )
+            {
+                opToken = compareCtx->GREATERTHAN_TOKEN( i - 1 );
+                opText = ">";
+            }
+            else if ( i - 1 < compareCtx->LESSEQUAL_TOKEN().size() )
+            {
+                opToken = compareCtx->LESSEQUAL_TOKEN( i - 1 );
+                opText = "<=";
+            }
+            else if ( i - 1 < compareCtx->GREATEREQUAL_TOKEN().size() )
+            {
+                opToken = compareCtx->GREATEREQUAL_TOKEN( i - 1 );
+                opText = ">=";
+            }
+
+            if ( !opToken )
+            {
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                            std::format( "{}internal error: missing comparison operator at index {}\n",
+                                                         formatLocation( loc ), i - 1 ) );
+            }
+
+            if ( opText == "<" )
+            {
+                value = builder.create<silly::LessOp>( loc, tyI1, value, rhs ).getResult();
+            }
+            else if ( opText == ">" )
+            {
+                value = builder.create<silly::LessOp>( loc, tyI1, rhs, value ).getResult();
+            }
+            else if ( opText == "<=" )
+            {
+                value = builder.create<silly::LessEqualOp>( loc, tyI1, value, rhs ).getResult();
+            }
+            else if ( opText == ">=" )
+            {
+                value = builder.create<silly::LessEqualOp>( loc, tyI1, rhs, value ).getResult();
+            }
+            else
+            {
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                            std::format( "{}internal error: unexpected comparison operator: {}\n",
+                                                         formatLocation( loc ), opText ) );
+            }
+        }
+
+        // Final cast (rarely needed for comparisons, but kept for consistency)
+        if ( opType )
+        {
+            value = castOpIfRequired( loc, value, opType );
+        }
+
+        return value;
     }
 
-    inline SillyParser::BinaryExpressionMulDivContext *getSingleMulDiv( SillyParser::BinaryExpressionAddSubContext *ctx )
+    inline SillyParser::BinaryExpressionMulDivContext *getSingleMulDiv(
+        SillyParser::BinaryExpressionAddSubContext *ctx )
     {
         assert( ctx->children.size() == 1 );
         return dynamic_cast<SillyParser::BinaryExpressionMulDivContext *>( ctx->children[0] );
@@ -1663,8 +1751,7 @@ namespace silly
 
         // Check if this context actually contains + or - operators
         // (AddSubExprContext is the alternative that has the repetition)
-        SillyParser::AddSubExprContext *addSubCtx =
-            dynamic_cast<SillyParser::AddSubExprContext *>( ctx );
+        SillyParser::AddSubExprContext *addSubCtx = dynamic_cast<SillyParser::AddSubExprContext *>( ctx );
 
         if ( !addSubCtx )
         {
@@ -1675,8 +1762,7 @@ namespace silly
         }
 
         // We have one or more + or - operators
-        std::vector<SillyParser::BinaryExpressionMulDivContext *> operands =
-            addSubCtx->binaryExpressionMulDiv();
+        std::vector<SillyParser::BinaryExpressionMulDivContext *> operands = addSubCtx->binaryExpressionMulDiv();
 
         // First operand
         value = parseMultiplicative( loc, operands[0], opType );
@@ -1688,21 +1774,20 @@ namespace silly
 
             // Determine operator from the token at position (i-1)
             antlr4::tree::TerminalNode *opToken = nullptr;
-            if ( i-1 < addSubCtx->PLUSCHAR_TOKEN().size() )
+            if ( i - 1 < addSubCtx->PLUSCHAR_TOKEN().size() )
             {
-                opToken = addSubCtx->PLUSCHAR_TOKEN(i-1);
+                opToken = addSubCtx->PLUSCHAR_TOKEN( i - 1 );
             }
-            else if ( i-1 < addSubCtx->MINUS_TOKEN().size() )
+            else if ( i - 1 < addSubCtx->MINUS_TOKEN().size() )
             {
-                opToken = addSubCtx->MINUS_TOKEN(i-1);
+                opToken = addSubCtx->MINUS_TOKEN( i - 1 );
             }
 
             if ( !opToken )
             {
-                throw ExceptionWithContext(
-                    __FILE__, __LINE__, __func__,
-                    std::format( "{}internal error: missing + or - operator at index {}\n",
-                                 formatLocation( loc ), i-1 ) );
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                            std::format( "{}internal error: missing + or - operator at index {}\n",
+                                                         formatLocation( loc ), i - 1 ) );
             }
 
             std::string opText = opToken->getText();
@@ -1722,10 +1807,9 @@ namespace silly
             }
             else
             {
-                throw ExceptionWithContext(
-                    __FILE__, __LINE__, __func__,
-                    std::format( "{}internal error: unexpected additive operator: {}\n",
-                                 formatLocation( loc ), opText ) );
+                throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                            std::format( "{}internal error: unexpected additive operator: {}\n",
+                                                         formatLocation( loc ), opText ) );
             }
         }
 
