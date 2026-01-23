@@ -1414,8 +1414,7 @@ namespace silly
         return value;
     }
 
-    mlir::Value MLIRListener::parseXor( mlir::Location loc, antlr4::ParserRuleContext *ctx,
-                                        mlir::Type opType )
+    mlir::Value MLIRListener::parseXor( mlir::Location loc, antlr4::ParserRuleContext *ctx, mlir::Type opType )
     {
         assert( ctx );
 
@@ -1819,9 +1818,9 @@ namespace silly
             }
             else if ( opText == "NOT" )
             {
-                if ( !value.getType().isInteger() ) {
-                    throw UserError( loc,
-                        std::format( "NOT on non-integer type: {}\n", ctx->getText() ) );
+                if ( !value.getType().isInteger() )
+                {
+                    throw UserError( loc, std::format( "NOT on non-integer type: {}\n", ctx->getText() ) );
                 }
 
                 // NOT x: (x == 0)
@@ -1849,6 +1848,13 @@ namespace silly
         }
 
         assert( value );
+
+        LLVM_DEBUG( {
+            llvm::errs() << "parseUnary: " << ctx->getText() << " -> type ";
+            value.getType().dump();
+            llvm::errs() << "\n";
+        } );
+
         return value;
     }
 
@@ -1952,6 +1958,13 @@ namespace silly
         }
 
         assert( value );
+
+        LLVM_DEBUG( {
+            llvm::errs() << "parsePrimary: " << ctx->getText() << " -> type ";
+            value.getType().dump();
+            llvm::errs() << "\n";
+        } );
+
         return value;
     }
 }    // namespace silly
