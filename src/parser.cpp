@@ -1407,14 +1407,14 @@ namespace silly
         {
             mlir::Value rhs = parseXor( loc, orOperands[i], opType );
 
-            mlir::Type orType = opType;
+            mlir::Type ty = opType;
 
-            if ( !orType )
+            if ( !ty )
             {
-                orType = biggestTypeOf( value.getType(), rhs.getType() );
+                ty = biggestTypeOf( value.getType(), rhs.getType() );
             }
 
-            value = builder.create<silly::OrOp>( loc, orType, value, rhs ).getResult();
+            value = builder.create<silly::OrOp>( loc, ty, value, rhs ).getResult();
         }
 
         return value;
@@ -1435,14 +1435,14 @@ namespace silly
             {
                 mlir::Value rhs = parseAnd( loc, xorOperands[i], opType );
 
-                mlir::Type xorType = opType;
+                mlir::Type ty = opType;
 
-                if ( !xorType )
+                if ( !ty )
                 {
-                    xorType = biggestTypeOf( value.getType(), rhs.getType() );
+                    ty = biggestTypeOf( value.getType(), rhs.getType() );
                 }
 
-                value = builder.create<silly::XorOp>( loc, xorType, value, rhs ).getResult();
+                value = builder.create<silly::XorOp>( loc, ty, value, rhs ).getResult();
             }
 
             return value;
@@ -1472,14 +1472,14 @@ namespace silly
             {
                 mlir::Value rhs = parseEquality( loc, andOperands[i], opType );
 
-                mlir::Type andType = opType;
+                mlir::Type ty = opType;
 
-                if ( !andType )
+                if ( !ty )
                 {
-                    andType = biggestTypeOf( value.getType(), rhs.getType() );
+                    ty = biggestTypeOf( value.getType(), rhs.getType() );
                 }
 
-                value = builder.create<silly::AndOp>( loc, andType, value, rhs ).getResult();
+                value = builder.create<silly::AndOp>( loc, ty, value, rhs ).getResult();
             }
 
             return value;
@@ -1499,57 +1499,32 @@ namespace silly
 
         if ( eqNeCtx )
         {
-            // We have one or more EQ / NE operators
+            // We have an EQ / NE operator
             std::vector<SillyParser::BinaryExpressionCompareContext *> operands = eqNeCtx->binaryExpressionCompare();
 
             // First (leftmost) operand
             value = parseComparison( loc, operands[0], opType );
 
-            // Fold left-associatively
-            for ( size_t i = 1; i < operands.size(); ++i )
+            assert( operands.size() <= 2 );
+
+            if ( operands.size() == 2 )
             {
-                mlir::Value rhs = parseComparison( loc, operands[i], opType );
+                mlir::Value rhs = parseComparison( loc, operands[1], opType );
 
-                // Determine which operator was used at position (i-1)
-                antlr4::tree::TerminalNode *opToken = nullptr;
-                std::string opText;
-
-                if ( i - 1 < eqNeCtx->EQUALITY_TOKEN().size() )
+                if ( eqNeCtx->EQUALITY_TOKEN() )
                 {
-                    opToken = eqNeCtx->EQUALITY_TOKEN( i - 1 );
-                    opText = "EQ";
+                    value = builder.create<silly::EqualOp>( loc, tyI1, value, rhs ).getResult();
                 }
-                else if ( i - 1 < eqNeCtx->NOTEQUAL_TOKEN().size() )
+                else if ( eqNeCtx->NOTEQUAL_TOKEN() )
                 {
-                    opToken = eqNeCtx->NOTEQUAL_TOKEN( i - 1 );
-                    opText = "NE";
-                }
-
-                if ( !opToken )
-                {
-                    throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                                std::format( "{}internal error: missing EQ or NE token at index {}\n",
-                                                             formatLocation( loc ), i - 1 ) );
-                }
-
-                mlir::Value equalityResult;
-
-                if ( opText == "EQ" )
-                {
-                    equalityResult = builder.create<silly::EqualOp>( loc, tyI1, value, rhs ).getResult();
-                }
-                else if ( opText == "NE" )
-                {
-                    equalityResult = builder.create<silly::NotEqualOp>( loc, tyI1, value, rhs ).getResult();
+                    value = builder.create<silly::NotEqualOp>( loc, tyI1, value, rhs ).getResult();
                 }
                 else
                 {
                     throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                                std::format( "{}internal error: unexpected equality operator: {}\n",
-                                                             formatLocation( loc ), opText ) );
+                                                std::format( "{}internal error: missing EQ or NE token: {}\n",
+                                                             formatLocation( loc ), ctx->getText() ) );
                 }
-
-                value = equalityResult;
             }
 
             return value;
@@ -1573,71 +1548,40 @@ namespace silly
 
         if ( compareCtx )
         {
-            // We have one or more comparison operators
+            // We have a comparison operator
             std::vector<SillyParser::BinaryExpressionAddSubContext *> operands = compareCtx->binaryExpressionAddSub();
+
+            assert( operands.size() <= 2 );
 
             // First (leftmost) operand
             value = parseAdditive( loc, operands[0], opType );
 
-            // Fold left-associatively (though chained comparisons are rare in practice)
-            for ( size_t i = 1; i < operands.size(); ++i )
+            if ( operands.size() == 2 )
             {
-                mlir::Value rhs = parseAdditive( loc, operands[i], opType );
+                mlir::Value rhs = parseAdditive( loc, operands[1], opType );
 
-                // Determine which operator was used at position (i-1)
-                antlr4::tree::TerminalNode *opToken = nullptr;
-                std::string opText;
-
-                if ( i - 1 < compareCtx->LESSTHAN_TOKEN().size() )
-                {
-                    opToken = compareCtx->LESSTHAN_TOKEN( i - 1 );
-                    opText = "<";
-                }
-                else if ( i - 1 < compareCtx->GREATERTHAN_TOKEN().size() )
-                {
-                    opToken = compareCtx->GREATERTHAN_TOKEN( i - 1 );
-                    opText = ">";
-                }
-                else if ( i - 1 < compareCtx->LESSEQUAL_TOKEN().size() )
-                {
-                    opToken = compareCtx->LESSEQUAL_TOKEN( i - 1 );
-                    opText = "<=";
-                }
-                else if ( i - 1 < compareCtx->GREATEREQUAL_TOKEN().size() )
-                {
-                    opToken = compareCtx->GREATEREQUAL_TOKEN( i - 1 );
-                    opText = ">=";
-                }
-
-                if ( !opToken )
-                {
-                    throw ExceptionWithContext(
-                        __FILE__, __LINE__, __func__,
-                        std::format( "{}internal error: missing comparison operator at index {}\n",
-                                     formatLocation( loc ), i - 1 ) );
-                }
-
-                if ( opText == "<" )
+                if ( compareCtx->LESSTHAN_TOKEN() )
                 {
                     value = builder.create<silly::LessOp>( loc, tyI1, value, rhs ).getResult();
                 }
-                else if ( opText == ">" )
+                else if ( compareCtx->GREATERTHAN_TOKEN() )
                 {
                     value = builder.create<silly::LessOp>( loc, tyI1, rhs, value ).getResult();
                 }
-                else if ( opText == "<=" )
+                else if ( compareCtx->LESSEQUAL_TOKEN() )
                 {
                     value = builder.create<silly::LessEqualOp>( loc, tyI1, value, rhs ).getResult();
                 }
-                else if ( opText == ">=" )
+                else if ( compareCtx->GREATEREQUAL_TOKEN() )
                 {
                     value = builder.create<silly::LessEqualOp>( loc, tyI1, rhs, value ).getResult();
                 }
                 else
                 {
-                    throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                                std::format( "{}internal error: unexpected comparison operator: {}\n",
-                                                             formatLocation( loc ), opText ) );
+                    throw ExceptionWithContext(
+                        __FILE__, __LINE__, __func__,
+                        std::format( "{}internal error: missing comparison operator: {}\n",
+                                     formatLocation( loc ), ctx->getText() ) );
                 }
             }
 
@@ -1691,28 +1635,28 @@ namespace silly
                 {
                     opToken = addSubCtx->MINUS_TOKEN( i - 1 );
                 }
-
-                if ( !opToken )
+                else
                 {
                     throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                                std::format( "{}internal error: missing + or - operator at index {}\n",
-                                                             formatLocation( loc ), i - 1 ) );
+                                                std::format( "{}internal error: missing + or - operator at index {}: {}\n",
+                                                             formatLocation( loc ), i - 1, ctx->getText() ) );
                 }
 
                 std::string opText = opToken->getText();
+                mlir::Type ty = opType;
 
-                if ( !opType )
+                if ( !ty )
                 {
-                    opType = biggestTypeOf( value.getType(), rhs.getType() );
+                    ty = biggestTypeOf( value.getType(), rhs.getType() );
                 }
 
                 if ( opText == "+" )
                 {
-                    value = builder.create<silly::AddOp>( loc, opType, value, rhs ).getResult();
+                    value = builder.create<silly::AddOp>( loc, ty, value, rhs ).getResult();
                 }
                 else if ( opText == "-" )
                 {
-                    value = builder.create<silly::SubOp>( loc, opType, value, rhs ).getResult();
+                    value = builder.create<silly::SubOp>( loc, ty, value, rhs ).getResult();
                 }
                 else
                 {
@@ -1780,19 +1724,20 @@ namespace silly
                 }
 
                 std::string opText = opToken->getText();
+                mlir::Type ty = opType;
 
-                if ( !opType )
+                if ( !ty )
                 {
-                    opType = biggestTypeOf( value.getType(), rhs.getType() );
+                    ty = biggestTypeOf( value.getType(), rhs.getType() );
                 }
 
                 if ( opText == "*" )
                 {
-                    value = builder.create<silly::MulOp>( loc, opType, value, rhs ).getResult();
+                    value = builder.create<silly::MulOp>( loc, ty, value, rhs ).getResult();
                 }
                 else if ( opText == "/" )
                 {
-                    value = builder.create<silly::DivOp>( loc, opType, value, rhs ).getResult();
+                    value = builder.create<silly::DivOp>( loc, ty, value, rhs ).getResult();
                 }
                 else
                 {

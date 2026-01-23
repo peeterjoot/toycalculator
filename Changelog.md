@@ -277,6 +277,7 @@ PRINT NOT TRUE;         // 0 (FALSE)
 PRINT (10 < 20) EQ 1;   // 1 (TRUE)
 ```
   * Prohibit NOT on non-integer type.  t/c: `error_notfloat.silly`
+  * [grammar/parser] Prohibit chaining of Comparison operators (examples: `1 < 2 < 3', `1 EQ 1 NE 1`).
 
 ## tag: V7 (Jan 4, 2025)
 

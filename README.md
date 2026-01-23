@@ -205,8 +205,8 @@ The expression grammar now supports **generalized expressions** with proper prec
 | 1 (highest)| `NOT`, unary `+`, unary `-`| right         | Unary operators chain right-to-left |
 | 2          | `*`, `/`                   | left          |                                     |
 | 3          | `+`, `-`                   | left          |                                     |
-| 4          | `<`, `>`, `<=`, `>=`       | left          | Comparisons produce `BOOL`          |
-| 5          | `EQ`, `NE`                 | left          | Equality/inequality                 |
+| 4          | `<`, `>`, `<=`, `>=`       | n/a           | Comparisons produce `BOOL`          |
+| 5          | `EQ`, `NE`                 | n/a           | Equality/inequality                 |
 | 6          | `AND`                      | left          | Logical/bitwise AND                 |
 | 7          | `XOR`                      | left          | Logical/bitwise XOR                 |
 | 8 (lowest) | `OR`                       | left          | Logical/bitwise OR                  |
@@ -246,15 +246,17 @@ r = i1 XOR j64;         // XOR works across integer/boolean types
 | `/`      | Division                   | Promoted operand type        | Left          |       |
 | `+`      | Addition                   | Promoted operand type        | Left          |       |
 | `-`      | Subtraction                | Promoted operand type        | Left          |       |
-| `<`      | Less than                  | `BOOL`                       | Left          |       |
-| `>`      | Greater than               | `BOOL`                       | Left          |       |
-| `<=`     | Less than or equal         | `BOOL`                       | Left          |       |
-| `>=`     | Greater than or equal      | `BOOL`                       | Left          |       |
-| `EQ`     | Equal                      | `BOOL`                       | Left          |       |
-| `NE`     | Not equal                  | `BOOL`                       | Left          |       |
+| `<`      | Less than                  | `BOOL`                       | n/a           |       |
+| `>`      | Greater than               | `BOOL`                       | n/a           |       |
+| `<=`     | Less than or equal         | `BOOL`                       | n/a           |       |
+| `>=`     | Greater than or equal      | `BOOL`                       | n/a           |       |
+| `EQ`     | Equal                      | `BOOL`                       | n/a           |       |
+| `NE`     | Not equal                  | `BOOL`                       | n/a           |       |
 | `AND`    | Logical / bitwise AND      | `BOOL` or promoted integer   | Left          | Bitwise for integers, logical for `BOOL` |
 | `XOR`    | Logical / bitwise XOR      | `BOOL` or promoted integer   | Left          | Bitwise for integers, logical for `BOOL` |
 | `OR`     | Logical / bitwise OR       | `BOOL` or promoted integer   | Left          | Bitwise for integers, logical for `BOOL` |
+
+Chaining of Comparison operators (examples: `1 < 2 < 3', `1 EQ 1 NE 1`) are not allowed.
 
 ## Declarations
 

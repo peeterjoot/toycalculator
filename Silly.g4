@@ -214,13 +214,13 @@ binaryExpressionXor
     ;
 
 binaryExpressionAnd
-    : binaryExpressionCompare ( (EQUALITY_TOKEN | NOTEQUAL_TOKEN) binaryExpressionCompare )*   # eqNeExpr
+    : binaryExpressionCompare ( (EQUALITY_TOKEN | NOTEQUAL_TOKEN) binaryExpressionCompare )?   # eqNeExpr
     ;
 
 binaryExpressionCompare
     : binaryExpressionAddSub
       ( (LESSTHAN_TOKEN | LESSEQUAL_TOKEN | GREATERTHAN_TOKEN | GREATEREQUAL_TOKEN)
-        binaryExpressionAddSub )*                                      # compareExpr
+        binaryExpressionAddSub )?                                      # compareExpr
     ;
 
 binaryExpressionAddSub

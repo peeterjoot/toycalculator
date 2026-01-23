@@ -148,7 +148,6 @@ expressions3
 expressions4
 expressions4a
 expressions4b
-#expressions4c
 #expressions5
 f
 factorial
@@ -216,6 +215,9 @@ xorop
 
 my %failuretests = map {$_ => 1} (qw(
 error_arrayreturn
+error_expressions4c
+error_expressions4d
+error_expressions4e
 error_init_list1
 error_init_list2
 error_invalid_binary
