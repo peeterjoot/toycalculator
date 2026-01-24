@@ -1,0 +1,13 @@
+INT64 a = 5;
+INT64 b = 3;
+FLOAT64 c = 2.5;
+
+INT64 sum = a + b * c - 1;          // assignment of complex expr
+PRINT "sum = ", sum;                 // expect 11
+
+BOOL pred = (a < b) OR (c > 1.0);   // assignment of logical expr
+PRINT "pred = ", pred;
+
+a = - (b + c) * (a EQ 5);           // unary + comparison + mul
+PRINT "a after = ", a;
+

@@ -127,6 +127,7 @@ boolcall1
 boolcall2
 boolop
 boolr
+call_in_predicate
 call_with_param_referenced
 conversions
 converti
@@ -151,6 +152,10 @@ expressions4a
 expressions4b
 expressions5
 expressions6
+expressions_assignment
+expressions_in_call
+expressions_in_for
+expressions_in_if
 f
 factorial
 factorial2
@@ -187,8 +192,10 @@ lessop
 longstring
 minimal_eliftest
 minmax
+mixed_type_assignment
 neg
 neqop
+nested_calls
 nested_if_basic
 nested_if_deep
 nested_if_elif_else
@@ -200,6 +207,7 @@ printexpr
 printlit
 print_multiple
 printsome
+return_complex
 return_expression
 s2
 scopebug
@@ -230,8 +238,11 @@ error_notfloat
 error_redeclare
 error_stringreturn
 error_undeclare
+error_array_too_many_init
 ));
 #error_intarray_bad_constaccess
+#error_decl_in_if -- probably want this to fail (like scopebug)
+#error_decl_in_elif_else -- probably also want this to fail too.
 
 if ( defined $just )
 {

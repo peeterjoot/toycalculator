@@ -1,0 +1,15 @@
+// More mixed-type arithmetic in non-PRINT contexts
+INT64 i = 7;
+FLOAT64 f = 2.5;
+
+INT64 res1;
+res1 = i + f;          // expect truncation after float add
+PRINT "i = ", i, ", f = ", f, ", INT64(i + f) = ", res1;
+
+FLOAT64 res2;
+res2 = i * f;
+PRINT "i * f = ", res2;
+
+BOOL b;
+b = (i + f) > 9.0;
+PRINT "b = (i + f) > 9.0: ", b;

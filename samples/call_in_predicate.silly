@@ -1,0 +1,30 @@
+FUNCTION is_positive(INT64 v) : BOOL { RETURN v > 0; };
+FUNCTION always_true() : BOOL { RETURN TRUE; };
+
+INT64 val = 42;
+IF ( CALL is_positive(val) AND CALL always_true() )
+{
+    PRINT "positive and true";
+}
+ELSE
+{
+    ERROR "shouldn't see this 0.";
+};
+
+IF ( CALL is_positive(-5) OR (val EQ 42) )
+{
+    PRINT "or branch hit";
+}
+ELSE
+{
+    ERROR "shouldn't see this 1.";
+};
+
+IF ( CALL is_positive(-5) AND (val EQ 42) )
+{
+    ERROR "shouldn't see this 2.";
+}
+ELSE
+{
+    PRINT "else branch hit";
+};

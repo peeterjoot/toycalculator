@@ -1,0 +1,9 @@
+FUNCTION add(INT64 x, INT64 y) : INT64 { RETURN x + y; };
+FUNCTION someboolfunc(BOOL x, BOOL y) : BOOL { RETURN x XOR y; };
+
+INT64 result = CALL add( 5 + 3 * 2,  -(7 - 4) );   // expr args
+PRINT result;  // expect 5+6 + -(3) = 8
+
+BOOL flag = CALL someboolfunc( TRUE AND FALSE, 10 EQ 10 );
+PRINT flag;
+

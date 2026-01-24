@@ -1,0 +1,22 @@
+// Declaration inside IF/ELIF/ELSE bodies + scope test
+INT64 x = 2;
+IF (x > 10)
+{
+    INT64 a = 100;
+}
+ELIF (x < 5)
+{
+    INT64 b = 200;
+    PRINT b;
+}
+ELSE
+{
+    INT64 c = 300;
+    PRINT c;
+};
+
+PRINT "done IF";
+// none of a/b/c should be visible here -- but they are.
+PRINT a;
+PRINT b;
+PRINT c;

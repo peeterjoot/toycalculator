@@ -1,0 +1,10 @@
+// RETURN with complex expression (test nested ops)
+FUNCTION complex() : FLOAT64
+{
+    INT64 a = 10;
+    FLOAT64 b = 3.5;
+    RETURN (a * 2 + b) / (NOT FALSE + 1);  // (20 + 3.5)/2 = 11.75
+};
+
+PRINT CALL complex();
+

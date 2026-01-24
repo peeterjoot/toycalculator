@@ -1,0 +1,33 @@
+INT64 x = 7;
+FLOAT64 y = 3.2;
+
+IF ( x > 5 AND y < 4.0 )
+{
+    PRINT "both true";
+}
+ELIF ( NOT (x EQ 7) OR (y > 10.0) )
+{
+    PRINT "should not hit";
+}
+ELSE
+{
+    PRINT "else 1 branch.  should not hit.";
+};
+
+IF ( x < 5 AND y < 4.0 )
+{
+    PRINT "one false ";
+}
+ELIF ( NOT (x EQ 7) OR (y > 10.0) )
+{
+    PRINT "should not hit";
+}
+ELIF ( (x EQ 7) OR (y > 10.0) )
+{
+    PRINT "should hit";
+}
+ELSE
+{
+    PRINT "else 2 branch.   should not hit.";
+};
+

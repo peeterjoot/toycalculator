@@ -1,0 +1,10 @@
+// Nested function calls (including in parameter lists)
+// Grammar allows it:
+FUNCTION add(INT64 a, INT64 b) : INT64 { RETURN a + b; };
+FUNCTION mul(INT64 x, INT64 y) : INT64 { RETURN x * y; };
+
+INT64 res = CALL add( CALL mul(3,4), CALL add(5, -2) );  // 12 + 3 = 15
+PRINT res;
+
+res = CALL mul( CALL add(1,1), CALL add( CALL add(2,2), 3 ) );  // 2 * (4+3) = 14
+PRINT res;

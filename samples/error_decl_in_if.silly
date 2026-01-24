@@ -1,0 +1,11 @@
+// Declaration inside IF/ELIF/ELSE bodies + scope test
+// To verify scope doesn't leak (related to scopebug.silly)
+IF (TRUE)
+{
+    INT64 secret = 999;
+    PRINT secret;
+};
+
+// secret should NOT be visible here
+PRINT secret;  // should fail to compile
+PRINT "done";
