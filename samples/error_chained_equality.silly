@@ -1,0 +1,3 @@
+
+BOOL b = 1 EQ 1 EQ 0;  // should fail
+

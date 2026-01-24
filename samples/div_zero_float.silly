@@ -1,0 +1,5 @@
+// Edge case: division by zero / negative zero
+// Verify runtime behavior (ABORT? undefined?).
+
+FLOAT64 f = 5.0 / 0.0;
+PRINT f; // inf

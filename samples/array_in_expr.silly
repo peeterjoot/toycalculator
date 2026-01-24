@@ -1,0 +1,12 @@
+// Array element in complex expression (non-trivial indexing)
+// less simple test with indexing inside arithmetic/logical expressions.
+
+INT32 a[5] {1,2,3,4,5};
+INT32 i = 2;
+INT64 res0 = a[i+1];
+INT64 res = a[i] * (a[i+1] + a[0]);  // 3 * (4 + 1) = 15
+PRINT res;
+
+BOOL flag = a[i] > a[i-1];           // 3 > 2
+PRINT flag;
+

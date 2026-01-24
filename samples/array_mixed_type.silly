@@ -1,0 +1,10 @@
+// Mixed-type expression involving array element
+// Ensure promotion works when array element participates.
+INT32 arr[2] {5, 10};
+FLOAT64 f = 2.5;
+FLOAT64 res = arr[0] + f * arr[1];   // 5 + 2.5*10 = 30.0
+PRINT res;
+
+INT64 ires = arr[1] / f;             // 10 / 2.5 → floor to 4
+PRINT ires;
+

@@ -1,0 +1,11 @@
+// Chained comparisons with parens (explicit vs implicit)
+// prohibit chaining without parens; add a positive test showing required parens.
+
+// not implemented: but would be nice:
+// INT64 a = 1, b = 2, c = 3;
+INT64 a = 1;
+INT64 b = 2;
+INT64 c = 3;
+BOOL ok  = (a < b) AND (b < c);   // required parens
+PRINT ok;                         // 1
+

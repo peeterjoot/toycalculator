@@ -3,6 +3,8 @@
 ----------------------------------
 * need lots of test for the new complex expressions support -- have a bit of that now, but it's not robust with respect to coverage (almost all exclusively in the PRINT codepath, not assignment, function call parameters, loop range vars, ...)
 * grammar probably allows for function declared in a function.  prohibit that or at least test for it?
+* allow: INT64 a = 1, b = 2, c = 3; (`chained_comparison_parens.silly`)
+* array index expressions aren't implemented: `array_in_expr_min, array_in_expr, array_lvalue_complex`
 
 ----------------------------------
 * Bugs:

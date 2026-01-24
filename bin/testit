@@ -119,6 +119,7 @@ addi
 andop
 array
 array_assign_and_use
+array_mixed_type
 arrayprod
 bin
 bool
@@ -129,9 +130,13 @@ boolop
 boolr
 call_in_predicate
 call_with_param_referenced
+chained_comparison_parens
+const_overflow
 conversions
 converti
 dcl
+div_zero_float
+div_zero_int
 elif
 elif2
 elif3
@@ -200,6 +205,7 @@ nested_if_basic
 nested_if_deep
 nested_if_elif_else
 not
+not_on_expr
 orop
 printboollit
 printcont
@@ -222,9 +228,15 @@ types
 unary
 xorop
 ));
+#array_in_expr_min -- array indexing expressions not implemented!
+#array_in_expr -- ditto
+#array_lvalue_complex.silly -- ditto
 
 my %failuretests = map {$_ => 1} (qw(
 error_arrayreturn
+error_array_too_many_init
+error_chained_comparison2
+error_chained_equality
 error_expressions4c
 error_expressions4d
 error_expressions4e
@@ -238,7 +250,6 @@ error_notfloat
 error_redeclare
 error_stringreturn
 error_undeclare
-error_array_too_many_init
 ));
 #error_intarray_bad_constaccess
 #error_decl_in_if -- probably want this to fail (like scopebug)

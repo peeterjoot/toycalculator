@@ -1,0 +1,8 @@
+// Unary NOT on non-bool (should promote to bool)
+// test more than NOT tests on literals/variables; test on expression result.
+INT64 x = 0;
+INT64 y = 5;
+BOOL b1 = NOT (x + y);      // NOT 5 → FALSE (0)
+BOOL b2 = NOT (x);          // NOT 0 → TRUE (1)
+PRINT b1, ", ", b2;
+

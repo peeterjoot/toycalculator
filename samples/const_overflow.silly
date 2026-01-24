@@ -1,0 +1,5 @@
+// Large constant folding / overflow in expressions
+// Test whether constants are folded (or at least handled) correctly.
+
+INT32 big = 2147483647 + 1;   // INT32 max + 1
+PRINT big;                    // -2147483648 (0x80000000)

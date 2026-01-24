@@ -1,0 +1,5 @@
+// Edge case: division by zero / negative zero
+// runtime behavior: undefined.
+
+INT64 x = 10 / 0;
+PRINT x; // This is resulting in zero (at least on arm.) -- is that reasonable?
