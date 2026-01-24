@@ -1,32 +1,17 @@
 ## TODO
 
 ----------------------------------
-* need lots of test for the new complex expressions support -- have a bit of that now, but it's not robust with respect to coverage (almost all exclusively in the PRINT codepath, not assignment, function call parameters, loop range vars, ...)
-* grammar probably allows for function declared in a function.  prohibit that or at least test for it?
-* allow: INT64 a = 1, b = 2, c = 3; (`chained_comparison_parens.silly`)
-* array index expressions aren't working: `array_in_expr_min, array_in_expr, array_lvalue_complex`
+1. array index expressions aren't working: `array_in_expr_min, array_in_expr, array_lvalue_complex`
 
-but the grammar looks like it's allowed:
-```
-scalarOrArrayElement
-  : IDENTIFIER (indexExpression)?
-  ;
+  See notes in d967fba53747e337c70c7cbd356f582c8c0100e0, and experiment hack in `experiment-with-fixing-array_in_expr_min` (on fedoravm, not pushed.)
 
-indexExpression
-  : ARRAY_START_TOKEN rvalueExpression ARRAY_END_TOKEN
-  ;
+  Think that the proper fix for this is to:
+  - Allow `expression` in initializer-list (and declare w/ assignment?)
+  - Remove `(PLUSCHAR_TOKEN | MINUS_TOKEN)?` from both `FLOAT_PATTERN` and `INTEGER_PATTERN`, so that unaryExpression is the sole source of +-
 
-// ─────────────────────────────────────────────────────────────
-//   New expression hierarchy
-// ─────────────────────────────────────────────────────────────
-
-rvalueExpression
-  : expression
-  ;
-```
-?
-
-* forgetting RETURN in `array_elem_as_arg.silly` has a very confusing error.
+2. allow: INT64 a = 1, b = 2, c = 3; (`chained_comparison_parens.silly`).
+3. forgetting RETURN in `array_elem_as_arg.silly` has a very confusing error.
+4. grammar probably allows for function declared in a function.  prohibit that or at least test for it?
 
 ----------------------------------
 * Bugs:
