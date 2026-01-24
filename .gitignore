@@ -2,3 +2,7 @@ cscope.out
 antlr-4.10-complete.jar
 build
 .junk
+samples/out
+tags
+.url
+samples/.gdbinit
