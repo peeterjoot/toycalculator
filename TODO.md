@@ -3,7 +3,6 @@
 ----------------------------------
 * need lots of test for the new complex expressions support -- have a bit of that now, but it's not robust with respect to coverage (almost all exclusively in the PRINT codepath, not assignment, function call parameters, loop range vars, ...)
 * grammar probably allows for function declared in a function.  prohibit that or at least test for it?
-* CAN CHANGE THIS EASILY NOW: Computations occur in assignment operations, and any types are first promoted to the type of the variable.
 
 ----------------------------------
 * Bugs:
@@ -227,7 +226,5 @@ __libc_start_call_main (main=main@entry=0x400470 <main>, argc=argc@entry=1, argv
 ```
 
 -- see the line numbers jump around.  probably want getLocation(, true) for `ctx->getStop()` in some places (like end of program.)
-
-
 
 ----------------------------------
