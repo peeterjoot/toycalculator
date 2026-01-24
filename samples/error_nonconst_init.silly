@@ -1,4 +1,10 @@
 // error_nonconst_init.silly
+// Currently allowed (runtime eval), but plan: compile error on non-const expr in initializer
+//
+// Want a sema pass that catches this (documented as undefined behaviour) and produces a compile error.
+//
+// Current behaviour, is that x has a value of 0 when the initializer list is evaluated (i.e.: from --init-fill 0 -- the default),
+// so we get a value of 1 (not 6).
 INT32 x = 5;
-INT32 a[1] { x + 1 };   // currently allowed, but may want to disallow non-const later
-PRINT a[0]; // prints 1 with default --init-fill (0).  Want a sema pass that catches this and produces a compile error.
+INT32 a[1] { x + 1 };   // uses x=5 → prints 1.  future: error, or 6 (if constant assignments can be folded into initializers.)
+PRINT a[0];             // expect: 1 (today)

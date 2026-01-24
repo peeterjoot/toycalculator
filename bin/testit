@@ -203,6 +203,7 @@ ifdcl
 init
 initarray
 init_expr_bool
+init_expr_call
 init_expr_unary
 initlist
 initlisttrunc

@@ -1,0 +1,5 @@
+// init_expr_call.silly
+FUNCTION answer() : INT32 { RETURN 42; };
+
+INT32 z[1] { CALL answer() };   // 42
+PRINT z[0];                   // expect: 42
