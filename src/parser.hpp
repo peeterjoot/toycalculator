@@ -70,14 +70,26 @@ namespace silly
     using tNode = antlr4::tree::TerminalNode;
 
     /// Per-function state tracked during parsing.
-    struct PerFunctionState
+    class PerFunctionState
     {
-        /// Associated func::FuncOp.
-        mlir::Operation *funcOp{};
+       public:
+        mlir::Operation *lastDeclareOp{};
 
-        PerFunctionState()
+        mlir::func::FuncOp getFuncOp()
         {
+            mlir::func::FuncOp funcOp = mlir::cast<mlir::func::FuncOp>( op );
+
+            return funcOp;
         }
+
+        void setFuncOp( mlir::Operation *funcOp )
+        {
+            op = funcOp;
+        }
+
+       private:
+        /// Associated func::FuncOp.
+        mlir::Operation *op{};
     };
 
     using LocPairs = std::pair<mlir::Location, mlir::Location>;
@@ -191,6 +203,11 @@ namespace silly
         ///
         ////////////////////////////////////////////////////////////////////////
 
+        void enterDeclareHelper( mlir::Location loc, tNode *identifier,
+                                 SillyParser::DeclareAssignmentExpressionContext *declareAssignmentExpression,
+                                 const std::vector<SillyParser::ExpressionContext *> &expressions, tNode *hasInitList,
+                                 SillyParser::ArrayBoundsExpressionContext *arrayBoundsExpression, mlir::Type ty );
+
         /// Looks up DeclareOp for a variable.
         silly::DeclareOp lookupDeclareForVar( mlir::Location loc, const std::string &varName );
 
@@ -223,9 +240,8 @@ namespace silly
         /// Registers a variable declaration in the current scope.
         void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                   SillyParser::ArrayBoundsExpressionContext *arrayBounds,
-                                  std::vector<SillyParser::BooleanLiteralContext *> *booleanLiteral,
-                                  std::vector<SillyParser::IntegerLiteralContext *> *integerLiteral,
-                                  std::vector<SillyParser::NumericLiteralContext *> *numericLiteral );
+                                  SillyParser::ExpressionContext *assignmentExpression,
+                                  const std::vector<SillyParser::ExpressionContext *> *expressions );
 
         /// Return true if the variable is declared
         bool isVariableDeclared( mlir::Location loc, const std::string &varName );
@@ -247,9 +263,6 @@ namespace silly
         /// Set the currentFuncName, and it's corresponding func.func operation.
         inline void setFuncNameAndOp( const std::string &funcName, mlir::Operation *op );
 
-        /// Return the funcOp cached for the current function in setFuncNameAndOp.
-        inline mlir::func::FuncOp getFuncOp( mlir::Location loc, const std::string &funcName );
-
         /// Parses scalar type string to MLIR type.
         mlir::Type parseScalarType( const std::string &ty );
 
@@ -270,10 +283,10 @@ namespace silly
         /// For IF/ELIF, create an scf.if condition and set the insertion point to it's then region.
         ///
         /// @param loc [in] The starting location for the IF statement.
-        /// @param booleanValue [in] The predicate for the IF or ELIF condition.
+        /// @param predicate [in] The predicate for the IF or ELIF condition.
         /// @param saveIP [in] push the insertion point that is effectively after the if to insertionPointStack (use
         /// this for the initial if in an IF/ELIF/ELSE, but not for the internal IF created when processing an ELIF.
-        void createIf( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue, bool saveIP );
+        void createIf( mlir::Location loc, SillyParser::ExpressionContext *predicate, bool saveIP );
 
         /// Find the current scf.if condition and set the insertion point to the else region for that if.
         void selectElseBlock( mlir::Location loc, const std::string &errorText );

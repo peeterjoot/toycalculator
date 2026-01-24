@@ -313,9 +313,60 @@ STRING foo[32] = "goo";
 
 A C++ like uniform initialization syntax was illustrated in some of the declaration examples above.
 Some notes on this syntax:
-* Unlike C++, only literal values are allowed in initializer lists.
-* Variables that are not initialized are initialized with the specified `--init-fill` value, or the default (binary zero) fill value if `--init-fill` is not specified.
-* Arrays can be initialized with an initializer list, but not the original assignment syntax.
+* Variables that are not initialized with the uniform-like syntax are initialized with the specified `--init-fill` value, or the default (binary zero) fill value if `--init-fill` is not specified.
+* Arrays can be initialized with an initializer list, but not with assignment syntax.
+* Unlike C++, initializer list expressions may reference parameters, or constants, but not other variables in the function.
+
+As an example, this is valid:
+
+```
+FUNCTION foo( INT32 a )
+{
+    INT32 b{ a + 1 };
+    // ...
+    RETURN;
+};
+
+but this is invalid:
+
+```
+FUNCTION foo()
+{
+   INT32 a;
+   a = 3;
+   INT32 b{ a + 1 };
+   // ...
+   RETURN;
+};
+```
+
+Declarations with assignment expressions can be arbitrary, referencing any existing (already declared) variables
+
+```
+   INT32 a;
+   PRINT "a should be zero if --init-fill is not specified: ", a;
+   a = 3;
+   PRINT "After assignment with 3, now a = ", a;
+   INT32 b = a + 1;
+   PRINT b;
+```
+
+This example is treated like:
+
+```
+   INT32 a;
+   INT32 b;
+
+   PRINT "a should be zero if --init-fill is not specified: ", a;
+   a = 3;
+   PRINT "After assignment with 3, now a = ", a;
+   b = a + 1;
+   PRINT b;
+```
+
+Here stack storage for `a` and `b` is allocated at the beginning of the function, but assignments and accesses happen in program order.
+
+Use of initializer-lists with variable related expressions has undefined behaviour.
 
 ## Array Element Access
 

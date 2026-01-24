@@ -107,9 +107,14 @@ if ( $debug )
 system( qq(rm -rf out) );
 
 my %testflags = (
-  'arrayprod' => '--init-fill 255',
-  'initlist' => '--init-fill 255',
-  'initarray' => '--init-fill 255',
+    'arrayprod' => '--init-fill 255',
+    'initlist' => '--init-fill 255',
+    'initarray' => '--init-fill 255',
+);
+
+my %decl_order_tests =
+(
+    'two_declare_no_init' => 'a,b',
 );
 
 my %tests = map { $_ => 1 } (qw(
@@ -119,9 +124,12 @@ addi
 andop
 array
 array_assign_and_use
+array_dynamic_index
 array_elem_as_arg
 array_in_comparison
 array_index_var
+array_in_expr
+array_in_expr_min
 array_mixed_type
 arrayprod
 assign_to_array_complex
@@ -232,15 +240,13 @@ simpleless
 simplest
 stringlit
 test
+two_declare_no_init
 types
 unary
 unary_on_array_elem
 xorop
 ));
-#array_in_expr_min -- array indexing expressions not implemented!
-#array_in_expr -- ditto
-#array_lvalue_complex -- ditto
-#array_dynamic_index
+#array_lvalue_complex
 
 my %failuretests = map {$_ => 1} (qw(
 error_arrayreturn
@@ -391,6 +397,11 @@ foreach my $stem (sort @alltests)
             complain( "ERROR: unexpected dwarfdump output for f.silly in out/f.dd.  Expected DW_AT_decl_line 0x00000003, found: '$line'" );
         }
     }
+
+    if ( defined $decl_order_tests{$stem} )
+    {
+        check_decl_order( "out/${stem}.mlir", $decl_order_tests{$stem} );
+    }
 }
 
 if ( scalar( @warnings ) )
@@ -417,6 +428,42 @@ sub complain
     {
         push( @warnings, $message );
     }
+}
+
+sub check_decl_order
+{
+    my ($mlir_file, $expected_str) = @_;
+
+    die "MLIR file not found: $mlir_file" unless (-f $mlir_file);
+    open my $fh, '<', $mlir_file or die "Cannot open $mlir_file: $!\n";
+
+    my @found;
+    while (my $line = <$fh>) {
+        if ($line =~ /sym_name\s*=\s*"([^"]+)"/) {
+            push @found, $1;
+        }
+    }
+    close $fh;
+
+    my @expected = split /,/, $expected_str;
+
+    if (@found != @expected) {
+        complain(sprintf("wrong number of declarations in %s (got %d, expected %d)\nFound: %s\nExpected: %s",
+                         $mlir_file, scalar(@found), scalar(@expected),
+                         join(", ", @found), join(", ", @expected)));
+        return;
+    }
+
+    for my $i (0 .. $#expected) {
+        if ($found[$i] ne $expected[$i]) {
+            complain(sprintf("declaration order mismatch in %s at position %d: expected '%s', got '%s'\nFull sequence: %s",
+                             $mlir_file, $i+1, $expected[$i], $found[$i],
+                             join(", ", @found)));
+            return;
+        }
+    }
+
+    # print "OK: $mlir_file declarations in order: ", join(", ", @found), "\n";
 }
 
 # vim: et ts=4 sw=4

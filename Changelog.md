@@ -316,7 +316,42 @@ s,\berror\b,errorStatement,g;
     This means that `x = 1.99 + 2.99` has the value `3`, if `x` is an integer variable, but `4.98` if x is a `FLOAT32` or `FLOAT64`.
   * Document: Floating point to integer conversions use a floor operation, and are not rounded.
   * A bunch more tests for complex expressions and more.
-  * Purge rvalueExpression from the expression hierarchy (unnecessary).  s/parseRvalue/parseExpression/; s/RvalueExpressionContext/ExpressionContext/, remove parseRvalue remnants.
+  * Generalize initializer expressions, and fix +- in unaryExpression ambiguity.
+
+The tests array_dynamic_index, array_in_expr, array_in_expr_min, as well
+as testing more general array element expressions, found a fundamental
+grammar bug.
+
+A minimal reproducer was:
+```
+INT32 i;
+i = 2+1; // parse fails.
+//i = 2 + 1; // parse okay.
+```
+
+The root cause of this was the `(PLUSCHAR_TOKEN | MINUS_TOKEN)?` that was in `FLOAT_PATTERN` and `INTEGER_PATTERN`.
+This leads to parse ambiguity since the +- in unaryExpression and this ended up in conflict.
+
+Fixing this wasn't as easy as just removing those patterns, letting unaryExpression take the load.
+Trying that broke initializer-lists which only allowed literal expressions.
+
+By first allowing expressions in initializer-list elements (requiring
+extensive parser changes), it was then possible to remove `(PLUSCHAR_TOKEN | MINUS_TOKEN)?` from the
+FLOAT and INTEGER patterns.
+
+Specific changes:
+- [grammar, parser] Allow parameter+constant expressions
+- [parser] Remove the previous insertion point hack for declarations.  They are
+  now in program order again (but still hoisted up to the begining of
+  the scope.)
+- [grammar, parser] remove booleanValue, replacing with direct use of expression
+Grammar/parser now compiles, but the insertion point logic is broken: My declaration order hack is now causing trouble.
+- [test] add declaration order test case.
+- [grammar, parser] add declareAssignmentExpression, and remove (PLUSCHAR_TOKEN
+  | MINUS_TOKEN)? from the INTEGER/FLOAT literal patterns.
+- Enable new tests: array_dynamic_index, array_in_expr, array_in_expr_min.
+- [grammar, parser] remove booleanValue, replacing with direct use of expression
+- [grammar, parser] Replace assignmentRvalue with expression in assignmentStatement.  Use declareAssignmentExpression as expression alias, but just in the declaration rules (to distinguish assignment from initialization.)
 
 ## tag: V7 (Jan 4, 2025)
 

@@ -37,11 +37,11 @@ ifElifElseStatement
   ;
 
 ifStatement
-  : IF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN LEFT_CURLY_BRACKET_TOKEN statement* RIGHT_CURLY_BRACKET_TOKEN
+  : IF_TOKEN BRACE_START_TOKEN expression BRACE_END_TOKEN LEFT_CURLY_BRACKET_TOKEN statement* RIGHT_CURLY_BRACKET_TOKEN
   ;
 
 elifStatement
-  : ELIF_TOKEN BRACE_START_TOKEN booleanValue BRACE_END_TOKEN LEFT_CURLY_BRACKET_TOKEN statement* RIGHT_CURLY_BRACKET_TOKEN
+  : ELIF_TOKEN BRACE_START_TOKEN expression BRACE_END_TOKEN LEFT_CURLY_BRACKET_TOKEN statement* RIGHT_CURLY_BRACKET_TOKEN
   ;
 
 elseStatement
@@ -57,24 +57,19 @@ functionStatement
     RIGHT_CURLY_BRACKET_TOKEN
   ;
 
-// note: '# boolAsExpr' is not a second comment style, but an ANTLR4 directive.
-booleanValue
-  : expression                                                    # boolAsExpr
-  ;
-
 // A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').  These are currently implicitly double.
 declareStatement
   : (DCL_TOKEN|DECLARE_TOKEN)
     IDENTIFIER (arrayBoundsExpression)?
-    ((EQUALS_TOKEN assignmentRvalue) |
-     (LEFT_CURLY_BRACKET_TOKEN (numericLiteral (COMMA_TOKEN numericLiteral)*)? RIGHT_CURLY_BRACKET_TOKEN))?
+    ((EQUALS_TOKEN declareAssignmentExpression) |
+     (LEFT_CURLY_BRACKET_TOKEN (expression (COMMA_TOKEN expression)*)? RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
 boolDeclareStatement
   : BOOL_TOKEN
     IDENTIFIER (arrayBoundsExpression)?
-    ((EQUALS_TOKEN assignmentRvalue) |
-     (LEFT_CURLY_BRACKET_TOKEN (booleanLiteral (COMMA_TOKEN booleanLiteral)*)? RIGHT_CURLY_BRACKET_TOKEN))?
+    ((EQUALS_TOKEN declareAssignmentExpression) |
+     (LEFT_CURLY_BRACKET_TOKEN (expression (COMMA_TOKEN expression)*)? RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
 variableTypeAndName
@@ -84,15 +79,22 @@ variableTypeAndName
 intDeclareStatement
   : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN)
     IDENTIFIER (arrayBoundsExpression)?
-    ((EQUALS_TOKEN assignmentRvalue) |
-     (LEFT_CURLY_BRACKET_TOKEN (integerLiteral (COMMA_TOKEN integerLiteral)*)? RIGHT_CURLY_BRACKET_TOKEN))?
+    ((EQUALS_TOKEN declareAssignmentExpression) |
+     (LEFT_CURLY_BRACKET_TOKEN (expression (COMMA_TOKEN expression)*)? RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
 floatDeclareStatement
   : (FLOAT32_TOKEN | FLOAT64_TOKEN)
     IDENTIFIER (arrayBoundsExpression)?
-    ((EQUALS_TOKEN assignmentRvalue) |
-     (LEFT_CURLY_BRACKET_TOKEN (numericLiteral (COMMA_TOKEN numericLiteral)*)? RIGHT_CURLY_BRACKET_TOKEN))?
+    ((EQUALS_TOKEN declareAssignmentExpression) |
+     (LEFT_CURLY_BRACKET_TOKEN (expression (COMMA_TOKEN expression)*)? RIGHT_CURLY_BRACKET_TOKEN))?
+  ;
+
+// This is so that we can distinguish initialization-list expressions from assignment expressions.
+// initialization-list expressions must be evaluatable at the point of declaration, so they can be expressions
+// based on constants or parameters.  See the README for some examples.
+declareAssignmentExpression
+  : expression
   ;
 
 stringDeclareStatement
@@ -116,11 +118,7 @@ getStatement
 
 // An assignment of an expression to a variable (e.g., 'x = 42;').
 assignmentStatement
-  : scalarOrArrayElement EQUALS_TOKEN assignmentRvalue
-  ;
-
-assignmentRvalue
-  : expression
+  : scalarOrArrayElement EQUALS_TOKEN expression
   ;
 
 // FOR ( x : (1, 11) ) { PRINT x; };
@@ -310,9 +308,9 @@ literal
 // LEXER Rules
 // ===========
 
-// Matches integer literals, optionally signed (e.g., '42', '-123', '+7').
+// Matches unsigned integer literals, (e.g., '42', '123', '7').  signed literals produced with unaryExpression
 INTEGER_PATTERN
-  : (PLUSCHAR_TOKEN | MINUS_TOKEN)? [0-9]+
+  : [0-9]+
   ;
 
 BOOLEAN_PATTERN
@@ -325,18 +323,18 @@ STRING_PATTERN
 // Could allow for escaped quotes, but let's get the simple case working first:
 //  : DQUOTE_TOKEN (~["\\] | '\\' .)* DQUOTE_TOKEN
 
-// Matches floating point literal.  Examples:
+// Matches unsigned floating point literals.  Examples:
+// 123
+// 123.3334
+// 123.3334E0
 // 42
-// -123
-// +7
 // 42.3334
-// -123.3334
-// +7.3334
 // 42.3334E7
-// -123.3334E0
-// +7.3334E-1
+// 7
+// 7.3334
+// 7.3334E-1
 FLOAT_PATTERN
-  : (PLUSCHAR_TOKEN | MINUS_TOKEN)? [0-9]+( DECIMALSEP_TOKEN [0-9]+)? (EXPONENT_TOKEN MINUS_TOKEN? [0-9]+)?
+  : [0-9]+( DECIMALSEP_TOKEN [0-9]+)? (EXPONENT_TOKEN MINUS_TOKEN? [0-9]+)?
   ;
 
 // Matches single-line comments (e.g., '// comment') and skips them.

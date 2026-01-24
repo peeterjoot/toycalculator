@@ -1,17 +1,13 @@
 ## TODO
 
 ----------------------------------
-1. array index expressions aren't working: `array_in_expr_min, array_in_expr, array_lvalue_complex`
-
-  See notes in d967fba53747e337c70c7cbd356f582c8c0100e0, and experiment hack in `experiment-with-fixing-array_in_expr_min` (on fedoravm, not pushed.)
-
-  Think that the proper fix for this is to:
-  - Allow `expression` in initializer-list (and declare w/ assignment?)
-  - Remove `(PLUSCHAR_TOKEN | MINUS_TOKEN)?` from both `FLOAT_PATTERN` and `INTEGER_PATTERN`, so that unaryExpression is the sole source of +-
-
-2. allow: INT64 a = 1, b = 2, c = 3; (`chained_comparison_parens.silly`).
-3. forgetting RETURN in `array_elem_as_arg.silly` has a very confusing error.
-4. grammar probably allows for function declared in a function.  prohibit that or at least test for it?
+1. `array_lvalue_complex`: still broken.  debug.
+2. Allow: INT64 a = 1, b = 2, c = 3; (`chained_comparison_parens.silly`).
+3. Forgetting RETURN in `array_elem_as_arg.silly` has a very confusing error.
+4. Grammar probably allows for function declared in a function.  prohibit that or at least test for it?
+5. Need a sema pass: For example, initializer-list shouldn't reference variables, only constant-expressions, or
+   expressions with parameters.
+6. Readme has an example of init-list with parameters.  Try that, and see if it actually works.
 
 ----------------------------------
 * Bugs:

@@ -54,7 +54,7 @@ namespace silly
     {
         currentFuncName = funcName;
         PerFunctionState &f = funcState( currentFuncName );
-        f.funcOp = op;
+        f.setFuncOp( op );
     }
 
     inline std::string formatLocation( mlir::Location loc )
@@ -113,20 +113,6 @@ namespace silly
 
             return builder.create<mlir::arith::ConstantFloatOp>( loc, tyF64, apVal );
         }
-    }
-
-    inline mlir::func::FuncOp MLIRListener::getFuncOp( mlir::Location loc, const std::string &funcName )
-    {
-        PerFunctionState &f = funcState( funcName );
-        mlir::func::FuncOp op = mlir::cast<mlir::func::FuncOp>( f.funcOp );
-
-        if ( op == nullptr )
-        {
-            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                        std::format( "{}internal error: Unable to find FuncOp for function {}\n",
-                                                     formatLocation( loc ), funcName ) );
-        }
-        return op;
     }
 
     inline std::string MLIRListener::stripQuotes( mlir::Location loc, const std::string &input ) const
@@ -195,9 +181,9 @@ namespace silly
     bool MLIRListener::isVariableDeclared( mlir::Location loc, const std::string &varName )
     {
         // Get the single scope
-        mlir::func::FuncOp funcOp = getFuncOp( loc, currentFuncName );
+        PerFunctionState &f = funcState( currentFuncName );
 
-        silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
+        silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, f.getFuncOp() );
 
         mlir::Operation *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
         return ( symbolOp != nullptr );
@@ -205,9 +191,8 @@ namespace silly
 
     void MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                             SillyParser::ArrayBoundsExpressionContext *arrayBounds,
-                                            std::vector<SillyParser::BooleanLiteralContext *> *booleanLiteral,
-                                            std::vector<SillyParser::IntegerLiteralContext *> *integerLiteral,
-                                            std::vector<SillyParser::NumericLiteralContext *> *numericLiteral )
+                                            SillyParser::ExpressionContext *assignmentExpression,
+                                            const std::vector<SillyParser::ExpressionContext *> *pExpressions )
     {
         size_t arraySize{};
         size_t numElements{ 1 };
@@ -221,8 +206,9 @@ namespace silly
 
         mlir::OpBuilder::InsertPoint savedIP = builder.saveInsertionPoint();
 
-        // Get the single scope
-        mlir::func::FuncOp funcOp = getFuncOp( loc, currentFuncName );
+        PerFunctionState &f = funcState( currentFuncName );
+
+        mlir::func::FuncOp funcOp = f.getFuncOp();
 
         silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
 
@@ -232,123 +218,69 @@ namespace silly
             throw UserError( loc, std::format( "Variable {} already declared", varName ) );
         }
 
-        // Scope has one block
-        mlir::Block *scopeBlock = &scopeOp.getBody().front();
+        if ( f.lastDeclareOp )
+        {
+            builder.setInsertionPointAfter( f.lastDeclareOp );
+        }
+        else
+        {
+            // Scope has one block
+            mlir::Block *scopeBlock = &scopeOp.getBody().front();
 
-        // Insert declarations at the beginning of the scope block
-        // (all DeclareOps should appear before any scf.if/scf.for)
-        builder.setInsertionPointToStart( scopeBlock );
+            // Insert declarations at the beginning of the scope block
+            // (all DeclareOps should appear before any scf.if/scf.for)
+            builder.setInsertionPointToStart( scopeBlock );
+        }
 
         std::vector<mlir::Value> initializers;
 
-        if ( booleanLiteral )
+        if ( pExpressions )
         {
-            assert( integerLiteral == nullptr );
-            assert( numericLiteral == nullptr );
-            for ( SillyParser::BooleanLiteralContext *lit : *booleanLiteral )
+            mlir::Value fill{};
+
+            for ( SillyParser::ExpressionContext *e : *pExpressions )
             {
-                if ( tNode *b = lit->BOOLEAN_PATTERN() )
-                {
-                    initializers.push_back( parseBoolean( loc, b->getText() ) );
-                }
-                else
-                {
-                    throw ExceptionWithContext(
-                        __FILE__, __LINE__, __func__,
-                        std::format( "{}internal error: boolean literal with unknown type\n", formatLocation( loc ) ) );
-                }
+                initializers.push_back( parseExpression( loc, e ) );
             }
 
             ssize_t remaining = numElements - initializers.size();
-            mlir::Value fill{};
-            for ( ssize_t i = 0; i < remaining; i++ )
+
+            if ( remaining )
             {
-                if ( i == 0 )
+                if ( ty == tyI1 )
                 {
                     fill = parseBoolean( loc, "FALSE" );
                 }
-
-                initializers.push_back( fill );
-            }
-        }
-        else if ( integerLiteral )
-        {
-            assert( booleanLiteral == nullptr );
-            assert( numericLiteral == nullptr );
-
-            mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( ty );
-            int width = ity.getWidth();
-
-            for ( SillyParser::IntegerLiteralContext *lit : *integerLiteral )
-            {
-                if ( tNode *i = lit->INTEGER_PATTERN() )
+                else if ( mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( ty ) )
                 {
-                    initializers.push_back( parseInteger( loc, width, i->getText() ) );
-                }
-                else
-                {
-                    throw ExceptionWithContext(
-                        __FILE__, __LINE__, __func__,
-                        std::format( "{}internal error: integer literal with unknown type\n", formatLocation( loc ) ) );
-                }
-            }
-
-            ssize_t remaining = numElements - initializers.size();
-            mlir::Value fill{};
-            for ( ssize_t i = 0; i < remaining; i++ )
-            {
-                if ( i == 0 )
-                {
+                    int width = ity.getWidth();
                     fill = parseInteger( loc, width, "0" );
                 }
-
-                initializers.push_back( fill );
-            }
-        }
-        else if ( numericLiteral )
-        {
-            assert( booleanLiteral == nullptr );
-            assert( integerLiteral == nullptr );
-
-            mlir::FloatType fty = mlir::cast<mlir::FloatType>( ty );
-
-            for ( SillyParser::NumericLiteralContext *lit : *numericLiteral )
-            {
-                if ( tNode *i = lit->INTEGER_PATTERN() )
-                {
-                    initializers.push_back( parseFloat( loc, fty, i->getText() ) );
-                }
-                else if ( tNode *f = lit->FLOAT_PATTERN() )
-                {
-                    initializers.push_back( parseFloat( loc, fty, f->getText() ) );
-                }
-                else
-                {
-                    throw ExceptionWithContext(
-                        __FILE__, __LINE__, __func__,
-                        std::format( "{}internal error: floating point literal with unknown type\n",
-                                     formatLocation( loc ) ) );
-                }
-            }
-
-            ssize_t remaining = numElements - initializers.size();
-            mlir::Value fill{};
-            for ( ssize_t i = 0; i < remaining; i++ )
-            {
-                if ( i == 0 )
+                else if ( mlir::FloatType fty = mlir::dyn_cast<mlir::FloatType>( ty ) )
                 {
                     fill = parseFloat( loc, fty, "0" );
                 }
+                else
+                {
+                    throw ExceptionWithContext(
+                        __FILE__, __LINE__, __func__,
+                        std::format( "{}internal error: unknown scalar type.\n", formatLocation( loc ) ) );
+                }
+            }
 
+            if ( initializers.size() > numElements )
+            {
+                throw UserError(
+                    loc,
+                    std::format( "For variable '{}', more initializers ({}) specified than number of elements ({}).\n",
+                                 varName, initializers.size(), numElements ) );
+            }
+
+            for ( ssize_t i = 0; i < remaining; i++ )
+            {
+                assert( fill );
                 initializers.push_back( fill );
             }
-        }
-
-        if ( initializers.size() > numElements )
-        {
-            throw UserError(
-                loc, std::format( "For variable '{}', more initializers ({}) specified than number of elements ({}).\n",
-                                  varName, initializers.size(), numElements ) );
         }
 
         mlir::StringAttr strAttr = builder.getStringAttr( varName );
@@ -366,7 +298,14 @@ namespace silly
         }
         dcl->setAttr( "sym_name", strAttr );
 
+        f.lastDeclareOp = dcl.getOperation();
+
         builder.restoreInsertionPoint( savedIP );
+
+        if ( assignmentExpression )
+        {
+            processAssignment( loc, assignmentExpression, varName, {} );
+        }
     }
 
     inline mlir::Value MLIRListener::parseLowest( mlir::Location loc, antlr4::ParserRuleContext *ctx )
@@ -387,6 +326,8 @@ namespace silly
 
     inline mlir::Value MLIRListener::parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx )
     {
+        assert( ctx );
+
         return parseLowest( loc, ctx );
     }
 
@@ -420,7 +361,8 @@ namespace silly
 
     silly::DeclareOp MLIRListener::lookupDeclareForVar( mlir::Location loc, const std::string &varName )
     {
-        mlir::func::FuncOp funcOp = getFuncOp( loc, currentFuncName );
+        PerFunctionState &f = funcState( currentFuncName );
+        mlir::func::FuncOp funcOp = f.getFuncOp();
 
         silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
 
@@ -561,8 +503,9 @@ namespace silly
         }
         else
         {
-            mlir::func::FuncOp func = getFuncOp( loc, currentFuncName );
-            llvm::ArrayRef<mlir::Type> returnTypeArray = func.getFunctionType().getResults();
+            PerFunctionState &f = funcState( currentFuncName );
+            mlir::func::FuncOp funcOp = f.getFuncOp();
+            llvm::ArrayRef<mlir::Type> returnTypeArray = funcOp.getFunctionType().getResults();
 
             if ( !returnTypeArray.empty() )
             {
@@ -676,7 +619,8 @@ namespace silly
         tNode *id = ctx->IDENTIFIER();
         assert( id );
         std::string funcName = id->getText();
-        mlir::func::FuncOp funcOp = getFuncOp( loc, funcName );
+        PerFunctionState &f = funcState( funcName );
+        mlir::func::FuncOp funcOp = f.getFuncOp();
         mlir::FunctionType funcType = funcOp.getFunctionType();
         std::vector<mlir::Value> parameters;
 
@@ -721,69 +665,65 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterDeclareStatement( SillyParser::DeclareStatementContext *ctx )
+    void MLIRListener::enterDeclareHelper( mlir::Location loc, tNode *identifier,
+                                           SillyParser::DeclareAssignmentExpressionContext *declareAssignmentExpression,
+                                           const std::vector<SillyParser::ExpressionContext *> &expressions,
+                                           tNode *hasInitList,
+                                           SillyParser::ArrayBoundsExpressionContext *arrayBoundsExpression,
+                                           mlir::Type ty )
     try
+    {
+        assert( identifier );
+        std::string varName = identifier->getText();
+
+        const std::vector<SillyParser::ExpressionContext *> *pExpressions{};
+        SillyParser::ExpressionContext *assignmentExpression{};
+
+        if ( hasInitList || expressions.size() )
+        {
+            if ( declareAssignmentExpression )
+            {
+                throw UserError(
+                    loc,
+                    std::format(
+                        "Declaration cannot have both assignment expression and initialization-list expression." ) );
+            }
+            pExpressions = &expressions;
+        }
+        else if ( declareAssignmentExpression )
+        {
+            assignmentExpression = declareAssignmentExpression->expression();
+        }
+
+        registerDeclaration( loc, varName, ty, arrayBoundsExpression, assignmentExpression, pExpressions );
+
+        // LLVM_DEBUG( { llvm::errs() << "enterDeclareHelper done: module dump:\n"; mod->dump(); } );
+    }
+    CATCH_USER_ERROR
+
+    void MLIRListener::enterDeclareStatement( SillyParser::DeclareStatementContext *ctx )
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
-        assert( ctx->IDENTIFIER() );
-        std::string varName = ctx->IDENTIFIER()->getText();
 
-        std::vector<SillyParser::NumericLiteralContext *> *pNumericLiteral{};
-        std::vector<SillyParser::NumericLiteralContext *> numericLiteral;
-        if ( ctx->LEFT_CURLY_BRACKET_TOKEN() )
-        {
-            numericLiteral = ctx->numericLiteral();
-            pNumericLiteral = &numericLiteral;
-        }
-        registerDeclaration( loc, varName, tyF64, ctx->arrayBoundsExpression(), nullptr, nullptr, pNumericLiteral );
-
-        if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
-        {
-            processAssignment( loc, expr->expression(), varName, {} );
-        }
+        enterDeclareHelper( loc, ctx->IDENTIFIER(), ctx->declareAssignmentExpression(), ctx->expression(),
+                            ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), tyF64 );
     }
-    CATCH_USER_ERROR
 
     void MLIRListener::enterBoolDeclareStatement( SillyParser::BoolDeclareStatementContext *ctx )
-    try
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
-        std::string varName = ctx->IDENTIFIER()->getText();
-
-        std::vector<SillyParser::BooleanLiteralContext *> *pBooleanLiteral{};
-        std::vector<SillyParser::BooleanLiteralContext *> booleanLiteral;
-        if ( ctx->LEFT_CURLY_BRACKET_TOKEN() )
-        {
-            booleanLiteral = ctx->booleanLiteral();
-            pBooleanLiteral = &booleanLiteral;
-        }
-        registerDeclaration( loc, varName, tyI1, ctx->arrayBoundsExpression(), pBooleanLiteral, nullptr, nullptr );
-
-        if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
-        {
-            processAssignment( loc, expr->expression(), varName, {} );
-        }
+        enterDeclareHelper( loc, ctx->IDENTIFIER(), ctx->declareAssignmentExpression(), ctx->expression(),
+                            ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), tyI1 );
     }
-    CATCH_USER_ERROR
 
     void MLIRListener::enterIntDeclareStatement( SillyParser::IntDeclareStatementContext *ctx )
-    try
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
-        assert( ctx->IDENTIFIER() );
-        std::string varName = ctx->IDENTIFIER()->getText();
 
         mlir::Type ty;
-        std::vector<SillyParser::IntegerLiteralContext *> *pIntegerLiteral{};
-        std::vector<SillyParser::IntegerLiteralContext *> integerLiteral;
-        if ( ctx->LEFT_CURLY_BRACKET_TOKEN() )
-        {
-            integerLiteral = ctx->integerLiteral();
-            pIntegerLiteral = &integerLiteral;
-        }
 
         if ( ctx->INT8_TOKEN() )
         {
@@ -808,22 +748,14 @@ namespace silly
                                                      formatLocation( loc ) ) );
         }
 
-        registerDeclaration( loc, varName, ty, ctx->arrayBoundsExpression(), nullptr, pIntegerLiteral, nullptr );
-
-        if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
-        {
-            processAssignment( loc, expr->expression(), varName, {} );
-        }
+        enterDeclareHelper( loc, ctx->IDENTIFIER(), ctx->declareAssignmentExpression(), ctx->expression(),
+                            ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), ty );
     }
-    CATCH_USER_ERROR
 
     void MLIRListener::enterFloatDeclareStatement( SillyParser::FloatDeclareStatementContext *ctx )
-    try
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
-        assert( ctx->IDENTIFIER() );
-        std::string varName = ctx->IDENTIFIER()->getText();
         mlir::Type ty;
 
         if ( ctx->FLOAT32_TOKEN() )
@@ -836,27 +768,15 @@ namespace silly
         }
         else
         {
+            mlir::Location loc = getStartLocation( ctx );
             throw ExceptionWithContext( __FILE__, __LINE__, __func__,
                                         std::format( "{}internal error: Unsupported floating point declaration size.\n",
                                                      formatLocation( loc ) ) );
         }
 
-        std::vector<SillyParser::NumericLiteralContext *> *pNumericLiteral{};
-        std::vector<SillyParser::NumericLiteralContext *> numericLiteral;
-        if ( ctx->LEFT_CURLY_BRACKET_TOKEN() )
-        {
-            numericLiteral = ctx->numericLiteral();
-            pNumericLiteral = &numericLiteral;
-        }
-
-        registerDeclaration( loc, varName, ty, ctx->arrayBoundsExpression(), nullptr, nullptr, pNumericLiteral );
-
-        if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
-        {
-            processAssignment( loc, expr->expression(), varName, {} );
-        }
+        enterDeclareHelper( loc, ctx->IDENTIFIER(), ctx->declareAssignmentExpression(), ctx->expression(),
+                            ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), ty );
     }
-    CATCH_USER_ERROR
 
     void MLIRListener::enterStringDeclareStatement( SillyParser::StringDeclareStatementContext *ctx )
     try
@@ -868,7 +788,7 @@ namespace silly
         SillyParser::ArrayBoundsExpressionContext *arrayBounds = ctx->arrayBoundsExpression();
         assert( arrayBounds );
 
-        registerDeclaration( loc, varName, tyI8, arrayBounds, nullptr, nullptr, nullptr );
+        registerDeclaration( loc, varName, tyI8, arrayBounds, nullptr, nullptr );
 
         if ( tNode *theString = ctx->STRING_PATTERN() )
         {
@@ -887,11 +807,9 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::createIf( mlir::Location loc, SillyParser::BooleanValueContext *booleanValue, bool saveIP )
+    void MLIRListener::createIf( mlir::Location loc, SillyParser::ExpressionContext *predicate, bool saveIP )
     {
-        SillyParser::BoolAsExprContext *bc = dynamic_cast<SillyParser::BoolAsExprContext *>( booleanValue );
-
-        mlir::Value conditionPredicate = parseExpression( loc, bc->expression() );
+        mlir::Value conditionPredicate = parseExpression( loc, predicate );
 
         if ( saveIP )
         {
@@ -911,10 +829,7 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
-        SillyParser::BooleanValueContext *booleanValue = ctx->booleanValue();
-        assert( booleanValue );
-
-        createIf( loc, booleanValue, true );
+        createIf( loc, ctx->expression(), true );
     }
     CATCH_USER_ERROR
 
@@ -962,9 +877,7 @@ namespace silly
 
         selectElseBlock( loc, ctx->getText() );
 
-        SillyParser::BooleanValueContext *booleanValue = ctx->booleanValue();
-
-        createIf( loc, booleanValue, false );
+        createIf( loc, ctx->expression(), false );
     }
     CATCH_USER_ERROR
 
@@ -1364,7 +1277,7 @@ namespace silly
             currentIndexExpr = parseExpression( loc, indexExpr->expression() );
         }
 
-        processAssignment( loc, ctx->assignmentRvalue()->expression(), currentVarName, currentIndexExpr );
+        processAssignment( loc, ctx->expression(), currentVarName, currentIndexExpr );
     }
     CATCH_USER_ERROR
 
