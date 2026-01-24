@@ -366,7 +366,9 @@ This example is treated like:
 
 Here stack storage for `a` and `b` is allocated at the beginning of the function, but assignments and accesses happen in program order.
 
-Use of initializer-lists with variable related expressions has undefined behaviour.
+* Initializer lists in declarations may contain arbitrary constant or parameter related expressions, or calls to functions with constant or parameter related variables.
+  Examples: `{ - (10 + 5) }`, `{ CALL somefunc() }`, { x + 1 } where x is parameter, but not a variable (even if previously declared).
+* Use of initializer-lists with variable related expressions has undefined behaviour.
 
 ## Array Element Access
 

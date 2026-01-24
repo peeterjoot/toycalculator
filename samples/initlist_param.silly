@@ -1,0 +1,9 @@
+// initlist_param.silly
+FUNCTION foo( INT32 a )
+{
+    INT32 b{ a + 1 };
+    PRINT b;
+    RETURN;
+};
+
+CALL foo(41);

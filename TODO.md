@@ -1,13 +1,13 @@
 ## TODO
 
 ----------------------------------
+0. Readme has an example of init-list with parameters: added: `initlist_param.silly`, but it does not work.  Debug and fix it.
 1. `array_lvalue_complex`: still broken.  debug.
 2. Allow: INT64 a = 1, b = 2, c = 3; (`chained_comparison_parens.silly`).
 3. Forgetting RETURN in `array_elem_as_arg.silly` has a very confusing error.
 4. Grammar probably allows for function declared in a function.  prohibit that or at least test for it?
 5. Need a sema pass: For example, initializer-list shouldn't reference variables, only constant-expressions, or
    expressions with parameters.  t/c for this: `error_nonconst_init.silly`
-6. Readme has an example of init-list with parameters.  Try that, and see if it actually works.
 
 ----------------------------------
 * Bugs:

@@ -252,6 +252,7 @@ unary
 unary_on_array_elem
 xorop
 ));
+#initlist_param
 #array_lvalue_complex
 #error_nonconst_init -- want this to be a compile error, but it isn't yet.
 
