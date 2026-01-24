@@ -127,6 +127,7 @@ arrayprod
 assign_to_array_complex
 bin
 bool
+bool_arith_mixed
 boolcall0
 boolcall1
 boolcall2

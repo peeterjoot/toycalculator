@@ -1,0 +1,12 @@
+// Sanity check for bools treated as 0/1:
+BOOL t = TRUE;
+BOOL f = FALSE;
+INT64 sum = t + 5 + f * 10;   // 1 + 5 + 0 = 6
+PRINT sum;
+
+FLOAT64 prod = t * 3.5;       // 1 * 3.5 = 3.5
+PRINT prod;
+
+BOOL and_result = (t + f) EQ 1;  // 1 EQ 1 → TRUE
+PRINT and_result;
+
