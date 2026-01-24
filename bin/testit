@@ -119,13 +119,18 @@ addi
 andop
 array
 array_assign_and_use
+array_elem_as_arg
+array_in_comparison
+array_index_var
 array_mixed_type
 arrayprod
+assign_to_array_complex
 bin
 bool
 boolcall0
 boolcall1
 boolcall2
+bool_in_arith
 boolop
 boolr
 call_in_predicate
@@ -226,6 +231,7 @@ stringlit
 test
 types
 unary
+unary_on_array_elem
 xorop
 ));
 #array_in_expr_min -- array indexing expressions not implemented!
@@ -252,6 +258,7 @@ error_stringreturn
 error_undeclare
 ));
 #error_intarray_bad_constaccess
+#error_array_oob_const -- dup?
 #error_decl_in_if -- probably want this to fail (like scopebug)
 #error_decl_in_elif_else -- probably also want this to fail too.
 

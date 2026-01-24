@@ -5,6 +5,7 @@
 * grammar probably allows for function declared in a function.  prohibit that or at least test for it?
 * allow: INT64 a = 1, b = 2, c = 3; (`chained_comparison_parens.silly`)
 * array index expressions aren't implemented: `array_in_expr_min, array_in_expr, array_lvalue_complex`
+* forgetting RETURN in `array_elem_as_arg.silly` has a very confusing error.
 
 ----------------------------------
 * Bugs:

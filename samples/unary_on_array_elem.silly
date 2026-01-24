@@ -1,0 +1,7 @@
+// Array element used in unary expression
+// (Tests negation, NOT on array access)
+INT32 a[3] {10, -20, 30};
+PRINT -a[1];          // expect 20
+BOOL b = NOT a[0];    // expect 0 (NOT 10 → false)
+PRINT b;
+

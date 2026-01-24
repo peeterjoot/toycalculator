@@ -1,0 +1,9 @@
+// One test for bool promotion in arithmetic
+// (Since bools are 0/1)
+BOOL t = TRUE;
+BOOL f = FALSE;
+INT64 sum = t + f + 5;   // 1 + 0 + 5 = 6
+PRINT sum;
+FLOAT64 prod = t * 2.5;   // 1 * 2.5 = 2.5
+PRINT prod;
+

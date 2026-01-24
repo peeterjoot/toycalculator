@@ -1,0 +1,11 @@
+// Array element in function argument (simple case)
+// (Builds on expressions_in_call but isolates array access)
+FUNCTION print_twice(INT64 x)
+{
+    PRINT x, " ", x;
+    RETURN;
+};
+
+INT64 vals[3] {7, 14, 21};
+CALL print_twice( vals[1] );   // expect 14 14
+

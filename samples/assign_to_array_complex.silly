@@ -1,0 +1,11 @@
+// Assignment to array element with complex RHS
+// (Tests full rvalue expressions on LHS subscript)
+INT32 a[5];
+INT32 i = 2;
+a[i] = 5 + 3 * (i + 1);   // 5 + 3*3 = 14
+PRINT a[2];               // expect 14
+
+FLOAT64 f = 2.5;
+a[0] = i * f;             // mixed type → truncation
+PRINT a[0];
+

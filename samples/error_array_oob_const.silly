@@ -1,0 +1,6 @@
+// one negative test for out-of-bounds constant index
+// (If you want to mark bounds-checking hole)
+// (expect runtime ABORT or compile error)
+INT32 a[5];
+PRINT a[10];          // should fail
+

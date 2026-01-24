@@ -1,0 +1,13 @@
+// Comparison involving array element in IF predicate
+// (Ensures array access works in boolean context)
+INT32 scores[4] {85, 92, 78, 95};
+INT32 threshold = 90;
+IF (scores[1] > threshold)
+{
+    PRINT "High score!";
+}
+ELSE
+{
+    PRINT "Below threshold";
+};
+
