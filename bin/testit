@@ -132,6 +132,7 @@ boolcall0
 boolcall1
 boolcall2
 bool_in_arith
+boolliteral
 bool_not_on_comparison
 boolop
 boolr
