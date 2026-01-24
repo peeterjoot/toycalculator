@@ -352,6 +352,9 @@ Grammar/parser now compiles, but the insertion point logic is broken: My declara
 - Enable new tests: array_dynamic_index, array_in_expr, array_in_expr_min.
 - [grammar, parser] remove booleanValue, replacing with direct use of expression
 - [grammar, parser] Replace assignmentRvalue with expression in assignmentStatement.  Use declareAssignmentExpression as expression alias, but just in the declaration rules (to distinguish assignment from initialization.)
+  * more tests: init_expr_unary initlisttrunc initsequence init_expr_bool forward_ref_init
+  * add placeholder test: `error_nonconst_init.silly` -- doesn't fail, but I want it to (see TODO)
+
 
 ## tag: V7 (Jan 4, 2025)
 

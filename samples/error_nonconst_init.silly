@@ -1,0 +1,4 @@
+// error_nonconst_init.silly
+INT32 x = 5;
+INT32 a[1] { x + 1 };   // currently allowed, but may want to disallow non-const later
+PRINT a[0]; // prints 1 with default --init-fill (0).  Want a sema pass that catches this and produces a compile error.

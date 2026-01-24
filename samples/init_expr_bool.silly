@@ -1,0 +1,6 @@
+// init_expr_bool.silly
+BOOL flags[3] { TRUE, NOT FALSE, 5 EQ 5 };   // true, true, true
+PRINT flags[0], ", ", flags[1], ", ", flags[2];  // expect: 1, 1, 1
+
+BOOL neg[1] { NOT TRUE };                    // false
+PRINT neg[0];                                // expect: 0

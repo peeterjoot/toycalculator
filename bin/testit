@@ -183,6 +183,7 @@ factorial2
 fatal
 foo
 for_complex_body
+forward_ref_init
 function
 function_add
 function_foo_with_local
@@ -201,6 +202,7 @@ if
 ifdcl
 init
 initarray
+init_expr_bool
 init_expr_unary
 initlist
 initlisttrunc
@@ -250,6 +252,7 @@ unary_on_array_elem
 xorop
 ));
 #array_lvalue_complex
+#error_nonconst_init -- want this to be a compile error, but it isn't yet.
 
 my %failuretests = map {$_ => 1} (qw(
 error_arrayreturn
