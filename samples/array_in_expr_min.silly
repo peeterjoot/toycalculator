@@ -1,6 +1,12 @@
-INT32 a[5] {1,2,3,4,5};
+INT32 a[5] {0, 1,2,3,4};
 INT32 i = 2;
-INT64 res0 = a[2+1];
+i = 2+1;
+PRINT i;
+i = 2 + 1;
+PRINT i;
+INT64 res0 = a[i];
 PRINT res0;
-//INT64 res1 = a[i+1];
-//PRINT res1;
+INT64 res1 = a[2+1];
+PRINT res1;
+INT64 res2 = a[i+1];
+PRINT res2;
