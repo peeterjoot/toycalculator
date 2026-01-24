@@ -201,8 +201,11 @@ if
 ifdcl
 init
 initarray
+init_expr_unary
 initlist
+initlisttrunc
 inits
+initsequence
 initstring
 intarray
 lessbug
