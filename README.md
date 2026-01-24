@@ -214,6 +214,7 @@ Parentheses `()` can be used to override precedence.
 ### Type Handling in Expressions
 
 - Expressions involving operations between different types, derive the result types from the operands (using promotion rules in `biggestTypeOf`).
+- Floating point to integer conversions use a floor operation, and are not rounded.
 - Comparisons and logical operations always produce `BOOL` (`i1`).
 
 Examples:

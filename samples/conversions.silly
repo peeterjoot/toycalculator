@@ -1,0 +1,13 @@
+INT64 x = 1 + 2.5;
+PRINT x;
+
+INT64 y = 1 + 2.4;
+PRINT y;
+
+INT64 w = 1 + 2.6;
+PRINT w;
+
+FLOAT64 z = 1 + 2;
+PRINT z;
+
+PRINT 1 + 2.5;
