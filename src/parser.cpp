@@ -390,13 +390,6 @@ namespace silly
         return parseLowest( loc, ctx );
     }
 
-    inline mlir::Value MLIRListener::parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx )
-    {
-        assert( ctx && ctx->expression() );
-
-        return parseExpression( loc, ctx->expression() );
-    }
-
     void MLIRListener::syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
                                     size_t charPositionInLine, const std::string &msg, std::exception_ptr e )
     {
@@ -557,7 +550,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::processReturnLike( mlir::Location loc, SillyParser::RvalueExpressionContext *rvalueExpression )
+    void MLIRListener::processReturnLike( mlir::Location loc, SillyParser::ExpressionContext *expression )
     {
         mlir::Type returnType{};
         mlir::Value value{};
@@ -577,9 +570,9 @@ namespace silly
             }
         }
 
-        if ( rvalueExpression )
+        if ( expression )
         {
-            value = parseRvalue( loc, rvalueExpression );
+            value = parseExpression( loc, expression );
 
             value = castOpIfRequired( loc, value, returnType );
         }
@@ -698,13 +691,13 @@ namespace silly
 
             for ( SillyParser::ParameterExpressionContext *e : params->parameterExpression() )
             {
-                SillyParser::RvalueExpressionContext *p = e->rvalueExpression();
+                SillyParser::ExpressionContext *p = e->expression();
                 assert( p );
                 std::string paramText = p->getText();
                 std::cout << std::format( "CALL function {}: param: {}\n", funcName, paramText );
 
                 mlir::Type ty = funcType.getInputs()[i];
-                mlir::Value value = parseRvalue( loc, p );
+                mlir::Value value = parseExpression( loc, p );
                 value = castOpIfRequired( loc, value, ty );
 
                 parameters.push_back( value );
@@ -747,7 +740,7 @@ namespace silly
 
         if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
         {
-            processAssignment( loc, expr->rvalueExpression(), varName, {} );
+            processAssignment( loc, expr->expression(), varName, {} );
         }
     }
     CATCH_USER_ERROR
@@ -770,7 +763,7 @@ namespace silly
 
         if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
         {
-            processAssignment( loc, expr->rvalueExpression(), varName, {} );
+            processAssignment( loc, expr->expression(), varName, {} );
         }
     }
     CATCH_USER_ERROR
@@ -819,7 +812,7 @@ namespace silly
 
         if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
         {
-            processAssignment( loc, expr->rvalueExpression(), varName, {} );
+            processAssignment( loc, expr->expression(), varName, {} );
         }
     }
     CATCH_USER_ERROR
@@ -860,7 +853,7 @@ namespace silly
 
         if ( SillyParser::AssignmentRvalueContext *expr = ctx->assignmentRvalue() )
         {
-            processAssignment( loc, expr->rvalueExpression(), varName, {} );
+            processAssignment( loc, expr->expression(), varName, {} );
         }
     }
     CATCH_USER_ERROR
@@ -1003,13 +996,13 @@ namespace silly
         assert( ctx->forEnd() );
         assert( ctx->forStart()->forRangeExpression() );
         assert( ctx->forEnd()->forRangeExpression() );
-        SillyParser::RvalueExpressionContext *pStart = ctx->forStart()->forRangeExpression()->rvalueExpression();
-        SillyParser::RvalueExpressionContext *pEnd = ctx->forEnd()->forRangeExpression()->rvalueExpression();
-        SillyParser::RvalueExpressionContext *pStep{};
+        SillyParser::ExpressionContext *pStart = ctx->forStart()->forRangeExpression()->expression();
+        SillyParser::ExpressionContext *pEnd = ctx->forEnd()->forRangeExpression()->expression();
+        SillyParser::ExpressionContext *pStep{};
         if ( SillyParser::ForStepContext *st = ctx->forStep() )
         {
             assert( st->forRangeExpression() );
-            pStep = st->forRangeExpression()->rvalueExpression();
+            pStep = st->forRangeExpression()->expression();
         }
 
         mlir::Value start;
@@ -1022,7 +1015,7 @@ namespace silly
         std::string s;
         if ( pStart )
         {
-            start = parseRvalue( loc, pStart );
+            start = parseExpression( loc, pStart );
 
             start = castOpIfRequired( loc, start, elemType );
         }
@@ -1035,7 +1028,7 @@ namespace silly
 
         if ( pEnd )
         {
-            end = parseRvalue( loc, pEnd );
+            end = parseExpression( loc, pEnd );
 
             end = castOpIfRequired( loc, end, elemType );
         }
@@ -1048,7 +1041,7 @@ namespace silly
 
         if ( pStep )
         {
-            step = parseRvalue( loc, pStep );
+            step = parseExpression( loc, pStep );
         }
         else
         {
@@ -1082,13 +1075,13 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::handlePrint( mlir::Location loc, const std::vector<SillyParser::RvalueExpressionContext *> &args,
+    void MLIRListener::handlePrint( mlir::Location loc, const std::vector<SillyParser::ExpressionContext *> &args,
                                     const std::string &errorContextString, PrintFlags pf )
     {
         std::vector<mlir::Value> vargs;
-        for ( SillyParser::RvalueExpressionContext *parg : args )
+        for ( SillyParser::ExpressionContext *parg : args )
         {
-            mlir::Value v = parseRvalue( loc, parg );
+            mlir::Value v = parseExpression( loc, parg );
 
             vargs.push_back( v );
         }
@@ -1108,7 +1101,7 @@ namespace silly
         {
             flags = PRINT_FLAGS_CONTINUE;
         }
-        handlePrint( loc, ctx->rvalueExpression(), ctx->getText(), (PrintFlags)flags );
+        handlePrint( loc, ctx->expression(), ctx->getText(), (PrintFlags)flags );
     }
     CATCH_USER_ERROR
 
@@ -1122,7 +1115,7 @@ namespace silly
         {
             flags |= PRINT_FLAGS_CONTINUE;
         }
-        handlePrint( loc, ctx->rvalueExpression(), ctx->getText(), (PrintFlags)flags );
+        handlePrint( loc, ctx->expression(), ctx->getText(), (PrintFlags)flags );
     }
     CATCH_USER_ERROR
 
@@ -1155,7 +1148,7 @@ namespace silly
             mlir::Value optIndexValue{};
             if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
             {
-                mlir::Value indexValue = parseRvalue( loc, indexExpr->rvalueExpression() );
+                mlir::Value indexValue = parseExpression( loc, indexExpr->expression() );
 
                 optIndexValue = indexTypeCast( loc, indexValue );
             }
@@ -1294,7 +1287,7 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
-        processReturnLike( loc, ctx->rvalueExpression() );
+        processReturnLike( loc, ctx->expression() );
     }
     CATCH_USER_ERROR
 
@@ -1304,14 +1297,14 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
-        processReturnLike( loc, ctx->rvalueExpression() );
+        processReturnLike( loc, ctx->expression() );
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::processAssignment( mlir::Location loc, SillyParser::RvalueExpressionContext *exprContext,
+    void MLIRListener::processAssignment( mlir::Location loc, SillyParser::ExpressionContext *exprContext,
                                           const std::string &currentVarName, mlir::Value currentIndexExpr )
     {
-        mlir::Value resultValue = parseRvalue( loc, exprContext );
+        mlir::Value resultValue = parseExpression( loc, exprContext );
 
         mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, currentVarName );
 
@@ -1368,10 +1361,10 @@ namespace silly
 
         if ( indexExpr )
         {
-            currentIndexExpr = parseRvalue( loc, indexExpr->rvalueExpression() );
+            currentIndexExpr = parseExpression( loc, indexExpr->expression() );
         }
 
-        processAssignment( loc, ctx->assignmentRvalue()->rvalueExpression(), currentVarName, currentIndexExpr );
+        processAssignment( loc, ctx->assignmentRvalue()->expression(), currentVarName, currentIndexExpr );
     }
     CATCH_USER_ERROR
 
@@ -1813,7 +1806,7 @@ namespace silly
 
             if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
             {
-                value = parseRvalue( loc, indexExpr->rvalueExpression() );
+                value = parseExpression( loc, indexExpr->expression() );
 
                 mlir::Value i = indexTypeCast( loc, value );
 

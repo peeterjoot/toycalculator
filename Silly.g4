@@ -102,11 +102,11 @@ stringDeclareStatement
 
 // A printStatement statement that outputs a list of variables, literals, or expressions (e.g., 'PRINT x, y, z;'), followed by a (optional) newline.
 printStatement
-  : PRINT_TOKEN rvalueExpression (COMMA_TOKEN rvalueExpression)* CONTINUE_TOKEN?
+  : PRINT_TOKEN expression (COMMA_TOKEN expression)* CONTINUE_TOKEN?
   ;
 
 errorStatement
-  : ERROR_TOKEN rvalueExpression (COMMA_TOKEN rvalueExpression)* CONTINUE_TOKEN?
+  : ERROR_TOKEN expression (COMMA_TOKEN expression)* CONTINUE_TOKEN?
   ;
 
 // GET statement inputs into a scalar variable (e.g., 'GET x;', 'GET x[1]').
@@ -120,7 +120,7 @@ assignmentStatement
   ;
 
 assignmentRvalue
-  : rvalueExpression
+  : expression
   ;
 
 // FOR ( x : (1, 11) ) { PRINT x; };
@@ -153,16 +153,16 @@ forStep
   ;
 
 forRangeExpression
-  : rvalueExpression
+  : expression
   ;
 
 // Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
 exitStatement
-  : EXIT_TOKEN rvalueExpression?
+  : EXIT_TOKEN expression?
   ;
 
 returnStatement
-  : RETURN_TOKEN rvalueExpression?
+  : RETURN_TOKEN expression?
   ;
 
 callStatement
@@ -178,7 +178,7 @@ parameterList
   ;
 
 parameterExpression
-  : rvalueExpression
+  : expression
   ;
 
 scalarOrArrayElement
@@ -186,16 +186,11 @@ scalarOrArrayElement
   ;
 
 indexExpression
-  : ARRAY_START_TOKEN rvalueExpression ARRAY_END_TOKEN
+  : ARRAY_START_TOKEN expression ARRAY_END_TOKEN
   ;
 
 // ─────────────────────────────────────────────────────────────
-//   New expression hierarchy — add / replace in parser rules
-// ─────────────────────────────────────────────────────────────
-
-rvalueExpression
-  : expression
-  ;
+//   New expression hierarchy
 
 expression
   : binaryExpressionLowest                      # exprLowest
@@ -257,6 +252,7 @@ additionOperator
 multiplicativeOperator
   : TIMES_TOKEN | DIV_TOKEN
   ;
+// ─────────────────────────────────────────────────────────────
 
 // A single-line comment
 comment

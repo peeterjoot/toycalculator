@@ -217,7 +217,7 @@ namespace silly
         mlir::Value handleCall( SillyParser::CallExpressionContext *ctx );
 
         /// builder logic for print arguments (shared between PRINT and ERROR.)
-        void handlePrint( mlir::Location loc, const std::vector<SillyParser::RvalueExpressionContext *> &args,
+        void handlePrint( mlir::Location loc, const std::vector<SillyParser::ExpressionContext *> &args,
                           const std::string &errorContextString, PrintFlags flags );
 
         /// Registers a variable declaration in the current scope.
@@ -265,7 +265,7 @@ namespace silly
         mlir::Value indexTypeCast( mlir::Location loc, mlir::Value val );
 
         /// Emits silly::ReturnOp (or exit equivalent) with optional value.
-        void processReturnLike( mlir::Location loc, SillyParser::RvalueExpressionContext *rvalueExpression );
+        void processReturnLike( mlir::Location loc, SillyParser::ExpressionContext *rvalueExpression );
 
         /// For IF/ELIF, create an scf.if condition and set the insertion point to it's then region.
         ///
@@ -278,17 +278,15 @@ namespace silly
         /// Find the current scf.if condition and set the insertion point to the else region for that if.
         void selectElseBlock( mlir::Location loc, const std::string &errorText );
 
-        /// Handle parsing of an rvalue expression (the top-level entry point for expressions).
+        /// Handle parsing of an expression (the top-level entry point for expressions).
         /// This function serves as the main entry point for parsing any rvalue expression.
         /// It delegates to the lowest-precedence level (logical OR).
         /// @param loc The source location for diagnostics and op creation
-        /// @param ctx The RvalueExpressionContext from the parser (contains expression())
+        /// @param ctx The ExpressionContext from the parser (contains expression())
         /// @return The MLIR Value representing the parsed expression
-        inline mlir::Value parseRvalue( mlir::Location loc, SillyParser::RvalueExpressionContext *ctx );
-
-        // alias for parseOr for clarity
         inline mlir::Value parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx );
 
+        // calls parseOr, first actual expression level in the hierarchy
         inline mlir::Value parseLowest( mlir::Location loc, antlr4::ParserRuleContext *ctx );
 
         /// Parse the logical OR level (lowest precedence binary operator).
@@ -361,7 +359,7 @@ namespace silly
         mlir::Value parsePrimary( mlir::Location loc, antlr4::ParserRuleContext *ctx );
 
         /// Handle assignment processing, given the current var-name and index (if appropriate.)
-        void processAssignment( mlir::Location loc, SillyParser::RvalueExpressionContext *exprContext,
+        void processAssignment( mlir::Location loc, SillyParser::ExpressionContext *exprContext,
                                 const std::string &currentVarName, mlir::Value currentIndexExpr );
     };
 

@@ -316,6 +316,7 @@ s,\berror\b,errorStatement,g;
     This means that `x = 1.99 + 2.99` has the value `3`, if `x` is an integer variable, but `4.98` if x is a `FLOAT32` or `FLOAT64`.
   * Document: Floating point to integer conversions use a floor operation, and are not rounded.
   * A bunch more tests for complex expressions and more.
+  * Purge rvalueExpression from the expression hierarchy (unnecessary).  s/parseRvalue/parseExpression/; s/RvalueExpressionContext/ExpressionContext/, remove parseRvalue remnants.
 
 ## tag: V7 (Jan 4, 2025)
 
