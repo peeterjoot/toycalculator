@@ -131,6 +131,7 @@ boolcall0
 boolcall1
 boolcall2
 bool_in_arith
+bool_not_on_comparison
 boolop
 boolr
 call_in_predicate
@@ -236,7 +237,8 @@ xorop
 ));
 #array_in_expr_min -- array indexing expressions not implemented!
 #array_in_expr -- ditto
-#array_lvalue_complex.silly -- ditto
+#array_lvalue_complex -- ditto
+#array_dynamic_index
 
 my %failuretests = map {$_ => 1} (qw(
 error_arrayreturn

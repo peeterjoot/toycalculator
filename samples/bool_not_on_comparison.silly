@@ -1,0 +1,10 @@
+INT64 x = 5;
+INT64 y = 3;
+BOOL not_less = NOT (x < y);     // NOT false → true
+PRINT not_less;                  // expect 1
+
+BOOL not_eq = NOT (x EQ y);      // NOT false → true
+PRINT not_eq;
+
+BOOL complex = NOT (x > y AND y < 10);  // NOT (true AND true) = false
+PRINT complex;                          // 0
