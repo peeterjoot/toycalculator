@@ -1,3 +1,5 @@
+// Earlier version of the compiler cast each operand to INT32 first before applying the operator.
+// That was strange (a hack for the initial compiler implementation) and has now finally been eliminated.
 INT32 x = 1.78 + 3.86E0;
 FLOAT64 f = x;
 PRINT f;

@@ -53,8 +53,6 @@ There is lots of room to add add further language elements to make the compiler 
 
 * Like scripted languages, there is an implicit `main` in this silly language.
 * Functions can be defined anywhere, but must be defined before use.
-* Computations occur in assignment operations, and any types are first promoted to the type of the variable.
-This means that `x = 1.99 + 2.99` has the value `3`, if `x` is an integer variable, but `4.98` if x is a `FLOAT32` or `FLOAT64`.
 * The `EXIT` statement currently has to be at the end of the program.
 `EXIT` without a numeric value is equivalent to `EXIT 0`, as is a program with no explicit `EXIT`.
 * The RETURN statement has to be at the end of a function.  It is currently mandatory.
@@ -215,8 +213,7 @@ Parentheses `()` can be used to override precedence.
 
 ### Type Handling in Expressions
 
-- In **assignment** contexts (`x = expr`), all intermediate operations use the type of the destination variable (`x`).
-- In **PRINT** / **ERROR** / free-standing expression contexts, types are derived bottom-up from the operands (using promotion rules in `biggestTypeOf`).
+- Expressions involving operations between different types, derive the result types from the operands (using promotion rules in `biggestTypeOf`).
 - Comparisons and logical operations always produce `BOOL` (`i1`).
 
 Examples:

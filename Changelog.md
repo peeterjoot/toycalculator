@@ -310,6 +310,10 @@ s,\berror\b,errorStatement,g;
 ```
 
 (plus various matching transformations in the parser)
+  * Fixed previously documented, but stupid, semantics:
+
+  Computations occur in assignment operations, and any types are first promoted to the type of the variable.
+    This means that `x = 1.99 + 2.99` has the value `3`, if `x` is an integer variable, but `4.98` if x is a `FLOAT32` or `FLOAT64`.
 
 ## tag: V7 (Jan 4, 2025)
 
