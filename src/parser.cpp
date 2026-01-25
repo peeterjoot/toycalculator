@@ -366,10 +366,10 @@ namespace silly
 
         silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
 
-        LLVM_DEBUG( {
-            llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
-            scopeOp->dump();
-        } );
+        //LLVM_DEBUG( {
+        //    llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
+        //    scopeOp->dump();
+        //} );
 
         mlir::Operation *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
         if ( !symbolOp )
@@ -516,6 +516,13 @@ namespace silly
         if ( expression )
         {
             value = parseExpression( loc, expression );
+            if ( !returnType )
+            {
+                throw UserError(
+                    loc,
+                    std::format(
+                        "return expression found '{}', but no return type for function {}", expression->getText(), currentFuncName ));
+            }
 
             value = castOpIfRequired( loc, value, returnType );
         }

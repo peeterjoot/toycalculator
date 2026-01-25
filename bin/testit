@@ -130,6 +130,7 @@ array_in_comparison
 array_index_var
 array_in_expr
 array_in_expr_min
+array_lvalue_complex
 array_mixed_type
 arrayprod
 assign_to_array_complex
@@ -253,7 +254,6 @@ unary_on_array_elem
 xorop
 ));
 #initlist_param
-#array_lvalue_complex
 #error_nonconst_init -- want this to be a compile error, but it isn't yet.
 
 my %failuretests = map {$_ => 1} (qw(
@@ -272,6 +272,7 @@ error_keyword_declare
 error_keyword_declare2
 error_notfloat
 error_redeclare
+error_return_expr_no_return_type
 error_stringreturn
 error_undeclare
 ));

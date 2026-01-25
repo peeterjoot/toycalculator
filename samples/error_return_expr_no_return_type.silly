@@ -1,0 +1,4 @@
+FUNCTION foo(INT32 j)
+{
+    RETURN 0;
+};

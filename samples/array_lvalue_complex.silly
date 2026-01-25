@@ -1,13 +1,14 @@
 // Array element as l-value in complex expression contexts
 // Do more than assign to or read array elements in simple contexts: Add one test that stresses the parser/builder on the left-hand side of operators.
 
-FUNCTION plusone(INT32 i)
+FUNCTION plusone(INT32 j) : INT32
 {
-    RETURN i +1;
+    RETURN j + 1;
 };
 
 INT64 a[5] { 1, 2, 3, 4, 5 };
 INT64 i = 3;
+PRINT "a[", i, " + 1] = ", a[i], " + ", a[i-1], " * 2:";
 a[i + 1] = a[i] + a[i-1] * 2;      // complex index + complex RHS
 PRINT a[4];
 a[CALL plusone(i)] = 42;           // CALL in index

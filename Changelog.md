@@ -355,6 +355,9 @@ Grammar/parser now compiles, but the insertion point logic is broken: My declara
   * more tests: `init_expr_unary initlisttrunc initsequence init_expr_bool forward_ref_init init_expr_call`
   * add placeholder test: `error_nonconst_init.silly` -- doesn't fail, but I want it to (see TODO)
   * `perl -p -i -e 's/MLIRListener/ParseListener/g'` -- Bad name: It's an MLIR builder or Silly Parse Listener, but not an MLIRListener
+  * Add new error message: return expression found '{}', but no return type for function {}
+  * Add corresponding test case: error_return_expr_no_return_type.silly
+  * Fix array_lvalue_complex.silly (user error -- above).
 
 ## tag: V7 (Jan 4, 2025)
 
