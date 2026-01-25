@@ -359,6 +359,30 @@ Grammar/parser now compiles, but the insertion point logic is broken: My declara
   * Add corresponding test case: error_return_expr_no_return_type.silly
   * Fix array_lvalue_complex.silly (user error -- above).
   * Fix initlist_param.silly -- that was a test to see that an initializer-list expression can reference a parameter (it still shouldn't reference a variable with the current implementation).  That now works.  The issue was the DeclareOp sequencing for the parameters vs. the variables -- createScope now saves the last declareOp creation point, like registerDeclaration does.  Removes the setFuncNameAndOp() helper function so the consistuient parts of that function can be split up.
+  * Fix the location information for expressions.  location info is now granular, so an expression like c[i] will have a location for i and one for the i.  Example (line 9):
+
+```
+    PRINT "c[", i, "] = ", t;
+```
+
+The MLIR for that is:
+
+```
+        %7 = "silly.string_literal"() <{value = "c["}> : () -> !llvm.ptr loc(#loc14)
+        %8 = silly.load @i : i32 loc(#loc15)
+        %9 = "silly.string_literal"() <{value = "] = "}> : () -> !llvm.ptr loc(#loc16)
+        %10 = silly.load @t : i32 loc(#loc17)
+        %c0_i32_2 = arith.constant 0 : i32 loc(#loc18)
+        "silly.print"(%c0_i32_2, %7, %8, %9, %10) : (i32, !llvm.ptr, i32, !llvm.ptr, i32) -> () loc(#loc18)
+
+...
+
+#loc14 = loc("printdi.silly":9:11)
+#loc15 = loc("printdi.silly":9:17)
+#loc16 = loc("printdi.silly":9:20)
+#loc17 = loc("printdi.silly":9:28)
+#loc18 = loc("printdi.silly":9:5)
+```
 
 ## tag: V7 (Jan 4, 2025)
 

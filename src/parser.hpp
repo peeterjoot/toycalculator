@@ -292,71 +292,63 @@ namespace silly
         /// Handle parsing of an expression (the top-level entry point for expressions).
         /// This function serves as the main entry point for parsing any rvalue expression.
         /// It delegates to the lowest-precedence level (logical OR).
-        /// @param loc The source location for diagnostics and op creation
         /// @param ctx The ExpressionContext from the parser (contains expression())
         /// @return The MLIR Value representing the parsed expression
-        inline mlir::Value parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx );
+        inline mlir::Value parseExpression( SillyParser::ExpressionContext *ctx, mlir::Type ty );
 
         // calls parseOr, first actual expression level in the hierarchy
-        inline mlir::Value parseLowest( mlir::Location loc, antlr4::ParserRuleContext *ctx );
+        inline mlir::Value parseLowest( antlr4::ParserRuleContext *ctx );
 
         /// Parse the logical OR level (lowest precedence binary operator).
         /// Handles expressions of the form: expr OR expr OR expr ...
         /// Left-associative folding. If no OR is present, descends to the AND level.
-        /// @param loc Source location
         /// @param ctx The ExpressionContext (usually ExprLowestContext)
         /// @return The resulting Value (typically i1 for logical OR)
-        mlir::Value parseOr( mlir::Location loc, antlr4::ParserRuleContext *ctx );
+        mlir::Value parseOr( antlr4::ParserRuleContext *ctx );
 
-        mlir::Value parseXor( mlir::Location loc, antlr4::ParserRuleContext *ctx );
+        mlir::Value parseXor( antlr4::ParserRuleContext *ctx );
 
         /// Parse the logical AND level.
         /// Handles expressions of the form: term AND term AND term ...
         /// Left-associative. Falls through to equality level if no AND operators are present.
-        /// @param loc Source location
         /// @param ctx BinaryExpressionAndContext from the parser
         /// @return The resulting Value (typically i1 for logical AND)
-        mlir::Value parseAnd( mlir::Location loc, antlr4::ParserRuleContext *ctx );
+        mlir::Value parseAnd( antlr4::ParserRuleContext *ctx );
 
         /// Parse the equality/inequality level (== and != operators).
         /// Handles expressions of the form: cmp == cmp != cmp ...
         /// Left-associative. Falls through to comparison level if no equality operators.
-        /// @param loc Source location
         /// @param ctx BinaryExpressionCompareContext (may be EqNeExprContext when operators present)
         /// @return The resulting Value (typically i1 for comparisons)
-        mlir::Value parseEquality( mlir::Location loc, antlr4::ParserRuleContext *ctx );
+        mlir::Value parseEquality( antlr4::ParserRuleContext *ctx );
 
         /// Parse the comparison level (< > <= >=).
         /// Handles expressions of the form: add < add > add <= add ...
         /// Left-associative. Falls through to additive level if no comparison operators.
-        /// @param loc Source location
         /// @param ctx BinaryExpressionCompareContext (CompareExprContext when operators present)
         /// @return The resulting Value (typically i1)
-        mlir::Value parseComparison( mlir::Location loc, antlr4::ParserRuleContext *ctx );
+        mlir::Value parseComparison( antlr4::ParserRuleContext *ctx );
 
         /// Parse the additive level (+ and - operators).
         /// Handles expressions of the form: mul + mul - mul ...
         /// Left-associative. Falls through to multiplicative level if no +/−.
-        /// @param loc Source location
         /// @param ctx BinaryExpressionAddSubContext
         /// @return The resulting Value
-        mlir::Value parseAdditive( mlir::Location loc, antlr4::ParserRuleContext *ctx );
+        mlir::Value parseAdditive( antlr4::ParserRuleContext *ctx );
 
         /// Parse the multiplicative level (* and / operators).
         /// Handles expressions of the form: unary * unary / unary ...
         /// Left-associative. Falls through to unary level if no * or /.
-        /// @param loc Source location
         /// @param ctx BinaryExpressionMulDivContext
         /// @return The resulting Value
-        mlir::Value parseMultiplicative( mlir::Location loc, antlr4::ParserRuleContext *ctx );
+        mlir::Value parseMultiplicative( antlr4::ParserRuleContext *ctx );
 
         /// Parse unary operators (negation, NOT, etc.).
         /// Handles expressions of the form: - unary, NOT unary, or primary.
         /// Right-associative for multiple unaries (e.g., --x).
-        /// @param loc Source location
         /// @param ctx UnaryExpressionContext
         /// @return The resulting Value
-        mlir::Value parseUnary( mlir::Location loc, antlr4::ParserRuleContext *ctx );
+        mlir::Value parseUnary( antlr4::ParserRuleContext *ctx );
 
         /// Parse primary expressions (literals, variables, calls, parenthesized expressions).
         /// The leaves of the expression tree:
@@ -364,10 +356,9 @@ namespace silly
         ///   - scalarOrArrayElement (variables or array indexing)
         ///   - callExpression (function calls)
         ///   - ( expression )   parenthesized sub-expressions
-        /// @param loc Source location
         /// @param ctx PrimaryExpressionContext
         /// @return The resulting Value
-        mlir::Value parsePrimary( mlir::Location loc, antlr4::ParserRuleContext *ctx );
+        mlir::Value parsePrimary( antlr4::ParserRuleContext *ctx );
 
         /// Handle assignment processing, given the current var-name and index (if appropriate.)
         void processAssignment( mlir::Location loc, SillyParser::ExpressionContext *exprContext,
