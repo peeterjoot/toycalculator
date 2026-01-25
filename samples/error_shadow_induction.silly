@@ -1,0 +1,8 @@
+// error_shadow_induction.silly
+INT32 i = 99;  // outer var
+
+FOR (INT32 i: (0, 3)) {  // shadows outer i
+    PRINT "inner i=", i;  // uses induction %arg0
+};
+
+PRINT "outer i=", i;  // uses declared 99

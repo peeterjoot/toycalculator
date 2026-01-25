@@ -1,0 +1,10 @@
+// nested_for.silly
+INT32 outer_t;
+INT32 c[3]{10,20,30};
+
+FOR (INT32 i: (0, 3)) {
+    FOR (INT32 j: (0, 2)) {
+        outer_t = c[i] + j;
+        PRINT "i=", i, " j=", j, " t=", outer_t;
+    };
+};

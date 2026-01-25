@@ -1,6 +1,8 @@
 ## TODO
 
 ----------------------------------
+-3. `error_invalid_unary` -- regression by tweaking the test. was triggering on y undeclared, not on the parse error -- which doesn't actually drive a compile error!
+-2. debug and fix broken test: `nested_for.silly`
 -1. Have lost DI for FOR loop induction variables.
 0. SSA form for loop variable access didn't fix the gdb line number ping pong in loop body line stepping.  Simpler t/c: printdi.silly
 1. test case for nested FOR loops.  Error tests for conflicting induction variables (with variables and also

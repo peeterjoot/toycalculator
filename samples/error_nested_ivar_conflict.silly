@@ -1,0 +1,6 @@
+// error_nested_ivar_conflict.silly
+FOR (INT32 i: (0, 2)) {
+    FOR (INT32 i: (0, 2)) {  // redeclaration error
+        PRINT i;
+    };
+};
