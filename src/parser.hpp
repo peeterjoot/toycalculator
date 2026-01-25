@@ -16,6 +16,7 @@
 #include <format>
 #include <map>
 #include <string>
+#include <vector>
 #include <unordered_map>
 
 #include "SillyBaseListener.h"
@@ -94,6 +95,7 @@ namespace silly
     };
 
     using LocPairs = std::pair<mlir::Location, mlir::Location>;
+    using InductionVariablePair = std::pair<std::string, mlir::Value>;
 
     /// ANTLR listener that constructs MLIR for the Silly language.
     ///
@@ -163,6 +165,8 @@ namespace silly
         /// Per-function state map.
         std::unordered_map<std::string, std::unique_ptr<PerFunctionState>> functionStateMap;
 
+        std::vector<InductionVariablePair> inductionVariables;
+
         /// Syntax errors detected.
         bool hasErrors{};
 
@@ -224,6 +228,8 @@ namespace silly
         /// Side effect: Creates a silly::ScopeOp for main, if not already done.
         inline mlir::Location getStopLocation( antlr4::ParserRuleContext *ctx );
 
+        // inline mlir::Location getTerminalLocation(antlr4::tree::TerminalNode* node);
+
         /// Strip double quotes off of a string.
         inline std::string stripQuotes( mlir::Location loc, const std::string &input ) const;
 
@@ -260,6 +266,14 @@ namespace silly
         ///
         /// Create that functionStateMap entry for funcName if it doesn't exist.
         inline PerFunctionState &funcState( const std::string &funcName );
+
+        mlir::Type integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext * ctx );
+
+        inline InductionVariablePair searchForInduction( const std::string &varName );
+
+        inline void pushInductionVariable( const std::string &varName, mlir::Value i );
+
+        inline void popInductionVariable( );
 
         /// Parses scalar type string to MLIR type.
         mlir::Type parseScalarType( const std::string &ty );

@@ -1,6 +1,10 @@
 ## TODO
 
 ----------------------------------
+-1. Have lost DI for FOR loop induction variables.
+0. SSA form for loop variable access didn't fix the gdb line number ping pong in loop body line stepping.  Simpler t/c: printdi.silly
+1. test case for nested FOR loops.  Error tests for conflicting induction variables (with variables and also
+   induction variables for outer loops.)
 2. Allow: INT64 a = 1, b = 2, c = 3; (`chained_comparison_parens.silly`).
 3. Forgetting RETURN in `array_elem_as_arg.silly` has a very confusing error.
 4. Grammar probably allows for function declared in a function.  prohibit that or at least test for it?
@@ -91,7 +95,7 @@ c[1] = 0 ( = 2 * 0 )
   - lowering error handling is pschizophrenic: mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
   - Move scf lowering into 1st pass?  Attempt at this in xpgn:streamline-passes-attempt branch (not pushed.)
   - Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
-  - Final version of ELIF support meant that I didn't need getStopLocation() anymore (was using it to generate scf.yield with the end of the block location).  Review that and decide what to do with it.
+  - Final version of ELIF support meant that I didn't need getStopLocation() anymore (was using it to generate scf.yield with the end of the block location).  Also ended up with getTerminalLocation(), which I'm also not using.  Review those and decide what to do with them.
   - merge these?
 
 ```

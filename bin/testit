@@ -184,6 +184,7 @@ factorial2
 fatal
 foo
 for_complex_body
+for_simplest
 forward_ref_init
 function
 function_add
@@ -233,6 +234,7 @@ not_on_expr
 orop
 printboollit
 printcont
+printdi
 printexpr
 printlit
 print_multiple

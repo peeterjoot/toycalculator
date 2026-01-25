@@ -45,7 +45,7 @@ That initial implementation has evolved into a silly language and its compiler. 
 * A `STRING` type as an alias for `INT8` arrays, with string literal assignment and `PRINT` implemented.
 * User-defined functions. Calls use the form `CALL function_name(p1, p2)` or with assignment `x = CALL function_name(p1, p2)`. Declarations use: `FUNCTION foo(type name, type name, ...) : RETURN-type { ... ; RETURN v; };` (where : `RETURN-type` is optional).
 * `IF`/`ELSE` statement support. Logical operators (`AND`, `OR`, `XOR`) are not supported in predicates (only comparisons like `<`, `>`, `<=`, `>=`, etc.). Complex predicates (e.g., `(a < b) AND (c < d)`) are not supported. Nested `IF`s are untested and may or may not work.
-* A `FOR` loop (supporting start, end, and step-size params, and requiring a previously defined variable for the loop induction variable.)
+* A `FOR` loop (supporting start, end, and step-size params, and privately scoped induction variables.)
 
 There is lots of room to add add further language elements to make the compiler and language more interesting.  Some ideas for improvements (as well as bug fixes) can be found in TODO.md
 
@@ -545,8 +545,7 @@ IF (x < 0) {
 Range-based iteration with optional step size.
 
 ```text
-INT32 i;
-FOR ( i : (1, 10) ) {
+FOR ( INT32 i : (1, 10) ) {
   PRINT i;
 };
 
@@ -558,7 +557,7 @@ a = 0;
 b = -20;
 c = 2;
 z = 0;
-FOR ( i : (+a, -b, c + z) ) {
+FOR ( INT32 i : (+a, -b, c + z) ) {
   PRINT i;
 };
 ```
@@ -566,12 +565,16 @@ FOR ( i : (+a, -b, c + z) ) {
 Semantically equivalent to:
 
 ```text
-i = start;
-while (i <= end) {
-  ...
-  i += step;
+{
+  int i = start;
+  while (i <= end) {
+    ...
+    i += step;
+  }
 }
 ```
+
+The induction variable name must not be used by any variable in the function, nor can it shadow any induction variable of the same name in an outer FOR loop.  Debug instrumentation for the induction variable is not currently supported.
 
 ---
 
