@@ -6,9 +6,7 @@ FUNCTION somefunc()
     RETURN;
 };
 
-INT32 level;
-
-FOR (level : (-1, 5))
+FOR (INT32 level : (-1, 5))
 {
     PRINT "level var = ", level;
 

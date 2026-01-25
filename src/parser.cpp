@@ -161,6 +161,20 @@ namespace silly
         return locs.second;
     }
 
+#if 0
+    inline mlir::Location ParseListener::getTerminalLocation( antlr4::tree::TerminalNode *node )
+    {
+        assert( node );
+        antlr4::Token *token = node->getSymbol();
+
+        assert( token );
+        size_t line = token->getLine();
+        size_t column = token->getCharPositionInLine() + 1;
+
+        return mlir::FileLineColLoc::get( builder.getStringAttr( filename ), line, column );
+    }
+#endif
+
     DialectCtx::DialectCtx()
     {
         context.getOrLoadDialect<silly::SillyDialect>();
@@ -968,7 +982,6 @@ namespace silly
             step = castOpIfRequired( loc, step, elemType );
         }
 
-
         insertionPointStack.push_back( builder.saveInsertionPoint() );
 
         mlir::scf::ForOp forOp = builder.create<mlir::scf::ForOp>( loc, start, end, step );
@@ -979,8 +992,12 @@ namespace silly
         // emit an assignment to the variable as the first statement in the loop body, so that any existing references
         // to that will work as-is:
         mlir::Value inductionVar = loopBody.getArgument( 0 );
-        builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ inductionVar },
+        assert(0 && "NYI");
+#if 0
+        mlir::Location iloc = getTerminalLocation( ctx->LEFT_CURLY_BRACKET_TOKEN() );
+        builder.create<silly::AssignOp>( iloc, mlir::TypeRange{}, mlir::ValueRange{ inductionVar },
                                          llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+#endif
     }
     CATCH_USER_ERROR
 

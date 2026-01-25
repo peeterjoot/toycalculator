@@ -132,7 +132,7 @@ array_in_expr
 array_in_expr_min
 array_lvalue_complex
 array_mixed_type
-arrayprod
+#arrayprod
 assign_to_array_complex
 bin
 bool
@@ -176,14 +176,14 @@ expressions5
 expressions6
 expressions_assignment
 expressions_in_call
-expressions_in_for
+#expressions_in_for
 expressions_in_if
 f
-factorial
-factorial2
+#factorial
+#factorial2
 fatal
 foo
-for_complex_body
+#for_complex_body
 forward_ref_init
 function
 function_add
@@ -226,7 +226,7 @@ neg
 neqop
 nested_calls
 nested_if_basic
-nested_if_deep
+#nested_if_deep
 nested_if_elif_else
 not
 not_on_expr

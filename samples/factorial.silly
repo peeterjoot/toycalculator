@@ -12,9 +12,8 @@ FUNCTION factorial( INT32 v ) : INT32
     RETURN r;
 };
 
-INT32 v;
 INT32 f;
-FOR ( v : (0,7) )
+FOR ( INT32 v : (0,7) )
 {
     // This is just to test that CALL can be used in a unary expression:
     f = - CALL factorial( v );
