@@ -1,6 +1,8 @@
 ## TODO
 
 ----------------------------------
+-5. `negative_step_for.silly` -- broken.
+-4. Don't like the loc printout in UserError error messages.  Also shouldn't print the ctx, but use the location of the ctx to print out the actual line of source, and highlight the column where the error is.
 -3. `error_invalid_unary` -- regression by tweaking the test. was triggering on y undeclared, not on the parse error -- which doesn't actually drive a compile error!
 -2. debug and fix broken test: `nested_for.silly`
 -1. Have lost DI for FOR loop induction variables.

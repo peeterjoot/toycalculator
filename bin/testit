@@ -202,6 +202,7 @@ getbool
 getboolfail
 if
 ifdcl
+induction_not_used
 init
 initarray
 init_expr_bool
@@ -255,7 +256,9 @@ types
 unary
 unary_on_array_elem
 xorop
+zero_iter_for
 ));
+# negative_step_for -- broken.  debug/fix.
 #error_nonconst_init -- want this to be a compile error, but it isn't yet.
 # nested_for -- debug&fix.
 # printdi_nested -- ditto.
@@ -268,6 +271,7 @@ error_chained_equality
 error_expressions4c
 error_expressions4d
 error_expressions4e
+error_induction_var_in_step
 error_init_list1
 error_init_list2
 error_invalid_binary
@@ -279,6 +283,7 @@ error_redeclare
 error_return_expr_no_return_type
 error_shadow_induction
 error_stringreturn
+error_triple_nested_for_with_shadowing
 error_undeclare
 ));
 #error_invalid_unary -- regression. was triggering on y undeclared, not on the parse error -- which doesn't actually drive a compile error!
@@ -289,6 +294,8 @@ error_undeclare
 
 my %expected_compile_error_message =
 (
+  'error_induction_var_in_step' => q(error: Undeclared variable i (symbol lookup failed.)),
+  'error_triple_nested_for_with_shadowing' => q(error: Induction variable i used by enclosing FOR:),
   'error_shadow_induction' => q(error: Induction variable i clashes with declared variable in:),
   'error_nested_ivar_conflict' => 'Induction variable i used by enclosing FOR',
   'error_arrayreturn' => 'Syntax error in error_arrayreturn.silly:1',

@@ -1,0 +1,7 @@
+FOR (INT32 i: (0,2)) {
+    FOR (INT32 j: (0,2)) {
+        FOR (INT32 i: (0,2)) {  // expect death: shadows outer i
+            PRINT "inner i=", i, " j=", j, " outer-ish i=", i;
+        };
+    };
+};

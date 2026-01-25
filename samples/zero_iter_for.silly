@@ -1,0 +1,2 @@
+FOR (INT32 i: (5, 0)) { PRINT "never"; };
+PRINT "done";
