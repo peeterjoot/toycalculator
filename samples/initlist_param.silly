@@ -1,4 +1,5 @@
 // initlist_param.silly
+// Tests that an initializer-list expression can reference a parameter (it still shouldn't reference a variable with the current implementation)
 FUNCTION foo( INT32 a )
 {
     INT32 b{ a + 1 };

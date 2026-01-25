@@ -50,13 +50,6 @@ namespace silly
         return *functionStateMap[funcName];
     }
 
-    inline void ParseListener::setFuncNameAndOp( const std::string &funcName, mlir::Operation *op )
-    {
-        currentFuncName = funcName;
-        PerFunctionState &f = funcState( currentFuncName );
-        f.setFuncOp( op );
-    }
-
     inline std::string formatLocation( mlir::Location loc )
     {
         if ( mlir::FileLineColLoc fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc ) )
@@ -459,6 +452,8 @@ namespace silly
 
         builder.setInsertionPointToStart( &scopeBlock );
 
+        PerFunctionState &f = funcState( funcName );
+
         for ( size_t i = 0; i < funcOp.getNumArguments() && i < paramNames.size(); ++i )
         {
             mlir::Type argType = funcOp.getArgument( i ).getType();
@@ -471,9 +466,12 @@ namespace silly
                 startLoc, mlir::TypeAttr::get( argType ), /*size=*/nullptr, builder.getUnitAttr(),
                 builder.getI64IntegerAttr( i ), mlir::ValueRange{} );
             dcl->setAttr( "sym_name", strAttr );
+
+            f.lastDeclareOp = dcl.getOperation();
         }
 
-        setFuncNameAndOp( funcName, funcOp );
+        currentFuncName = funcName;
+        f.setFuncOp( funcOp );
     }
 
     void ParseListener::enterStartRule( SillyParser::StartRuleContext *ctx )

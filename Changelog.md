@@ -358,6 +358,7 @@ Grammar/parser now compiles, but the insertion point logic is broken: My declara
   * Add new error message: return expression found '{}', but no return type for function {}
   * Add corresponding test case: error_return_expr_no_return_type.silly
   * Fix array_lvalue_complex.silly (user error -- above).
+  * Fix initlist_param.silly -- that was a test to see that an initializer-list expression can reference a parameter (it still shouldn't reference a variable with the current implementation).  That now works.  The issue was the DeclareOp sequencing for the parameters vs. the variables -- createScope now saves the last declareOp creation point, like registerDeclaration does.  Removes the setFuncNameAndOp() helper function so the consistuient parts of that function can be split up.
 
 ## tag: V7 (Jan 4, 2025)
 

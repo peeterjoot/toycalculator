@@ -207,6 +207,7 @@ init_expr_bool
 init_expr_call
 init_expr_unary
 initlist
+initlist_param
 initlisttrunc
 inits
 initsequence
@@ -253,7 +254,6 @@ unary
 unary_on_array_elem
 xorop
 ));
-#initlist_param
 #error_nonconst_init -- want this to be a compile error, but it isn't yet.
 
 my %failuretests = map {$_ => 1} (qw(

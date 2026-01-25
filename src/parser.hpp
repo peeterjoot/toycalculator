@@ -75,6 +75,7 @@ namespace silly
        public:
         mlir::Operation *lastDeclareOp{};
 
+        // Getter and setter for op, just to hide the casting
         mlir::func::FuncOp getFuncOp()
         {
             mlir::func::FuncOp funcOp = mlir::cast<mlir::func::FuncOp>( op );
@@ -259,9 +260,6 @@ namespace silly
         ///
         /// Create that functionStateMap entry for funcName if it doesn't exist.
         inline PerFunctionState &funcState( const std::string &funcName );
-
-        /// Set the currentFuncName, and it's corresponding func.func operation.
-        inline void setFuncNameAndOp( const std::string &funcName, mlir::Operation *op );
 
         /// Parses scalar type string to MLIR type.
         mlir::Type parseScalarType( const std::string &ty );
