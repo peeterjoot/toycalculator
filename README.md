@@ -603,9 +603,9 @@ x = CALL add(2, 3);
 y = CALL sum(a[1], a[2]);
 ```
 
-CALL expressions can also be part of unary or binary expressions, for example
+CALL expressions can also be part of more general expressions, for example
 ```
-x = v * CALL foo();
+x = 1 + v * CALL foo();
 x = - CALL foo();
 ```
 
