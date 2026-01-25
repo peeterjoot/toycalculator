@@ -326,6 +326,7 @@ FUNCTION foo( INT32 a )
     // ...
     RETURN;
 };
+```
 
 but this is invalid:
 
