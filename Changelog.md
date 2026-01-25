@@ -406,6 +406,7 @@ The MLIR for that is:
   for that loop variable as a side effect.  Also unfortunately, this also doesn't fix the line number ping pong
   that I am seeing in loop bodies.  More debugging of the DI is required.
   * More FOR tests. Also implemented checking of the error messages for expected compile errors.
+  * [parser] searchForInduction doesn't need to return a pair -- only the Value is ever used.
 
 ## tag: V7 (Jan 4, 2025)
 

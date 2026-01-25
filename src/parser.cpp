@@ -50,15 +50,15 @@ namespace silly
         return *functionStateMap[funcName];
     }
 
-    inline InductionVariablePair ParseListener::searchForInduction( const std::string &varName )
+    inline mlir::Value ParseListener::searchForInduction( const std::string &varName )
     {
-        InductionVariablePair r{};
+        mlir::Value r{};
 
         for ( auto &p : inductionVariables )
         {
             if ( p.first == varName )
             {
-                r = p;
+                r = p.second;
                 break;
             }
         }
@@ -983,8 +983,8 @@ namespace silly
             throw UserError( loc, std::format( "Induction variable {} clashes with declared variable in: {}\n", varName, ctx->getText() ) );
         }
 
-        InductionVariablePair p = searchForInduction( varName );
-        if ( p.second )
+        mlir::Value p = searchForInduction( varName );
+        if ( p )
         {
             throw UserError( loc, std::format( "Induction variable {} used by enclosing FOR: {}\n", varName, ctx->getText() ) );
         }
@@ -1792,10 +1792,10 @@ namespace silly
             assert( variableNode );
             std::string varName = variableNode->getText();
 
-            InductionVariablePair p = searchForInduction( varName );
-            if ( p.second )
+            mlir::Value p = searchForInduction( varName );
+            if ( p )
             {
-                value = p.second;
+                value = p;
             }
             else
             {

@@ -95,7 +95,6 @@ namespace silly
     };
 
     using LocPairs = std::pair<mlir::Location, mlir::Location>;
-    using InductionVariablePair = std::pair<std::string, mlir::Value>;
 
     /// ANTLR listener that constructs MLIR for the Silly language.
     ///
@@ -165,7 +164,7 @@ namespace silly
         /// Per-function state map.
         std::unordered_map<std::string, std::unique_ptr<PerFunctionState>> functionStateMap;
 
-        std::vector<InductionVariablePair> inductionVariables;
+        std::vector<std::pair<std::string, mlir::Value>> inductionVariables;
 
         /// Syntax errors detected.
         bool hasErrors{};
@@ -269,7 +268,7 @@ namespace silly
 
         mlir::Type integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext * ctx );
 
-        inline InductionVariablePair searchForInduction( const std::string &varName );
+        inline mlir::Value searchForInduction( const std::string &varName );
 
         inline void pushInductionVariable( const std::string &varName, mlir::Value i );
 
