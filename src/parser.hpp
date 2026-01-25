@@ -99,12 +99,12 @@ namespace silly
     /// Inherits from SillyBaseListener and BaseErrorListener to process parse tree
     /// events and report syntax errors. Builds a ModuleOp containing FuncOps
     /// with Silly dialect operations.
-    class MLIRListener : public SillyBaseListener, public antlr4::BaseErrorListener
+    class ParseListener : public SillyBaseListener, public antlr4::BaseErrorListener
     {
        public:
         /// Constructor.
         /// @param filenameIn Source filename for location information.
-        MLIRListener( const std::string &filenameIn );
+        ParseListener( const std::string &filenameIn );
 
         /// Override to throw on syntax errors.
         void syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
@@ -376,7 +376,7 @@ namespace silly
                                 const std::string &currentVarName, mlir::Value currentIndexExpr );
     };
 
-    inline mlir::ModuleOp &MLIRListener::getModule()
+    inline mlir::ModuleOp &ParseListener::getModule()
     {
         if ( hasErrors )
         {

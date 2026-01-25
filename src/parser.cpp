@@ -40,7 +40,7 @@ namespace silly
         return s;
     }
 
-    inline PerFunctionState &MLIRListener::funcState( const std::string &funcName )
+    inline PerFunctionState &ParseListener::funcState( const std::string &funcName )
     {
         if ( !functionStateMap.contains( funcName ) )
         {
@@ -50,7 +50,7 @@ namespace silly
         return *functionStateMap[funcName];
     }
 
-    inline void MLIRListener::setFuncNameAndOp( const std::string &funcName, mlir::Operation *op )
+    inline void ParseListener::setFuncNameAndOp( const std::string &funcName, mlir::Operation *op )
     {
         currentFuncName = funcName;
         PerFunctionState &f = funcState( currentFuncName );
@@ -66,7 +66,7 @@ namespace silly
         return "";
     }
 
-    inline mlir::Value MLIRListener::parseBoolean( mlir::Location loc, const std::string &s )
+    inline mlir::Value ParseListener::parseBoolean( mlir::Location loc, const std::string &s )
     {
         int val;
         if ( s == "TRUE" )
@@ -88,14 +88,14 @@ namespace silly
         return builder.create<mlir::arith::ConstantIntOp>( loc, val, 1 );
     }
 
-    inline mlir::Value MLIRListener::parseInteger( mlir::Location loc, int width, const std::string &s )
+    inline mlir::Value ParseListener::parseInteger( mlir::Location loc, int width, const std::string &s )
     {
         int64_t val = std::stoll( s );
 
         return builder.create<mlir::arith::ConstantIntOp>( loc, val, width );
     }
 
-    inline mlir::Value MLIRListener::parseFloat( mlir::Location loc, mlir::FloatType ty, const std::string &s )
+    inline mlir::Value ParseListener::parseFloat( mlir::Location loc, mlir::FloatType ty, const std::string &s )
     {
         if ( ty == tyF32 )
         {
@@ -115,7 +115,7 @@ namespace silly
         }
     }
 
-    inline std::string MLIRListener::stripQuotes( mlir::Location loc, const std::string &input ) const
+    inline std::string ParseListener::stripQuotes( mlir::Location loc, const std::string &input ) const
     {
         if ( ( input.size() < 2 ) || ( input.front() != '"' ) || ( input.back() != '"' ) )
         {
@@ -128,7 +128,7 @@ namespace silly
         return input.substr( 1, input.size() - 2 );
     }
 
-    inline LocPairs MLIRListener::getLocations( antlr4::ParserRuleContext *ctx )
+    inline LocPairs ParseListener::getLocations( antlr4::ParserRuleContext *ctx )
     {
         size_t startLine = 1;
         size_t startCol = 0;
@@ -154,14 +154,14 @@ namespace silly
         return { startLoc, endLoc };
     }
 
-    inline mlir::Location MLIRListener::getStartLocation( antlr4::ParserRuleContext *ctx )
+    inline mlir::Location ParseListener::getStartLocation( antlr4::ParserRuleContext *ctx )
     {
         LocPairs locs = getLocations( ctx );
 
         return locs.first;
     }
 
-    inline mlir::Location MLIRListener::getStopLocation( antlr4::ParserRuleContext *ctx )
+    inline mlir::Location ParseListener::getStopLocation( antlr4::ParserRuleContext *ctx )
     {
         LocPairs locs = getLocations( ctx );
 
@@ -178,7 +178,7 @@ namespace silly
         context.getOrLoadDialect<mlir::scf::SCFDialect>();
     }
 
-    bool MLIRListener::isVariableDeclared( mlir::Location loc, const std::string &varName )
+    bool ParseListener::isVariableDeclared( mlir::Location loc, const std::string &varName )
     {
         // Get the single scope
         PerFunctionState &f = funcState( currentFuncName );
@@ -189,7 +189,7 @@ namespace silly
         return ( symbolOp != nullptr );
     }
 
-    void MLIRListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
+    void ParseListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                             SillyParser::ArrayBoundsExpressionContext *arrayBounds,
                                             SillyParser::ExpressionContext *assignmentExpression,
                                             const std::vector<SillyParser::ExpressionContext *> *pExpressions )
@@ -308,7 +308,7 @@ namespace silly
         }
     }
 
-    inline mlir::Value MLIRListener::parseLowest( mlir::Location loc, antlr4::ParserRuleContext *ctx )
+    inline mlir::Value ParseListener::parseLowest( mlir::Location loc, antlr4::ParserRuleContext *ctx )
     {
         SillyParser::ExprLowestContext *expr = dynamic_cast<SillyParser::ExprLowestContext *>( ctx );
         if ( !expr )
@@ -324,14 +324,14 @@ namespace silly
         return parseOr( loc, lowest );
     }
 
-    inline mlir::Value MLIRListener::parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx )
+    inline mlir::Value ParseListener::parseExpression( mlir::Location loc, SillyParser::ExpressionContext *ctx )
     {
         assert( ctx );
 
         return parseLowest( loc, ctx );
     }
 
-    void MLIRListener::syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
+    void ParseListener::syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
                                     size_t charPositionInLine, const std::string &msg, std::exception_ptr e )
     {
         hasErrors = true;
@@ -359,7 +359,7 @@ namespace silly
         return nullptr;
     }
 
-    silly::DeclareOp MLIRListener::lookupDeclareForVar( mlir::Location loc, const std::string &varName )
+    silly::DeclareOp ParseListener::lookupDeclareForVar( mlir::Location loc, const std::string &varName )
     {
         PerFunctionState &f = funcState( currentFuncName );
         mlir::func::FuncOp funcOp = f.getFuncOp();
@@ -386,7 +386,7 @@ namespace silly
         return declareOp;
     }
 
-    mlir::Type MLIRListener::parseScalarType( const std::string &ty )
+    mlir::Type ParseListener::parseScalarType( const std::string &ty )
     {
         if ( ty == "BOOL" )
         {
@@ -419,7 +419,7 @@ namespace silly
         return nullptr;
     }
 
-    MLIRListener::MLIRListener( const std::string &filenameIn )
+    ParseListener::ParseListener( const std::string &filenameIn )
         : filename( filenameIn ),
           dialect(),
           builder( &dialect.context ),
@@ -441,7 +441,7 @@ namespace silly
         tyPtr = mlir::LLVM::LLVMPointerType::get( ctx );
     }
 
-    void MLIRListener::createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp funcOp,
+    void ParseListener::createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp funcOp,
                                     const std::string &funcName, const std::vector<std::string> &paramNames )
     {
         LLVM_DEBUG( {
@@ -476,7 +476,7 @@ namespace silly
         setFuncNameAndOp( funcName, funcOp );
     }
 
-    void MLIRListener::enterStartRule( SillyParser::StartRuleContext *ctx )
+    void ParseListener::enterStartRule( SillyParser::StartRuleContext *ctx )
     try
     {
         assert( ctx );
@@ -492,7 +492,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::processReturnLike( mlir::Location loc, SillyParser::ExpressionContext *expression )
+    void ParseListener::processReturnLike( mlir::Location loc, SillyParser::ExpressionContext *expression )
     {
         mlir::Type returnType{};
         mlir::Value value{};
@@ -535,7 +535,7 @@ namespace silly
         }
     }
 
-    void MLIRListener::exitStartRule( SillyParser::StartRuleContext *ctx )
+    void ParseListener::exitStartRule( SillyParser::StartRuleContext *ctx )
     try
     {
         assert( ctx );
@@ -555,7 +555,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterFunctionStatement( SillyParser::FunctionStatementContext *ctx )
+    void ParseListener::enterFunctionStatement( SillyParser::FunctionStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -602,7 +602,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::exitFunctionStatement( SillyParser::FunctionStatementContext *ctx )
+    void ParseListener::exitFunctionStatement( SillyParser::FunctionStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -612,7 +612,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    mlir::Value MLIRListener::handleCall( SillyParser::CallExpressionContext *ctx )
+    mlir::Value ParseListener::handleCall( SillyParser::CallExpressionContext *ctx )
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
@@ -657,7 +657,7 @@ namespace silly
         return resultTypes.empty() ? mlir::Value{} : callOp.getResults()[0];
     }
 
-    void MLIRListener::enterCallStatement( SillyParser::CallStatementContext *ctx )
+    void ParseListener::enterCallStatement( SillyParser::CallStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -665,7 +665,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterDeclareHelper( mlir::Location loc, tNode *identifier,
+    void ParseListener::enterDeclareHelper( mlir::Location loc, tNode *identifier,
                                            SillyParser::DeclareAssignmentExpressionContext *declareAssignmentExpression,
                                            const std::vector<SillyParser::ExpressionContext *> &expressions,
                                            tNode *hasInitList,
@@ -701,7 +701,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterDeclareStatement( SillyParser::DeclareStatementContext *ctx )
+    void ParseListener::enterDeclareStatement( SillyParser::DeclareStatementContext *ctx )
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
@@ -710,7 +710,7 @@ namespace silly
                             ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), tyF64 );
     }
 
-    void MLIRListener::enterBoolDeclareStatement( SillyParser::BoolDeclareStatementContext *ctx )
+    void ParseListener::enterBoolDeclareStatement( SillyParser::BoolDeclareStatementContext *ctx )
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
@@ -718,7 +718,7 @@ namespace silly
                             ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), tyI1 );
     }
 
-    void MLIRListener::enterIntDeclareStatement( SillyParser::IntDeclareStatementContext *ctx )
+    void ParseListener::enterIntDeclareStatement( SillyParser::IntDeclareStatementContext *ctx )
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
@@ -752,7 +752,7 @@ namespace silly
                             ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), ty );
     }
 
-    void MLIRListener::enterFloatDeclareStatement( SillyParser::FloatDeclareStatementContext *ctx )
+    void ParseListener::enterFloatDeclareStatement( SillyParser::FloatDeclareStatementContext *ctx )
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
@@ -778,7 +778,7 @@ namespace silly
                             ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), ty );
     }
 
-    void MLIRListener::enterStringDeclareStatement( SillyParser::StringDeclareStatementContext *ctx )
+    void ParseListener::enterStringDeclareStatement( SillyParser::StringDeclareStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -807,7 +807,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::createIf( mlir::Location loc, SillyParser::ExpressionContext *predicate, bool saveIP )
+    void ParseListener::createIf( mlir::Location loc, SillyParser::ExpressionContext *predicate, bool saveIP )
     {
         mlir::Value conditionPredicate = parseExpression( loc, predicate );
 
@@ -823,7 +823,7 @@ namespace silly
         builder.setInsertionPointToStart( &thenBlock );
     }
 
-    void MLIRListener::enterIfStatement( SillyParser::IfStatementContext *ctx )
+    void ParseListener::enterIfStatement( SillyParser::IfStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -833,7 +833,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::selectElseBlock( mlir::Location loc, const std::string &errorText )
+    void ParseListener::selectElseBlock( mlir::Location loc, const std::string &errorText )
     {
         mlir::Block *currentBlock = builder.getInsertionBlock();
         assert( currentBlock );
@@ -859,7 +859,7 @@ namespace silly
         builder.setInsertionPointToStart( &elseBlock );
     }
 
-    void MLIRListener::enterElseStatement( SillyParser::ElseStatementContext *ctx )
+    void ParseListener::enterElseStatement( SillyParser::ElseStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -869,7 +869,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterElifStatement( SillyParser::ElifStatementContext *ctx )
+    void ParseListener::enterElifStatement( SillyParser::ElifStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -881,7 +881,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx )
+    void ParseListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx )
     try
     {
         // Restore EXACTLY where we were before creating the scf.if
@@ -891,7 +891,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterForStatement( SillyParser::ForStatementContext *ctx )
+    void ParseListener::enterForStatement( SillyParser::ForStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -979,7 +979,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::exitForStatement( SillyParser::ForStatementContext *ctx )
+    void ParseListener::exitForStatement( SillyParser::ForStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -988,7 +988,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::handlePrint( mlir::Location loc, const std::vector<SillyParser::ExpressionContext *> &args,
+    void ParseListener::handlePrint( mlir::Location loc, const std::vector<SillyParser::ExpressionContext *> &args,
                                     const std::string &errorContextString, PrintFlags pf )
     {
         std::vector<mlir::Value> vargs;
@@ -1003,7 +1003,7 @@ namespace silly
         builder.create<silly::PrintOp>( loc, constFlagOp, vargs );
     }
 
-    void MLIRListener::enterPrintStatement( SillyParser::PrintStatementContext *ctx )
+    void ParseListener::enterPrintStatement( SillyParser::PrintStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1018,7 +1018,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterErrorStatement( SillyParser::ErrorStatementContext *ctx )
+    void ParseListener::enterErrorStatement( SillyParser::ErrorStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1032,7 +1032,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterAbortStatement( SillyParser::AbortStatementContext *ctx )
+    void ParseListener::enterAbortStatement( SillyParser::AbortStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1042,7 +1042,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterGetStatement( SillyParser::GetStatementContext *ctx )
+    void ParseListener::enterGetStatement( SillyParser::GetStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1088,7 +1088,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    mlir::Type MLIRListener::biggestTypeOf( mlir::Type ty1, mlir::Type ty2 )
+    mlir::Type ParseListener::biggestTypeOf( mlir::Type ty1, mlir::Type ty2 )
     {
         if ( ty1 == ty2 )
         {
@@ -1129,7 +1129,7 @@ namespace silly
         }
     }
 
-    mlir::Value MLIRListener::castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType )
+    mlir::Value ParseListener::castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType )
     {
         if ( value.getType() != desiredType )
         {
@@ -1194,7 +1194,7 @@ namespace silly
         return value;
     }
 
-    void MLIRListener::enterReturnStatement( SillyParser::ReturnStatementContext *ctx )
+    void ParseListener::enterReturnStatement( SillyParser::ReturnStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1204,7 +1204,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::enterExitStatement( SillyParser::ExitStatementContext *ctx )
+    void ParseListener::enterExitStatement( SillyParser::ExitStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1214,7 +1214,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void MLIRListener::processAssignment( mlir::Location loc, SillyParser::ExpressionContext *exprContext,
+    void ParseListener::processAssignment( mlir::Location loc, SillyParser::ExpressionContext *exprContext,
                                           const std::string &currentVarName, mlir::Value currentIndexExpr )
     {
         mlir::Value resultValue = parseExpression( loc, exprContext );
@@ -1254,7 +1254,7 @@ namespace silly
         }
     }
 
-    void MLIRListener::enterAssignmentStatement( SillyParser::AssignmentStatementContext *ctx )
+    void ParseListener::enterAssignmentStatement( SillyParser::AssignmentStatementContext *ctx )
     try
     {
         assert( ctx );
@@ -1281,7 +1281,7 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    mlir::Value MLIRListener::indexTypeCast( mlir::Location loc, mlir::Value val )
+    mlir::Value ParseListener::indexTypeCast( mlir::Location loc, mlir::Value val )
     {
         mlir::IndexType indexTy = builder.getIndexType();
         mlir::Type valTy = val.getType();
@@ -1310,7 +1310,7 @@ namespace silly
         return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
     }
 
-    mlir::Value MLIRListener::parseOr( mlir::Location loc, antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseOr( mlir::Location loc, antlr4::ParserRuleContext *ctx )
     {
         assert( ctx );
 
@@ -1337,7 +1337,7 @@ namespace silly
         return parseXor( loc, ctx );
     }
 
-    mlir::Value MLIRListener::parseXor( mlir::Location loc, antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseXor( mlir::Location loc, antlr4::ParserRuleContext *ctx )
     {
         assert( ctx );
 
@@ -1364,7 +1364,7 @@ namespace silly
         return parseAnd( loc, ctx );
     }
 
-    mlir::Value MLIRListener::parseAnd( mlir::Location loc, antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseAnd( mlir::Location loc, antlr4::ParserRuleContext *ctx )
     {
         assert( ctx );
 
@@ -1396,7 +1396,7 @@ namespace silly
         return parseEquality( loc, ctx );
     }
 
-    mlir::Value MLIRListener::parseEquality( mlir::Location loc, antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseEquality( mlir::Location loc, antlr4::ParserRuleContext *ctx )
     {
         assert( ctx );
         mlir::Value value{};
@@ -1439,7 +1439,7 @@ namespace silly
         return parseComparison( loc, ctx );
     }
 
-    mlir::Value MLIRListener::parseComparison( mlir::Location loc, antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseComparison( mlir::Location loc, antlr4::ParserRuleContext *ctx )
     {
         assert( ctx );
         mlir::Value value{};
@@ -1494,7 +1494,7 @@ namespace silly
         return parseAdditive( loc, ctx );
     }
 
-    mlir::Value MLIRListener::parseAdditive( mlir::Location loc, antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseAdditive( mlir::Location loc, antlr4::ParserRuleContext *ctx )
     {
         assert( ctx );
         mlir::Value value{};
@@ -1544,7 +1544,7 @@ namespace silly
         return parseMultiplicative( loc, ctx );
     }
 
-    mlir::Value MLIRListener::parseMultiplicative( mlir::Location loc, antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseMultiplicative( mlir::Location loc, antlr4::ParserRuleContext *ctx )
     {
         assert( ctx );
         mlir::Value value{};
@@ -1595,7 +1595,7 @@ namespace silly
         return parseUnary( loc, ctx );
     }
 
-    mlir::Value MLIRListener::parseUnary( mlir::Location loc, antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseUnary( mlir::Location loc, antlr4::ParserRuleContext *ctx )
     {
         assert( ctx );
         mlir::Value value{};
@@ -1662,7 +1662,7 @@ namespace silly
         return value;
     }
 
-    mlir::Value MLIRListener::parsePrimary( mlir::Location loc, antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parsePrimary( mlir::Location loc, antlr4::ParserRuleContext *ctx )
     {
         assert( ctx );
         mlir::Value value{};

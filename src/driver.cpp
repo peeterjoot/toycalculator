@@ -171,14 +171,14 @@ int main( int argc, char** argv )
 
     try
     {
-        MLIRListener listener( filename );
+        ParseListener listener( filename );
 
         antlr4::ANTLRInputStream antlrInput( inputStream );
         SillyLexer lexer( &antlrInput );
         antlr4::CommonTokenStream tokens( &lexer );
         SillyParser parser( &tokens );
 
-        // Remove default error listener and add MLIRListener for errors
+        // Remove default error listener and add ParseListener for errors
         parser.removeErrorListeners();
         parser.addErrorListener( &listener );
 
