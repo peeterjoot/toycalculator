@@ -91,7 +91,7 @@ c[1] = 0 ( = 2 * 0 )
   - lowering error handling is pschizophrenic: mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
   - Move scf lowering into 1st pass?  Attempt at this in xpgn:streamline-passes-attempt branch (not pushed.)
   - Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
-  - Final version of ELIF support meant that I didn't need getStopLocation() anymore (was using it to generate scf.yield with the end of the block location).  Review that and decide what to do with it.
+  - Final version of ELIF support meant that I didn't need getStopLocation() anymore (was using it to generate scf.yield with the end of the block location).  Also ended up with getTerminalLocation(), which I'm also not using.  Review those and decide what to do with them.
   - merge these?
 
 ```

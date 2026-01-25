@@ -77,7 +77,7 @@ variableTypeAndName
   ;
 
 intDeclareStatement
-  : (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN)
+  : intType
     IDENTIFIER (arrayBoundsExpression)?
     ((EQUALS_TOKEN declareAssignmentExpression) |
      (LEFT_CURLY_BRACKET_TOKEN (expression (COMMA_TOKEN expression)*)? RIGHT_CURLY_BRACKET_TOKEN))?
@@ -130,12 +130,16 @@ assignmentStatement
 // for ( int x = 1 ; x <= 10 ; x += 2 ) { ... }
 forStatement
   : FOR_TOKEN
-    BRACE_START_TOKEN (INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN) IDENTIFIER COLON_TOKEN
+    BRACE_START_TOKEN intType IDENTIFIER COLON_TOKEN
         BRACE_START_TOKEN
             forStart COMMA_TOKEN forEnd (COMMA_TOKEN forStep)?
         BRACE_END_TOKEN
     BRACE_END_TOKEN
     LEFT_CURLY_BRACKET_TOKEN statement* RIGHT_CURLY_BRACKET_TOKEN
+  ;
+
+intType
+  : INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN
   ;
 
 forStart

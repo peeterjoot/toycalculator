@@ -50,6 +50,32 @@ namespace silly
         return *functionStateMap[funcName];
     }
 
+    inline InductionVariablePair ParseListener::searchForInduction( const std::string &varName )
+    {
+        InductionVariablePair r{};
+
+        for ( auto &p : inductionVariables )
+        {
+            if ( p.first == varName )
+            {
+                r = p;
+                break;
+            }
+        }
+
+        return r;
+    }
+
+    inline void ParseListener::pushInductionVariable( const std::string &varName, mlir::Value i )
+    {
+        inductionVariables.emplace_back( varName, i );
+    }
+
+    inline void ParseListener::popInductionVariable()
+    {
+        inductionVariables.pop_back();
+    }
+
     inline std::string formatLocation( mlir::Location loc )
     {
         if ( mlir::FileLineColLoc fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc ) )
@@ -741,11 +767,8 @@ namespace silly
                             ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), tyI1 );
     }
 
-    void ParseListener::enterIntDeclareStatement( SillyParser::IntDeclareStatementContext *ctx )
+    mlir::Type ParseListener::integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext * ctx )
     {
-        assert( ctx );
-        mlir::Location loc = getStartLocation( ctx );
-
         mlir::Type ty;
 
         if ( ctx->INT8_TOKEN() )
@@ -770,6 +793,16 @@ namespace silly
                                         std::format( "{}internal error: Unsupported signed integer declaration size.\n",
                                                      formatLocation( loc ) ) );
         }
+
+        return ty;
+    }
+
+    void ParseListener::enterIntDeclareStatement( SillyParser::IntDeclareStatementContext *ctx )
+    {
+        assert( ctx );
+        mlir::Location loc = getStartLocation( ctx );
+
+        mlir::Type ty = integerDeclarationType( loc, ctx->intType() );
 
         enterDeclareHelper( loc, ctx->IDENTIFIER(), ctx->declareAssignmentExpression(), ctx->expression(),
                             ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), ty );
@@ -945,8 +978,18 @@ namespace silly
         mlir::Value end;
         mlir::Value step;
 
-        silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
-        mlir::Type elemType = declareOp.getTypeAttr().getValue();
+        if ( isVariableDeclared( loc, varName ) )
+        {
+            throw UserError( loc, std::format( "Induction variable {} clashes with declared variable in: {}\n", varName, ctx->getText() ) );
+        }
+
+        InductionVariablePair p = searchForInduction( varName );
+        if ( p.second )
+        {
+            throw UserError( loc, std::format( "Induction variable {} used by enclosing FOR: {}\n", varName, ctx->getText() ) );
+        }
+
+        mlir::Type elemType = integerDeclarationType( loc, ctx->intType() );
 
         std::string s;
         if ( pStart )
@@ -989,15 +1032,8 @@ namespace silly
         mlir::Block &loopBody = forOp.getRegion().front();
         builder.setInsertionPointToStart( &loopBody );
 
-        // emit an assignment to the variable as the first statement in the loop body, so that any existing references
-        // to that will work as-is:
         mlir::Value inductionVar = loopBody.getArgument( 0 );
-        assert(0 && "NYI");
-#if 0
-        mlir::Location iloc = getTerminalLocation( ctx->LEFT_CURLY_BRACKET_TOKEN() );
-        builder.create<silly::AssignOp>( iloc, mlir::TypeRange{}, mlir::ValueRange{ inductionVar },
-                                         llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
-#endif
+        pushInductionVariable( varName, inductionVar );
     }
     CATCH_USER_ERROR
 
@@ -1006,7 +1042,7 @@ namespace silly
     {
         assert( ctx );
         builder.restoreInsertionPoint( insertionPointStack.back() );
-        insertionPointStack.pop_back();
+        popInductionVariable();
     }
     CATCH_USER_ERROR
 
@@ -1077,6 +1113,7 @@ namespace silly
             assert( varNameObject );
             std::string varName = varNameObject->getText();
 
+            // XX: FIXME here -- I think.
             silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
 
             mlir::Type elemType = declareOp.getTypeAttr().getValue();

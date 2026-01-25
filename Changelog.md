@@ -383,6 +383,8 @@ The MLIR for that is:
 #loc17 = loc("printdi.silly":9:28)
 #loc18 = loc("printdi.silly":9:5)
 ```
+  * [grammar] Introduce intType rule (use in intDeclareStatement and forStatement)
+  * [parser] Add vector<pair<string, Value>> for induction variables and push/pop that in the FOR loop enter/exit callbacks.  Split out integerDeclarationType from enterIntDeclareStatement to also use in enterFor.
 
 ## tag: V7 (Jan 4, 2025)
 
