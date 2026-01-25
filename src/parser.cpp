@@ -1113,7 +1113,6 @@ namespace silly
             assert( varNameObject );
             std::string varName = varNameObject->getText();
 
-            // XX: FIXME here -- I think.
             silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
 
             mlir::Type elemType = declareOp.getTypeAttr().getValue();
@@ -1779,7 +1778,7 @@ namespace silly
         }
         else if ( SillyParser::VarPrimaryContext *varCtx = dynamic_cast<SillyParser::VarPrimaryContext *>( ctx ) )
         {
-            // Variable / array element (# varPrimary)
+            // Variable / array element (# varPrimary) / induction-variable
             SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = varCtx->scalarOrArrayElement();
             assert( scalarOrArrayElement );
 
@@ -1787,36 +1786,44 @@ namespace silly
             assert( variableNode );
             std::string varName = variableNode->getText();
 
-            silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
-
-            mlir::Type varType = declareOp.getTypeAttr().getValue();
-
-            mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
-
-            if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
+            InductionVariablePair p = searchForInduction( varName );
+            if ( p.second )
             {
-                value = parseExpression( indexExpr->expression(), {} );
-
-                mlir::Location iloc = getStartLocation( indexExpr->expression() );
-                mlir::Value i = indexTypeCast( iloc, value );
-
-                value = builder.create<silly::LoadOp>( loc, varType, symRef, i );
+                value = p.second;
             }
             else
             {
-                if ( declareOp.getSizeAttr() )
+                silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+
+                mlir::Type varType = declareOp.getTypeAttr().getValue();
+
+                mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+
+                if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
                 {
-                    if ( mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( varType ) )
+                    value = parseExpression( indexExpr->expression(), {} );
+
+                    mlir::Location iloc = getStartLocation( indexExpr->expression() );
+                    mlir::Value i = indexTypeCast( iloc, value );
+
+                    value = builder.create<silly::LoadOp>( loc, varType, symRef, i );
+                }
+                else
+                {
+                    if ( declareOp.getSizeAttr() )
                     {
-                        unsigned w = ity.getWidth();
-                        if ( w == 8 )
+                        if ( mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( varType ) )
                         {
-                            varType = tyPtr;
+                            unsigned w = ity.getWidth();
+                            if ( w == 8 )
+                            {
+                                varType = tyPtr;
+                            }
                         }
                     }
-                }
 
-                value = builder.create<silly::LoadOp>( loc, varType, symRef, mlir::Value{} );
+                    value = builder.create<silly::LoadOp>( loc, varType, symRef, mlir::Value{} );
+                }
             }
         }
         else if ( SillyParser::CallPrimaryContext *callCtx = dynamic_cast<SillyParser::CallPrimaryContext *>( ctx ) )

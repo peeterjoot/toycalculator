@@ -1,0 +1,9 @@
+INT64 v;
+
+FOR (INT64 i : (1, 5))
+{
+    PRINT i;
+    v = i + 1;
+};
+
+PRINT v;
