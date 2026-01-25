@@ -1280,7 +1280,13 @@ namespace silly
 
         mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, currentVarName );
 
-        if ( isa<silly::StringLiteralOp>( resultValue.getDefiningOp() ) )
+        assert( resultValue );
+
+        mlir::BlockArgument ba = mlir::dyn_cast<mlir::BlockArgument>( resultValue );
+        mlir::Operation * op = resultValue.getDefiningOp();
+
+        // Don't check if it's a StringLiteralOp if it's an induction variable, since op will be nullptr
+        if ( !ba && isa<silly::StringLiteralOp>( op ) )
         {
             mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
 

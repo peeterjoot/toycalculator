@@ -1,6 +1,8 @@
 ## TODO
 
 ----------------------------------
+1. test case for nested FOR loops.  Error tests for conflicting induction variables (with variables and also
+   induction variables for outer loops.)
 2. Allow: INT64 a = 1, b = 2, c = 3; (`chained_comparison_parens.silly`).
 3. Forgetting RETURN in `array_elem_as_arg.silly` has a very confusing error.
 4. Grammar probably allows for function declared in a function.  prohibit that or at least test for it?

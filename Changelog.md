@@ -383,8 +383,28 @@ The MLIR for that is:
 #loc17 = loc("printdi.silly":9:28)
 #loc18 = loc("printdi.silly":9:5)
 ```
-  * [grammar] Introduce intType rule (use in intDeclareStatement and forStatement)
-  * [parser] Add vector<pair<string, Value>> for induction variables and push/pop that in the FOR loop enter/exit callbacks.  Split out integerDeclarationType from enterIntDeclareStatement to also use in enterFor.
+  * Switch scf.for loop bodies to use a proper SSA form.
+    - [grammar] Introduce intType rule (use in intDeclareStatement and forStatement)
+    - [parser] Add vector<pair<string, Value>> for induction variables and push/pop that in the FOR loop enter/exit callbacks.  Split out integerDeclarationType from enterIntDeclareStatement to also use in enterFor.
+    - [parser] ParseListener::parsePrimary -- supplement variable lookup with induction var lookup.
+    - Example of the new MLIR for a loop:
+```
+      scf.for %arg0 = %0 to %1 step %2  : i32 {
+        %3 = arith.extsi %arg0 : i32 to i64 loc(#loc10)
+        %4 = arith.index_cast %3 : i64 to index loc(#loc10)
+        %5 = silly.load @c[%4] : i32 loc(#loc11)
+        silly.assign @t = %5 : i32 loc(#loc12)
+        %6 = "silly.string_literal"() <{value = "c["}> : () -> !llvm.ptr loc(#loc13)
+        %7 = "silly.string_literal"() <{value = "] = "}> : () -> !llvm.ptr loc(#loc14)
+        %8 = silly.load @t : i32 loc(#loc15)
+        %c0_i32_2 = arith.constant 0 : i32 loc(#loc16)
+        "silly.print"(%c0_i32_2, %6, %arg0, %7, %8) : (i32, !llvm.ptr, i32, !llvm.ptr, i32) -> () loc(#loc16)
+      } loc(#loc9)
+```
+  This removes the AssignOp for the loop induction variable that I used to avoid figuring out how to cache and
+  lookup the mlir::Value for the induction var.  Unfortunately, this means that I loose the debug instrumentation
+  for that loop variable as a side effect.  Also unfortunately, this also doesn't fix the line number ping pong
+  that I am seeing in loop bodies.  More debugging of the DI is required.
 
 ## tag: V7 (Jan 4, 2025)
 
