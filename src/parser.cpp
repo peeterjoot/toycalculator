@@ -225,7 +225,7 @@ namespace silly
     inline mlir::Value ParseListener::parseExpression( SillyParser::ExpressionContext *ctx, mlir::Type ty )
     {
         assert( ctx );
-        mlir::Value value = parseLowest( ctx );
+        mlir::Value value = parseLowest( ctx, ty );
         if ( ty )
         {
             mlir::Location loc = getStartLocation( ctx );
@@ -355,7 +355,7 @@ namespace silly
         }
     }
 
-    inline mlir::Value ParseListener::parseLowest( antlr4::ParserRuleContext *ctx )
+    inline mlir::Value ParseListener::parseLowest( antlr4::ParserRuleContext *ctx, mlir::Type ty )
     {
         SillyParser::ExprLowestContext *expr = dynamic_cast<SillyParser::ExprLowestContext *>( ctx );
         if ( !expr )
@@ -370,7 +370,7 @@ namespace silly
 
         SillyParser::BinaryExpressionLowestContext *lowest = expr->binaryExpressionLowest();
 
-        return parseOr( lowest );
+        return parseOr( lowest, ty );
     }
 
     void ParseListener::syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
@@ -1020,8 +1020,11 @@ namespace silly
         }
         else
         {
+            mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( elemType );
+            unsigned width = ity.getWidth();
+
             //'scf.for' op failed to verify that all of {lowerBound, upperBound, step} have same type
-            step = builder.create<mlir::arith::ConstantIntOp>( loc, 1, 64 );
+            step = builder.create<mlir::arith::ConstantIntOp>( loc, 1, width );
             step = castOpIfRequired( loc, step, elemType );
         }
 
@@ -1375,7 +1378,7 @@ namespace silly
         return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
     }
 
-    mlir::Value ParseListener::parseOr( antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseOr( antlr4::ParserRuleContext *ctx, mlir::Type ty )
     {
         assert( ctx );
 
@@ -1387,10 +1390,10 @@ namespace silly
             std::vector<SillyParser::BinaryExpressionOrContext *> orOperands = orCtx->binaryExpressionOr();
 
             // First operand (no special case needed)
-            mlir::Value value = parseXor( orOperands[0] );
+            mlir::Value value = parseXor( orOperands[0], ty );
             for ( size_t i = 1; i < orOperands.size(); ++i )
             {
-                mlir::Value rhs = parseXor( orOperands[i] );
+                mlir::Value rhs = parseXor( orOperands[i], ty );
 
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
 
@@ -1401,10 +1404,10 @@ namespace silly
         }
 
         // No OR: just descend to the next level (XOR / single-term)
-        return parseXor( ctx );
+        return parseXor( ctx, ty );
     }
 
-    mlir::Value ParseListener::parseXor( antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseXor( antlr4::ParserRuleContext *ctx, mlir::Type ty )
     {
         assert( ctx );
 
@@ -1415,11 +1418,11 @@ namespace silly
             // Has XOR operator(s)
             std::vector<SillyParser::BinaryExpressionXorContext *> xorOperands = xorCtx->binaryExpressionXor();
 
-            mlir::Value value = parseAnd( xorOperands[0] );
+            mlir::Value value = parseAnd( xorOperands[0], ty );
 
             for ( size_t i = 1; i < xorOperands.size(); ++i )
             {
-                mlir::Value rhs = parseAnd( xorOperands[i] );
+                mlir::Value rhs = parseAnd( xorOperands[i], ty );
 
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
 
@@ -1430,10 +1433,10 @@ namespace silly
         }
 
         // No XOR: descend to AND level
-        return parseAnd( ctx );
+        return parseAnd( ctx, ty );
     }
 
-    mlir::Value ParseListener::parseAnd( antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseAnd( antlr4::ParserRuleContext *ctx, mlir::Type ty)
     {
         assert( ctx );
 
@@ -1448,12 +1451,12 @@ namespace silly
             std::vector<SillyParser::BinaryExpressionAndContext *> andOperands = andCtx->binaryExpressionAnd();
 
             // First operand
-            mlir::Value value = parseEquality( andOperands[0] );
+            mlir::Value value = parseEquality( andOperands[0], ty );
 
             // Fold the remaining ANDs (left associative)
             for ( size_t i = 1; i < andOperands.size(); ++i )
             {
-                mlir::Value rhs = parseEquality( andOperands[i] );
+                mlir::Value rhs = parseEquality( andOperands[i], ty );
 
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
 
@@ -1464,10 +1467,10 @@ namespace silly
         }
 
         // No AND operator: descend directly to the next level (equality)
-        return parseEquality( ctx );
+        return parseEquality( ctx, ty );
     }
 
-    mlir::Value ParseListener::parseEquality( antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseEquality( antlr4::ParserRuleContext *ctx, mlir::Type ty )
     {
         assert( ctx );
         mlir::Value value{};
@@ -1481,13 +1484,13 @@ namespace silly
             std::vector<SillyParser::BinaryExpressionCompareContext *> operands = eqNeCtx->binaryExpressionCompare();
 
             // First (leftmost) operand
-            value = parseComparison( operands[0] );
+            value = parseComparison( operands[0], ty );
 
             assert( operands.size() <= 2 );
 
             if ( operands.size() == 2 )
             {
-                mlir::Value rhs = parseComparison( operands[1] );
+                mlir::Value rhs = parseComparison( operands[1], ty );
 
                 if ( eqNeCtx->equalityOperator()->EQUALITY_TOKEN() )
                 {
@@ -1509,10 +1512,10 @@ namespace silly
         }
 
         // No EQ or NE operators: descend directly to comparison level
-        return parseComparison( ctx );
+        return parseComparison( ctx, ty );
     }
 
-    mlir::Value ParseListener::parseComparison( antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseComparison( antlr4::ParserRuleContext *ctx, mlir::Type ty )
     {
         assert( ctx );
         mlir::Value value{};
@@ -1529,11 +1532,11 @@ namespace silly
             assert( operands.size() <= 2 );
 
             // First (leftmost) operand
-            value = parseAdditive( operands[0] );
+            value = parseAdditive( operands[0], ty );
 
             if ( operands.size() == 2 )
             {
-                mlir::Value rhs = parseAdditive( operands[1] );
+                mlir::Value rhs = parseAdditive( operands[1], ty );
 
                 SillyParser::RelationalOperatorContext *op = compareCtx->relationalOperator();
                 assert( op );
@@ -1566,10 +1569,10 @@ namespace silly
         }
 
         // No comparison operators : descend directly to additive level
-        return parseAdditive( ctx );
+        return parseAdditive( ctx, ty );
     }
 
-    mlir::Value ParseListener::parseAdditive( antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseAdditive( antlr4::ParserRuleContext *ctx, mlir::Type ty )
     {
         assert( ctx );
         mlir::Value value{};
@@ -1588,12 +1591,12 @@ namespace silly
             assert( ( ops.size() + 1 ) == numOperands );
 
             // First operand
-            value = parseMultiplicative( operands[0] );
+            value = parseMultiplicative( operands[0], ty );
 
             // Fold the remaining additions/subtractions left-associatively
             for ( size_t i = 1; i < numOperands; ++i )
             {
-                mlir::Value rhs = parseMultiplicative( operands[i] );
+                mlir::Value rhs = parseMultiplicative( operands[i], ty );
 
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
 
@@ -1618,10 +1621,10 @@ namespace silly
             return value;
         }
         // Descend directly to multiplicative level if no +-
-        return parseMultiplicative( ctx );
+        return parseMultiplicative( ctx, ty );
     }
 
-    mlir::Value ParseListener::parseMultiplicative( antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseMultiplicative( antlr4::ParserRuleContext *ctx, mlir::Type ty )
     {
         assert( ctx );
         mlir::Value value{};
@@ -1640,12 +1643,12 @@ namespace silly
             assert( ( ops.size() + 1 ) == numOperands );
 
             // First operand
-            value = parseUnary( operands[0] );
+            value = parseUnary( operands[0], ty );
 
             // Fold the remaining multiplications/divisions left-associatively
             for ( size_t i = 1; i < numOperands; ++i )
             {
-                mlir::Value rhs = parseUnary( operands[i] );
+                mlir::Value rhs = parseUnary( operands[i], ty );
 
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
 
@@ -1671,10 +1674,10 @@ namespace silly
         }
 
         // Descend directly to unary level if no * or /
-        return parseUnary( ctx );
+        return parseUnary( ctx, ty );
     }
 
-    mlir::Value ParseListener::parseUnary( antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parseUnary( antlr4::ParserRuleContext *ctx, mlir::Type ty )
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
@@ -1687,7 +1690,7 @@ namespace silly
             assert( unaryOp );
 
             // Recurse to the inner unary expression
-            value = parseUnary( unaryOpCtx->unaryExpression() );
+            value = parseUnary( unaryOpCtx->unaryExpression(), ty );
 
             std::string opText = unaryOp->getText();
 
@@ -1722,7 +1725,7 @@ namespace silly
         else if ( SillyParser::PrimaryContext *primaryCtx = dynamic_cast<SillyParser::PrimaryContext *>( ctx ) )
         {
             // Case 2: no unary operator, just a primary (# primary)
-            value = parsePrimary( primaryCtx->primaryExpression() );
+            value = parsePrimary( primaryCtx->primaryExpression(), ty );
         }
         else
         {
@@ -1742,7 +1745,7 @@ namespace silly
         return value;
     }
 
-    mlir::Value ParseListener::parsePrimary( antlr4::ParserRuleContext *ctx )
+    mlir::Value ParseListener::parsePrimary( antlr4::ParserRuleContext *ctx, mlir::Type ty )
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
@@ -1760,11 +1763,32 @@ namespace silly
             }
             else if ( tNode *integerNode = lit->INTEGER_PATTERN() )
             {
-                value = parseInteger( loc, 64, integerNode->getText() );
+                unsigned width = 64;
+
+                if ( ty )
+                {
+                    if ( mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( ty ) )
+                    {
+                        width = ity.getWidth();
+                    }
+                }
+
+                value = parseInteger( loc, width, integerNode->getText() );
             }
             else if ( tNode *floatNode = lit->FLOAT_PATTERN() )
             {
-                value = parseFloat( loc, tyF64, floatNode->getText() );
+                mlir::FloatType fty{};
+                if ( ty )
+                {
+                    fty = mlir::dyn_cast<mlir::FloatType>( ty );
+                }
+
+                if (!fty)
+                {
+                   fty = tyF64;
+                }
+
+                value = parseFloat( loc, fty, floatNode->getText() );
             }
             else if ( tNode *stringNode = lit->STRING_PATTERN() )
             {

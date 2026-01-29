@@ -407,6 +407,21 @@ The MLIR for that is:
   that I am seeing in loop bodies.  More debugging of the DI is required.
   * More FOR tests. Also implemented checking of the error messages for expected compile errors.
   * [parser] searchForInduction doesn't need to return a pair -- only the Value is ever used.
+  * [parser] pass type from parseExpression all the way down to parsePrimary, and adjust constant creation to use
+    that type if specified.  This gets rid of a bunch of ugly sign-extension/truncation.  Example:
+```
+      %0 = "arith.constant"() <{value = 0 : i32}> : () -> i32 loc(#loc2)
+      %1 = "arith.constant"() <{value = 3 : i32}> : () -> i32 loc(#loc3)
+      %2 = "arith.constant"() <{value = 1 : i32}> : () -> i32 loc(#loc1)
+      "scf.for"(%0, %1, %2) ({
+      ^bb0(%arg0: i32 loc("nested_for.silly":5:1)):
+        %3 = "arith.constant"() <{value = 0 : i32}> : () -> i32 loc(#loc4)
+        %4 = "arith.constant"() <{value = 2 : i32}> : () -> i32 loc(#loc5)
+        %5 = "arith.constant"() <{value = 1 : i32}> : () -> i32 loc(#loc6)
+        "scf.for"(%3, %4, %5) ({
+```
+
+ With all the previous truncatation (from i64) this was really hard to read.
 
 ## tag: V7 (Jan 4, 2025)
 
