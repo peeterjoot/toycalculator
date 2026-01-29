@@ -1,0 +1,20 @@
+start
+hi
+more
+i=0 j=0 t=10
+more
+i=0 j=1 t=11
+bye
+hi
+more
+i=1 j=0 t=20
+more
+i=1 j=1 t=21
+bye
+hi
+more
+i=2 j=0 t=30
+more
+i=2 j=1 t=31
+bye
+done

@@ -227,6 +227,7 @@ mixed_type_assignment
 neg
 neqop
 nested_calls
+nested_for
 nested_if_basic
 nested_if_deep
 nested_if_elif_else
@@ -236,6 +237,7 @@ orop
 printboollit
 printcont
 printdi
+printdi_nested
 printexpr
 printlit
 print_multiple
@@ -260,8 +262,6 @@ zero_iter_for
 ));
 # negative_step_for -- broken.  debug/fix.
 #error_nonconst_init -- want this to be a compile error, but it isn't yet.
-# nested_for -- debug&fix.
-# printdi_nested -- ditto.
 
 my %failuretests = map {$_ => 1} (qw(
 error_arrayreturn

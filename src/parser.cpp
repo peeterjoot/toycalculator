@@ -867,13 +867,13 @@ namespace silly
     {
         mlir::Value conditionPredicate = parseExpression( predicate, {} );
 
-        if ( saveIP )
-        {
-            insertionPointStack.push_back( builder.saveInsertionPoint() );
-        }
-
         mlir::scf::IfOp ifOp = builder.create<mlir::scf::IfOp>( loc, conditionPredicate,
                                                                 /*withElseRegion=*/true );
+
+        if ( saveIP )
+        {
+            insertionPointStack.push_back( ifOp.getOperation() );
+        }
 
         mlir::Block &thenBlock = ifOp.getThenRegion().front();
         builder.setInsertionPointToStart( &thenBlock );
@@ -942,7 +942,7 @@ namespace silly
     {
         // Restore EXACTLY where we were before creating the scf.if
         // This places new ops right AFTER the scf.if
-        builder.restoreInsertionPoint( insertionPointStack.back() );
+        builder.setInsertionPointAfter( insertionPointStack.back() );
         insertionPointStack.pop_back();
     }
     CATCH_USER_ERROR
@@ -1028,9 +1028,8 @@ namespace silly
             step = castOpIfRequired( loc, step, elemType );
         }
 
-        insertionPointStack.push_back( builder.saveInsertionPoint() );
-
         mlir::scf::ForOp forOp = builder.create<mlir::scf::ForOp>( loc, start, end, step );
+        insertionPointStack.push_back( forOp.getOperation() );
 
         mlir::Block &loopBody = forOp.getRegion().front();
         builder.setInsertionPointToStart( &loopBody );
@@ -1044,7 +1043,8 @@ namespace silly
     try
     {
         assert( ctx );
-        builder.restoreInsertionPoint( insertionPointStack.back() );
+        builder.setInsertionPointAfter( insertionPointStack.back() );
+        insertionPointStack.pop_back();
         popInductionVariable();
     }
     CATCH_USER_ERROR

@@ -156,7 +156,7 @@ namespace silly
         std::string currentFuncName;
 
         /// Stack for scf.if/scf.for blocks.
-        std::vector<mlir::OpBuilder::InsertPoint> insertionPointStack;
+        std::vector<mlir::Operation *> insertionPointStack;
 
         /// Top-level module.
         mlir::ModuleOp mod;

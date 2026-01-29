@@ -2,9 +2,15 @@
 INT32 outer_t;
 INT32 c[3]{10,20,30};
 
+PRINT "start";
 FOR (INT32 i: (0, 3)) {
+    PRINT "hi";
     FOR (INT32 j: (0, 2)) {
+        PRINT "more";
         outer_t = c[i] + j;
         PRINT "i=", i, " j=", j, " t=", outer_t;
     };
+    PRINT "bye";
 };
+
+PRINT "done";

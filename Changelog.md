@@ -438,6 +438,31 @@ gives
 ```
 
 (everything here has the right type now (not i64), right out of the gate.)
+ * Fix nested_for.silly.  Handle insertionPointStack like lastDeclareOp, pushing getOperation() and restoring using  builder.setInsertionPointAfter.
+
+ Was seeing:
+```
+      "scf.for"(%3, %4, %5) ({
+      ^bb0(%arg0: i32 loc("nested_for.silly":5:1)):
+        %6 = "arith.constant"() <{value = 0 : i32}> : () -> i32 loc(#loc9)
+        %7 = "arith.constant"() <{value = 2 : i32}> : () -> i32 loc(#loc10)
+        %8 = "arith.constant"() <{value = 1 : i32}> : () -> i32 loc(#loc11)
+        "scf.for"(%6, %7, %8) ({
+        ^bb0(%arg1: i32 loc("nested_for.silly":6:5)):
+        ...
+          "scf.yield"() : () -> () loc(#loc11)
+        }) : (i32, i32, i32) -> () loc(#loc11)
+        %9 = "arith.constant"() <{value = 0 : i32}> : () -> i32 loc(#loc1)
+        "silly.return"(%9) : (i32) -> () loc(#loc1)
+        "scf.yield"() : () -> () loc(#loc8)
+      }) : (i32, i32, i32) -> () loc(#loc8)
+    }) : () -> () loc(#loc1)
+
+RETURN SHOULD BE HERE ... it's up in the outer for loop body!
+
+    "silly.yield"() : () -> () loc(#loc20)
+  }) : () -> () loc(#loc1)
+```
 
 ## tag: V7 (Jan 4, 2025)
 
