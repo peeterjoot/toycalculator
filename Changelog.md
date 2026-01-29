@@ -422,6 +422,22 @@ The MLIR for that is:
 ```
 
  With all the previous truncatation (from i64) this was really hard to read.
+ * [parser] pass the type into the initializer-list creation so that no casting will be required in lowering.  Example:
+
+```
+INT32 c[3]{10,20,30};
+```
+
+gives
+
+```
+ %0 = "arith.constant"() <{value = 10 : i32}> : () -> i32 loc(#loc2)
+ %1 = "arith.constant"() <{value = 20 : i32}> : () -> i32 loc(#loc3)
+ %2 = "arith.constant"() <{value = 30 : i32}> : () -> i32 loc(#loc4)
+ "silly.declare"(%0, %1, %2) <{size = 3 : i64, type = i32}> {sym_name = "c"} : (i32, i32, i32) -> () loc(#loc5)
+```
+
+(everything here has the right type now (not i64), right out of the gate.)
 
 ## tag: V7 (Jan 4, 2025)
 

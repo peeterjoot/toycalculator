@@ -287,7 +287,7 @@ namespace silly
 
             for ( SillyParser::ExpressionContext *e : *pExpressions )
             {
-                initializers.push_back( parseExpression( e, {} ) );
+                initializers.push_back( parseExpression( e, ty ) );
             }
 
             ssize_t remaining = numElements - initializers.size();
