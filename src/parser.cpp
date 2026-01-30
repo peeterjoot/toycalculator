@@ -328,6 +328,8 @@ namespace silly
             }
         }
 
+        assert( 0 && "NYI" );
+#if 0
         mlir::StringAttr strAttr = builder.getStringAttr( varName );
         silly::DeclareOp dcl;
         if ( arraySize )
@@ -351,6 +353,7 @@ namespace silly
         {
             processAssignment( loc, assignmentExpression, varName, {} );
         }
+#endif
     }
 
     inline mlir::Value ParseListener::parseLowest( antlr4::ParserRuleContext *ctx, mlir::Type ty )
@@ -501,6 +504,8 @@ namespace silly
 
         PerFunctionState &f = funcState( funcName );
 
+        assert( 0 && "NYI" );
+#if 0
         for ( size_t i = 0; i < funcOp.getNumArguments() && i < paramNames.size(); ++i )
         {
             mlir::Type argType = funcOp.getArgument( i ).getType();
@@ -519,6 +524,7 @@ namespace silly
 
         currentFuncName = funcName;
         f.setFuncOp( funcOp );
+#endif
     }
 
     void ParseListener::enterStartRule( SillyParser::StartRuleContext *ctx )
@@ -1110,6 +1116,8 @@ namespace silly
         SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = ctx->scalarOrArrayElement();
         if ( scalarOrArrayElement )
         {
+            assert( 0 && "NYI" );
+#if 0
             tNode *varNameObject = scalarOrArrayElement->IDENTIFIER();
             assert( varNameObject );
             std::string varName = varNameObject->getText();
@@ -1138,6 +1146,7 @@ namespace silly
 
             silly::GetOp resultValue = builder.create<silly::GetOp>( loc, elemType );
             builder.create<silly::AssignOp>( loc, symRef, optIndexValue, resultValue );
+#endif
         }
         else
         {
@@ -1821,6 +1830,8 @@ namespace silly
             }
             else
             {
+                assert( 0 && "NYI" );
+#if 0
                 silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
 
                 mlir::Type varType = declareOp.getTypeAttr().getValue();
@@ -1852,6 +1863,7 @@ namespace silly
 
                     value = builder.create<silly::LoadOp>( loc, varType, symRef, mlir::Value{} );
                 }
+#endif
             }
         }
         else if ( SillyParser::CallPrimaryContext *callCtx = dynamic_cast<SillyParser::CallPrimaryContext *>( ctx ) )
