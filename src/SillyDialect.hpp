@@ -1,22 +1,26 @@
+///
 /// @file    SillyDialect.hpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Include the SillyDialect.md generated include files and their MLIR dependencies.
+///
 #pragma once
 
-#include <mlir/Bytecode/BytecodeOpInterface.h>
-#include <mlir/Dialect/LLVMIR/LLVMTypes.h>
-#include <mlir/IR/Builders.h>
-#include <mlir/IR/Dialect.h>
 #include <mlir/IR/OpDefinition.h>
-#include <mlir/IR/OpImplementation.h>
+#include <mlir/IR/Dialect.h>
 #include <mlir/IR/OperationSupport.h>
-#include <mlir/IR/SymbolTable.h>
+#include <mlir/Interfaces/SideEffectInterfaces.h> // NoMemoryEffect
 #include <mlir/Support/TypeID.h>
+#include <mlir/Bytecode/BytecodeOpInterface.h>
+#include <mlir/IR/SymbolTable.h>
 
-// Include generated dialect declarations (includes getDialectNamespace)
+// Your custom type header (contains Silly_VarType class forward/definition)
+#include "SillyTypes.hpp"
+
+// Generated: dialect class forward declaration + getDialectNamespace()
 #include "SillyDialectDecls.hpp.inc"
 
-// Include generated operation declarations
+// Generated: full op class definitions (AbortOp, DeclareOp, etc.)
+// This must come AFTER Decls, before any .cpp.inc files
 #define GET_OP_CLASSES
 #include "SillyDialect.hpp.inc"
 

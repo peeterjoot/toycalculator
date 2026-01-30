@@ -82,7 +82,21 @@ mlir_tablegen(SillyDialect.hpp.inc -gen-op-decls -dialect silly)
 # Generate operation definitions
 mlir_tablegen(SillyDialect.cpp.inc -gen-op-defs -dialect silly)
 
-# Create a single TableGen target for all generated files
+# Generate type declarations
+mlir_tablegen(
+  SillyTypes.hpp.inc
+  -gen-typedef-decls
+  --typedefs-dialect=silly
+)
+
+# Generate type definitions
+mlir_tablegen(
+  SillyTypes.cpp.inc
+  -gen-typedef-defs
+  --typedefs-dialect=silly
+)
+
+# Create a single TableGen target for all generated the base dialect files
 add_public_tablegen_target(SillyDialectIncGen
   DEPENDS
     ${CMAKE_CURRENT_BINARY_DIR}/SillyDialectDecls.hpp.inc
@@ -91,14 +105,23 @@ add_public_tablegen_target(SillyDialectIncGen
     ${CMAKE_CURRENT_BINARY_DIR}/SillyDialect.cpp.inc
 )
 
-# TableGen for passes
+# And a TableGen target for the types files
+add_public_tablegen_target(SillyTypesIncGen
+  DEPENDS
+    ${CMAKE_CURRENT_BINARY_DIR}/SillyTypes.hpp.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/SillyTypes.cpp.inc
+)
+
+# and one for the MLIR -> LLVM-IR lowering TableGen pass
 set(LLVM_TARGET_DEFINITIONS src/SillyPasses.td)
+
 mlir_tablegen(SillyPasses.hpp.inc --gen-pass-decls -name Silly -I ${CMAKE_SOURCE_DIR}/src -I ${MLIR_INCLUDE_DIRS})
 
 add_public_tablegen_target(SillyPassesIncGen
   DEPENDS
     ${CMAKE_CURRENT_BINARY_DIR}/SillyPasses.hpp.inc
 )
+
 #------------------------------------------------------------------------------
 # Targets:
 
@@ -138,7 +161,7 @@ add_executable(simplest
 target_include_directories(silly PRIVATE ${ANTLR_OUTPUT_DIR})
 
 # Ensure the ANTLR and TableGen generation runs before building the project
-add_dependencies(silly simplest mlirtest silly_runtime GenerateANTLR SillyDialectIncGen SillyPassesIncGen)
+add_dependencies(silly simplest mlirtest silly_runtime GenerateANTLR SillyDialectIncGen SillyPassesIncGen SillyTypesIncGen)
 
 set(COMMON_COMPILE_OPTIONS
   -Wall

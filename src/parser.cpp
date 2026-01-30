@@ -17,6 +17,7 @@
 
 #include <format>
 
+#include "SillyDialect.hpp"
 #include "SillyExceptions.hpp"
 #include "parser.hpp"
 
@@ -239,7 +240,7 @@ namespace silly
                                              SillyParser::ExpressionContext *assignmentExpression,
                                              const std::vector<SillyParser::ExpressionContext *> *pExpressions )
     {
-        size_t arraySize{};
+        int64_t arraySize{};
         size_t numElements{ 1 };
         if ( arrayBounds )
         {
@@ -328,20 +329,23 @@ namespace silly
             }
         }
 
-        mlir::StringAttr strAttr = builder.getStringAttr( varName );
-        silly::DeclareOp dcl;
+        mlir::StringAttr symNameAttr = builder.getStringAttr( varName );
+
+        mlir::DenseI64ArrayAttr shapeAttr;
         if ( arraySize )
         {
-            dcl = builder.create<silly::DeclareOp>( loc, mlir::TypeAttr::get( ty ),
-                                                    builder.getI64IntegerAttr( arraySize ),
-                                                    /*parameter=*/nullptr, nullptr, initializers );
+            shapeAttr = builder.getDenseI64ArrayAttr( { arraySize } );
         }
         else
         {
-            dcl = builder.create<silly::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr, /*parameter=*/nullptr,
-                                                    nullptr, initializers );
+            shapeAttr = builder.getDenseI64ArrayAttr( {} );
         }
-        dcl->setAttr( "sym_name", strAttr );
+
+        silly::varType varType = builder.getType<silly::varType>( ty, shapeAttr );
+
+        silly::DeclareOp dcl = builder.create<silly::DeclareOp>( loc, varType, initializers,
+                                                                 /*parameter=*/nullptr,
+                                                                 /*param_number=*/nullptr, symNameAttr );
 
         f.lastDeclareOp = dcl.getOperation();
 
@@ -508,11 +512,22 @@ namespace silly
                 llvm::errs() << std::format( "function {}: parameter{}:\n", funcName, i );
                 funcOp.getArgument( i ).dump();
             } );
-            mlir::StringAttr strAttr = builder.getStringAttr( paramNames[i] );
-            silly::DeclareOp dcl = builder.create<silly::DeclareOp>(
-                startLoc, mlir::TypeAttr::get( argType ), /*size=*/nullptr, builder.getUnitAttr(),
-                builder.getI64IntegerAttr( i ), mlir::ValueRange{} );
-            dcl->setAttr( "sym_name", strAttr );
+
+            mlir::StringAttr symNameAttr = builder.getStringAttr( paramNames[i] );
+
+            mlir::DenseI64ArrayAttr shapeAttr = builder.getDenseI64ArrayAttr( {} );
+
+            silly::varType varType = builder.getType<silly::varType>( argType, shapeAttr );
+
+            std::vector<mlir::Value> initializers;
+
+            silly::DeclareOp dcl =
+                builder.create<silly::DeclareOp>( startLoc,
+                                                  varType,
+                                                  initializers,
+                                                  builder.getUnitAttr(),
+                                                  builder.getI64IntegerAttr( i ),
+                                                  symNameAttr );
 
             f.lastDeclareOp = dcl.getOperation();
         }
@@ -597,10 +612,12 @@ namespace silly
             processReturnLike( loc, nullptr );
         }
 
+#if 0
         LLVM_DEBUG( {
             llvm::errs() << "exitStartRule done: module dump:\n";
             mod->dump();
         } );
+#endif
     }
     CATCH_USER_ERROR
 
@@ -765,7 +782,7 @@ namespace silly
                             ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), tyI1 );
     }
 
-    mlir::Type ParseListener::integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext * ctx )
+    mlir::Type ParseListener::integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext *ctx )
     {
         mlir::Type ty;
 
@@ -848,15 +865,15 @@ namespace silly
         {
             std::string s = stripQuotes( loc, theString->getText() );
 
-            mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+            silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+            mlir::Value var = declareOp.getResult();
+
             mlir::StringAttr strAttr = builder.getStringAttr( s );
 
             silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
 
-            mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
-
-            builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ stringLiteral },
-                                             llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+            mlir::Value i{};
+            builder.create<silly::AssignOp>( loc, var, i, stringLiteral );
         }
     }
     CATCH_USER_ERROR
@@ -956,9 +973,6 @@ namespace silly
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
 
-        mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
-        mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
-
         assert( ctx->forStart() );
         assert( ctx->forEnd() );
         assert( ctx->forStart()->forRangeExpression() );
@@ -978,13 +992,15 @@ namespace silly
 
         if ( isVariableDeclared( loc, varName ) )
         {
-            throw UserError( loc, std::format( "Induction variable {} clashes with declared variable in: {}\n", varName, ctx->getText() ) );
+            throw UserError( loc, std::format( "Induction variable {} clashes with declared variable in: {}\n", varName,
+                                               ctx->getText() ) );
         }
 
         mlir::Value p = searchForInduction( varName );
         if ( p )
         {
-            throw UserError( loc, std::format( "Induction variable {} used by enclosing FOR: {}\n", varName, ctx->getText() ) );
+            throw UserError(
+                loc, std::format( "Induction variable {} used by enclosing FOR: {}\n", varName, ctx->getText() ) );
         }
 
         mlir::Type elemType = integerDeclarationType( loc, ctx->intType() );
@@ -1118,8 +1134,11 @@ namespace silly
             std::string varName = varNameObject->getText();
 
             silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+            silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
+            mlir::Type elemType = varTy.getElementType();
+            mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
+            llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
 
-            mlir::Type elemType = declareOp.getTypeAttr().getValue();
             mlir::Value optIndexValue{};
             if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
             {
@@ -1128,19 +1147,19 @@ namespace silly
                 mlir::Location iloc = getStartLocation( indexExpr->expression() );
                 optIndexValue = indexTypeCast( iloc, indexValue );
             }
-            else if ( declareOp.getSizeAttr() )
+            else if ( !shape.empty() )
             {
-                throw UserError( loc, std::format( "Attempted GET to string literal?: {}", ctx->getText() ) );
+                throw UserError( loc, std::format( "Attempted GET to string literal or array?: {}", ctx->getText() ) );
             }
             else
             {
                 // Scalar: load the value
             }
 
-            mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+            mlir::Value var = declareOp.getResult();
 
             silly::GetOp resultValue = builder.create<silly::GetOp>( loc, elemType );
-            builder.create<silly::AssignOp>( loc, symRef, optIndexValue, resultValue );
+            builder.create<silly::AssignOp>( loc, var, optIndexValue, resultValue );
         }
         else
         {
@@ -1282,20 +1301,19 @@ namespace silly
     {
         mlir::Value resultValue = parseExpression( exprContext, {} );
 
-        mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, currentVarName );
+        silly::DeclareOp declareOp = lookupDeclareForVar( loc, currentVarName );
+        mlir::Value var = declareOp.getResult();
 
         assert( resultValue );
 
         mlir::BlockArgument ba = mlir::dyn_cast<mlir::BlockArgument>( resultValue );
-        mlir::Operation * op = resultValue.getDefiningOp();
+        mlir::Operation *op = resultValue.getDefiningOp();
+        mlir::Value i{};
 
         // Don't check if it's a StringLiteralOp if it's an induction variable, since op will be nullptr
         if ( !ba && isa<silly::StringLiteralOp>( op ) )
         {
-            mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
-
-            builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ resultValue },
-                                             llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+            builder.create<silly::AssignOp>( loc, var, i, resultValue );
         }
         else
         {
@@ -1303,7 +1321,7 @@ namespace silly
             {
                 mlir::Value i = indexTypeCast( loc, currentIndexExpr );
 
-                silly::AssignOp assign = builder.create<silly::AssignOp>( loc, symRef, i, resultValue );
+                silly::AssignOp assign = builder.create<silly::AssignOp>( loc, var, i, resultValue );
 
                 LLVM_DEBUG( {
                     mlir::OpPrintingFlags flags;
@@ -1315,10 +1333,7 @@ namespace silly
             }
             else
             {
-                mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
-
-                builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ resultValue },
-                                                 llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+                builder.create<silly::AssignOp>( loc, var, i, resultValue );
             }
         }
     }
@@ -1437,7 +1452,7 @@ namespace silly
         return parseAnd( ctx, ty );
     }
 
-    mlir::Value ParseListener::parseAnd( antlr4::ParserRuleContext *ctx, mlir::Type ty)
+    mlir::Value ParseListener::parseAnd( antlr4::ParserRuleContext *ctx, mlir::Type ty )
     {
         assert( ctx );
 
@@ -1737,11 +1752,13 @@ namespace silly
 
         assert( value );
 
+#if 0
         LLVM_DEBUG( {
             llvm::errs() << "parseUnary: " << ctx->getText() << " -> type ";
             value.getType().dump();
             llvm::errs() << "\n";
         } );
+#endif
 
         return value;
     }
@@ -1784,9 +1801,9 @@ namespace silly
                     fty = mlir::dyn_cast<mlir::FloatType>( ty );
                 }
 
-                if (!fty)
+                if ( !fty )
                 {
-                   fty = tyF64;
+                    fty = tyF64;
                 }
 
                 value = parseFloat( loc, fty, floatNode->getText() );
@@ -1826,34 +1843,38 @@ namespace silly
             {
                 silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
 
-                mlir::Type varType = declareOp.getTypeAttr().getValue();
-
-                mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+                mlir::Value var = declareOp.getResult();
+                silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
+                mlir::Type elemType = varTy.getElementType();
+                mlir::Value i{};
 
                 if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
                 {
                     value = parseExpression( indexExpr->expression(), {} );
 
                     mlir::Location iloc = getStartLocation( indexExpr->expression() );
-                    mlir::Value i = indexTypeCast( iloc, value );
+                    i = indexTypeCast( iloc, value );
 
-                    value = builder.create<silly::LoadOp>( loc, varType, symRef, i );
+                    value = builder.create<silly::LoadOp>( loc, mlir::TypeRange{ elemType }, var, i );
                 }
                 else
                 {
-                    if ( declareOp.getSizeAttr() )
+                    mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
+                    llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
+
+                    if ( !shape.empty() )
                     {
-                        if ( mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( varType ) )
+                        if ( mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( elemType ) )
                         {
                             unsigned w = ity.getWidth();
                             if ( w == 8 )
                             {
-                                varType = tyPtr;
+                                elemType = tyPtr;    // HACK.  Assumes that the only use of INT8[] is for STRING.
                             }
                         }
                     }
 
-                    value = builder.create<silly::LoadOp>( loc, varType, symRef, mlir::Value{} );
+                    value = builder.create<silly::LoadOp>( loc, mlir::TypeRange{ elemType }, var, i );
                 }
             }
         }
@@ -1876,11 +1897,13 @@ namespace silly
 
         assert( value );
 
+#if 0
         LLVM_DEBUG( {
             llvm::errs() << "parsePrimary: " << ctx->getText() << " -> type ";
             value.getType().dump();
             llvm::errs() << "\n";
         } );
+#endif
 
         return value;
     }

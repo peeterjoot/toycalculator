@@ -1,8 +1,8 @@
-//
-// @file    SillyPasses.td
-// @author  Peeter Joot <peeterjoot@pm.me>
-// @brief   Dialect for lowering SillyDialect.td mlir to LLVM-IR.
-//
+///
+/// @file    SillyPasses.td
+/// @author  Peeter Joot <peeterjoot@pm.me>
+/// @brief   Dialect for lowering SillyDialect.td mlir to LLVM-IR.
+///
 include "mlir/Pass/PassBase.td"
 
 def SillyToLLVMLowering : Pass<"silly-to-llvm-lowering", "mlir::ModuleOp"> {

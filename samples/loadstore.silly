@@ -10,6 +10,9 @@
 INT64 anInitializedScalar{1};
 INT64 aTemporaryScalar;
 
+aTemporaryScalar = 3;
+PRINT aTemporaryScalar;
+
 aTemporaryScalar = anInitializedScalar;
 PRINT aTemporaryScalar;
 

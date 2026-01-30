@@ -1,6 +1,8 @@
-/// @file printflags.hpp
 ///
-/// print related types and enums, shared between builder, lowering and runtime.
+/// @file printflags.hpp
+/// @brief print related types and enums, shared between builder, lowering and runtime.
+/// @author  Peeter Joot <peeterjoot@pm.me>
+///
 #pragma once
 
 #include <stdint.h>

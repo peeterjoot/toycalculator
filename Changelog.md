@@ -529,6 +529,65 @@ DW_AT_decl_line             0x00000003
 
   This program was specifically for examining the MLIR silly dialect representation of those operations.
   * Disable: `div_zero_int` -- different results on intel vs. arm.
+  * Refactor DeclareOp, AssignOp and LoadOp to use a proper SSA form (from branch peeter/ssa-form-assign-load, squashed and cherry-picked into master.)
+
+    This introduces a new Silly_VarType, now used in DeclareOp.  AssignOp and LoadOp's now refer to a DeclareOp, instead of a var_name (symbol reference)
+
+    The varType:
+
+```
+def Silly_VarType : TypeDef<Silly_Dialect, "var"> {
+  let summary = "Abstract variable location (scalar or array)";
+  let description = [{
+    Represents an abstract handle to a variable's storage.
+    Scalars have empty shape; arrays have a non-empty shape.
+    This type is storage-agnostic and lowered to concrete memory
+    (e.g., LLVM alloca).
+  }];
+
+  let parameters = (ins
+    "mlir::Type":$elementType,
+    "mlir::DenseI64ArrayAttr":$shape // empty = scalar
+  );
+
+  let mnemonic = "var";
+
+  let assemblyFormat = "`<` $elementType $shape `>`";
+}
+```
+
+Declare's now look like:
+
+```
+%0 = silly.declare %c1_i64 : i64 {sym_name = "anInitializedScalar"} : <i64 []>
+%1 = silly.declare  :  {sym_name = "aTemporaryScalar"} : <i64 []>
+%2 = silly.declare %c1_i64_0, %c0_i64 : i64, i64 {sym_name = "aVectorLength2"} : <i64 [2]>
+%3 = silly.declare  :  {sym_name = "aStringLength2"} : <i8 [10]>
+```
+
+Example LoadOp, and AssignOp's
+
+```
+%1 = silly.declare  :  {sym_name = "aTemporaryScalar"} : <i64 []>
+%c3_i64 = arith.constant 3 : i64
+silly.assign %1 : <i64 []> = %c3_i64 : i64
+
+%4 = silly.load %1 : <i64 []> : i64
+...
+"silly.print"(%c0_i32, %4) : (i32, i64) -> ()
+```
+
+Loads and Assigns now reference a DeclareOp (SSA return value), and not a symbol name.
+
+Specific changes:
+  - [lowering] Adjust all the DeclareOp, AssignOp and LoadOp's to use the new model.
+  - [parser] Adjust all the DeclareOp, AssignOp and LoadOp's to use the new model.
+  - [cmake] Generate SillyTypes.hpp.inc SillyTypes.cpp.inc, adding dependencies.
+  - [TODO] No error for "Attempted GET to string literal"
+  - [TODO] nice to have: custom var printer to show scalar type, as `<i64>` (for example) instead of `<i64 []>`
+  - [tablegen] New Silly_VarType, use in DeclareOp, returning that varType (still has the var_name symbol.)  Adjusted AssignOp and LoadOp to use %foo (a DeclareOp mlir::Value) instead of a var_name symbol reference.  Adjusted all the source/headers that include the tablegen boilerplate headers -- lots of tweaking required.
+
+
 
 ## tag: V7 (Jan 4, 2025)
 

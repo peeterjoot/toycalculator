@@ -1,6 +1,8 @@
+///
 /// @file    SillyExceptions.hpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Exception handling classes for the silly compiler.
+///
 #pragma once
 
 #include <exception>

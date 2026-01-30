@@ -1,6 +1,8 @@
+///
 /// @file    lowering.hpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Glue code for MLIR lowering to LLVM-IR.
+///
 #pragma once
 
 #include <mlir/Pass/Pass.h>

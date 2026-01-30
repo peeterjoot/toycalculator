@@ -826,10 +826,11 @@ namespace silly
 
             if ( silly::LoadOp loadOp = input.getDefiningOp<silly::LoadOp>() )
             {
-                mlir::SymbolRefAttr varNameAttr = loadOp.getVarName();
-                assert( varNameAttr );
-                std::string varName = varNameAttr.getLeafReference().str();
-                mlir::LLVM::AllocaOp allocaOp = lookupLocalSymbolReference( loadOp, varName );
+                mlir::Value var = loadOp.getVar();
+                assert( var );
+                silly::DeclareOp declareOp = var.getDefiningOp<silly::DeclareOp>();
+                mlir::StringRef varName = declareOp.getName();
+                mlir::LLVM::AllocaOp allocaOp = lookupLocalSymbolReference( loadOp, varName.str() );
                 assert( allocaOp.getElemType() == tyI8 );
                 if ( mlir::LLVM::ConstantOp constOp = allocaOp.getArraySize().getDefiningOp<mlir::LLVM::ConstantOp>() )
                 {
@@ -1228,7 +1229,8 @@ namespace silly
             rewriter.setInsertionPoint( op );
 
             mlir::StringRef varName = declareOp.getName();
-            mlir::Type elemType = declareOp.getType();
+            silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
+            mlir::Type elemType = varTy.getElementType();
 
             if ( param )
             {
@@ -1276,16 +1278,18 @@ namespace silly
                 // separate byte for each.
                 unsigned alignment = lState.preferredTypeAlignment( op, elemType );
 
+                mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
+                llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
+
                 mlir::Value sizeVal;
                 mlir::Value bytesVal;
                 int64_t arraySize = 1;
-                if ( declareOp.getSize().has_value() )
+                if ( !shape.empty() )
                 {
-                    arraySize = declareOp.getSize().value();
-                    if ( arraySize <= 0 )
-                    {
-                        return rewriter.notifyMatchFailure( declareOp, "array size must be positive" );
-                    }
+                    arraySize = shape[0];
+
+                    assert( arraySize > 0 );
+                    assert( shape.size() == 1 );
 
                     sizeVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.tyI64,
                                                                        rewriter.getI64IntegerAttr( arraySize ) );
@@ -1305,13 +1309,13 @@ namespace silly
                 lState.constructVariableDI( getLocation( loc ), varName, elemType, elemSizeInBits, allocaOp,
                                             arraySize );
 
-                auto init = declareOp.getInit();
+                auto init = declareOp.getInitializers();
                 if ( init.size() )
                 {
                     mlir::Type elemType = allocaOp.getElemType();
                     unsigned alignment = lState.preferredTypeAlignment( op, elemType );
 
-                    if ( declareOp.getSize().has_value() )
+                    if ( !shape.empty() )
                     {
                         for ( size_t i = 0; i < init.size(); ++i )
                         {
@@ -1339,7 +1343,6 @@ namespace silly
             }
 
             rewriter.eraseOp( op );
-
             return mlir::success();
         }
     };
@@ -1396,23 +1399,24 @@ namespace silly
             silly::AssignOp assignOp = cast<silly::AssignOp>( op );
             mlir::Location loc = assignOp.getLoc();
 
-            // (ins StrAttr:$name, AnyType:$value);
-            // silly.assign "x", %0 : i32
+            // silly.assign %0 : <i64[[]]> = %c1_i64 : i64 loc(#loc3)
             LLVM_DEBUG( llvm::dbgs() << "Lowering AssignOp: " << *op << '\n' );
 
-            mlir::SymbolRefAttr varNameAttr = assignOp.getVarName();
-            assert( varNameAttr );
+            mlir::Value var = assignOp.getVar();
+            assert( var );
+            silly::DeclareOp declareOp = var.getDefiningOp<silly::DeclareOp>();
 
             // Get string (e.g., "x")
-            std::string varName = varNameAttr.getLeafReference().str();
+            mlir::StringRef varName = declareOp.getName();
             LLVM_DEBUG( { llvm::dbgs() << "AssignOp variable name: " << varName << "\n"; } );
 
-            mlir::LLVM::AllocaOp allocaOp = lState.lookupLocalSymbolReference( assignOp, varName );
+            mlir::LLVM::AllocaOp allocaOp = lState.lookupLocalSymbolReference( assignOp, varName.str() );
 
             mlir::Value value = assignOp.getValue();
             LLVM_DEBUG( llvm::dbgs() << "varName: " << varName << '\n' );
 
-            mlir::Type elemType = allocaOp.getElemType();
+            silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
+            mlir::Type elemType = varTy.getElementType();
             unsigned alignment = lState.preferredTypeAlignment( op, elemType );
 
             lState.generateAssignment( loc, rewriter, value, elemType, allocaOp, alignment, assignOp.getIndex() );
@@ -1579,8 +1583,11 @@ namespace silly
             // %0 = silly.load "i1v" : i1
             LLVM_DEBUG( llvm::dbgs() << "Lowering silly.load: " << *op << '\n' );
 
-            std::string varName = loadOp.getVarNameAttr().getRootReference().getValue().str();
-            mlir::LLVM::AllocaOp allocaOp = lState.lookupLocalSymbolReference( loadOp, varName );
+            mlir::Value var = loadOp.getVar();
+            assert( var );
+            silly::DeclareOp declareOp = var.getDefiningOp<silly::DeclareOp>();
+            mlir::StringRef varName = declareOp.getName();
+            mlir::LLVM::AllocaOp allocaOp = lState.lookupLocalSymbolReference( loadOp, varName.str() );
             mlir::TypedValue<mlir::IndexType> optIndex = loadOp.getIndex();
 
             LLVM_DEBUG( llvm::dbgs() << "varName: " << varName << '\n' );

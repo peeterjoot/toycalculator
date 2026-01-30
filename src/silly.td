@@ -1,18 +1,18 @@
-//
-// @file    silly.md
-// @author  Peeter Joot <peeterjoot@pm.me>
-// @brief   This implements the Silly compiler dialect.
-//
-// @description
-//
-// This dialect implements:
-// - A couple of simple numeric operators (unary negation, binary +-*/),
-// - An exit operation,
-// - A declare operation,
-// - An assignment operation, and
-// - A print operation.
-// - A Function operation (for the implicit main, and any user defined functions.)
-//
+///
+/// @file    silly.md
+/// @author  Peeter Joot <peeterjoot@pm.me>
+/// @brief   This implements the Silly compiler dialect.
+///
+/// @description
+///
+/// This dialect implements:
+/// - A couple of simple numeric operators (unary negation, binary +-*/),
+/// - An exit operation,
+/// - A declare operation,
+/// - An assignment operation, and
+/// - A print operation.
+/// - A Function operation (for the implicit main, and any user defined functions.)
+///
 include "mlir/IR/BuiltinTypes.td"
 include "mlir/IR/BuiltinAttributes.td"
 include "mlir/IR/OpBase.td"
@@ -25,35 +25,107 @@ def Silly_Dialect : Dialect {
   let name = "silly";
   let summary = "An MLIR dialect for a silly simple language";
   let cppNamespace = "silly";
+
+  let useDefaultTypePrinterParser = 1;
+}
+
+def Silly_VarType : TypeDef<Silly_Dialect, "var"> {
+  let summary = "Abstract variable location (scalar or array)";
+  let description = [{
+    Represents an abstract handle to a variable's storage.
+    Scalars have empty shape; arrays have a non-empty shape.
+    This type is storage-agnostic and lowered to concrete memory
+    (e.g., LLVM alloca).
+  }];
+
+  let parameters = (ins
+    "mlir::Type":$elementType,
+    "mlir::DenseI64ArrayAttr":$shape // empty = scalar
+  );
+
+  let mnemonic = "var";
+
+  //let assemblyFormat = "`<` $elementType `[` $shape `]` `>`"; // shape already builds in brackets
+  let assemblyFormat = "`<` $elementType $shape `>`";
 }
 
 def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
-  let summary = "Declare a parameter, variable or array, type (integer or float), and optional size.";
+  let summary = "Declare an abstract variable location (scalar or array).";
   let description = [{
     Declares a variable (scalar or array) or function parameter with a name and type.
     For parameters, the `parameter` attribute is set, and `param_number` indicates the parameter index.
+    The result is an abstract handle (!silly.var) to the variable's location, storage-agnostic.
+    Initializers are provided as operands; for arrays, excess initializers are an error.
   }];
-  let arguments = (ins TypeAttr:$type, OptionalAttr<I64Attr>:$size, OptionalAttr<UnitAttr>:$parameter, OptionalAttr<I64Attr>:$param_number, Variadic<AnyType>:$init);
-  let results = (outs);
+  let arguments = (ins
+    Variadic<AnyType>:$initializers,
+    OptionalAttr<UnitAttr>:$parameter,
+    OptionalAttr<I64Attr>:$param_number,
+    StrAttr:$sym_name
+  );
+  let results = (outs Silly_VarType:$var);
   let traits = [Symbol];
 
-  let extraClassDeclaration = [{
-    mlir::StringAttr getSymNameAttr() { return mlir::dyn_cast<mlir::StringAttr>( getOperation()->getAttr("sym_name") ); }
+  let assemblyFormat = "$initializers `:` type($initializers) attr-dict `:` type($var)";
 
-    bool isParameter() { return getOperation()->hasAttr("parameter"); }
+  let extraClassDeclaration = [{
+    bool isParameter() { return getParameterAttr() != nullptr; }
 
     mlir::LogicalResult verify() {
-      if (!getSymNameAttr()) {
-        return emitOpError("requires a 'sym_name' attribute of type StringAttr.");
+      // Symbol name must exist and be non-empty
+      if (getSymName().empty()) {
+        return emitOpError("requires a non-empty 'sym_name' attribute of type StringAttr.");
       }
+
+      // Parameter consistency
       if (isParameter() && !getParamNumberAttr()) {
         return emitOpError("parameter declarations require a 'param_number' attribute.");
       }
       if (!isParameter() && getParamNumberAttr()) {
         return emitOpError("non-parameter declarations cannot have a 'param_number' attribute.");
       }
+
+      // Result type must be !silly.var<...>
+      auto varType = mlir::dyn_cast<silly::varType>(getVar().getType());
+      if (!varType) {
+        return emitOpError("result must be of type !silly.var");
+      }
+
+      // Determine element count from the type shape
+      llvm::ArrayRef<int64_t> shape = varType.getShape();
+
+      if (!shape.empty()) {
+        if (shape.size() != 1) {
+          return emitOpError("only 1D arrays are supported (rank must be 0 or 1)");
+        }
+        if (shape[0] <= 0) {
+          return emitOpError("array size must be a positive integer");
+        }
+      }
+
+      // Check initializer count
+      size_t numInits = getInitializers().size();
+      size_t numElements = shape.empty() ? 1 : shape[0];
+
+      if (numInits > numElements) {
+        return emitOpError("number of initializers (")
+               << numInits << ") exceeds number of elements (" << numElements << ")";
+      }
+
+      // Optional: type-check initializers
+      mlir::Type elemTy = varType.getElementType();
+      for (mlir::Value init : getInitializers()) {
+        if (init.getType() != elemTy) {
+          return emitOpError("initializer type ")
+                 << init.getType()
+                 << " does not match variable element type "
+                 << elemTy;
+        }
+      }
+
       return mlir::success();
     }
+
   }];
 }
 
@@ -62,24 +134,27 @@ def Silly_IntOrFloat : TypeConstraint<
   "integer or float type">;
 
 def Silly_AssignOp : Op<Silly_Dialect, "assign"> {
-  let summary = "Assign a value to a variable (scalar or array element).";
+  let summary = "Assign a value to a variable (or array element).";
 
   let description = [{
-    Assigns `value` to the variable referenced by `var_name`.
-    If `index` is present, the assignment targets the array element at that index.
-    The target variable must have been declared with a matching `silly.declare`.
+    Assigns `value` to the storage referenced by `%var`.
+    If `index` is present, it targets the array element at that (dynamic) index.
+    The `%var` must be a result of a `silly.declare` (or equivalent) with matching element type and shape.
+    For scalars: `index` must be absent.
+    For arrays: `index` is required (even if statically known to be 0 for single-element arrays).
   }];
 
   let arguments = (ins
-    SymbolRefAttr:$var_name,               // @t
-    Optional<Index>:$index,                // optional SSA value of index type (dynamic or none)
-    AnyType:$value                         // the value being assigned
+    Silly_VarType:$var,                    // the SSA handle from declare
+    Optional<Index>:$index,                // dynamic index for array element (absent = scalar)
+    AnyType:$value                         // value to assign (must match elementType of $var)
   );
 
-  let results = (outs);
+  let results = (outs);   // side-effecting op, no result
 
-  let assemblyFormat =
-    "$var_name (`[` $index^ `]`)? `=` $value `:` type($value) attr-dict";
+  let assemblyFormat = [{
+    $var `:` type($var) (`[` $index^ `]`)? `=` $value `:` type($value) attr-dict
+  }];
 }
 
 def Silly_DebugName : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {
@@ -105,14 +180,14 @@ def Silly_DebugName : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {
 def Silly_LoadOp : Op<Silly_Dialect, "load"> {
   let summary = "Load a variable (scalar or array element) by symbol reference.";
   let arguments = (ins
-    SymbolRefAttr:$var_name,               // @t
+    Silly_VarType:$var,                    // the SSA handle from declare
     Optional<Index>:$index                 // optional SSA value of index type (dynamic or none)
   );
 
   let results = (outs AnyType:$result);
 
   let assemblyFormat =
-    "$var_name (`[` $index^ `]`)? `:` type($result) attr-dict";
+    "$var `:` type($var) (`[` $index^ `]`)? `:` type($result) attr-dict";
 }
 
 def Silly_YieldOp : Op<Silly_Dialect, "yield"> {
