@@ -451,6 +451,18 @@ foreach my $stem (sort @alltests)
         }
     }
 
+    if ( $stem eq 'for_simplest' )
+    {
+        # Could check a lot more, but start with this:
+        my $cmd = qq(dwarfdump out/for_simplest.o | tee out/for_simplest.dd | grep -A3 'DW_AT_name.*myLoopVar' | tail -1);
+        my $line = `$cmd` ; chomp $line;
+
+        unless ( $line =~ /DW_AT_decl_line.*0x00000003/ )
+        {
+            complain( "ERROR: unexpected dwarfdump output for for_simplest.silly (variable myLoopVar) in out/for_simplest.dd.  Expected DW_AT_decl_line 0x00000003, found: '$line'" );
+        }
+    }
+
     if ( defined $decl_order_tests{$stem} )
     {
         check_decl_order( "out/${stem}.mlir", $decl_order_tests{$stem} );

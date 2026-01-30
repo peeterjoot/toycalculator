@@ -514,6 +514,14 @@ $2 = 2
 type = int64_t
 ```
   * [lowering] Standardize on a 'loc, rewriter' sequence in all helper functions that take both (instead of a hodge podge or 'loc, rewriter' and 'rewriter, loc')
+  * Very simplest debug test case for loop induction variables.  For test `for_simplest` check the dwarfdump for:
+
+```
+DW_AT_name                  i
+DW_AT_alignment             0x00000008
+DW_AT_decl_file             0x00000001 ./for_simplest.silly
+DW_AT_decl_line             0x00000003
+```
 
 ## tag: V7 (Jan 4, 2025)
 
