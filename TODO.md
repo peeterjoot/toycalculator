@@ -5,11 +5,46 @@
 1. Don't like the loc printout in UserError error messages.  Also shouldn't print the ctx, but use the location of the ctx to print out the actual line of source, and highlight the column where the error is.
 2. `error_invalid_unary` -- regression by tweaking the test. was triggering on y undeclared, not on the parse error -- which doesn't actually drive a compile error!
 3. Need tests for debug capability.  For example, new induction variable support (t/c: `for_simplest.silly` -- only tested manually.)
-4. SSA form for loop variable access didn't fix the gdb line number ping pong in loop body line stepping.  Simpler t/c: printdi.silly
+4. SSA form for loop variable access didn't fix the gdb line number ping pong in loop body line stepping.  Simpler t/c: printdi.silly -- Example:
+
+```
+(gdb) b 6
+Breakpoint 2 at 0x400798: file printdi.silly, line 6.
+(gdb) c
+The program is not being run.
+(gdb) run
+Starting program: /home/peeter/toycalculator/samples/out/printdi
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib64/libthread_db.so.1".
+
+Breakpoint 2, main () at printdi.silly:6
+6           t = c[i];
+(gdb) n
+8           PRINT "c[", i, "] = ", t;
+(gdb) n
+6           t = c[i];
+(gdb) p i
+$1 = 0
+(gdb) n
+8           PRINT "c[", i, "] = ", t;
+(gdb) n
+c[0] = 1
+4       FOR (INT32 i: (0, 5))
+(gdb) p i
+$2 = 0
+(gdb) n
+
+Breakpoint 2, main () at printdi.silly:6
+6           t = c[i];
+```
+
+(see that we have two hits to PRINT and the assignment before the breakpoint hits again.)
+
 5. Allow: INT64 a = 1, b = 2, c = 3; (`chained_comparison_parens.silly`).
 6. Forgetting RETURN in `array_elem_as_arg.silly` has a very confusing error.
 7. Grammar probably allows for function declared in a function.  prohibit that or at least test for it?
 8. Need a sema pass: For example, initializer-list shouldn't reference variables, only constant-expressions, or expressions with parameters.  t/c for this: `error_nonconst_init.silly`
+9. Have an effective lexical scope for loop variables, but am emitting DI for them at a function scope.  This will probably do something weird if a loop variable is used in multiple loops.
 
 ----------------------------------
 * Bugs:
