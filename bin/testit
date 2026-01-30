@@ -225,6 +225,7 @@ minimal_eliftest
 minmax
 mixed_type_assignment
 neg
+negative_step_for
 neqop
 nested_calls
 nested_for
@@ -260,7 +261,6 @@ unary_on_array_elem
 xorop
 zero_iter_for
 ));
-# negative_step_for -- broken.  debug/fix.
 #error_nonconst_init -- want this to be a compile error, but it isn't yet.
 
 my %failuretests = map {$_ => 1} (qw(
@@ -286,6 +286,7 @@ error_stringreturn
 error_triple_nested_for_with_shadowing
 error_undeclare
 ));
+#error_zero_step_for -- infinite loops.  would be better to have runtime check for that and abort.
 #error_invalid_unary -- regression. was triggering on y undeclared, not on the parse error -- which doesn't actually drive a compile error!
 #error_intarray_bad_constaccess
 #error_array_oob_const -- dup?

@@ -543,7 +543,10 @@ IF (x < 0) {
 
 ### FOR Loop
 
-Range-based iteration with optional step size.
+Range-based iteration with optional (positive) step size.
+
+There is currently no checking that the step size is positive or non-zero.  Use of
+a negative or zero step currently has undefined behaviour.
 
 ```text
 FOR ( INT32 i : (1, 10) ) {

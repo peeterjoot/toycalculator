@@ -1,19 +1,15 @@
 ## TODO
 
 ----------------------------------
--5. `negative_step_for.silly` -- broken.
--4. Don't like the loc printout in UserError error messages.  Also shouldn't print the ctx, but use the location of the ctx to print out the actual line of source, and highlight the column where the error is.
--3. `error_invalid_unary` -- regression by tweaking the test. was triggering on y undeclared, not on the parse error -- which doesn't actually drive a compile error!
-
--1. Have lost DI for FOR loop induction variables.
-0. SSA form for loop variable access didn't fix the gdb line number ping pong in loop body line stepping.  Simpler t/c: printdi.silly
-1. test case for nested FOR loops.  Error tests for conflicting induction variables (with variables and also
-   induction variables for outer loops.)
-2. Allow: INT64 a = 1, b = 2, c = 3; (`chained_comparison_parens.silly`).
-3. Forgetting RETURN in `array_elem_as_arg.silly` has a very confusing error.
-4. Grammar probably allows for function declared in a function.  prohibit that or at least test for it?
-5. Need a sema pass: For example, initializer-list shouldn't reference variables, only constant-expressions, or
-   expressions with parameters.  t/c for this: `error_nonconst_init.silly`
+0. `negative_step_for.silly` -- would be better to put in a (perhaps optional) runtime check for negative or zero step sizes in FOR statements.  test case for the zero step condition: `zero_step_for.silly` -- not included in automation, as it infinite loops (would be better if it did not.)
+1. Don't like the loc printout in UserError error messages.  Also shouldn't print the ctx, but use the location of the ctx to print out the actual line of source, and highlight the column where the error is.
+2. `error_invalid_unary` -- regression by tweaking the test. was triggering on y undeclared, not on the parse error -- which doesn't actually drive a compile error!
+3. Have lost DI for FOR loop induction variables.
+4. SSA form for loop variable access didn't fix the gdb line number ping pong in loop body line stepping.  Simpler t/c: printdi.silly
+5. Allow: INT64 a = 1, b = 2, c = 3; (`chained_comparison_parens.silly`).
+6. Forgetting RETURN in `array_elem_as_arg.silly` has a very confusing error.
+7. Grammar probably allows for function declared in a function.  prohibit that or at least test for it?
+8. Need a sema pass: For example, initializer-list shouldn't reference variables, only constant-expressions, or expressions with parameters.  t/c for this: `error_nonconst_init.silly`
 
 ----------------------------------
 * Bugs:

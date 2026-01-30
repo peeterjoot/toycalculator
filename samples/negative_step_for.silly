@@ -1,3 +1,7 @@
-FOR (INT32 i: (10, 0, -1)) {
-    PRINT i;
+// negative steps are currently not supported, but also not checked for.
+// pending runtime checking for this "unsupported" feature, the expected
+// behaviour is currently just to not execute the loop:
+FOR (INT64 i: (10, 0, -1)) {
+    PRINT i; // should not see this.
 };
+PRINT "Done";

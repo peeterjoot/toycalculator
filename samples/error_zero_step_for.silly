@@ -1,0 +1,4 @@
+FOR (INT64 i: (0, 1, 0)) {
+    PRINT i; // infinite loop?
+};
+PRINT "Done";

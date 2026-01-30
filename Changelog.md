@@ -463,6 +463,7 @@ RETURN SHOULD BE HERE ... it's up in the outer for loop body!
     "silly.yield"() : () -> () loc(#loc20)
   }) : () -> () loc(#loc1)
 ```
+  * Document that negative and zero size step values in FOR loops is not supported, and has undefined behaviour.
 
 ## tag: V7 (Jan 4, 2025)
 
