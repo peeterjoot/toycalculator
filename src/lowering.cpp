@@ -521,7 +521,119 @@ namespace silly
         symbolToAlloca[funcNameAndVarName] = allocaOp;
     }
 
-    void LoweringContext::constructVariableDI( llvm::StringRef varName, mlir::Type& elemType, mlir::FileLineColLoc loc,
+    void LoweringContext::infoForVariableDI( mlir::FileLineColLoc loc, llvm::StringRef varName, mlir::Type& elemType,
+                                             unsigned elemSizeInBits, int64_t arraySize, const char*& typeName,
+                                             unsigned& dwType, unsigned& elemStorageSizeInBits )
+    {
+        if ( !driverState.wantDebug )
+        {
+            return;
+        }
+
+        typeName = nullptr;
+        dwType = llvm::dwarf::DW_ATE_signed;
+        elemStorageSizeInBits = elemSizeInBits;    // Storage size (e.g., i1 uses i8)
+
+        if ( mlir::isa<mlir::IntegerType>( elemType ) )
+        {
+            switch ( elemSizeInBits )
+            {
+                case 1:
+                {
+                    typeName = "bool";
+                    dwType = llvm::dwarf::DW_ATE_boolean;
+                    elemStorageSizeInBits = 8;
+                    break;
+                }
+                case 8:
+                {
+                    typeName = "char";    // Using "char" for STRING arrays
+                    dwType = llvm::dwarf::DW_ATE_signed_char;
+                    break;
+                }
+                case 16:
+                {
+                    typeName = "int16_t";
+                    break;
+                }
+                case 32:
+                {
+                    typeName = "int32_t";
+                    break;
+                }
+                case 64:
+                {
+                    typeName = "int64_t";
+                    break;
+                }
+                default:
+                {
+                    llvm_unreachable( "Unsupported integer type size" );
+                }
+            }
+        }
+        else if ( mlir::isa<mlir::FloatType>( elemType ) )
+        {
+            dwType = llvm::dwarf::DW_ATE_float;
+            switch ( elemSizeInBits )
+            {
+                case 32:
+                {
+                    typeName = "float";
+                    break;
+                }
+                case 64:
+                {
+                    typeName = "double";
+                    break;
+                }
+                default:
+                {
+                    llvm_unreachable( "Unsupported float type size" );
+                }
+            }
+        }
+        else
+        {
+            llvm_unreachable( "Unsupported type for debug info" );
+        }
+    }
+
+    void LoweringContext::constructInductionVariableDI( mlir::FileLineColLoc fileLoc,
+                                                        mlir::ConversionPatternRewriter& rewriter, mlir::Value value,
+                                                        std::string varName, mlir::StringAttr nameAttr,
+                                                        mlir::Type elemType, unsigned elemSizeInBits,
+                                                        std::string funcName )
+    {
+        assert( fileLoc );
+
+        mlir::LLVM::DISubprogramAttr sub = funcState[funcName].subProgramDI;
+        assert( sub );
+
+        const char* typeName;
+        unsigned dwType;
+        unsigned elemStorageSizeInBits;
+
+        LoweringContext::infoForVariableDI( fileLoc, varName, elemType, elemSizeInBits, 1, typeName, dwType,
+                                            elemStorageSizeInBits );
+
+        mlir::MLIRContext* context = builder.getContext();
+
+        mlir::LLVM::DITypeAttr diType = mlir::LLVM::DIBasicTypeAttr::get(
+            context, llvm::dwarf::DW_TAG_base_type, builder.getStringAttr( typeName ), elemStorageSizeInBits, dwType );
+
+        mlir::LLVM::DILocalVariableAttr diVar = mlir::LLVM::DILocalVariableAttr::get(
+            context, sub, nameAttr, fileAttr, fileLoc.getLine(),
+            /*argNo=*/0, elemStorageSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
+
+        // Emit llvm.dbg.value
+        // Empty expression for direct value binding
+        mlir::LLVM::DIExpressionAttr emptyExpr = mlir::LLVM::DIExpressionAttr::get( context, {} );
+
+        rewriter.create<mlir::LLVM::DbgValueOp>( fileLoc, value, diVar, emptyExpr );
+    }
+
+    void LoweringContext::constructVariableDI( mlir::FileLineColLoc loc, llvm::StringRef varName, mlir::Type& elemType,
                                                unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp,
                                                int64_t arraySize )
     {
@@ -534,73 +646,12 @@ namespace silly
             mlir::LLVM::DILocalVariableAttr diVar;
             mlir::LLVM::DITypeAttr diType;
 
-            const char* typeName{};
-            unsigned dwType = llvm::dwarf::DW_ATE_signed;
-            unsigned elemStorageSizeInBits = elemSizeInBits;    // Storage size (e.g., i1 uses i8)
+            const char* typeName;
+            unsigned dwType;
+            unsigned elemStorageSizeInBits;
 
-            if ( mlir::isa<mlir::IntegerType>( elemType ) )
-            {
-                switch ( elemSizeInBits )
-                {
-                    case 1:
-                    {
-                        typeName = "bool";
-                        dwType = llvm::dwarf::DW_ATE_boolean;
-                        elemStorageSizeInBits = 8;
-                        break;
-                    }
-                    case 8:
-                    {
-                        typeName = "char";    // Using "char" for STRING arrays
-                        dwType = llvm::dwarf::DW_ATE_signed_char;
-                        break;
-                    }
-                    case 16:
-                    {
-                        typeName = "int16_t";
-                        break;
-                    }
-                    case 32:
-                    {
-                        typeName = "int32_t";
-                        break;
-                    }
-                    case 64:
-                    {
-                        typeName = "int64_t";
-                        break;
-                    }
-                    default:
-                    {
-                        llvm_unreachable( "Unsupported integer type size" );
-                    }
-                }
-            }
-            else if ( mlir::isa<mlir::FloatType>( elemType ) )
-            {
-                dwType = llvm::dwarf::DW_ATE_float;
-                switch ( elemSizeInBits )
-                {
-                    case 32:
-                    {
-                        typeName = "float";
-                        break;
-                    }
-                    case 64:
-                    {
-                        typeName = "double";
-                        break;
-                    }
-                    default:
-                    {
-                        llvm_unreachable( "Unsupported float type size" );
-                    }
-                }
-            }
-            else
-            {
-                llvm_unreachable( "Unsupported type for debug info" );
-            }
+            LoweringContext::infoForVariableDI( loc, varName, elemType, elemSizeInBits, arraySize, typeName, dwType,
+                                                elemStorageSizeInBits );
 
             std::string funcName = lookupFuncNameForOp( allocaOp );
             mlir::LLVM::DISubprogramAttr sub = funcState[funcName].subProgramDI;
@@ -1251,7 +1302,7 @@ namespace silly
                 mlir::LLVM::AllocaOp allocaOp =
                     rewriter.create<mlir::LLVM::AllocaOp>( loc, lState.tyPtr, elemType, sizeVal, alignment );
 
-                lState.constructVariableDI( varName, elemType, getLocation( loc ), elemSizeInBits, allocaOp,
+                lState.constructVariableDI( getLocation( loc ), varName, elemType, elemSizeInBits, allocaOp,
                                             arraySize );
 
                 auto init = declareOp.getInit();
@@ -1726,6 +1777,39 @@ namespace silly
         }
     };
 
+    class DebugNameOpLowering : public mlir::ConversionPattern
+    {
+       private:
+        LoweringContext& lState;
+
+       public:
+        DebugNameOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( silly::DebugName::getOperationName(), benefit, context ), lState{ loweringState }
+        {
+        }
+
+        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
+                                             mlir::ConversionPatternRewriter& rewriter ) const override
+        {
+            silly::DebugName debugNameOp = cast<silly::DebugName>( op );
+            mlir::Value value = debugNameOp.getValue();
+            std::string varName = debugNameOp.getName().str();
+            mlir::StringAttr nameAttr = debugNameOp.getNameAttr();
+            mlir::Location loc = debugNameOp.getLoc();
+            mlir::FileLineColLoc fileLoc = getLocation( loc );
+
+            std::string funcName = lookupFuncNameForOp( op );
+            mlir::Type elemType = value.getType();
+            unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
+
+            lState.constructInductionVariableDI( fileLoc, rewriter, value, varName, nameAttr, elemType, elemSizeInBits,
+                                                 funcName );
+
+            rewriter.eraseOp( op );
+            return mlir::success();
+        }
+    };
+
     // Lower silly.print to a call to __silly_print.
     class PrintOpLowering : public mlir::ConversionPattern
     {
@@ -1737,6 +1821,7 @@ namespace silly
             : mlir::ConversionPattern( silly::PrintOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
+
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -2119,7 +2204,8 @@ namespace silly
                 target.addIllegalOp<silly::AddOp, silly::AndOp, silly::AssignOp, silly::DeclareOp, silly::DivOp,
                                     silly::EqualOp, silly::LessEqualOp, silly::LessOp, silly::LoadOp, silly::MulOp,
                                     silly::NegOp, silly::NotEqualOp, silly::OrOp, silly::PrintOp, silly::GetOp,
-                                    silly::StringLiteralOp, silly::SubOp, silly::XorOp, silly::AbortOp>();
+                                    silly::StringLiteralOp, silly::SubOp, silly::XorOp, silly::AbortOp,
+                                    silly::DebugName>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
                                   silly::ScopeOp, silly::YieldOp, silly::ReturnOp, silly::CallOp, mlir::func::CallOp,
                                   mlir::scf::IfOp, mlir::scf::ForOp, mlir::scf::YieldOp>();
@@ -2128,8 +2214,8 @@ namespace silly
                 patterns.add<AddOpLowering, AndOpLowering, AssignOpLowering, ConstantOpLowering, DeclareOpLowering,
                              DivOpLowering, EqualOpLowering, LessEqualOpLowering, LessOpLowering, LoadOpLowering,
                              MulOpLowering, NegOpLowering, NotEqualOpLowering, OrOpLowering, PrintOpLowering,
-                             AbortOpLowering, GetOpLowering, StringLiteralOpLowering, SubOpLowering, XorOpLowering>(
-                    lState, &getContext(), 1 );
+                             AbortOpLowering, GetOpLowering, StringLiteralOpLowering, SubOpLowering, XorOpLowering,
+                             DebugNameOpLowering>( lState, &getContext(), 1 );
 
                 if ( failed( applyFullConversion( mod, target, std::move( patterns ) ) ) )
                 {

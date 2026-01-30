@@ -227,7 +227,7 @@ namespace silly
         /// Side effect: Creates a silly::ScopeOp for main, if not already done.
         inline mlir::Location getStopLocation( antlr4::ParserRuleContext *ctx );
 
-        // inline mlir::Location getTerminalLocation(antlr4::tree::TerminalNode* node);
+        inline mlir::Location getTerminalLocation(antlr4::tree::TerminalNode* node);
 
         /// Strip double quotes off of a string.
         inline std::string stripQuotes( mlir::Location loc, const std::string &input ) const;

@@ -82,6 +82,26 @@ def Silly_AssignOp : Op<Silly_Dialect, "assign"> {
     "$var_name (`[` $index^ `]`)? `=` $value `:` type($value) attr-dict";
 }
 
+def Silly_DebugName : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {
+  let summary = "Associates a source-level name with a value for debug information purposes.";
+
+  let description = [{
+    This operation has no runtime effect and exists solely to propagate a variable name
+    (and optionally a source location) to lowering passes that emit debug metadata (e.g. LLVM IR).
+    It is typically inserted immediately after the value is defined (or at the point where
+    the value becomes "live" in source terms).
+
+    Example:
+      %ind = arith.addi %prev, %step : i32
+      "silly.debug_name"(%ind) {name = "i"} : (i32) -> ()
+  }];
+
+  let arguments = (ins
+    AnyType:$value,
+    StrAttr:$name
+  );
+}
+
 def Silly_LoadOp : Op<Silly_Dialect, "load"> {
   let summary = "Load a variable (scalar or array element) by symbol reference.";
   let arguments = (ins

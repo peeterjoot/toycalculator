@@ -4,7 +4,7 @@
 0. `negative_step_for.silly` -- would be better to put in a (perhaps optional) runtime check for negative or zero step sizes in FOR statements.  test case for the zero step condition: `zero_step_for.silly` -- not included in automation, as it infinite loops (would be better if it did not.)
 1. Don't like the loc printout in UserError error messages.  Also shouldn't print the ctx, but use the location of the ctx to print out the actual line of source, and highlight the column where the error is.
 2. `error_invalid_unary` -- regression by tweaking the test. was triggering on y undeclared, not on the parse error -- which doesn't actually drive a compile error!
-3. Have lost DI for FOR loop induction variables.
+3. Need tests for debug capability.  For example, new induction variable support (t/c: `for_simplest.silly` -- only tested manually.)
 4. SSA form for loop variable access didn't fix the gdb line number ping pong in loop body line stepping.  Simpler t/c: printdi.silly
 5. Allow: INT64 a = 1, b = 2, c = 3; (`chained_comparison_parens.silly`).
 6. Forgetting RETURN in `array_elem_as_arg.silly` has a very confusing error.

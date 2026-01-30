@@ -464,6 +464,54 @@ RETURN SHOULD BE HERE ... it's up in the outer for loop body!
   }) : () -> () loc(#loc1)
 ```
   * Document that negative and zero size step values in FOR loops is not supported, and has undefined behaviour.
+  * Implement FOR induction variable debug-instrumentation.
+    - [tablegen] Add silly::debug_name
+    - [parser] resurrect getTerminalLocation, and use it to construct a DebugName OP in enterFor.
+    - [lowering] split out infoForVariableDI from constructVariableDI for use in DebugNameOpLowering.
+      Implement DebugNameOpLowering (mostly calling new helper constructInductionVariableDI), and make DebugName an illegalop.
+
+Example MLIR fragment:
+```
+        "silly.debug_name"(%arg0) <{name = "i"}> : (i64) -> () loc(#loc4)
+loc4 = loc("for_simplest.silly":3:12)
+```
+
+Example LLVM-IR fragment:
+
+```
+  %lsr.iv = phi i64 [ %lsr.iv.next, %6 ], [ 2, %0 ], !dbg !11
+  ...
+    #dbg_value(i64 %lsr.iv, !12, !DIExpression(DW_OP_constu, 1, DW_OP_minus, DW_OP_stack_value), !13)
+
+!12 = !DILocalVariable(name: "i", scope: !4, file: !1, line: 3, type: !10, align: 64)
+```
+
+Example debug session:
+```
+(gdb) run
+Starting program: /home/peeter/toycalculator/samples/out/for_simplest
+Downloading separate debug info for system-supplied DSO at 0xfffff7ffa000
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib64/libthread_db.so.1".
+
+Breakpoint 2, main () at for_simplest.silly:5
+5           PRINT i;
+(gdb) n
+1
+6           v = i + 1;
+(gdb) p i
+$1 = 1
+(gdb) n
+3       FOR (INT64 i : (1, 5))
+(gdb) n
+
+Breakpoint 2, main () at for_simplest.silly:5
+5           PRINT i;
+(gdb) p i
+$2 = 2
+(gdb) what i
+type = int64_t
+```
 
 ## tag: V7 (Jan 4, 2025)
 

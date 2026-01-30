@@ -70,8 +70,12 @@ namespace silly
         mlir::LLVM::AllocaOp lookupLocalSymbolReference( mlir::Operation* op, const std::string& varName );
 
         /// Emits debug information for a local variable or array.
-        void constructVariableDI( llvm::StringRef varName, mlir::Type& elemType, mlir::FileLineColLoc loc,
-                                  unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp, int64_t arraySize = 1 );
+        void constructVariableDI( mlir::FileLineColLoc loc, llvm::StringRef varName, mlir::Type& elemType,
+                                  unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp, int64_t arraySize );
+
+        void constructInductionVariableDI( mlir::FileLineColLoc fileLoc, mlir::ConversionPatternRewriter& rewriter,
+                                           mlir::Value value, std::string varName, mlir::StringAttr nameAttr,
+                                           mlir::Type elemType, unsigned elemSizeInBits, std::string funcName );
 
         /// Looks up or creates a global constant for a string literal.
         mlir::LLVM::GlobalOp lookupOrInsertGlobalOp( mlir::ConversionPatternRewriter& rewriter,
@@ -196,6 +200,10 @@ namespace silly
 
         /// Creates a DISubroutineType attribute for a function.
         mlir::LLVM::DISubroutineTypeAttr createDISubroutineType( mlir::func::FuncOp funcOp );
+
+        void infoForVariableDI( mlir::FileLineColLoc loc, llvm::StringRef varName, mlir::Type& elemType,
+                                unsigned elemSizeInBits, int64_t arraySize, const char*& typeName, unsigned& dwType,
+                                unsigned& elemStorageSizeInBits );
 
         /// Debug file attribute (used when debugging is enabled).
         mlir::LLVM::DIFileAttr fileAttr;

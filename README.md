@@ -578,7 +578,7 @@ Semantically equivalent to:
 }
 ```
 
-The induction variable name must not be used by any variable in the function, nor can it shadow any induction variable of the same name in an outer FOR loop.  Debug instrumentation for the induction variable is not currently supported.
+The induction variable name must not be used by any variable in the function, nor can it shadow any induction variable of the same name in an outer FOR loop.
 
 ---
 

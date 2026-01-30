@@ -187,7 +187,6 @@ namespace silly
         return locs.second;
     }
 
-#if 0
     inline mlir::Location ParseListener::getTerminalLocation( antlr4::tree::TerminalNode *node )
     {
         assert( node );
@@ -199,7 +198,6 @@ namespace silly
 
         return mlir::FileLineColLoc::get( builder.getStringAttr( filename ), line, column );
     }
-#endif
 
     DialectCtx::DialectCtx()
     {
@@ -1036,6 +1034,9 @@ namespace silly
 
         mlir::Value inductionVar = loopBody.getArgument( 0 );
         pushInductionVariable( varName, inductionVar );
+
+        mlir::Location varLoc = getTerminalLocation( ctx->IDENTIFIER() );
+        builder.create<silly::DebugName>( varLoc, inductionVar, varName );
     }
     CATCH_USER_ERROR
 
