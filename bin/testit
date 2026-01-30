@@ -220,6 +220,7 @@ lessbug2
 lessbug3
 lesseqop
 lessop
+loadstore
 longstring
 minimal_eliftest
 minmax

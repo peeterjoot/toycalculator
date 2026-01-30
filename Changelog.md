@@ -522,6 +522,12 @@ DW_AT_alignment             0x00000008
 DW_AT_decl_file             0x00000001 ./for_simplest.silly
 DW_AT_decl_line             0x00000003
 ```
+  * loadstore.silly -- This contains all the most basic load and store accesses:
+    - Scalar load and store
+    - Array element access: load and store
+    - string store and load and string literal access.
+
+  This program was specifically for examining the MLIR silly dialect representation of those operations.
 
 ## tag: V7 (Jan 4, 2025)
 

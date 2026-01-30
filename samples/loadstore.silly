@@ -1,0 +1,26 @@
+// loadstore.silly
+//
+// This contains all the most basic load and store accesses:
+// - Scalar load and store
+// - Array element access: load and store
+// - string store and load and string literal access.
+//
+// This program was specifically for examining the MLIR silly dialect representation of those operations.
+
+INT64 anInitializedScalar{1};
+INT64 aTemporaryScalar;
+
+aTemporaryScalar = anInitializedScalar;
+PRINT aTemporaryScalar;
+
+INT64 aVectorLength2[2] {1};
+
+aTemporaryScalar = aVectorLength2[0];
+aVectorLength2[1] = 42;
+
+PRINT aTemporaryScalar;
+PRINT aVectorLength2[1];
+
+STRING aStringLength2[10];
+aStringLength2 = "hello";
+PRINT "literal: ", aStringLength2;
