@@ -956,9 +956,6 @@ namespace silly
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
 
-        mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
-        mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
-
         assert( ctx->forStart() );
         assert( ctx->forEnd() );
         assert( ctx->forStart()->forRangeExpression() );
