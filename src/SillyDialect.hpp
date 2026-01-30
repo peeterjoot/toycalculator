@@ -19,7 +19,7 @@
 #include "SillyDialectDecls.hpp.inc"
 
 // Include generated operation declarations
-#define GET_OP_CLASSES
+//#define GET_OP_CLASSES
 #include "SillyDialect.hpp.inc"
 
 // vim: et ts=4 sw=4
