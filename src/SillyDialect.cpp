@@ -22,4 +22,16 @@ namespace silly
     }
 }    // namespace silly
 
+void SillyDialect::initialize() {
+    addTypes<
+#define GET_TYPEDEF_LIST
+#include "SillyTypes.cpp.inc"
+    >();
+
+    addOperations<
+#define GET_OP_LIST
+#include "SillyDialect.cpp.inc"
+    >();
+}
+
 // vim: et ts=4 sw=4

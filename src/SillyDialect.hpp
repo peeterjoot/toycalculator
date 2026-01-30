@@ -13,6 +13,8 @@
 #include <mlir/IR/SymbolTable.h>
 #include <mlir/Support/TypeID.h>
 
+#include "SillyTypes.hpp"
+
 // Include generated dialect declarations (includes getDialectNamespace)
 #include "SillyDialectDecls.hpp.inc"
 
