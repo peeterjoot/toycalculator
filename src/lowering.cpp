@@ -1217,6 +1217,8 @@ namespace silly
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
+            assert( 0 && "NYI" );
+#if 0
             silly::DeclareOp declareOp = cast<silly::DeclareOp>( op );
             mlir::Location loc = declareOp.getLoc();
             bool param = declareOp.isParameter();
@@ -1339,7 +1341,7 @@ namespace silly
             }
 
             rewriter.eraseOp( op );
-
+#endif
             return mlir::success();
         }
     };
