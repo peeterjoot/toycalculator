@@ -35,7 +35,7 @@ def Silly_VarType : TypeDef<Silly_Dialect, "var"> {
   }];
   let parameters = (ins "Type":$elementType, "ArrayRef<int64_t>":$shape /* empty = scalar */);
   let mnemonic = "var";
-  let assemblyFormat = "`<` $elementType (`,` `shape` `=` `[` $shape `]`^)? `>`";
+  let assemblyFormat = "`<` $elementType (`[` $shape `]`)? `>`";
 }
 
 def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
