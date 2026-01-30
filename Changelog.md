@@ -469,6 +469,7 @@ RETURN SHOULD BE HERE ... it's up in the outer for loop body!
     - [parser] resurrect getTerminalLocation, and use it to construct a DebugName OP in enterFor.
     - [lowering] split out infoForVariableDI from constructVariableDI for use in DebugNameOpLowering.
       Implement DebugNameOpLowering (mostly calling new helper constructInductionVariableDI), and make DebugName an illegalop.
+  * [lowering]
 
 Example MLIR fragment:
 ```
@@ -512,6 +513,7 @@ $2 = 2
 (gdb) what i
 type = int64_t
 ```
+  * [lowering] Standardize on a 'loc, rewriter' sequence in all helper functions that take both (instead of a hodge podge or 'loc, rewriter' and 'rewriter, loc')
 
 ## tag: V7 (Jan 4, 2025)
 

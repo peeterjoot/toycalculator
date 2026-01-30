@@ -750,7 +750,7 @@ namespace silly
         return globalOp;
     }
 
-    void LoweringContext::createAbortCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc )
+    void LoweringContext::createAbortCall( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter )
     {
         mlir::FileLineColLoc fileLoc = getLocation( loc );
 
@@ -775,7 +775,7 @@ namespace silly
     }
 
     // Returns the filled PrintArg struct value for one argument
-    mlir::Value LoweringContext::emitPrintArgStruct( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
+    mlir::Value LoweringContext::emitPrintArgStruct( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
                                                      mlir::Value input, PrintFlags flags )
     {
         createSillyPrintPrototype();
@@ -886,7 +886,7 @@ namespace silly
         return structVal;
     }
 
-    mlir::Value LoweringContext::createGetCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
+    mlir::Value LoweringContext::createGetCall( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
                                                 mlir::Type inputType )
     {
         const char* name = nullptr;
@@ -1855,7 +1855,7 @@ namespace silly
                     pf = static_cast<PrintFlags>( pf | static_cast<int>( silly::PrintFlags::PRINT_FLAGS_CONTINUE ) );
                 }
 
-                mlir::Value argStruct = lState.emitPrintArgStruct( rewriter, argLoc, inputs[i], pf );
+                mlir::Value argStruct = lState.emitPrintArgStruct( argLoc, rewriter, inputs[i], pf );
 
                 mlir::LLVM::ConstantOp indexVal =
                     rewriter.create<mlir::LLVM::ConstantOp>( argLoc, lState.tyI64, rewriter.getI64IntegerAttr( i ) );
@@ -1896,7 +1896,7 @@ namespace silly
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering silly.abort: " << *op << '\n' );
 
-            lState.createAbortCall( rewriter, loc );
+            lState.createAbortCall( loc, rewriter );
 
             rewriter.eraseOp( op );
 
@@ -1925,7 +1925,7 @@ namespace silly
 
             mlir::Type inputType = getOp.getValue().getType();
 
-            mlir::Value result = lState.createGetCall( rewriter, loc, inputType );
+            mlir::Value result = lState.createGetCall( loc, rewriter, inputType );
 
             rewriter.replaceOp( op, result );
 

@@ -82,13 +82,13 @@ namespace silly
                                                      mlir::StringAttr& stringLit, mlir::Location loc, size_t strLen );
 
         /// Creates a call to the appropriate Silly print runtime function.
-        mlir::Value emitPrintArgStruct( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
+        mlir::Value emitPrintArgStruct( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
                                         mlir::Value input, PrintFlags flags );
 
-        void createAbortCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc );
+        void createAbortCall( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter );
 
         /// Creates a call to the appropriate Silly get runtime function.
-        mlir::Value createGetCall( mlir::ConversionPatternRewriter& rewriter, mlir::Location loc,
+        mlir::Value createGetCall( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
                                    mlir::Type inputType );
 
         /// Emits debug information for a function parameter.
