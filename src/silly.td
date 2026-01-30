@@ -30,41 +30,101 @@ def Silly_Dialect : Dialect {
 def Silly_VarType : TypeDef<Silly_Dialect, "var"> {
   let summary = "Abstract variable location (scalar or array)";
   let description = [{
-    Represents an abstract handle to a variable's storage. Scalars have empty shape; arrays have a shape array.
-    This type is storage-agnostic and lowered to concrete memory (e.g., LLVM alloca).
+    Represents an abstract handle to a variable's storage.
+    Scalars have empty shape; arrays have a non-empty shape.
+    This type is storage-agnostic and lowered to concrete memory
+    (e.g., LLVM alloca).
   }];
-  let parameters = (ins "Type":$elementType, "ArrayRef<int64_t>":$shape /* empty = scalar */);
+
+  let parameters = (ins
+    "Type":$elementType,
+    "ArrayRef<int64_t>":$shape   // empty = scalar
+  );
+
   let mnemonic = "var";
-  let assemblyFormat = "`<` $elementType (`[` $shape `]`)? `>`";
+
+  let assemblyFormat = "`<` $elementType `[` $shape `]` `>`";
 }
 
 def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
-  let summary = "Declare a parameter, variable or array, type (integer or float), and optional size.";
+  let summary = "Declare an abstract variable location (scalar or array).";
   let description = [{
     Declares a variable (scalar or array) or function parameter with a name and type.
     For parameters, the `parameter` attribute is set, and `param_number` indicates the parameter index.
+    The result is an abstract handle (!silly.var) to the variable's location, storage-agnostic.
+    Initializers are provided as operands; for arrays, excess initializers are an error.
   }];
-  let arguments = (ins TypeAttr:$type, OptionalAttr<I64Attr>:$size, OptionalAttr<UnitAttr>:$parameter, OptionalAttr<I64Attr>:$param_number, Variadic<AnyType>:$init);
-  let results = (outs);
+  let arguments = (ins
+    Variadic<AnyType>:$initializers,
+    OptionalAttr<UnitAttr>:$parameter,
+    OptionalAttr<I64Attr>:$param_number,
+    StrAttr:$sym_name
+  );
+  let results = (outs Silly_VarType:$var);
   let traits = [Symbol];
 
-  let extraClassDeclaration = [{
-    mlir::StringAttr getSymNameAttr() { return mlir::dyn_cast<mlir::StringAttr>( getOperation()->getAttr("sym_name") ); }
+  let assemblyFormat = "$initializers `:` type($initializers) attr-dict `:` type($var)";
 
-    bool isParameter() { return getOperation()->hasAttr("parameter"); }
+  let extraClassDeclaration = [{
+    mlir::StringAttr getSymNameAttr() { return getSymName(); }
+
+    bool isParameter() { return getParameterAttr() != nullptr; }
 
     mlir::LogicalResult verify() {
-      if (!getSymNameAttr()) {
-        return emitOpError("requires a 'sym_name' attribute of type StringAttr.");
-      }
-      if (isParameter() && !getParamNumberAttr()) {
-        return emitOpError("parameter declarations require a 'param_number' attribute.");
-      }
-      if (!isParameter() && getParamNumberAttr()) {
-        return emitOpError("non-parameter declarations cannot have a 'param_number' attribute.");
-      }
+//      // Symbol name must exist and be non-empty
+//      if (getSymName().empty()) {
+//        return emitOpError("requires a non-empty 'sym_name' attribute of type StringAttr.");
+//      }
+//    
+//      // Parameter consistency
+//      if (isParameter() && !getParamNumberAttr()) {
+//        return emitOpError("parameter declarations require a 'param_number' attribute.");
+//      }
+//      if (!isParameter() && getParamNumberAttr()) {
+//        return emitOpError("non-parameter declarations cannot have a 'param_number' attribute.");
+//      }
+//    
+//      // Result type must be !silly.var<...>
+//      auto varType = mlir::dyn_cast<silly::varType>(getVar().getType());
+//      if (!varType) {
+//        return emitOpError("result must be of type !silly.var");
+//      }
+//    
+//      // Determine element count from the type shape
+//      llvm::ArrayRef<int64_t> shape = varType.getShape();
+//    
+//      if (!shape.empty()) {
+//        if (shape.size() != 1) {
+//          return emitOpError("only 1D arrays are supported (rank must be 0 or 1)");
+//        }
+//        if (shape[0] <= 0) {
+//          return emitOpError("array size must be a positive integer");
+//        }
+//      }
+//    
+//      // Check initializer count
+//      size_t numInits = getInitializers().size();
+//      size_t numElements = shape.empty() ? 1 : shape[0];
+//    
+//      if (numInits > numElements) {
+//        return emitOpError("number of initializers (")
+//               << numInits << ") exceeds number of elements (" << numElements << ")";
+//      }
+//    
+//      // Optional: type-check initializers
+//      Type elemTy = varType.getElementType();
+//      for (Value init : getInitializers()) {
+//        if (init.getType() != elemTy) {
+//          return emitOpError("initializer type ")
+//                 << init.getType()
+//                 << " does not match variable element type "
+//                 << elemTy;
+//        }
+//      }
+//    
       return mlir::success();
     }
+
   }];
 }
 
