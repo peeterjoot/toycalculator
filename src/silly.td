@@ -27,6 +27,17 @@ def Silly_Dialect : Dialect {
   let cppNamespace = "silly";
 }
 
+def Silly_VarType : TypeDef<Silly_Dialect, "var"> {
+  let summary = "Abstract variable location (scalar or array)";
+  let description = [{
+    Represents an abstract handle to a variable's storage. Scalars have empty shape; arrays have a shape array.
+    This type is storage-agnostic and lowered to concrete memory (e.g., LLVM alloca).
+  }];
+  let parameters = (ins "Type":$elementType, "ArrayRef<int64_t>":$shape /* empty = scalar */);
+  let mnemonic = "var";
+  let assemblyFormat = "`<` $elementType (`,` `shape` `=` `[` $shape `]`^)? `>`";
+}
+
 def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
   let summary = "Declare a parameter, variable or array, type (integer or float), and optional size.";
   let description = [{
