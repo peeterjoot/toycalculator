@@ -73,7 +73,7 @@ def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
 //      if (getSymName().empty()) {
 //        return emitOpError("requires a non-empty 'sym_name' attribute of type StringAttr.");
 //      }
-//    
+//
 //      // Parameter consistency
 //      if (isParameter() && !getParamNumberAttr()) {
 //        return emitOpError("parameter declarations require a 'param_number' attribute.");
@@ -81,16 +81,16 @@ def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
 //      if (!isParameter() && getParamNumberAttr()) {
 //        return emitOpError("non-parameter declarations cannot have a 'param_number' attribute.");
 //      }
-//    
+//
 //      // Result type must be !silly.var<...>
 //      auto varType = mlir::dyn_cast<silly::varType>(getVar().getType());
 //      if (!varType) {
 //        return emitOpError("result must be of type !silly.var");
 //      }
-//    
+//
 //      // Determine element count from the type shape
 //      llvm::ArrayRef<int64_t> shape = varType.getShape();
-//    
+//
 //      if (!shape.empty()) {
 //        if (shape.size() != 1) {
 //          return emitOpError("only 1D arrays are supported (rank must be 0 or 1)");
@@ -99,16 +99,16 @@ def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
 //          return emitOpError("array size must be a positive integer");
 //        }
 //      }
-//    
+//
 //      // Check initializer count
 //      size_t numInits = getInitializers().size();
 //      size_t numElements = shape.empty() ? 1 : shape[0];
-//    
+//
 //      if (numInits > numElements) {
 //        return emitOpError("number of initializers (")
 //               << numInits << ") exceeds number of elements (" << numElements << ")";
 //      }
-//    
+//
 //      // Optional: type-check initializers
 //      Type elemTy = varType.getElementType();
 //      for (Value init : getInitializers()) {
@@ -119,7 +119,7 @@ def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
 //                 << elemTy;
 //        }
 //      }
-//    
+//
       return mlir::success();
     }
 
