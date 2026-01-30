@@ -66,8 +66,6 @@ def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
   let assemblyFormat = "$initializers `:` type($initializers) attr-dict `:` type($var)";
 
   let extraClassDeclaration = [{
-    mlir::StringAttr getSymNameAttr() { return getSymName(); }
-
     bool isParameter() { return getParameterAttr() != nullptr; }
 
     mlir::LogicalResult verify() {
