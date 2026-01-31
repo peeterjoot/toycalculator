@@ -1,7 +1,8 @@
+///
 /// @file loweringContext.hpp
 /// @author Peeter Joot <peeterjoot@pm.me>
 /// @brief Helper class for lowering the MLIR silly dialect to the mlir LLVM dialect.
-
+///
 #pragma once
 
 #include <mlir/Conversion/LLVMCommon/TypeConverter.h>    // LLVMTypeConverter

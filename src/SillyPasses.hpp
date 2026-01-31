@@ -21,7 +21,4 @@ namespace mlir
 
 }    // namespace mlir
 
-//#define GEN_PASS_REGISTRATION
-//#include "SillyPasses.hpp.inc"
-
 // vim: et ts=4 sw=4

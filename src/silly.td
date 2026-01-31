@@ -1,18 +1,18 @@
-//
-// @file    silly.md
-// @author  Peeter Joot <peeterjoot@pm.me>
-// @brief   This implements the Silly compiler dialect.
-//
-// @description
-//
-// This dialect implements:
-// - A couple of simple numeric operators (unary negation, binary +-*/),
-// - An exit operation,
-// - A declare operation,
-// - An assignment operation, and
-// - A print operation.
-// - A Function operation (for the implicit main, and any user defined functions.)
-//
+///
+/// @file    silly.md
+/// @author  Peeter Joot <peeterjoot@pm.me>
+/// @brief   This implements the Silly compiler dialect.
+///
+/// @description
+///
+/// This dialect implements:
+/// - A couple of simple numeric operators (unary negation, binary +-*/),
+/// - An exit operation,
+/// - A declare operation,
+/// - An assignment operation, and
+/// - A print operation.
+/// - A Function operation (for the implicit main, and any user defined functions.)
+///
 include "mlir/IR/BuiltinTypes.td"
 include "mlir/IR/BuiltinAttributes.td"
 include "mlir/IR/OpBase.td"

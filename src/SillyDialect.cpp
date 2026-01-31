@@ -10,9 +10,6 @@
 #include <mlir/Dialect/LLVMIR/LLVMTypes.h>
 #include <mlir/IR/DialectImplementation.h>
 
-//#define GET_OP_CLASSES
-//#include "SillyDialect.hpp.inc"
-
 // Pull in generated op method bodies, adaptors, verify(), fold(), etc.
 #define GET_OP_CLASSES
 #include "SillyDialect.cpp.inc"

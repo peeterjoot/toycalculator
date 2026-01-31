@@ -1,3 +1,4 @@
+///
 /// @file parser.hpp
 /// @author Peeter Joot <peeterjoot@pm.me>
 /// @brief Antlr4 based Listener and MLIR builder for the silly compiler.
@@ -6,6 +7,7 @@
 /// corresponding MLIR operations in the Silly dialect. It tracks variable states
 /// per function, handles scoping, control flow (if/for), declarations, assignments,
 /// function calls, and built-in operations (print/get/exit/return).
+///
 #pragma once
 #include <antlr4-runtime.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
