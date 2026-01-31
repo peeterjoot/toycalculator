@@ -17,8 +17,8 @@
 
 #include <format>
 
-#include "SillyExceptions.hpp"
 #include "SillyDialect.hpp"
+#include "SillyExceptions.hpp"
 #include "parser.hpp"
 
 #define DEBUG_TYPE "silly-parser"
@@ -208,6 +208,14 @@ namespace silly
         context.getOrLoadDialect<mlir::memref::MemRefDialect>();
         context.getOrLoadDialect<mlir::LLVM::LLVMDialect>();
         context.getOrLoadDialect<mlir::scf::SCFDialect>();
+
+#if 0
+        if (auto *d = context.getLoadedDialect<silly::SillyDialect>()) {
+            llvm::errs() << "SillyDialect loaded successfully\n";
+        } else {
+            llvm::errs() << "Failed to load SillyDialect!\n";
+        }
+#endif
     }
 
     bool ParseListener::isVariableDeclared( mlir::Location loc, const std::string &varName )
@@ -240,7 +248,7 @@ namespace silly
                                              SillyParser::ExpressionContext *assignmentExpression,
                                              const std::vector<SillyParser::ExpressionContext *> *pExpressions )
     {
-        size_t arraySize{};
+        int64_t arraySize{};
         size_t numElements{ 1 };
         if ( arrayBounds )
         {
@@ -329,22 +337,25 @@ namespace silly
             }
         }
 
-        assert( 0 && "NYI" );
-#if 0
-        mlir::StringAttr strAttr = builder.getStringAttr( varName );
-        silly::DeclareOp dcl;
+        mlir::StringAttr symNameAttr = builder.getStringAttr( varName );
+
+        mlir::DenseI64ArrayAttr shapeAttr;
         if ( arraySize )
         {
-            dcl = builder.create<silly::DeclareOp>( loc, mlir::TypeAttr::get( ty ),
-                                                    builder.getI64IntegerAttr( arraySize ),
-                                                    /*parameter=*/nullptr, nullptr, initializers );
+            shapeAttr = builder.getDenseI64ArrayAttr( { arraySize } );
         }
         else
         {
-            dcl = builder.create<silly::DeclareOp>( loc, mlir::TypeAttr::get( ty ), nullptr, /*parameter=*/nullptr,
-                                                    nullptr, initializers );
+            shapeAttr = builder.getDenseI64ArrayAttr( { } );
         }
-        dcl->setAttr( "sym_name", strAttr );
+
+        silly::varType varType = builder.getType<silly::varType>( ty, shapeAttr );
+
+        silly::DeclareOp dcl = builder.create<silly::DeclareOp>( loc, varType, initializers,
+                                                                 /*parameter=*/nullptr,
+                                                                 /*param_number=*/nullptr, symNameAttr );
+
+        //llvm::errs() << "Test print first !silly.var just after the DeclareOp: " << varType << "\n";
 
         f.lastDeclareOp = dcl.getOperation();
 
@@ -354,7 +365,6 @@ namespace silly
         {
             processAssignment( loc, assignmentExpression, varName, {} );
         }
-#endif
     }
 
     inline mlir::Value ParseListener::parseLowest( antlr4::ParserRuleContext *ctx, mlir::Type ty )
@@ -483,6 +493,14 @@ namespace silly
         mlir::MLIRContext *ctx = builder.getContext();
         tyVoid = mlir::LLVM::LLVMVoidType::get( ctx );
         tyPtr = mlir::LLVM::LLVMPointerType::get( ctx );
+
+#if 0
+        // Force a dummy type print to verify hook
+        auto dummyType = silly::varType::get(&dialect.context, tyI64,
+                                             builder.getDenseI64ArrayAttr({42}));
+
+        llvm::errs() << "Test print !silly.var: " << dummyType << "\n";
+#endif
     }
 
     void ParseListener::createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp funcOp,
@@ -505,10 +523,10 @@ namespace silly
 
         PerFunctionState &f = funcState( funcName );
 
-        assert( 0 && "NYI" );
-#if 0
         for ( size_t i = 0; i < funcOp.getNumArguments() && i < paramNames.size(); ++i )
         {
+            assert( 0 && "NYI" );
+#if 0
             mlir::Type argType = funcOp.getArgument( i ).getType();
             LLVM_DEBUG( {
                 llvm::errs() << std::format( "function {}: parameter{}:\n", funcName, i );
@@ -521,11 +539,11 @@ namespace silly
             dcl->setAttr( "sym_name", strAttr );
 
             f.lastDeclareOp = dcl.getOperation();
+#endif
         }
 
         currentFuncName = funcName;
         f.setFuncOp( funcOp );
-#endif
     }
 
     void ParseListener::enterStartRule( SillyParser::StartRuleContext *ctx )
@@ -604,10 +622,12 @@ namespace silly
             processReturnLike( loc, nullptr );
         }
 
+#if 0
         LLVM_DEBUG( {
             llvm::errs() << "exitStartRule done: module dump:\n";
             mod->dump();
         } );
+#endif
     }
     CATCH_USER_ERROR
 
@@ -772,7 +792,7 @@ namespace silly
                             ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), tyI1 );
     }
 
-    mlir::Type ParseListener::integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext * ctx )
+    mlir::Type ParseListener::integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext *ctx )
     {
         mlir::Type ty;
 
@@ -982,13 +1002,15 @@ namespace silly
 
         if ( isVariableDeclared( loc, varName ) )
         {
-            throw UserError( loc, std::format( "Induction variable {} clashes with declared variable in: {}\n", varName, ctx->getText() ) );
+            throw UserError( loc, std::format( "Induction variable {} clashes with declared variable in: {}\n", varName,
+                                               ctx->getText() ) );
         }
 
         mlir::Value p = searchForInduction( varName );
         if ( p )
         {
-            throw UserError( loc, std::format( "Induction variable {} used by enclosing FOR: {}\n", varName, ctx->getText() ) );
+            throw UserError(
+                loc, std::format( "Induction variable {} used by enclosing FOR: {}\n", varName, ctx->getText() ) );
         }
 
         mlir::Type elemType = integerDeclarationType( loc, ctx->intType() );
@@ -1294,7 +1316,7 @@ namespace silly
         assert( resultValue );
 
         mlir::BlockArgument ba = mlir::dyn_cast<mlir::BlockArgument>( resultValue );
-        mlir::Operation * op = resultValue.getDefiningOp();
+        mlir::Operation *op = resultValue.getDefiningOp();
 
         // Don't check if it's a StringLiteralOp if it's an induction variable, since op will be nullptr
         if ( !ba && isa<silly::StringLiteralOp>( op ) )
@@ -1444,7 +1466,7 @@ namespace silly
         return parseAnd( ctx, ty );
     }
 
-    mlir::Value ParseListener::parseAnd( antlr4::ParserRuleContext *ctx, mlir::Type ty)
+    mlir::Value ParseListener::parseAnd( antlr4::ParserRuleContext *ctx, mlir::Type ty )
     {
         assert( ctx );
 
@@ -1744,11 +1766,13 @@ namespace silly
 
         assert( value );
 
+#if 0
         LLVM_DEBUG( {
             llvm::errs() << "parseUnary: " << ctx->getText() << " -> type ";
             value.getType().dump();
             llvm::errs() << "\n";
         } );
+#endif
 
         return value;
     }
@@ -1791,9 +1815,9 @@ namespace silly
                     fty = mlir::dyn_cast<mlir::FloatType>( ty );
                 }
 
-                if (!fty)
+                if ( !fty )
                 {
-                   fty = tyF64;
+                    fty = tyF64;
                 }
 
                 value = parseFloat( loc, fty, floatNode->getText() );
@@ -1886,11 +1910,13 @@ namespace silly
 
         assert( value );
 
+#if 0
         LLVM_DEBUG( {
             llvm::errs() << "parsePrimary: " << ctx->getText() << " -> type ";
             value.getType().dump();
             llvm::errs() << "\n";
         } );
+#endif
 
         return value;
     }

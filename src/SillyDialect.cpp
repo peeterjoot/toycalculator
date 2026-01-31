@@ -36,6 +36,9 @@ namespace silly
 #define GET_OP_LIST
 #include "SillyDialect.cpp.inc"
             >();
+
+
+        //llvm::errs() << "All registrations complete. Testing type print...\n";
     }
 }    // namespace silly
 
