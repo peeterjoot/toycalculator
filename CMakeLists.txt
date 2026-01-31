@@ -134,7 +134,6 @@ set(DRIVER_SOURCE_FILES
   src/driver.cpp
   src/SillyDialect.cpp
   src/SillyPasses.cpp
-  src/SillyTypes.cpp
   src/lowering.cpp
   src/parser.cpp
   ${ANTLR_OUTPUT_DIR}/SillyBaseListener.cpp
@@ -172,6 +171,7 @@ set(COMMON_COMPILE_OPTIONS
   -Wno-comment
   -Wno-overloaded-virtual
   -Wno-unused-parameter
+  -Wno-unused-function
   -g
 )
 

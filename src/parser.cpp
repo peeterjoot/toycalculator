@@ -18,6 +18,7 @@
 #include <format>
 
 #include "SillyExceptions.hpp"
+#include "SillyDialect.hpp"
 #include "parser.hpp"
 
 #define DEBUG_TYPE "silly-parser"

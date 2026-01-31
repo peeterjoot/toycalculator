@@ -37,8 +37,8 @@ def Silly_VarType : TypeDef<Silly_Dialect, "var"> {
   }];
 
   let parameters = (ins
-    "Type":$elementType,
-    "llvm::ArrayRef<int64_t>":$shape   // empty = scalar
+    "mlir::Type":$elementType,
+    "mlir::DenseI64ArrayAttr":$shape // empty = scalar
   );
 
   let mnemonic = "var";

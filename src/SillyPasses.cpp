@@ -7,6 +7,10 @@
 
 #include <mlir/Pass/PassManager.h>
 
+// Generated pass registration function
+#define GEN_PASS_REGISTRATION
+#include "SillyPasses.hpp.inc"
+
 namespace mlir
 {
     void registerSillyPasses()
