@@ -6,8 +6,8 @@
 
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/StringRef.h>
-#include <mlir/IR/OpImplementation.h>
 #include <mlir/IR/Builders.h>
+#include <mlir/IR/OpImplementation.h>
 
 #include "SillyTypes.hpp"
 
@@ -35,12 +35,18 @@ namespace silly
     {
         // '<'
         if ( parser.parseLess() )
+        {
+            parser.emitError( parser.getCurrentLocation(), "expected '<'" );
             return Type();
+        }
 
         // element type
         ::mlir::Type elementType;
         if ( parser.parseType( elementType ) )
+        {
+            parser.emitError( parser.getCurrentLocation(), "Failed to parse element type" );
             return ::mlir::Type();
+        }
 
         // optional [ N ]
         ::llvm::SmallVector<int64_t, 1> dims;
@@ -50,7 +56,10 @@ namespace silly
             // exactly one integer expected
             int64_t size;
             if ( parser.parseInteger( size ) )
+            {
+                parser.emitError( parser.getCurrentLocation(), "array-size must be an integer" );
                 return ::mlir::Type();
+            }
 
             if ( size <= 0 )
             {
@@ -60,14 +69,19 @@ namespace silly
 
             dims.push_back( size );
 
-            // must be followed immediately by ]
             if ( parser.parseRSquare() )
+            {
+                parser.emitError( parser.getCurrentLocation(), "array-size must be followed immediately by ]" );
                 return ::mlir::Type();
+            }
         }
 
         // '>'
         if ( parser.parseGreater() )
+        {
+            parser.emitError( parser.getCurrentLocation(), "expected '>'" );
             return ::mlir::Type();
+        }
 
         // build the type
         ::mlir::Builder &b = parser.getBuilder();

@@ -36,6 +36,8 @@ def Silly_VarType : TypeDef<Silly_Dialect, "var"> {
     Scalars have empty shape; arrays have a non-empty shape.
     This type is storage-agnostic and lowered to concrete memory
     (e.g., LLVM alloca).
+
+    Multi-dimensional shapes are not currently supported (varType::parse)
   }];
 
   let parameters = (ins
