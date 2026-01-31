@@ -10,7 +10,10 @@
 INT64 anInitializedScalar{1};
 INT64 aTemporaryScalar;
 
-aTemporaryScalar = 1;
+aTemporaryScalar = 3;
+PRINT aTemporaryScalar;
+
+aTemporaryScalar = anInitializedScalar;
 PRINT aTemporaryScalar;
 
 INT64 aVectorLength2[2] {1};
