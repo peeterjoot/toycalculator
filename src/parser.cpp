@@ -1139,15 +1139,16 @@ namespace silly
         SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = ctx->scalarOrArrayElement();
         if ( scalarOrArrayElement )
         {
-            assert( 0 && "NYI" );
-#if 0
             tNode *varNameObject = scalarOrArrayElement->IDENTIFIER();
             assert( varNameObject );
             std::string varName = varNameObject->getText();
 
             silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+            silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
+            mlir::Type elemType = varTy.getElementType();
+            mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
+            llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
 
-            mlir::Type elemType = declareOp.getTypeAttr().getValue();
             mlir::Value optIndexValue{};
             if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
             {
@@ -1156,9 +1157,9 @@ namespace silly
                 mlir::Location iloc = getStartLocation( indexExpr->expression() );
                 optIndexValue = indexTypeCast( iloc, indexValue );
             }
-            else if ( declareOp.getSizeAttr() )
+            else if ( !shape.empty() )
             {
-                throw UserError( loc, std::format( "Attempted GET to string literal?: {}", ctx->getText() ) );
+                throw UserError( loc, std::format( "Attempted GET to string literal or array?: {}", ctx->getText() ) );
             }
             else
             {
@@ -1169,7 +1170,6 @@ namespace silly
 
             silly::GetOp resultValue = builder.create<silly::GetOp>( loc, elemType );
             builder.create<silly::AssignOp>( loc, var, optIndexValue, resultValue );
-#endif
         }
         else
         {

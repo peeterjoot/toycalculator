@@ -1,6 +1,7 @@
 ## TODO
 
 ----------------------------------
+-2. no test for error: "Attempted GET to string literal".  Audit all the UserError's and make sure that all have tests.
 -1. nice to have.  custom var printer to show scalar type, as `<i64>` (for example) instead of `<i64 []>`.
 0. `negative_step_for.silly` -- would be better to put in a (perhaps optional) runtime check for negative or zero step sizes in FOR statements.  test case for the zero step condition: `zero_step_for.silly` -- not included in automation, as it infinite loops (would be better if it did not.)
 1. Don't like the loc printout in UserError error messages.  Also shouldn't print the ctx, but use the location of the ctx to print out the actual line of source, and highlight the column where the error is.
