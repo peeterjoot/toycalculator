@@ -67,8 +67,6 @@ def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
   let results = (outs Silly_VarType:$var);
   let traits = [Symbol];
 
-  let assemblyFormat = "$initializers `:` type($initializers) attr-dict `:` type($var)";
-
   let extraClassDeclaration = [{
     bool isParameter() { return getParameterAttr() != nullptr; }
 

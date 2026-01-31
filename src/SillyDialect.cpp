@@ -8,6 +8,7 @@
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/DialectImplementation.h>
 #include <mlir/IR/DialectRegistry.h>
+#include <mlir/Tools/Plugins/DialectPlugin.h>
 
 #include "SillyDialect.hpp"
 
@@ -48,6 +49,14 @@ namespace silly
 extern "C" void registerSillyDialect( mlir::DialectRegistry &registry )
 {
     registry.insert<silly::SillyDialect>();
+}
+
+extern "C" LLVM_ATTRIBUTE_WEAK ::mlir::DialectPluginLibraryInfo mlirGetDialectPluginInfo()
+{
+    return { /*.apiVersion =*/MLIR_PLUGIN_API_VERSION,
+             /*.pluginName =*/"silly",
+             /*.pluginVersion =*/"0.7",
+             /*.registerDialects =*/[]( mlir::DialectRegistry *registry ) { registry->insert<silly::SillyDialect>(); } };
 }
 
 // vim: et ts=4 sw=4

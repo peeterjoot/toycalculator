@@ -589,6 +589,9 @@ Specific changes:
 
   * [types] custom var printer to show scalar type, as `<i64>` (for example) instead of `<i64 []>`.  Unfortunately that required a parse method too.
   * [cmake] package silly dialect files in libSillyDialect.so instead of static linking to the silly compiler driver.  This should at least theoretically allow the use of mlir-opt to test parse directly (not tried yet.)  Also comment out the mlirtest and simplest test build rules -- I haven't tried those in forever, and don't care to at the moment.
+  * [tablegen] remove the DeclareOp custom asm printer.  It generates output that can't be parsed by mlir-opt.
+  * [dialect] convert library into a plugin so it can be loaded by mlir-opt.
+  * [tests] Add manual tests parsetests/.
 
 ## tag: V7 (Jan 4, 2025)
 

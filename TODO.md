@@ -1,20 +1,6 @@
 ## TODO
 
 ----------------------------------
--4. DeclareOp's asm printer used to have () around the initializer list.  Those aren't there now and it's a bit more confusing looking.
-
-Example:
-
-```
-"silly.declare"(%c1_i64) <{type = i64}> {sym_name = "anInitializedScalar"} : (i64) -> ()
-```
-
-now:
-
-```
-%0 = silly.declare %c1_i64 : i64 {sym_name = "anInitializedScalar"} : <i64 []>
-```
-
 -3. `div_zero_int` -- different results on intel vs. arm.
 -2. no test for error: "Attempted GET to string literal".  Audit all the UserError's and make sure that all have tests.
 0. `negative_step_for.silly` -- would be better to put in a (perhaps optional) runtime check for negative or zero step sizes in FOR statements.  test case for the zero step condition: `zero_step_for.silly` -- not included in automation, as it infinite loops (would be better if it did not.)
@@ -198,6 +184,7 @@ c[1] = 0 ( = 2 * 0 )
 * Misc:
   - GET into a BOOL should logically support TRUE/FALSE values, and not just 0/1.  PRINT of a BOOL should display TRUE/FALSE, not just 1/0.
   - Write a MLIR walker (and/or opt-silly front end) to see how to answer code questions about a given program.
+    -- perhaps do it as an mlir pass, now that I have a libSillyDialect.so available for use with mlir-opt.
 
   - More complicated expressions.
   - CAST operators.  Could also implement that with a "standard library", or on demand.
