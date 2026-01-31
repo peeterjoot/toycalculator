@@ -171,7 +171,6 @@ set(COMMON_COMPILE_OPTIONS
   -Wno-comment
   -Wno-overloaded-virtual
   -Wno-unused-parameter
-  -Wno-unused-function
   -g
 )
 

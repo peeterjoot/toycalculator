@@ -346,7 +346,7 @@ namespace silly
         }
         else
         {
-            shapeAttr = builder.getDenseI64ArrayAttr( { } );
+            shapeAttr = builder.getDenseI64ArrayAttr( {} );
         }
 
         silly::varType varType = builder.getType<silly::varType>( ty, shapeAttr );
@@ -355,7 +355,7 @@ namespace silly
                                                                  /*parameter=*/nullptr,
                                                                  /*param_number=*/nullptr, symNameAttr );
 
-        //llvm::errs() << "Test print first !silly.var just after the DeclareOp: " << varType << "\n";
+        // llvm::errs() << "Test print first !silly.var just after the DeclareOp: " << varType << "\n";
 
         f.lastDeclareOp = dcl.getOperation();
 
@@ -875,15 +875,15 @@ namespace silly
         {
             std::string s = stripQuotes( loc, theString->getText() );
 
-            mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+            silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+            mlir::Value var = declareOp.getResult();
+
             mlir::StringAttr strAttr = builder.getStringAttr( s );
 
             silly::StringLiteralOp stringLiteral = builder.create<silly::StringLiteralOp>( loc, tyPtr, strAttr );
 
-            mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
-
-            builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ stringLiteral },
-                                             llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+            mlir::Value i{};
+            builder.create<silly::AssignOp>( loc, var, i, stringLiteral );
         }
     }
     CATCH_USER_ERROR
@@ -1165,10 +1165,10 @@ namespace silly
                 // Scalar: load the value
             }
 
-            mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+            mlir::Value var = declareOp.getResult();
 
             silly::GetOp resultValue = builder.create<silly::GetOp>( loc, elemType );
-            builder.create<silly::AssignOp>( loc, symRef, optIndexValue, resultValue );
+            builder.create<silly::AssignOp>( loc, var, optIndexValue, resultValue );
 #endif
         }
         else
@@ -1311,20 +1311,19 @@ namespace silly
     {
         mlir::Value resultValue = parseExpression( exprContext, {} );
 
-        mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, currentVarName );
+        silly::DeclareOp declareOp = lookupDeclareForVar( loc, currentVarName );
+        mlir::Value var = declareOp.getResult();
 
         assert( resultValue );
 
         mlir::BlockArgument ba = mlir::dyn_cast<mlir::BlockArgument>( resultValue );
         mlir::Operation *op = resultValue.getDefiningOp();
+        mlir::Value i{};
 
         // Don't check if it's a StringLiteralOp if it's an induction variable, since op will be nullptr
         if ( !ba && isa<silly::StringLiteralOp>( op ) )
         {
-            mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
-
-            builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ resultValue },
-                                             llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+            builder.create<silly::AssignOp>( loc, var, i, resultValue );
         }
         else
         {
@@ -1332,7 +1331,7 @@ namespace silly
             {
                 mlir::Value i = indexTypeCast( loc, currentIndexExpr );
 
-                silly::AssignOp assign = builder.create<silly::AssignOp>( loc, symRef, i, resultValue );
+                silly::AssignOp assign = builder.create<silly::AssignOp>( loc, var, i, resultValue );
 
                 LLVM_DEBUG( {
                     mlir::OpPrintingFlags flags;
@@ -1344,10 +1343,7 @@ namespace silly
             }
             else
             {
-                mlir::NamedAttribute varNameAttr( builder.getStringAttr( "var_name" ), symRef );
-
-                builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ resultValue },
-                                                 llvm::ArrayRef<mlir::NamedAttribute>{ varNameAttr } );
+                builder.create<silly::AssignOp>( loc, var, i, resultValue );
             }
         }
     }

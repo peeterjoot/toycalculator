@@ -133,24 +133,27 @@ def Silly_IntOrFloat : TypeConstraint<
   "integer or float type">;
 
 def Silly_AssignOp : Op<Silly_Dialect, "assign"> {
-  let summary = "Assign a value to a variable (scalar or array element).";
+  let summary = "Assign a value to a variable (or array element).";
 
   let description = [{
-    Assigns `value` to the variable referenced by `var_name`.
-    If `index` is present, the assignment targets the array element at that index.
-    The target variable must have been declared with a matching `silly.declare`.
+    Assigns `value` to the storage referenced by `%var`.
+    If `index` is present, it targets the array element at that (dynamic) index.
+    The `%var` must be a result of a `silly.declare` (or equivalent) with matching element type and shape.
+    For scalars: `index` must be absent.
+    For arrays: `index` is required (even if statically known to be 0 for single-element arrays).
   }];
 
   let arguments = (ins
-    SymbolRefAttr:$var_name,               // @t
-    Optional<Index>:$index,                // optional SSA value of index type (dynamic or none)
-    AnyType:$value                         // the value being assigned
+    Silly_VarType:$var,                    // the SSA handle from declare
+    Optional<Index>:$index,                // dynamic index for array element (absent = scalar)
+    AnyType:$value                         // value to assign (must match elementType of $var)
   );
 
-  let results = (outs);
+  let results = (outs);   // side-effecting op, no result
 
-  let assemblyFormat =
-    "$var_name (`[` $index^ `]`)? `=` $value `:` type($value) attr-dict";
+  let assemblyFormat = [{
+    $var `:` type($var) (`[` $index^ `]`)? `=` $value `:` type($value) attr-dict
+  }];
 }
 
 def Silly_DebugName : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {

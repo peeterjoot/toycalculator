@@ -1398,23 +1398,24 @@ namespace silly
             silly::AssignOp assignOp = cast<silly::AssignOp>( op );
             mlir::Location loc = assignOp.getLoc();
 
-            // (ins StrAttr:$name, AnyType:$value);
-            // silly.assign "x", %0 : i32
+            // silly.assign %0 : <i64[[]]> = %c1_i64 : i64 loc(#loc3)
             LLVM_DEBUG( llvm::dbgs() << "Lowering AssignOp: " << *op << '\n' );
 
-            mlir::SymbolRefAttr varNameAttr = assignOp.getVarName();
-            assert( varNameAttr );
+            mlir::Value var = assignOp.getVar();
+            assert( var );
+            silly::DeclareOp declareOp = var.getDefiningOp<silly::DeclareOp>();
 
             // Get string (e.g., "x")
-            std::string varName = varNameAttr.getLeafReference().str();
+            mlir::StringRef varName = declareOp.getName();
             LLVM_DEBUG( { llvm::dbgs() << "AssignOp variable name: " << varName << "\n"; } );
 
-            mlir::LLVM::AllocaOp allocaOp = lState.lookupLocalSymbolReference( assignOp, varName );
+            mlir::LLVM::AllocaOp allocaOp = lState.lookupLocalSymbolReference( assignOp, varName.str() );
 
             mlir::Value value = assignOp.getValue();
             LLVM_DEBUG( llvm::dbgs() << "varName: " << varName << '\n' );
 
-            mlir::Type elemType = allocaOp.getElemType();
+            silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
+            mlir::Type elemType = varTy.getElementType();
             unsigned alignment = lState.preferredTypeAlignment( op, elemType );
 
             lState.generateAssignment( loc, rewriter, value, elemType, allocaOp, alignment, assignOp.getIndex() );
