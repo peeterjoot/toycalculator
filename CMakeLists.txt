@@ -133,6 +133,7 @@ target_link_options(silly_runtime PRIVATE -Wl,--version-script=${CMAKE_CURRENT_S
 set(DRIVER_SOURCE_FILES
   src/driver.cpp
   src/SillyDialect.cpp
+  src/SillyTypes.cpp
   src/SillyPasses.cpp
   src/lowering.cpp
   src/parser.cpp

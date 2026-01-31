@@ -45,8 +45,7 @@ def Silly_VarType : TypeDef<Silly_Dialect, "var"> {
 
   let mnemonic = "var";
 
-  //let assemblyFormat = "`<` $elementType `[` $shape `]` `>`"; // shape already builds in brackets
-  let assemblyFormat = "`<` $elementType $shape `>`";
+  let hasCustomAssemblyFormat = 1;
 }
 
 def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
