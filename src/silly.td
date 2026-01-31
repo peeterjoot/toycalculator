@@ -25,6 +25,8 @@ def Silly_Dialect : Dialect {
   let name = "silly";
   let summary = "An MLIR dialect for a silly simple language";
   let cppNamespace = "silly";
+
+  let useDefaultTypePrinterParser = 1;
 }
 
 def Silly_VarType : TypeDef<Silly_Dialect, "var"> {
