@@ -17,12 +17,12 @@
 #include <mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h>
 #include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Conversion/LLVMCommon/Pattern.h>
-//#include <mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h>
+// #include <mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h>
 #include <mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/ControlFlow/IR/ControlFlow.h>
 #include <mlir/Dialect/LLVMIR/LLVMAttrs.h>
-//#include <mlir/Dialect/MemRef/IR/MemRef.h>
+// #include <mlir/Dialect/MemRef/IR/MemRef.h>
 #include <mlir/Dialect/SCF/IR/SCF.h>
 #include <mlir/IR/Block.h>
 #include <mlir/IR/BuiltinAttributes.h>
@@ -1217,8 +1217,6 @@ namespace silly
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            assert( 0 && "NYI" );
-#if 0
             silly::DeclareOp declareOp = cast<silly::DeclareOp>( op );
             mlir::Location loc = declareOp.getLoc();
             bool param = declareOp.isParameter();
@@ -1230,7 +1228,8 @@ namespace silly
             rewriter.setInsertionPoint( op );
 
             mlir::StringRef varName = declareOp.getName();
-            mlir::Type elemType = declareOp.getType();
+            silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
+            mlir::Type elemType = varTy.getElementType();
 
             if ( param )
             {
@@ -1278,16 +1277,18 @@ namespace silly
                 // separate byte for each.
                 unsigned alignment = lState.preferredTypeAlignment( op, elemType );
 
+                mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
+                llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
+
                 mlir::Value sizeVal;
                 mlir::Value bytesVal;
                 int64_t arraySize = 1;
-                if ( declareOp.getSize().has_value() )
+                if ( !shape.empty() )
                 {
-                    arraySize = declareOp.getSize().value();
-                    if ( arraySize <= 0 )
-                    {
-                        return rewriter.notifyMatchFailure( declareOp, "array size must be positive" );
-                    }
+                    arraySize = shape[0];
+
+                    assert( arraySize > 0 );
+                    assert( shape.size() == 1 );
 
                     sizeVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.tyI64,
                                                                        rewriter.getI64IntegerAttr( arraySize ) );
@@ -1307,13 +1308,13 @@ namespace silly
                 lState.constructVariableDI( getLocation( loc ), varName, elemType, elemSizeInBits, allocaOp,
                                             arraySize );
 
-                auto init = declareOp.getInit();
+                auto init = declareOp.getInitializers();
                 if ( init.size() )
                 {
                     mlir::Type elemType = allocaOp.getElemType();
                     unsigned alignment = lState.preferredTypeAlignment( op, elemType );
 
-                    if ( declareOp.getSize().has_value() )
+                    if ( !shape.empty() )
                     {
                         for ( size_t i = 0; i < init.size(); ++i )
                         {
@@ -1341,7 +1342,6 @@ namespace silly
             }
 
             rewriter.eraseOp( op );
-#endif
             return mlir::success();
         }
     };
