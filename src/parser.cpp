@@ -208,14 +208,6 @@ namespace silly
         context.getOrLoadDialect<mlir::memref::MemRefDialect>();
         context.getOrLoadDialect<mlir::LLVM::LLVMDialect>();
         context.getOrLoadDialect<mlir::scf::SCFDialect>();
-
-#if 0
-        if (auto *d = context.getLoadedDialect<silly::SillyDialect>()) {
-            llvm::errs() << "SillyDialect loaded successfully\n";
-        } else {
-            llvm::errs() << "Failed to load SillyDialect!\n";
-        }
-#endif
     }
 
     bool ParseListener::isVariableDeclared( mlir::Location loc, const std::string &varName )
@@ -355,8 +347,6 @@ namespace silly
                                                                  /*parameter=*/nullptr,
                                                                  /*param_number=*/nullptr, symNameAttr );
 
-        // llvm::errs() << "Test print first !silly.var just after the DeclareOp: " << varType << "\n";
-
         f.lastDeclareOp = dcl.getOperation();
 
         builder.restoreInsertionPoint( savedIP );
@@ -493,14 +483,6 @@ namespace silly
         mlir::MLIRContext *ctx = builder.getContext();
         tyVoid = mlir::LLVM::LLVMVoidType::get( ctx );
         tyPtr = mlir::LLVM::LLVMPointerType::get( ctx );
-
-#if 0
-        // Force a dummy type print to verify hook
-        auto dummyType = silly::varType::get(&dialect.context, tyI64,
-                                             builder.getDenseI64ArrayAttr({42}));
-
-        llvm::errs() << "Test print !silly.var: " << dummyType << "\n";
-#endif
     }
 
     void ParseListener::createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp funcOp,
@@ -525,21 +507,29 @@ namespace silly
 
         for ( size_t i = 0; i < funcOp.getNumArguments() && i < paramNames.size(); ++i )
         {
-            assert( 0 && "NYI" );
-#if 0
             mlir::Type argType = funcOp.getArgument( i ).getType();
             LLVM_DEBUG( {
                 llvm::errs() << std::format( "function {}: parameter{}:\n", funcName, i );
                 funcOp.getArgument( i ).dump();
             } );
-            mlir::StringAttr strAttr = builder.getStringAttr( paramNames[i] );
-            silly::DeclareOp dcl = builder.create<silly::DeclareOp>(
-                startLoc, mlir::TypeAttr::get( argType ), /*size=*/nullptr, builder.getUnitAttr(),
-                builder.getI64IntegerAttr( i ), mlir::ValueRange{} );
-            dcl->setAttr( "sym_name", strAttr );
+
+            mlir::StringAttr symNameAttr = builder.getStringAttr( paramNames[i] );
+
+            mlir::DenseI64ArrayAttr shapeAttr = builder.getDenseI64ArrayAttr( {} );
+
+            silly::varType varType = builder.getType<silly::varType>( argType, shapeAttr );
+
+            std::vector<mlir::Value> initializers;
+
+            silly::DeclareOp dcl =
+                builder.create<silly::DeclareOp>( startLoc,
+                                                  varType,
+                                                  initializers,
+                                                  builder.getUnitAttr(),
+                                                  builder.getI64IntegerAttr( i ),
+                                                  symNameAttr );
 
             f.lastDeclareOp = dcl.getOperation();
-#endif
         }
 
         currentFuncName = funcName;
@@ -1865,7 +1855,7 @@ namespace silly
                     mlir::Location iloc = getStartLocation( indexExpr->expression() );
                     i = indexTypeCast( iloc, value );
 
-                    value = builder.create<silly::LoadOp>( loc, mlir::TypeRange{elemType}, var, i );
+                    value = builder.create<silly::LoadOp>( loc, mlir::TypeRange{ elemType }, var, i );
                 }
                 else
                 {
@@ -1879,12 +1869,12 @@ namespace silly
                             unsigned w = ity.getWidth();
                             if ( w == 8 )
                             {
-                                elemType = tyPtr; // HACK.  Assumes that the only use of INT8[] is for STRING.
+                                elemType = tyPtr;    // HACK.  Assumes that the only use of INT8[] is for STRING.
                             }
                         }
                     }
 
-                    value = builder.create<silly::LoadOp>( loc, mlir::TypeRange{elemType}, var, i );
+                    value = builder.create<silly::LoadOp>( loc, mlir::TypeRange{ elemType }, var, i );
                 }
             }
         }
