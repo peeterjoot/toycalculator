@@ -1851,40 +1851,41 @@ namespace silly
             }
             else
             {
-                assert( 0 && "NYI" );
-#if 0
                 silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
 
-                mlir::Type varType = declareOp.getTypeAttr().getValue();
-
-                mlir::SymbolRefAttr symRef = mlir::SymbolRefAttr::get( &dialect.context, varName );
+                mlir::Value var = declareOp.getResult();
+                silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
+                mlir::Type elemType = varTy.getElementType();
+                mlir::Value i{};
 
                 if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
                 {
                     value = parseExpression( indexExpr->expression(), {} );
 
                     mlir::Location iloc = getStartLocation( indexExpr->expression() );
-                    mlir::Value i = indexTypeCast( iloc, value );
+                    i = indexTypeCast( iloc, value );
 
-                    value = builder.create<silly::LoadOp>( loc, varType, symRef, i );
+                    value = builder.create<silly::LoadOp>( loc, mlir::TypeRange{elemType}, var, i );
                 }
                 else
                 {
-                    if ( declareOp.getSizeAttr() )
+                    mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
+                    llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
+
+                    if ( !shape.empty() )
                     {
-                        if ( mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( varType ) )
+                        if ( mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( elemType ) )
                         {
                             unsigned w = ity.getWidth();
                             if ( w == 8 )
                             {
-                                varType = tyPtr;
+                                elemType = tyPtr; // HACK.  Assumes that the only use of INT8[] is for STRING.
                             }
                         }
                     }
 
-                    value = builder.create<silly::LoadOp>( loc, varType, symRef, mlir::Value{} );
+                    value = builder.create<silly::LoadOp>( loc, mlir::TypeRange{elemType}, var, i );
                 }
-#endif
             }
         }
         else if ( SillyParser::CallPrimaryContext *callCtx = dynamic_cast<SillyParser::CallPrimaryContext *>( ctx ) )

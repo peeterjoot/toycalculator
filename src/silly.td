@@ -180,14 +180,14 @@ def Silly_DebugName : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {
 def Silly_LoadOp : Op<Silly_Dialect, "load"> {
   let summary = "Load a variable (scalar or array element) by symbol reference.";
   let arguments = (ins
-    SymbolRefAttr:$var_name,               // @t
+    Silly_VarType:$var,                    // the SSA handle from declare
     Optional<Index>:$index                 // optional SSA value of index type (dynamic or none)
   );
 
   let results = (outs AnyType:$result);
 
   let assemblyFormat =
-    "$var_name (`[` $index^ `]`)? `:` type($result) attr-dict";
+    "$var `:` type($var) (`[` $index^ `]`)? `:` type($result) attr-dict";
 }
 
 def Silly_YieldOp : Op<Silly_Dialect, "yield"> {

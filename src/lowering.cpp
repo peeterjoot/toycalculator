@@ -826,10 +826,11 @@ namespace silly
 
             if ( silly::LoadOp loadOp = input.getDefiningOp<silly::LoadOp>() )
             {
-                mlir::SymbolRefAttr varNameAttr = loadOp.getVarName();
-                assert( varNameAttr );
-                std::string varName = varNameAttr.getLeafReference().str();
-                mlir::LLVM::AllocaOp allocaOp = lookupLocalSymbolReference( loadOp, varName );
+                mlir::Value var = loadOp.getVar();
+                assert( var );
+                silly::DeclareOp declareOp = var.getDefiningOp<silly::DeclareOp>();
+                mlir::StringRef varName = declareOp.getName();
+                mlir::LLVM::AllocaOp allocaOp = lookupLocalSymbolReference( loadOp, varName.str() );
                 assert( allocaOp.getElemType() == tyI8 );
                 if ( mlir::LLVM::ConstantOp constOp = allocaOp.getArraySize().getDefiningOp<mlir::LLVM::ConstantOp>() )
                 {
@@ -1582,8 +1583,11 @@ namespace silly
             // %0 = silly.load "i1v" : i1
             LLVM_DEBUG( llvm::dbgs() << "Lowering silly.load: " << *op << '\n' );
 
-            std::string varName = loadOp.getVarNameAttr().getRootReference().getValue().str();
-            mlir::LLVM::AllocaOp allocaOp = lState.lookupLocalSymbolReference( loadOp, varName );
+            mlir::Value var = loadOp.getVar();
+            assert( var );
+            silly::DeclareOp declareOp = var.getDefiningOp<silly::DeclareOp>();
+            mlir::StringRef varName = declareOp.getName();
+            mlir::LLVM::AllocaOp allocaOp = lState.lookupLocalSymbolReference( loadOp, varName.str() );
             mlir::TypedValue<mlir::IndexType> optIndex = loadOp.getIndex();
 
             LLVM_DEBUG( llvm::dbgs() << "varName: " << varName << '\n' );
