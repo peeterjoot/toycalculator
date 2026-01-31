@@ -528,6 +528,7 @@ DW_AT_decl_line             0x00000003
     - string store and load and string literal access.
 
   This program was specifically for examining the MLIR silly dialect representation of those operations.
+  * Disable: `div_zero_int` -- different results on intel vs. arm.
 
 ## tag: V7 (Jan 4, 2025)
 
