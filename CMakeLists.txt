@@ -130,11 +130,14 @@ add_library(silly_runtime SHARED runtime/Silly_runtime.cpp)
 set_target_properties(silly_runtime PROPERTIES OUTPUT_NAME "silly_runtime")
 target_link_options(silly_runtime PRIVATE -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/runtime/version_script.map)
 
-set(DRIVER_SOURCE_FILES
-  src/driver.cpp
+add_library(SillyDialect SHARED
   src/SillyDialect.cpp
   src/SillyTypes.cpp
   src/SillyPasses.cpp
+)
+
+set(DRIVER_SOURCE_FILES
+  src/driver.cpp
   src/lowering.cpp
   src/parser.cpp
   ${ANTLR_OUTPUT_DIR}/SillyBaseListener.cpp
@@ -147,13 +150,13 @@ add_executable(silly
   ${DRIVER_SOURCE_FILES}
 )
 
-add_executable(mlirtest
-  prototypes/mlirtest.cpp
-)
+#add_executable(mlirtest
+#  prototypes/mlirtest.cpp
+#)
 
-add_executable(simplest
-  prototypes/simplest.cpp
-)
+#add_executable(simplest
+#  prototypes/simplest.cpp
+#)
 
 #------------------------------------------------------------------------------
 # compile options (and target dependencies)
@@ -162,7 +165,8 @@ add_executable(simplest
 target_include_directories(silly PRIVATE ${ANTLR_OUTPUT_DIR})
 
 # Ensure the ANTLR and TableGen generation runs before building the project
-add_dependencies(silly simplest mlirtest silly_runtime GenerateANTLR SillyDialectIncGen SillyPassesIncGen SillyTypesIncGen)
+add_dependencies(SillyDialect GenerateANTLR SillyDialectIncGen SillyPassesIncGen SillyTypesIncGen)
+add_dependencies(silly silly_runtime SillyDialect)
 
 set(COMMON_COMPILE_OPTIONS
   -Wall
@@ -217,42 +221,49 @@ endif()
 message(STATUS "Architecture is aarch64: ${IS_AARCH64}")
 message(STATUS "LLVM Architecture specific libraries: ${LLVM_ARCH_LIBS}")
 
-target_link_libraries(mlirtest
-  PRIVATE
-  LLVMSupport
-  LLVMPasses
-  LLVM${LLVM_TARGET_ARCH}AsmParser
-  LLVM${LLVM_TARGET_ARCH}CodeGen
-  LLVM${LLVM_TARGET_ARCH}Desc
-  LLVM${LLVM_TARGET_ARCH}Info
-  MLIRFuncToLLVM
-  MLIRLLVMToLLVMIRTranslation
-  MLIRBuiltinToLLVMIRTranslation
-  MLIRTransforms
-  MLIRPass
-  MLIRMemRefToLLVM
-)
+#target_link_libraries(mlirtest
+#  PRIVATE
+#  LLVMSupport
+#  LLVMPasses
+#  LLVM${LLVM_TARGET_ARCH}AsmParser
+#  LLVM${LLVM_TARGET_ARCH}CodeGen
+#  LLVM${LLVM_TARGET_ARCH}Desc
+#  LLVM${LLVM_TARGET_ARCH}Info
+#  MLIRFuncToLLVM
+#  MLIRLLVMToLLVMIRTranslation
+#  MLIRBuiltinToLLVMIRTranslation
+#  MLIRTransforms
+#  MLIRPass
+#  MLIRMemRefToLLVM
+#)
+#
+#target_link_libraries(simplest
+#  PRIVATE
+#  LLVMSupport
+#  LLVMPasses
+#  LLVMMC
+#  LLVM${LLVM_TARGET_ARCH}AsmParser
+#  LLVM${LLVM_TARGET_ARCH}CodeGen
+#  LLVM${LLVM_TARGET_ARCH}Desc
+#  LLVM${LLVM_TARGET_ARCH}Info
+#  MLIRFuncToLLVM
+#  MLIRLLVMToLLVMIRTranslation
+#  MLIRBuiltinToLLVMIRTranslation
+#  MLIRTransforms
+#  MLIRPass
+#  MLIRMemRefToLLVM
+#)
 
-target_link_libraries(simplest
-  PRIVATE
-  LLVMSupport
-  LLVMPasses
-  LLVMMC
-  LLVM${LLVM_TARGET_ARCH}AsmParser
-  LLVM${LLVM_TARGET_ARCH}CodeGen
-  LLVM${LLVM_TARGET_ARCH}Desc
-  LLVM${LLVM_TARGET_ARCH}Info
-  MLIRFuncToLLVM
-  MLIRLLVMToLLVMIRTranslation
-  MLIRBuiltinToLLVMIRTranslation
-  MLIRTransforms
-  MLIRPass
-  MLIRMemRefToLLVM
+target_link_libraries(SillyDialect
+  PUBLIC
+    MLIRIR
+    MLIRSupport
 )
 
 target_link_libraries(silly
   PRIVATE
   antlr4-runtime
+  SillyDialect
   LLVMSupport
   LLVMMC # llvm::TargetRegistry::lookupTarget
   LLVMAnalysis # llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>::AnalysisManager()

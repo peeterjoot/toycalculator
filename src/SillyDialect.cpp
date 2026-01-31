@@ -3,12 +3,13 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Includes the source headers generated from SillyDialect.td
 ///
-#include "SillyDialect.hpp"
-
 #include <llvm/ADT/TypeSwitch.h>
-#include <mlir/IR/Builders.h>
 #include <mlir/Dialect/LLVMIR/LLVMTypes.h>
+#include <mlir/IR/Builders.h>
 #include <mlir/IR/DialectImplementation.h>
+#include <mlir/IR/DialectRegistry.h>
+
+#include "SillyDialect.hpp"
 
 // Pull in generated op method bodies, adaptors, verify(), fold(), etc.
 #define GET_OP_CLASSES
@@ -38,10 +39,15 @@ namespace silly
             >();
 
 
-        //llvm::errs() << "All registrations complete. Testing type print...\n";
+        // llvm::errs() << "All registrations complete. Testing type print...\n";
     }
 }    // namespace silly
 
 #include "SillyDialectDefs.cpp.inc"
+
+extern "C" void registerSillyDialect( mlir::DialectRegistry &registry )
+{
+    registry.insert<silly::SillyDialect>();
+}
 
 // vim: et ts=4 sw=4

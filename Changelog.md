@@ -588,6 +588,7 @@ Specific changes:
   - [tablegen] New Silly_VarType, use in DeclareOp, returning that varType (still has the var_name symbol.)  Adjusted AssignOp and LoadOp to use %foo (a DeclareOp mlir::Value) instead of a var_name symbol reference.  Adjusted all the source/headers that include the tablegen boilerplate headers -- lots of tweaking required.
 
   * [types] custom var printer to show scalar type, as `<i64>` (for example) instead of `<i64 []>`.  Unfortunately that required a parse method too.
+  * [cmake] package silly dialect files in libSillyDialect.so instead of static linking to the silly compiler driver.  This should at least theoretically allow the use of mlir-opt to test parse directly (not tried yet.)  Also comment out the mlirtest and simplest test build rules -- I haven't tried those in forever, and don't care to at the moment.
 
 ## tag: V7 (Jan 4, 2025)
 
