@@ -1,6 +1,7 @@
 ## TODO
 
 ----------------------------------
+-3. `div_zero_int` -- different results on intel vs. arm.
 -2. no test for error: "Attempted GET to string literal".  Audit all the UserError's and make sure that all have tests.
 -1. nice to have.  custom var printer to show scalar type, as `<i64>` (for example) instead of `<i64 []>`.
 0. `negative_step_for.silly` -- would be better to put in a (perhaps optional) runtime check for negative or zero step sizes in FOR statements.  test case for the zero step condition: `zero_step_for.silly` -- not included in automation, as it infinite loops (would be better if it did not.)
