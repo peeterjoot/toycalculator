@@ -13,6 +13,7 @@ INT64 aTemporaryScalar;
 aTemporaryScalar = 1;
 //PRINT aTemporaryScalar;
 //
+INT64 aVectorLength2[2];
 //INT64 aVectorLength2[2] {1};
 //
 ////aTemporaryScalar = aVectorLength2[0];
