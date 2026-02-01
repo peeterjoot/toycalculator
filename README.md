@@ -88,7 +88,8 @@ FUNCTION foo()
 * `prototypes/simplest.cpp`  -- A MWE with working DWARF instrumentation.  Just emits LLVM-IR and has no assembly printing pass like the silly compiler.
 * `samples/*.silly` and `bin/testit` -- sample programs and a rudimentary regression test suite based on them.
 * `bin/build`, `bin/rebuild` -- build scripts (first runs cmake and ninja and sets compiler override if required), second just ninja with some teeing and grepping.
-* `bin/silly-opt' -- This is a wrapper for mlir-opt that passes the shared object for the silly dialect.
+* `bin/silly-opt` -- This is a wrapper for mlir-opt that passes the shared object for the silly dialect.
+* `parsetests/*.mlir` -- silly dialect level error checking for verify functions.
 
 ## Command line options
 
@@ -196,6 +197,19 @@ Depending on what I currently have booted, this project has been built on only a
 This following describes the **operations and statements** supported by the *Silly* language, as defined by the `Silly.g4` ANTLR4 grammar. It is intended as a language-level reference rather than a grammar walkthrough.
 
 ---
+
+## Testing
+
+The full set of current testing can be run with:
+
+```
+cd samples
+testit # end-to-end tests (lots of them.)
+cd ../build
+ninja check-silly-parsetests # silly dialect low level tests.
+```
+
+(all the samples tests should be made into ctest tests.)
 
 ## Program Structure
 

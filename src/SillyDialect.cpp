@@ -3,11 +3,15 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Includes the source headers generated from SillyDialect.td
 ///
+#include <llvm/ADT/StringRef.h>
 #include <llvm/ADT/TypeSwitch.h>
+#include <llvm/Support/raw_ostream.h>
+#include <mlir/Dialect/Func/IR/FuncOps.h>    // mlir::func::FuncOp
 #include <mlir/Dialect/LLVMIR/LLVMTypes.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/DialectImplementation.h>
 #include <mlir/IR/DialectRegistry.h>
+#include <mlir/IR/Types.h>
 #include <mlir/Tools/Plugins/DialectPlugin.h>
 
 #include "SillyDialect.hpp"
@@ -42,6 +46,173 @@ namespace silly
 
         // llvm::errs() << "All registrations complete. Testing type print...\n";
     }
+
+#if 0
+    // not needed for now.  was work around for:
+    //
+    // << (() ? "static-string" : ty)
+    //
+    // which bombed due to type mismatch, not because Type isn't streamable
+    //
+    static llvm::SmallString<32> typeToString( mlir::Type type )
+    {
+        llvm::SmallString<32> buf;
+        llvm::raw_svector_ostream os( buf );
+        type.print( os );
+        return buf;
+    }
+#endif
+
+    mlir::LogicalResult DeclareOp::verify()
+    {
+        // Symbol name must exist and be non-empty
+        if ( getSymName().empty() )
+        {
+            return emitOpError( "requires a non-empty 'sym_name' attribute of type StringAttr." );
+        }
+
+        // Parameter consistency
+        if ( isParameter() && !getParamNumberAttr() )
+        {
+            return emitOpError( "parameter declarations require a 'param_number' attribute." );
+        }
+        if ( !isParameter() && getParamNumberAttr() )
+        {
+            return emitOpError( "non-parameter declarations cannot have a 'param_number' attribute." );
+        }
+
+        // Result type must be !silly.var<...>
+        auto varType = mlir::dyn_cast<silly::varType>( getVar().getType() );
+        if ( !varType )
+        {
+            return emitOpError( "result must be of type !silly.var" );
+        }
+
+        // Determine element count from the type shape
+        llvm::ArrayRef<int64_t> shape = varType.getShape();
+
+        if ( !shape.empty() )
+        {
+            if ( shape.size() != 1 )
+            {
+                return emitOpError( "only 1D arrays are supported (rank must be 0 or 1)" );
+            }
+            if ( shape[0] <= 0 )
+            {
+                return emitOpError( "array size must be a positive integer" );
+            }
+        }
+
+        // Check initializer count
+        size_t numInits = getInitializers().size();
+        size_t numElements = shape.empty() ? 1 : shape[0];
+
+        if ( numInits > numElements )
+        {
+            return emitOpError( "number of initializers (" )
+                   << numInits << ") exceeds number of elements (" << numElements << ")";
+        }
+
+        // Optional: type-check initializers
+        mlir::Type elemTy = varType.getElementType();
+        for ( mlir::Value init : getInitializers() )
+        {
+            if ( init.getType() != elemTy )
+            {
+                return emitOpError( "initializer type " )
+                       << init.getType() << " does not match variable element type " << elemTy;
+            }
+        }
+
+        return mlir::success();
+    }
+
+    LogicalResult ScopeOp::verify()
+    {
+        if ( !getBody().empty() )
+        {
+            if ( getBody().getBlocks().size() != 1 )
+            {
+                return emitOpError( "expects exactly one block in the body region" );
+            }
+        }
+
+        auto *parentBlock = getOperation()->getBlock();
+        if ( !parentBlock )
+        {
+            return emitOpError( "scope must be in a block" );
+        }
+
+        // 2. silly.scope must be inside func.func
+        Operation *funcOp = parentBlock->getParentOp();
+        auto func = dyn_cast_or_null<mlir::func::FuncOp>( funcOp );
+        if ( !func )
+        {
+            return emitOpError( "silly.scope containing this return must be inside a 'func.func'" );
+        }
+
+        return mlir::success();
+    }
+
+    LogicalResult ReturnOp::verify()
+    {
+        auto *parentBlock = getOperation()->getBlock();
+        if ( !parentBlock )
+        {
+            return emitOpError( "return must be in a block" );
+        }
+
+        // 1. Must be inside a silly.scope
+        Operation *scopeOp = parentBlock->getParentOp();
+        if ( !isa<silly::ScopeOp>( scopeOp ) )
+        {
+            return emitOpError( "must appear inside a 'silly.scope' block" );
+        }
+
+        // 3. Operand count vs function return type
+        Operation *funcOp = scopeOp->getParentOp();
+        auto func = dyn_cast_or_null<mlir::func::FuncOp>( funcOp );
+        auto returnType = func.getResultTypes();    // ArrayRef<Type>
+
+        if ( returnType.empty() )
+        {
+            // function returns nothing : return must have 0 operands
+            if ( !getOperands().empty() )
+            {
+                return emitOpError( "cannot return a value because enclosing function has no return type (void)" );
+            }
+        }
+        else
+        {
+            // function returns something : return must have exactly 1 operand (for now)
+            if ( getOperands().size() != 1 )
+            {
+                return emitOpError( "must return exactly one value when function has a return type" );
+            }
+
+            // 4. Return type should be scalar (integer or float), not pointer/array/...
+            Type retTy = returnType[0];
+            if ( !retTy.isIntOrIndexOrFloat() )
+            {
+                // For now.
+                return emitOpError( "function return type must be scalar (integer or floating-point), got " ) << retTy;
+            }
+
+            // check that the operand type matches func return type
+            if ( getOperands().empty() )
+            {
+                return emitOpError( "return operand type (<no operand>) does not match function return type (" )
+                       << retTy << ")";
+            }
+            else if ( getOperandTypes()[0] != retTy )
+            {
+                return emitOpError( "return operand type (" )
+                       << getOperand( 0 ).getType() << ") does not match function return type (" << retTy << ")";
+            }
+        }
+
+        return success();
+    }
 }    // namespace silly
 
 #include "SillyDialectDefs.cpp.inc"
@@ -56,7 +227,8 @@ extern "C" LLVM_ATTRIBUTE_WEAK ::mlir::DialectPluginLibraryInfo mlirGetDialectPl
     return { /*.apiVersion =*/MLIR_PLUGIN_API_VERSION,
              /*.pluginName =*/"silly",
              /*.pluginVersion =*/"0.7",
-             /*.registerDialects =*/[]( mlir::DialectRegistry *registry ) { registry->insert<silly::SillyDialect>(); } };
+             /*.registerDialects =*/[]( mlir::DialectRegistry *registry )
+             { registry->insert<silly::SillyDialect>(); } };
 }
 
 // vim: et ts=4 sw=4

@@ -67,64 +67,10 @@ def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
   let results = (outs Silly_VarType:$var);
   let traits = [Symbol];
 
+  let hasVerifier = 1;
+
   let extraClassDeclaration = [{
     bool isParameter() { return getParameterAttr() != nullptr; }
-
-    mlir::LogicalResult verify() {
-      // Symbol name must exist and be non-empty
-      if (getSymName().empty()) {
-        return emitOpError("requires a non-empty 'sym_name' attribute of type StringAttr.");
-      }
-
-      // Parameter consistency
-      if (isParameter() && !getParamNumberAttr()) {
-        return emitOpError("parameter declarations require a 'param_number' attribute.");
-      }
-      if (!isParameter() && getParamNumberAttr()) {
-        return emitOpError("non-parameter declarations cannot have a 'param_number' attribute.");
-      }
-
-      // Result type must be !silly.var<...>
-      auto varType = mlir::dyn_cast<silly::varType>(getVar().getType());
-      if (!varType) {
-        return emitOpError("result must be of type !silly.var");
-      }
-
-      // Determine element count from the type shape
-      llvm::ArrayRef<int64_t> shape = varType.getShape();
-
-      if (!shape.empty()) {
-        if (shape.size() != 1) {
-          return emitOpError("only 1D arrays are supported (rank must be 0 or 1)");
-        }
-        if (shape[0] <= 0) {
-          return emitOpError("array size must be a positive integer");
-        }
-      }
-
-      // Check initializer count
-      size_t numInits = getInitializers().size();
-      size_t numElements = shape.empty() ? 1 : shape[0];
-
-      if (numInits > numElements) {
-        return emitOpError("number of initializers (")
-               << numInits << ") exceeds number of elements (" << numElements << ")";
-      }
-
-      // Optional: type-check initializers
-      mlir::Type elemTy = varType.getElementType();
-      for (mlir::Value init : getInitializers()) {
-        if (init.getType() != elemTy) {
-          return emitOpError("initializer type ")
-                 << init.getType()
-                 << " does not match variable element type "
-                 << elemTy;
-        }
-      }
-
-      return mlir::success();
-    }
-
   }];
 }
 
@@ -208,16 +154,8 @@ def Silly_ScopeOp : Op<Silly_Dialect, "scope"> {
   let results = (outs Variadic<AnyType>:$results);
   let regions = (region AnyRegion:$body);
   let traits = [SymbolTable, AutomaticAllocationScope, OpAsmOpInterface];
-  let extraClassDeclaration = [{
-    mlir::LogicalResult verify() {
-      if (!getBody().empty()) {
-        if (getBody().getBlocks().size() != 1) {
-          return emitOpError("expects exactly one block in the body region");
-        }
-      }
-      return mlir::success();
-    }
-  }];
+
+  let hasVerifier = 1;
 }
 
 def Silly_CallOp : Op<Silly_Dialect, "call"> {
@@ -232,6 +170,7 @@ def Silly_CallOp : Op<Silly_Dialect, "call"> {
     FlatSymbolRefAttr:$callee,
     Variadic<AnyType>:$operands
   );
+
   let results = (outs Variadic<AnyType>:$result);
 
   //let assemblyFormat = "$callee `(` type($operands) $operands `)` attr-dict";
@@ -246,6 +185,8 @@ def Silly_ReturnOp : Op<Silly_Dialect, "return"> {
   let arguments = (ins Variadic<AnyType>:$operands);
   let results = (outs);
   let traits = [Terminator];
+
+  let hasVerifier = 1;
 }
 
 def Silly_StringLiteralOp : Op<Silly_Dialect, "string_literal"> {
