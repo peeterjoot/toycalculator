@@ -592,6 +592,8 @@ Specific changes:
   * [tablegen] remove the DeclareOp custom asm printer.  It generates output that can't be parsed by mlir-opt.
   * [dialect] convert library into a plugin so it can be loaded by mlir-opt.
   * [tests] Add manual tests parsetests/.
+  * [bin] Add: mlir-opt-silly -- an easy way to run mlir-opt against a silly dialect file.
+  * [test] some infrastructure for lit/FileCheck based tests -- WIP.  rebuilding llvm w/ tests enabled to try it.
 
 ## tag: V7 (Jan 4, 2025)
 

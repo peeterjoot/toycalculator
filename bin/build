@@ -65,7 +65,7 @@ GetOptions (
 
 # Didn't pick consistent install prefixes for my mlir builds (WSL2/Ubuntu, and Fedora-42)... find it:
 my @prefix = <"/usr/local/llvm-*">;
-die unless ( scalar(@prefix) eq 1 );
+die "Could not find a unique LLVM directory under /usr/local/llvm-*" unless ( scalar(@prefix) eq 1 );
 my $prefix = $prefix[0];
 my $parallel = '';
 if ( $serial ) {
@@ -117,6 +117,8 @@ set -x
 rm -rf build
 mkdir build
 cd build
+
+#$flags .= '-DSILLY_BUILD_PARSE_TESTS=ON ';
 
 cmake -G Ninja $flags -DLLVM_DIR=$prefix/lib64/cmake/llvm -DMLIR_DIR=$prefix/lib64/cmake/mlir ..
 

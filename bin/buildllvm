@@ -79,7 +79,7 @@ GetOptions (
    'dryrun!'            => \$dryrun,
    'clang!'             => \$clang,
    'flang!'             => \$flang,
-   'cir!'           => \$cir,
+   'cir!'               => \$cir,
 ) or pod2usage(-verbose => 0) ;
 
 # Validate/handle options, and everything else...
@@ -164,6 +164,8 @@ my @cmds = ( qq(cmake ) .
              qq(-DCMAKE_INSTALL_PREFIX=${instdir} ) .
              qq(-DLLVM_ENABLE_RTTI=ON ) .
              qq(-DLLVM_ENABLE_PROJECTS='${projects}' ) .
+             qq(-DLLVM_INCLUDE_TESTS=ON ) .
+             qq(-DLLVM_INSTALL_UTILS=ON ) .
              $cmakeflags,
 
              qq(ninja ${parallel}),

@@ -24,6 +24,37 @@ include_directories(${CMAKE_SOURCE_DIR}/src)
 include_directories(include)
 
 #------------------------------------------------------------------------------
+# Enable testing
+if(SILLY_BUILD_PARSE_TESTS)
+  enable_testing()
+
+  # Find lit (comes with LLVM, if built with tests enabled/installed)
+  find_program(LLVM_LIT_EXECUTABLE lit
+    PATHS ${LLVM_DIR}/bin
+    NO_DEFAULT_PATH
+  )
+  if(NOT LLVM_LIT_EXECUTABLE)
+    message(WARNING "lit not found — skipping dialect parse tests")
+    # or message(FATAL_ERROR "...") if you want to force it when option is ON
+  else()
+
+    # Configure lit site config
+    configure_file(
+      ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in
+      ${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg.py
+      @ONLY
+    )
+
+    add_lit_testsuite(check-silly-parsetests "Running silly dialect parse tests"
+      ${CMAKE_CURRENT_BINARY_DIR}/parsetests
+      DEPENDS SillyDialect silly
+      ARGS -v
+    )
+    add_test(NAME silly-parsetests COMMAND ${LLVM_LIT_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/parsetests)
+  endif()
+endif()
+
+#------------------------------------------------------------------------------
 # antlr4 related rules:
 #
 set(GRAMMAR_FILE "${CMAKE_CURRENT_SOURCE_DIR}/Silly.g4")

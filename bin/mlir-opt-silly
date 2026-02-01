@@ -1,0 +1,136 @@
+#!/usr/bin/perl
+
+#-----------------------------------------------------------------------------
+# POD Format Documentation.  Read "perldoc perlpod" for an example.
+# When done, check syntax with "podchecker".
+
+=head1 NAME
+
+mlir-opt-silly - Run mlir-opt against a silly-dialect file.
+
+=head1 SYNOPSIS
+
+mlir-opt-silly [--help] [--generic | --pretty] [--source myfile.mlir] [--out myout.mlir] [--verbose]
+
+=head1 DESCRIPTION
+
+Process a silly dialect mlir file (or stdin) using mlir-opt.  By default output goes to stdout.
+
+Options:
+
+=over 4
+
+=item --output thefile.mlir
+
+Use an output file instead of stdout.
+
+=item --source thefile.mlir
+
+Use an input file instead of stdin.
+
+=item --generic
+
+Run the asm printer in generic mode.
+
+=item --pretty
+
+Run CSE and some cleanup passes to make the output easier to read.
+
+=back
+
+=head1 SUPPORTED PLATFORMS
+
+ Unix (Linux verified)
+
+=head1 SUPPORT
+
+ Send email to peeterjoot@pm.me
+
+=head1 AUTHORS
+
+ Peeter Joot
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+use strict ;
+use warnings ;
+use Getopt::Long ;
+use Pod::Usage ;
+
+# Suppress sourcing of users' .bashrc files in invoked shells
+delete $ENV{'ENV'} ;
+delete $ENV{'BASH_ENV'} ;
+
+# Set STDOUT and STDERR to unbuffered
+select STDERR ; $| = 1 ;
+select STDOUT ; $| = 1 ;
+
+my $myName = '' ;
+my $generic;
+my $pretty;
+my $source;
+my $out;
+my $verbose = 0;
+($myName = $0) =~ s@.*[/\\]@@ ;
+
+#Getopt::Long::Configure( 'pass_through' ) ;
+GetOptions (
+   'help'               => sub { pod2usage(-verbose => 2) ; },
+   'generic!'	        => \$generic,
+   'pretty!'	        => \$pretty,
+   'source=s'           => \$source,
+   'out=s'              => \$out,
+   'verbose!'           => \$verbose,
+) or pod2usage(-verbose => 0) ;
+
+my @prefix = <"/usr/local/llvm-*">;
+die unless ( scalar(@prefix) eq 1 );
+my $prefix = $prefix[0];
+
+my $MLIROPT = "$prefix/bin/mlir-opt";
+my $TOP = `git rev-parse --show-toplevel 2>/dev/null` ; chomp $TOP ;
+
+my $opts = '';
+
+# Print in generic mode (to see internal representation):
+if ( $generic )
+{
+   $opts .= ' -mlir-print-op-generic';
+}
+
+# nice easy to read output:
+if ( $pretty )
+{
+   $opts .= ' -canonicalize -cse -symbol-dce';
+}
+
+if ( !defined $source )
+{
+   $source = '-';
+}
+
+if ( !defined $out )
+{
+   $out = '-';
+}
+
+my $cmd = "${MLIROPT} --load-dialect-plugin=${TOP}/build/libSillyDialect.so ${opts} ${source} -o ${out}";
+my $rc = mysystem( $cmd );
+
+exit $rc;
+
+sub mysystem
+{
+   my ($cmd) = @_;
+
+   print "# $cmd\n" if ( $verbose );
+
+   system( $cmd );
+   my $rc = $? >> 8;
+
+   return $rc;
+}
+
+# vim: et ts=3 sw=3

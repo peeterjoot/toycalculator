@@ -1,0 +1,6 @@
+import os
+
+config.mlir_opt_silly = "@CMAKE_CURRENT_BINARY_DIR@/bin/mlir-opt-silly")
+#config.plugin_path = "@CMAKE_CURRENT_BINARY_DIR@/libSillyDialect.so"
+
+config.substitutions.append(('%mlir-opt-silly', f'{config.mlir_opt_silly}'))
