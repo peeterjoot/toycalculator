@@ -186,5 +186,7 @@ foreach(test_file IN LISTS TEST_FILES)
             LABELS "end-to-end;compiler-cycle;sample"
             TIMEOUT 60
             PASS_REGULAR_EXPRESSION "TEST WAS SUCCESSFUL"
+            # Show more context on failure
+            ENVIRONMENT "CTEST_OUTPUT_ON_FAILURE=1"
     )
 endforeach()
