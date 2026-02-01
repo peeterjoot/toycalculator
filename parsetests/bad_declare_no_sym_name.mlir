@@ -1,4 +1,4 @@
-// RUN: not silly-opt --source %s 2>&1 | FileCheck %s
+// RUN: %Not %OptSilly --source %s 2>&1 | %FileCheck %s
 
 module {
   // CHECK: error: 'silly.declare' op requires attribute 'sym_name'

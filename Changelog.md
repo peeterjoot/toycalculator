@@ -593,7 +593,7 @@ Specific changes:
   * [dialect] convert library into a plugin so it can be loaded by mlir-opt.
   * [tests] Add manual tests parsetests/.
   * [bin] Add: silly-opt -- an easy way to run mlir-opt against a silly dialect file.
-  * [test] some infrastructure for lit/FileCheck based tests -- WIP.  rebuilding llvm w/ tests enabled to try it.
+  * Add lit test build infrastructure -- unfortunately depends on my llvm-build/ dir and llvm-project cmake configuration -- but it's a CI/CD start.
 
 ## tag: V7 (Jan 4, 2025)
 

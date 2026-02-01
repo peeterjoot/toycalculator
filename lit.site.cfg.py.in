@@ -1,6 +1,18 @@
 import os
 
-config.mlir_opt_silly = "@CMAKE_CURRENT_BINARY_DIR@/bin/mlir-opt-silly")
-#config.plugin_path = "@CMAKE_CURRENT_BINARY_DIR@/libSillyDialect.so"
+config.silly_opt = "@CMAKE_SOURCE_DIR@/bin/silly-opt"
+config.FileCheck = "@LLVM_PREFIX@/bin/FileCheck"
+config.Not = "@LLVM_PREFIX@/bin/not"
 
-config.substitutions.append(('%mlir-opt-silly', f'{config.mlir_opt_silly}'))
+#Never use these prefixes for substitutions:
+#
+#Prefix	Reason
+#%s	test file path
+#%S	source dir
+#%p	temp file
+#%t	temp base
+#%T	temp dir
+
+config.substitutions.append(('%OptSilly', f'{config.silly_opt}'))
+config.substitutions.append(('%FileCheck', f'{config.FileCheck}'))
+config.substitutions.append(('%Not', f'{config.Not}'))

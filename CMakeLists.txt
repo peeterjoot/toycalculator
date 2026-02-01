@@ -25,33 +25,37 @@ include_directories(include)
 
 #------------------------------------------------------------------------------
 # Enable testing
-if(SILLY_BUILD_PARSE_TESTS)
-  enable_testing()
+enable_testing()
 
-  # Find lit (comes with LLVM, if built with tests enabled/installed)
-  find_program(LLVM_LIT_EXECUTABLE lit
-    PATHS ${LLVM_DIR}/bin
-    NO_DEFAULT_PATH
+# Allow user override
+set(LLVM_LIT_EXECUTABLE "$ENV{HOME}/build-llvm/bin/llvm-lit"
+  CACHE FILEPATH "Path to llvm-lit executable")
+
+if(NOT EXISTS "${LLVM_LIT_EXECUTABLE}")
+  message(WARNING "llvm-lit not found at ${LLVM_LIT_EXECUTABLE} — skipping dialect parse tests")
+else()
+  message(STATUS "llvm-lit set to at ${LLVM_LIT_EXECUTABLE}")
+
+  set(LLVM_EXTERNAL_LIT "${LLVM_LIT_EXECUTABLE}" CACHE FILEPATH
+    "Path to llvm-lit used by LLVM lit targets" FORCE)
+
+  # Configure lit site config
+  configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in
+    ${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg.py
+    @ONLY
   )
-  if(NOT LLVM_LIT_EXECUTABLE)
-    message(WARNING "lit not found — skipping dialect parse tests")
-    # or message(FATAL_ERROR "...") if you want to force it when option is ON
-  else()
 
-    # Configure lit site config
-    configure_file(
-      ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in
-      ${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg.py
-      @ONLY
-    )
+  add_lit_testsuite(check-silly-parsetests "Running silly dialect parse tests"
+    ${CMAKE_CURRENT_BINARY_DIR}/../parsetests
+    DEPENDS SillyDialect silly
+    ARGS -v
+  )
 
-    add_lit_testsuite(check-silly-parsetests "Running silly dialect parse tests"
-      ${CMAKE_CURRENT_BINARY_DIR}/parsetests
-      DEPENDS SillyDialect silly
-      ARGS -v
-    )
-    add_test(NAME silly-parsetests COMMAND ${LLVM_LIT_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/parsetests)
-  endif()
+  add_test(
+    NAME silly-parsetests
+    COMMAND ${LLVM_LIT_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/parsetests
+  )
 endif()
 
 #------------------------------------------------------------------------------

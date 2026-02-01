@@ -118,9 +118,7 @@ rm -rf build
 mkdir build
 cd build
 
-#$flags .= '-DSILLY_BUILD_PARSE_TESTS=ON ';
-
-cmake -G Ninja $flags -DLLVM_DIR=$prefix/lib64/cmake/llvm -DMLIR_DIR=$prefix/lib64/cmake/mlir ..
+cmake -G Ninja $flags -DLLVM_PREFIX=$prefix -DLLVM_DIR=$prefix/lib64/cmake/llvm -DMLIR_DIR=$prefix/lib64/cmake/mlir ..
 
 ninja -v -k 3 ${parallel} 2>&1 | tee o | grep error: | tee e
 

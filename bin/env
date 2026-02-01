@@ -1,8 +1,8 @@
 export PATH=~/toycalculator/bin:$PATH
 
-LLVMBIN=/usr/local/llvm-21.1.0/bin
+#LLVMBIN=/usr/local/llvm-21.1.0/bin
 
 # only useful if clang was built with the rest of llvm+mlir:
 #export PATH=${LLVMBIN}:$PATH
 
-export LLVM_SYMBOLIZER_PATH=${LLVMBIN}/llvm-symbolizer
+#export LLVM_SYMBOLIZER_PATH=${LLVMBIN}/llvm-symbolizer
