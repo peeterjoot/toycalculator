@@ -1,4 +1,4 @@
-// RUN: mlir-opt-silly --source %s --out /dev/null
+// RUN: silly-opt --source %s --out /dev/null
 
 module {
   func.func @test() {

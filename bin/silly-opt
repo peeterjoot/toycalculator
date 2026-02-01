@@ -6,11 +6,11 @@
 
 =head1 NAME
 
-mlir-opt-silly - Run mlir-opt against a silly-dialect file.
+silly-opt - Run mlir-opt against a silly-dialect file.
 
 =head1 SYNOPSIS
 
-mlir-opt-silly [--help] [--generic | --pretty] [--source myfile.mlir] [--out myout.mlir] [--verbose]
+silly-opt [--help] [--generic | --pretty] [--source myfile.mlir] [--out myout.mlir] [--verbose]
 
 =head1 DESCRIPTION
 

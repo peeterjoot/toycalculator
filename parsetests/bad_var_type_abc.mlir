@@ -1,4 +1,4 @@
-// RUN: not mlir-opt-silly --source %s 2>&1 | FileCheck %s
+// RUN: not silly-opt --source %s 2>&1 | FileCheck %s
 
 module {
   // CHECK: error: expected integer value
