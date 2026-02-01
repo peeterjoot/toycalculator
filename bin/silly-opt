@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#! /usr/bin/env perl
 
 #-----------------------------------------------------------------------------
 # POD Format Documentation.  Read "perldoc perlpod" for an example.
@@ -34,7 +34,13 @@ Run the asm printer in generic mode.
 
 =item --pretty
 
-Run CSE and some cleanup passes to make the output easier to read.
+Runs: cse, canonicalize, and symbol-dce
+
+canonicalize may change semantics slightly (folds constants, etc.)
+symbol-dce removes dead symbols — might surprise if someone expects full round-trip
+cse (common subexpression elimination) just generally makes the output easier to read.
+
+Strictly speaking this is more than just making it look pretty, but it does that too.
 
 =back
 
@@ -85,7 +91,7 @@ GetOptions (
    'verbose!'           => \$verbose,
 ) or pod2usage(-verbose => 0) ;
 
-my @prefix = <"/usr/local/llvm-*">;
+my @prefix = <'/usr/local/llvm-*'>;
 die unless ( scalar(@prefix) eq 1 );
 my $prefix = $prefix[0];
 
