@@ -192,24 +192,19 @@ Depending on what I currently have booted, this project has been built on only a
 * WSL ubuntu 24/X64 (same laptop.)
 * Ambian (ubuntu), running on an raspberry PI (this is why there is an ARM case in buildllvm and CMakeLists.txt)
 
+### Testing
+
+Testing is ctest based:
+
+```
+cd build
+ctest # full testsuite
+ctest -R silly-parsetests # just the low level dialect verify tests.
+```
+
 # Silly Language — Operations Reference
 
 This following describes the **operations and statements** supported by the *Silly* language, as defined by the `Silly.g4` ANTLR4 grammar. It is intended as a language-level reference rather than a grammar walkthrough.
-
----
-
-## Testing
-
-The full set of current testing can be run with:
-
-```
-cd samples
-testit # end-to-end tests (lots of them.)
-cd ../build
-ninja check-silly-parsetests # silly dialect low level tests.
-```
-
-(all the samples tests should be made into ctest tests.)
 
 ## Program Structure
 

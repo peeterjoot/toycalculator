@@ -8,7 +8,7 @@ config.suffixes = ['.mlir']
 
 # Use the generated site config
 config.test_source_root = os.path.dirname(__file__)
-config.test_exec_root = os.path.join(config.test_source_root, "..", "build", "parsetests")
+config.test_exec_root = os.path.join(config.test_source_root, "parsetests")
 
 lit_config.load_config(
     config,

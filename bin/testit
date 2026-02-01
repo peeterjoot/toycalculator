@@ -14,6 +14,8 @@ testit [--help] --no-fatal [--just tcname] [--optimize] [--no-debug]
 
 =head1 DESCRIPTION
 
+This used to be the testsuite, but now just runs a single test.  The testsuite orchestration has been moved to ctest.
+
 Options:
 
 =over 4
@@ -117,150 +119,8 @@ my %decl_order_tests =
     'two_declare_no_init' => 'a,b',
 );
 
+# The test list is moved to samples/CMakeLists.txt -- this is now just for --just
 my %tests = map { $_ => 1 } (qw(
-0minus
-a2
-addi
-andop
-array
-array_assign_and_use
-array_dynamic_index
-array_elem_as_arg
-array_in_comparison
-array_index_var
-array_in_expr
-array_in_expr_min
-array_lvalue_complex
-array_mixed_type
-arrayprod
-assign_to_array_complex
-bin
-bool
-bool_arith_mixed
-boolcall0
-boolcall1
-boolcall2
-bool_in_arith
-boolliteral
-bool_not_on_comparison
-boolop
-boolr
-call_in_predicate
-call_with_param_referenced
-chained_comparison_parens
-const_overflow
-conversions
-converti
-dcl
-div_zero_float
-#div_zero_int
-elif
-elif2
-elif3
-elif4
-elif5
-elif6
-empty
-eqop
-exit3
-exit42
-exitarrayelement
-exitx
-expressions1
-expressions2
-expressions3
-expressions4
-expressions4a
-expressions4b
-expressions5
-expressions6
-expressions_assignment
-expressions_in_call
-expressions_in_for
-expressions_in_if
-f
-factorial
-factorial2
-fatal
-foo
-for_complex_body
-for_simplest
-forward_ref_init
-function
-function_add
-function_foo_with_local
-function_intret_intparam
-function_intret_void
-function_plist
-function_plist_nocast
-function_return
-function_two
-function_void_intparm
-function_void_void
-get
-getbool
-getboolfail
-if
-ifdcl
-induction_not_used
-init
-initarray
-init_expr_bool
-init_expr_call
-init_expr_unary
-initlist
-initlist_param
-initlisttrunc
-inits
-initsequence
-initstring
-intarray
-lessbug
-lessbug2
-lessbug3
-lesseqop
-lessop
-loadstore
-longstring
-minimal_eliftest
-minmax
-mixed_type_assignment
-neg
-negative_step_for
-neqop
-nested_calls
-nested_for
-nested_if_basic
-nested_if_deep
-nested_if_elif_else
-not
-not_on_expr
-orop
-printboollit
-printcont
-printdi
-printdi_nested
-printexpr
-printlit
-print_multiple
-printsome
-return_complex
-return_expression
-s2
-scopebug
-shortstring
-shortstring2
-shortstring3
-simpleless
-simplest
-stringlit
-test
-two_declare_no_init
-types
-unary
-unary_on_array_elem
-xorop
-zero_iter_for
 ));
 #error_nonconst_init -- want this to be a compile error, but it isn't yet.
 
@@ -355,13 +215,24 @@ sub verbose_system
 }
 
 my $pwd = `pwd` ; chomp $pwd;
-my @alltests = keys %tests;
-push(@alltests, keys %failuretests);
 
-foreach my $stem (sort @alltests)
+runone( $just );
+
+if ( scalar( @warnings ) )
 {
-    next if ( $stem =~ /^#/ );
-    next if ( defined $just and $just ne $stem );
+    print "ERRORS:\n\n";
+
+    foreach ( @warnings )
+    {
+        warn $_;
+    }
+}
+
+exit 0;
+
+sub runone
+{
+    my ($stem) = @_;
 
     print "##########################################################################\n";
     verbose_system( qq(cat $stem.silly) );
@@ -382,6 +253,7 @@ foreach my $stem (sort @alltests)
         if ($crc)
         {
             print "TEST: $stem.silly failed as expected: rc = $crc\n";
+            print "${stem}: TEST WAS SUCCESSFUL\n"; # for ctest rule
 
             if ( $expected_compile_error_message{$stem} )
             {
@@ -412,7 +284,7 @@ foreach my $stem (sort @alltests)
     verbose_system( qq(echo 'stdout:' ; cat out/${stem}.out) );
     verbose_system( qq(echo 'stderr:' ; cat out/${stem}.stderr.out) );
 
-    print "${stem}: RC = $rc\n\n\n\n\n";
+    print "${stem}: returned: $rc\n\n\n\n\n";
 
     my $erc = $expectedRC{$stem};
     if ( !defined $erc )
@@ -468,20 +340,9 @@ foreach my $stem (sort @alltests)
     {
         check_decl_order( "out/${stem}.mlir", $decl_order_tests{$stem} );
     }
+
+    print "${stem}: TEST WAS SUCCESSFUL\n"; # for ctest rule
 }
-
-if ( scalar( @warnings ) )
-{
-    print "ERRORS:\n\n";
-
-    foreach ( @warnings )
-    {
-        warn $_;
-    }
-}
-
-exit 0;
-
 sub complain
 {
     my ($message) = @_;

@@ -595,6 +595,7 @@ Specific changes:
   * [bin] Add: silly-opt -- an easy way to run mlir-opt against a silly dialect file.
   * Add lit test build infrastructure -- unfortunately depends on my llvm-build/ dir and llvm-project cmake configuration -- but it's a CI/CD start.
   * [tests] ReturnOp verifier and some initial returnop dialect tests.  Move the {ScopeOp,DeclareOp}::verify out of line.
+  * [tests] Migrated testit manual testsuite driver to ctest.
 
 ## tag: V7 (Jan 4, 2025)
 
