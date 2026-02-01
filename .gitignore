@@ -3,6 +3,7 @@ antlr-4.10-complete.jar
 build
 .junk
 samples/out
+parsetests/parsetests
 tags
 .url
 samples/.gdbinit

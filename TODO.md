@@ -1,6 +1,7 @@
 ## TODO
 
 ----------------------------------
+-6. testsuite leaves crap in: samples/out parsetests/parsetests -- both of those are in the gitignore, but would be better in build/ -- first easy to fix, second may be more finicky.
 -5. The verify functions that don't have lit tests are all marked with coverage TODOs.  Write tests for those cases.
 -3. `div_zero_int` -- different results on intel vs. arm.
 -2. no test for error: "Attempted GET to string literal".  Audit all the UserError's and make sure that all have tests.
