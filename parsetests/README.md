@@ -1,1 +1,8 @@
-These are low levels tests for the silly dialect, to be run as part of ctest using lit and FileCheck.
+These are low levels tests for the silly dialect operators that have verify functions.
+
+Run using:
+
+```
+cd ../build
+ninja check-silly-parsetests
+```

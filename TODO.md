@@ -1,7 +1,7 @@
 ## TODO
 
 ----------------------------------
--5. audit all the verify's and make sure there's a test for every error path (within reason.)
+-5. The verify functions that don't have lit tests are all marked with coverage TODOs.  Write tests for those cases.
 -4. Turn my 'cd samples ; ../bin/testit' manual testsuite into ctest based tests.
 -3. `div_zero_int` -- different results on intel vs. arm.
 -2. no test for error: "Attempted GET to string literal".  Audit all the UserError's and make sure that all have tests.

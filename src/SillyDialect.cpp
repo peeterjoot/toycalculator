@@ -68,16 +68,19 @@ namespace silly
         // Symbol name must exist and be non-empty
         if ( getSymName().empty() )
         {
+            // TODO: no coverage.
             return emitOpError( "requires a non-empty 'sym_name' attribute of type StringAttr." );
         }
 
         // Parameter consistency
         if ( isParameter() && !getParamNumberAttr() )
         {
+            // TODO: no coverage.
             return emitOpError( "parameter declarations require a 'param_number' attribute." );
         }
         if ( !isParameter() && getParamNumberAttr() )
         {
+            // TODO: no coverage.
             return emitOpError( "non-parameter declarations cannot have a 'param_number' attribute." );
         }
 
@@ -85,6 +88,7 @@ namespace silly
         auto varType = mlir::dyn_cast<silly::varType>( getVar().getType() );
         if ( !varType )
         {
+            // TODO: no coverage.
             return emitOpError( "result must be of type !silly.var" );
         }
 
@@ -95,10 +99,12 @@ namespace silly
         {
             if ( shape.size() != 1 )
             {
+                // TODO: no coverage.
                 return emitOpError( "only 1D arrays are supported (rank must be 0 or 1)" );
             }
             if ( shape[0] <= 0 )
             {
+                // TODO: no coverage.
                 return emitOpError( "array size must be a positive integer" );
             }
         }
@@ -109,16 +115,18 @@ namespace silly
 
         if ( numInits > numElements )
         {
+            // coverage: bad_declare_toomany_init_array.mlir bad_declare_toomany_init_scalar.mlir
             return emitOpError( "number of initializers (" )
                    << numInits << ") exceeds number of elements (" << numElements << ")";
         }
 
-        // Optional: type-check initializers
+        // type-check initializers
         mlir::Type elemTy = varType.getElementType();
         for ( mlir::Value init : getInitializers() )
         {
             if ( init.getType() != elemTy )
             {
+                // TODO: no coverage.
                 return emitOpError( "initializer type " )
                        << init.getType() << " does not match variable element type " << elemTy;
             }
@@ -133,6 +141,7 @@ namespace silly
         {
             if ( getBody().getBlocks().size() != 1 )
             {
+                // TODO: no coverage.
                 return emitOpError( "expects exactly one block in the body region" );
             }
         }
@@ -140,6 +149,7 @@ namespace silly
         auto *parentBlock = getOperation()->getBlock();
         if ( !parentBlock )
         {
+            // TODO: no coverage.
             return emitOpError( "scope must be in a block" );
         }
 
@@ -148,6 +158,7 @@ namespace silly
         auto func = dyn_cast_or_null<mlir::func::FuncOp>( funcOp );
         if ( !func )
         {
+            // TODO: no coverage
             return emitOpError( "silly.scope containing this return must be inside a 'func.func'" );
         }
 
@@ -159,6 +170,7 @@ namespace silly
         auto *parentBlock = getOperation()->getBlock();
         if ( !parentBlock )
         {
+            // TODO: no coverage.
             return emitOpError( "return must be in a block" );
         }
 
@@ -166,6 +178,7 @@ namespace silly
         Operation *scopeOp = parentBlock->getParentOp();
         if ( !isa<silly::ScopeOp>( scopeOp ) )
         {
+            // coverage: bad_return_from_outside_func.mlir bad_return_not_in_scope.mlir
             return emitOpError( "must appear inside a 'silly.scope' block" );
         }
 
@@ -179,6 +192,7 @@ namespace silly
             // function returns nothing : return must have 0 operands
             if ( !getOperands().empty() )
             {
+                // coverage: bad_return_from_void.mlir
                 return emitOpError( "cannot return a value because enclosing function has no return type (void)" );
             }
         }
@@ -187,25 +201,28 @@ namespace silly
             // function returns something : return must have exactly 1 operand (for now)
             if ( getOperands().size() != 1 )
             {
+                // coverage: bad_return_multiple_operands.mlir bad_return_no_operand_non_void.mlir
                 return emitOpError( "must return exactly one value when function has a return type" );
             }
 
-            // 4. Return type should be scalar (integer or float), not pointer/array/...
+            // 4. Return type should be scalar (integer or float), not pointer/array/... (for now.)
             Type retTy = returnType[0];
             if ( !retTy.isIntOrIndexOrFloat() )
             {
-                // For now.
+                // coverage: bad_return_array.mlir
                 return emitOpError( "function return type must be scalar (integer or floating-point), got " ) << retTy;
             }
 
             // check that the operand type matches func return type
             if ( getOperands().empty() )
             {
+                // coverage: bad_return_mismatch.mlir bad_return_string.mlir bad_return_type_mismatch_f64_i32.mlir
                 return emitOpError( "return operand type (<no operand>) does not match function return type (" )
                        << retTy << ")";
             }
             else if ( getOperandTypes()[0] != retTy )
             {
+                // TODO: no test coverage
                 return emitOpError( "return operand type (" )
                        << getOperand( 0 ).getType() << ") does not match function return type (" << retTy << ")";
             }
