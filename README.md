@@ -88,6 +88,7 @@ FUNCTION foo()
 * `prototypes/simplest.cpp`  -- A MWE with working DWARF instrumentation.  Just emits LLVM-IR and has no assembly printing pass like the silly compiler.
 * `samples/*.silly` and `bin/testit` -- sample programs and a rudimentary regression test suite based on them.
 * `bin/build`, `bin/rebuild` -- build scripts (first runs cmake and ninja and sets compiler override if required), second just ninja with some teeing and grepping.
+* `bin/silly-opt' -- This is a wrapper for mlir-opt that passes the shared object for the silly dialect.
 
 ## Command line options
 
@@ -118,6 +119,18 @@ mkdir out
 ../build/silly --output-directory out f.silly -g --emit-llvm --emit-mlir --debug
 ../build/silly --output-directory out f.silly -O 2
 ```
+
+## Running silly-opt
+
+Example:
+
+```
+cd samples
+testit -j loadstore.silly
+bin/silly-opt --pretty --source out/loadstore.mlir
+```
+
+By default silly-opt output does to stdout.  run `silly-opt --help` for all available options.
 
 ## Building
 
