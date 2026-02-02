@@ -125,12 +125,8 @@ namespace silly
 
         /// Returns a zero constant for the given integer width (i8, i16, i32, i64).
         /// Throws an exception for unsupported widths.
-        inline mlir::LLVM::ConstantOp getIzero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
-                                                unsigned width );
-
-        /// Creates a floating-point zero constant for the given width (32 or 64).
-        mlir::LLVM::ConstantOp getFzero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
-                                         unsigned width );
+        inline mlir::LogicalResult getIzero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
+                                             mlir::Operation* op, unsigned width, mlir::LLVM::ConstantOp& output );
 
         /// Creates an i64 one constant.
         inline mlir::LLVM::ConstantOp getI64one( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter );
@@ -152,10 +148,6 @@ namespace silly
         void insertFill( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter, mlir::LLVM::AllocaOp allocaOp,
                          mlir::Value bytesVal );
 
-       private:
-        /// Returns the MLIR context.
-        inline mlir::MLIRContext* getContext();
-
         /// Creates an i16 zero constant.
         inline mlir::LLVM::ConstantOp getI16zero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter );
 
@@ -170,6 +162,10 @@ namespace silly
 
         /// Creates an f64 zero constant.
         inline mlir::LLVM::ConstantOp getF64zero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter );
+
+       private:
+        /// Returns the MLIR context.
+        inline mlir::MLIRContext* getContext();
 
         /// Creates the prototype for __silly_print.
         inline void createSillyPrintPrototype();

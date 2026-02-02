@@ -166,23 +166,39 @@ namespace silly
     }
 
     /// Returns a zero constant for the given integer width (i8, i16, i32, i64).
-    /// Throws an exception for unsupported widths.
-    inline mlir::LLVM::ConstantOp LoweringContext::getIzero( mlir::Location loc,
-                                                             mlir::ConversionPatternRewriter& rewriter, unsigned width )
+    inline mlir::LogicalResult LoweringContext::getIzero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
+                                                          mlir::Operation* op, unsigned width,
+                                                          mlir::LLVM::ConstantOp& output )
     {
         switch ( width )
         {
             case 8:
-                return getI8zero( loc, rewriter );
+            {
+                output = getI8zero( loc, rewriter );
+                break;
+            }
             case 16:
-                return getI16zero( loc, rewriter );
+            {
+                output = getI16zero( loc, rewriter );
+                break;
+            }
             case 32:
-                return getI32zero( loc, rewriter );
+            {
+                output = getI32zero( loc, rewriter );
+                break;
+            }
             case 64:
-                return getI64zero( loc, rewriter );
+            {
+                output = getI64zero( loc, rewriter );
+                break;
+            }
+            default:
+            {
+                return rewriter.notifyMatchFailure( op, llvm::formatv( "Unexpected integer size: {0}", width ) );
+            }
         }
 
-        throw ExceptionWithContext( __FILE__, __LINE__, __func__, std::format( "Unexpected integer size {}", width ) );
+        return mlir::success();
     }
 
     inline mlir::LLVM::ConstantOp LoweringContext::getI64one( mlir::Location loc,
@@ -201,20 +217,6 @@ namespace silly
                                                                mlir::ConversionPatternRewriter& rewriter )
     {
         return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyF64, rewriter.getF64FloatAttr( 0 ) );
-    }
-
-    mlir::LLVM::ConstantOp LoweringContext::getFzero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
-                                                      unsigned width )
-    {
-        switch ( width )
-        {
-            case 32:
-                return getF32zero( loc, rewriter );
-            case 64:
-                return getF64zero( loc, rewriter );
-        }
-
-        throw ExceptionWithContext( __FILE__, __LINE__, __func__, std::format( "Unexpected float size {}", width ) );
     }
 
     void LoweringContext::createSillyPrintPrototype()
@@ -2038,22 +2040,32 @@ namespace silly
 
             if ( mlir::IntegerType resulti = mlir::dyn_cast<mlir::IntegerType>( result.getType() ) )
             {
-                result = rewriter.create<mlir::LLVM::SubOp>( loc, lState.getIzero( loc, rewriter, resulti.getWidth() ),
-                                                             result );
+                mlir::LLVM::ConstantOp zero;
+                if (mlir::failed(lState.getIzero( loc, rewriter, op, resulti.getWidth(), zero )))
+                {
+                    return mlir::failure();
+                }
+
+                result = rewriter.create<mlir::LLVM::SubOp>( loc, zero, result );
             }
             else if ( mlir::FloatType resultf = mlir::dyn_cast<mlir::FloatType>( result.getType() ) )
             {
-                unsigned w{};
+                mlir::LLVM::ConstantOp zero;
                 if ( resultf == lState.tyF32 )
                 {
-                    w = 32;
+                    zero = lState.getF32zero( loc, rewriter );
                 }
                 else if ( resultf == lState.tyF64 )
                 {
-                    w = 64;
+                    zero = lState.getF64zero( loc, rewriter );
+                }
+                else
+                {
+                    return rewriter.notifyMatchFailure(
+                        op, llvm::formatv( "Unknown floating point type in negation operation lowering: {0}", result.getType() ) );
                 }
 
-                result = rewriter.create<mlir::LLVM::FSubOp>( loc, lState.getFzero( loc, rewriter, w ), result );
+                result = rewriter.create<mlir::LLVM::FSubOp>( loc, zero, result );
             }
             else
             {

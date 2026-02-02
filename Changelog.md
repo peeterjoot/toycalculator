@@ -632,6 +632,7 @@
 ```
 
 * [README] start making the intro more comprehensive.
+* [lowering] replace the last throw with notifyMatchFailure.
 
 ## tag: V7 (Jan 4, 2025)
 

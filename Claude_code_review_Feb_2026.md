@@ -1,6 +1,7 @@
 # Code Review: Silly MLIR Compiler
 
-This is Claude's excessively complementary code review using a free subscription.  It generated a nice structured set of TODO items.
+This is Claude's excessively complementary code review using a free subscription.
+It generated a nice structured set of TODO items, some of which I will probably tackle.
 
 ## Executive Summary
 
@@ -20,7 +21,7 @@ After reviewing ~4000 lines of core compiler code, here are my key recommendatio
 
 **Current Issue:** Mix of exceptions and MLIR error emission creates inconsistent user experience.
 
-**Location:** `src/parser.cpp`, `src/lowering.cpp`
+**Location:** `src/parser.cpp`, `src/driver.cpp`
 
 **Recommendation:**
 ```cpp
