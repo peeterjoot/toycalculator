@@ -1,0 +1,40 @@
+add_executable(mlirtest
+  mlirtest.cpp
+)
+
+add_executable(simplest
+  simplest.cpp
+)
+
+target_link_libraries(mlirtest
+  PRIVATE
+  LLVMSupport
+  LLVMPasses
+  LLVM${LLVM_TARGET_ARCH}AsmParser
+  LLVM${LLVM_TARGET_ARCH}CodeGen
+  LLVM${LLVM_TARGET_ARCH}Desc
+  LLVM${LLVM_TARGET_ARCH}Info
+  MLIRFuncToLLVM
+  MLIRLLVMToLLVMIRTranslation
+  MLIRBuiltinToLLVMIRTranslation
+  MLIRTransforms
+  MLIRPass
+  MLIRMemRefToLLVM
+)
+
+target_link_libraries(simplest
+  PRIVATE
+  LLVMSupport
+  LLVMPasses
+  LLVMMC
+  LLVM${LLVM_TARGET_ARCH}AsmParser
+  LLVM${LLVM_TARGET_ARCH}CodeGen
+  LLVM${LLVM_TARGET_ARCH}Desc
+  LLVM${LLVM_TARGET_ARCH}Info
+  MLIRFuncToLLVM
+  MLIRLLVMToLLVMIRTranslation
+  MLIRBuiltinToLLVMIRTranslation
+  MLIRTransforms
+  MLIRPass
+  MLIRMemRefToLLVM
+)

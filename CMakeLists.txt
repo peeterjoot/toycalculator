@@ -28,6 +28,7 @@ enable_testing()
 
 add_subdirectory(samples)
 add_subdirectory(parsetests)
+#add_subdirectory(prototypes)
 
 #------------------------------------------------------------------------------
 # antlr4 related rules:
@@ -156,14 +157,6 @@ add_executable(silly
   ${DRIVER_SOURCE_FILES}
 )
 
-#add_executable(mlirtest
-#  prototypes/mlirtest.cpp
-#)
-
-#add_executable(simplest
-#  prototypes/simplest.cpp
-#)
-
 #------------------------------------------------------------------------------
 # compile options (and target dependencies)
 
@@ -226,39 +219,6 @@ endif()
 # Optional: Print the results
 message(STATUS "Architecture is aarch64: ${IS_AARCH64}")
 message(STATUS "LLVM Architecture specific libraries: ${LLVM_ARCH_LIBS}")
-
-#target_link_libraries(mlirtest
-#  PRIVATE
-#  LLVMSupport
-#  LLVMPasses
-#  LLVM${LLVM_TARGET_ARCH}AsmParser
-#  LLVM${LLVM_TARGET_ARCH}CodeGen
-#  LLVM${LLVM_TARGET_ARCH}Desc
-#  LLVM${LLVM_TARGET_ARCH}Info
-#  MLIRFuncToLLVM
-#  MLIRLLVMToLLVMIRTranslation
-#  MLIRBuiltinToLLVMIRTranslation
-#  MLIRTransforms
-#  MLIRPass
-#  MLIRMemRefToLLVM
-#)
-#
-#target_link_libraries(simplest
-#  PRIVATE
-#  LLVMSupport
-#  LLVMPasses
-#  LLVMMC
-#  LLVM${LLVM_TARGET_ARCH}AsmParser
-#  LLVM${LLVM_TARGET_ARCH}CodeGen
-#  LLVM${LLVM_TARGET_ARCH}Desc
-#  LLVM${LLVM_TARGET_ARCH}Info
-#  MLIRFuncToLLVM
-#  MLIRLLVMToLLVMIRTranslation
-#  MLIRBuiltinToLLVMIRTranslation
-#  MLIRTransforms
-#  MLIRPass
-#  MLIRMemRefToLLVM
-#)
 
 target_link_libraries(SillyDialect
   PUBLIC
