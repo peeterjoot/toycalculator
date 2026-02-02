@@ -288,39 +288,9 @@
 
 * Prohibit NOT on non-integer type.  t/c: `error_notfloat.silly`
 * [grammar/parser] Prohibit chaining of Comparison operators (examples: `1 < 2 < 3', `1 EQ 1 NE 1`).
-* [grammar/parser] Introduce operator grammar elements so that I don't have ambiguous arrays of terminal-nodes.  Example:
+* [grammar/parser] Introduce operator grammar elements (example: multiplicativeOperator) so that I don't have ambiguous arrays of terminal-nodes.  This way I get an array of multiplicativeOperator, each with it's own terminal node.  This fixes samples/expression5.silly, now enabled in the regression suite.
 
-``` 
-  binaryExpressionMulDiv
-    : unaryExpression ( multiplicativeOperator unaryExpression )*                  # mulDivExpr
-    ;
-   
-  multiplicativeOperator
-    : TIMES_TOKEN | DIV_TOKEN
-    ;
-``` 
- 
- This way I get an array of multiplicativeOperator, each with it's own terminal node.  This fixes samples/expression5.silly, now enabled in the regression suite.
-
-* Make the following replacements in the grammar for consistency:
-
-```
-  s,\babort\b,abortStatement,g;
-  s,\bifelifelse\b,ifElifElseStatement,g;
-  s,\bfor\b,forStatement,g;
-  s,\bprint\b,printStatement,g;
-  s,\bassignment\b,assignmentStatement,g;
-  s,\bdeclare\b,declareStatement,g;
-  s,\bintDeclare\b,intDeclareStatement,g;
-  s,\bfloatDeclare\b,floatDeclareStatement,g;
-  s,\bstringDeclare\b,stringDeclareStatement,g;
-  s,\bboolDeclare\b,boolDeclareStatement,g;
-  s,\bfunction\b,functionStatement,g;
-  s,\bget\b,getStatement,g;
-  s,\berror\b,errorStatement,g;
-```
-
- (plus various matching transformations in the parser)
+* [grammar, parser] Add Statement suffixes to a bunch of the rules (abort, ifelifelse, for, print, assignment, declare, intDeclare, floatDeclare, stringDeclare, boolDeclare, function, get, error)
 * Fixed previously documented, but stupid, semantics:
 
  Computations occur in assignment operations, and any types are first promoted to the type of the variable.
@@ -329,11 +299,23 @@
 * A bunch more tests for complex expressions and more.
 * Generalize initializer expressions, and fix +- in unaryExpression ambiguity.
 
+  * [grammar, parser] Allow parameter+constant expressions
+  * [parser] Remove the previous insertion point hack for declarations.  They are now in program order again (but still hoisted up to the begining of the scope.)
+  * [grammar, parser] remove booleanValue, replacing with direct use of expression Grammar/parser now compiles, but the insertion point logic is broken: My declaration order hack is now causing trouble.
+  * [test] add declaration order test case.
+  * [grammar, parser] add declareAssignmentExpression, and remove (PLUSCHAR_TOKEN | MINUS_TOKEN)? from the INTEGER/FLOAT literal patterns.
+  * Enable new tests: array_dynamic_index, array_in_expr, array_in_expr_min.
+  * [grammar, parser] remove booleanValue, replacing with direct use of expression
+  * [grammar, parser] Replace assignmentRvalue with expression in assignmentStatement.  Use declareAssignmentExpression as expression alias, but just in the declaration rules (to distinguish assignment from initialization.)
+
+  Details:
+
   The tests array_dynamic_index, array_in_expr, array_in_expr_min, as well
   as testing more general array element expressions, found a fundamental
   grammar bug.
 
   A minimal reproducer was:
+
 ```
   INT32 i;
   i = 2+1; // parse fails.
@@ -350,19 +332,7 @@
   extensive parser changes), it was then possible to remove `(PLUSCHAR_TOKEN | MINUS_TOKEN)?` from the
   FLOAT and INTEGER patterns.
 
-  Specific changes:
-    * [grammar, parser] Allow parameter+constant expressions
-    * [parser] Remove the previous insertion point hack for declarations.  They are
-      now in program order again (but still hoisted up to the begining of
-      the scope.)
-    * [grammar, parser] remove booleanValue, replacing with direct use of expression
- Grammar/parser now compiles, but the insertion point logic is broken: My declaration order hack is now causing trouble.
-    * [test] add declaration order test case.
-    * [grammar, parser] add declareAssignmentExpression, and remove (PLUSCHAR_TOKEN
-      | MINUS_TOKEN)? from the INTEGER/FLOAT literal patterns.
-    * Enable new tests: array_dynamic_index, array_in_expr, array_in_expr_min.
-    * [grammar, parser] remove booleanValue, replacing with direct use of expression
-    * [grammar, parser] Replace assignmentRvalue with expression in assignmentStatement.  Use declareAssignmentExpression as expression alias, but just in the declaration rules (to distinguish assignment from initialization.)
+ 
 * more tests: `init_expr_unary initlisttrunc initsequence init_expr_bool forward_ref_init init_expr_call`
 * add placeholder test: `error_nonconst_init.silly` -- doesn't fail, but I want it to (see TODO)
 * `perl -p -i -e 's/MLIRListener/ParseListener/g'` -- Bad name: It's an MLIR builder or Silly Parse Listener, but not an MLIRListener
@@ -393,11 +363,13 @@
   #loc17 = loc("printdi.silly":9:28)
   #loc18 = loc("printdi.silly":9:5)
 ```
+
 * Switch scf.for loop bodies to use a proper SSA form.
   * [grammar] Introduce intType rule (use in intDeclareStatement and forStatement)
   * [parser] Add vector<pair<string, Value>> for induction variables and push/pop that in the FOR loop enter/exit callbacks.  Split out integerDeclarationType from enterIntDeclareStatement to also use in enterFor.
   * [parser] ParseListener::parsePrimary -- supplement variable lookup with induction var lookup.
   * Example of the new MLIR for a loop:
+
 ```
     scf.for %arg0 = %0 to %1 step %2  : i32 {
       %3 = arith.extsi %arg0 : i32 to i64 loc(#loc10)
@@ -411,14 +383,16 @@
       "silly.print"(%c0_i32_2, %6, %arg0, %7, %8) : (i32, !llvm.ptr, i32, !llvm.ptr, i32) -> () loc(#loc16)
     } loc(#loc9)
 ```
-    This removes the AssignOp for the loop induction variable that I used to avoid figuring out how to cache and
-    lookup the mlir::Value for the induction var.  Unfortunately, this means that I loose the debug instrumentation
-    for that loop variable as a side effect.  Also unfortunately, this also doesn't fix the line number ping pong
-    that I am seeing in loop bodies.  More debugging of the DI is required.
+
+  This removes the AssignOp for the loop induction variable that I used to avoid figuring out how to cache and
+  lookup the mlir::Value for the induction var.  Unfortunately, this means that I loose the debug instrumentation
+  for that loop variable as a side effect.  Also unfortunately, this also doesn't fix the line number ping pong
+  that I am seeing in loop bodies.  More debugging of the DI is required.
+
   * More FOR tests. Also implemented checking of the error messages for expected compile errors.
   * [parser] searchForInduction doesn't need to return a pair -- only the Value is ever used.
-  * [parser] pass type from parseExpression all the way down to parsePrimary, and adjust constant creation to use
-    that type if specified.  This gets rid of a bunch of ugly sign-extension/truncation.  Example:
+  * [parser] pass type from parseExpression all the way down to parsePrimary, and adjust constant creation to use that type if specified.  This gets rid of a bunch of ugly sign-extension/truncation.  Example:
+
 ```
     %0 = "arith.constant"() <{value = 0 : i32}> : () -> i32 loc(#loc2)
     %1 = "arith.constant"() <{value = 3 : i32}> : () -> i32 loc(#loc3)
@@ -475,64 +449,68 @@
   }) : () -> () loc(#loc1)
 ```
 
-  * Document that negative and zero size step values in FOR loops is not supported, and has undefined behaviour.
-  * Implement FOR induction variable debug-instrumentation.
-    * [tablegen] Add silly::debug_name
-    * [parser] resurrect getTerminalLocation, and use it to construct a DebugName OP in enterFor.
-    * [lowering] split out infoForVariableDI from constructVariableDI for use in DebugNameOpLowering.
-      Implement DebugNameOpLowering (mostly calling new helper constructInductionVariableDI), and make DebugName an illegalop.
-  * [lowering] Example MLIR fragment:
+* Document that negative and zero size step values in FOR loops is not supported, and has undefined behaviour.
+* Implement FOR induction variable debug-instrumentation.
+  * [tablegen] Add silly::debug_name
+  * [parser] resurrect getTerminalLocation, and use it to construct a DebugName OP in enterFor.
+  * [lowering] split out infoForVariableDI from constructVariableDI for use in DebugNameOpLowering.
+    Implement DebugNameOpLowering (mostly calling new helper constructInductionVariableDI), and make DebugName an illegalop.
+
+  Example.  MLIR fragment:
 
 ```
-    "silly.debug_name"(%arg0) <{name = "i"}> : (i64) -> () loc(#loc4)
-    loc4 = loc("for_simplest.silly":3:12)
+  "silly.debug_name"(%arg0) <{name = "i"}> : (i64) -> () loc(#loc4)
+  loc4 = loc("for_simplest.silly":3:12)
 ```
 
-    Example LLVM-IR fragment:
+  Example LLVM-IR fragment:
 
 ```
-    %lsr.iv = phi i64 [ %lsr.iv.next, %6 ], [ 2, %0 ], !dbg !11
-    ...
-    #dbg_value(i64 %lsr.iv, !12, !DIExpression(DW_OP_constu, 1, DW_OP_minus, DW_OP_stack_value), !13)
+  %lsr.iv = phi i64 [ %lsr.iv.next, %6 ], [ 2, %0 ], !dbg !11
+  ...
+  #dbg_value(i64 %lsr.iv, !12, !DIExpression(DW_OP_constu, 1, DW_OP_minus, DW_OP_stack_value), !13)
 
-    !12 = !DILocalVariable(name: "i", scope: !4, file: !1, line: 3, type: !10, align: 64)
+  !12 = !DILocalVariable(name: "i", scope: !4, file: !1, line: 3, type: !10, align: 64)
 ```
 
-    Example debug session:
-```
-    (gdb) run
-    Starting program: /home/peeter/toycalculator/samples/out/for_simplest
-    Downloading separate debug info for system-supplied DSO at 0xfffff7ffa000
-    [Thread debugging using libthread_db enabled]
-    Using host libthread_db library "/lib64/libthread_db.so.1".
-
-    Breakpoint 2, main () at for_simplest.silly:5
-    5           PRINT i;
-    (gdb) n
-    1
-    6           v = i + 1;
-    (gdb) p i
-    $1 = 1
-    (gdb) n
-    3       FOR (INT64 i : (1, 5))
-    (gdb) n
-
-    Breakpoint 2, main () at for_simplest.silly:5
-    5           PRINT i;
-    (gdb) p i
-    $2 = 2
-    (gdb) what i
-    type = int64_t
-```
-  * [lowering] Standardize on a 'loc, rewriter' sequence in all helper functions that take both (instead of a hodge podge or 'loc, rewriter' and 'rewriter, loc')
-  * Very simplest debug test case for loop induction variables.  For test `for_simplest` check the dwarfdump for:
+  Example debug session:
 
 ```
-    DW_AT_name                  i
-    DW_AT_alignment             0x00000008
-    DW_AT_decl_file             0x00000001 ./for_simplest.silly
-    DW_AT_decl_line             0x00000003
+  (gdb) run
+  Starting program: /home/peeter/toycalculator/samples/out/for_simplest
+  Downloading separate debug info for system-supplied DSO at 0xfffff7ffa000
+  [Thread debugging using libthread_db enabled]
+  Using host libthread_db library "/lib64/libthread_db.so.1".
+
+  Breakpoint 2, main () at for_simplest.silly:5
+  5           PRINT i;
+  (gdb) n
+  1
+  6           v = i + 1;
+  (gdb) p i
+  $1 = 1
+  (gdb) n
+  3       FOR (INT64 i : (1, 5))
+  (gdb) n
+
+  Breakpoint 2, main () at for_simplest.silly:5
+  5           PRINT i;
+  (gdb) p i
+  $2 = 2
+  (gdb) what i
+  type = int64_t
 ```
+
+* [lowering] Standardize on a 'loc, rewriter' sequence in all helper functions that take both (instead of a hodge podge or 'loc, rewriter' and 'rewriter, loc')
+* Very simplest debug test case for loop induction variables.  For test `for_simplest` check the dwarfdump for:
+
+```
+  DW_AT_name                  i
+  DW_AT_alignment             0x00000008
+  DW_AT_decl_file             0x00000001 ./for_simplest.silly
+  DW_AT_decl_line             0x00000003
+```
+
 * loadstore.silly -- This contains all the most basic load and store accesses:
   * Scalar load and store
   * Array element access: load and store
@@ -542,6 +520,15 @@
 
 * Disable: `div_zero_int` -- different results on intel vs. arm.
 * Refactor DeclareOp, AssignOp and LoadOp to use a proper SSA form (from branch peeter/ssa-form-assign-load, squashed and cherry-picked into master.)
+
+  * [lowering] Adjust all the DeclareOp, AssignOp and LoadOp's to use the new model.
+  * [parser] Adjust all the DeclareOp, AssignOp and LoadOp's to use the new model.
+  * [cmake] Generate SillyTypes.hpp.inc SillyTypes.cpp.inc, adding dependencies.
+  * [TODO] No error for "Attempted GET to string literal"
+  * [TODO] nice to have: custom var printer to show scalar type, as `<i64>` (for example) instead of `<i64 []>`
+  * [tablegen] New Silly_VarType, use in DeclareOp, returning that varType (still has the var_name symbol.)  Adjusted AssignOp and LoadOp to use %foo (a DeclareOp mlir::Value) instead of a var_name symbol reference.  Adjusted all the source/headers that include the tablegen boilerplate headers -- lots of tweaking required.
+
+  Details:
 
   This introduces a new Silly_VarType, now used in DeclareOp.  AssignOp and LoadOp's now refer to a DeclareOp, instead of a var_name (symbol reference)
 
@@ -590,14 +577,6 @@
 ```
 
   Loads and Assigns now reference a DeclareOp (SSA return value), and not a symbol name.
-
-  Specific changes:
-  * [lowering] Adjust all the DeclareOp, AssignOp and LoadOp's to use the new model.
-  * [parser] Adjust all the DeclareOp, AssignOp and LoadOp's to use the new model.
-  * [cmake] Generate SillyTypes.hpp.inc SillyTypes.cpp.inc, adding dependencies.
-  * [TODO] No error for "Attempted GET to string literal"
-  * [TODO] nice to have: custom var printer to show scalar type, as `<i64>` (for example) instead of `<i64 []>`
-  * [tablegen] New Silly_VarType, use in DeclareOp, returning that varType (still has the var_name symbol.)  Adjusted AssignOp and LoadOp to use %foo (a DeclareOp mlir::Value) instead of a var_name symbol reference.  Adjusted all the source/headers that include the tablegen boilerplate headers -- lots of tweaking required.
 
 * [types] custom var printer to show scalar type, as `<i64>` (for example) instead of `<i64 []>`.  Unfortunately that required a parse method too.
 * [cmake] package silly dialect files in libSillyDialect.so instead of static linking to the silly compiler driver.  This should at least theoretically allow the use of mlir-opt to test parse directly (not tried yet.)  Also comment out the mlirtest and simplest test build rules -- I haven't tried those in forever, and don't care to at the moment.
@@ -661,6 +640,7 @@
 ```
 
   MLIR:
+
 ```
   module {
     func.func @main() -> i32 {
@@ -694,6 +674,7 @@
 * PRINT: Also implement BOOLean print literal (t/c: printboollit.silly)
 
   MLIR:
+
 ```
   module {
     func.func @main() -> i32 {
@@ -957,7 +938,7 @@ My LL looks like:
     uselistorder i64 %11, { 1, 0, 2 }
   }
 ```
-     
+
 (with !dbg stripped out for clarity, but that sed left inappropriate trailing commas above.)
      
 the generated asm is fairly clean, even without optimization:
@@ -991,7 +972,7 @@ the generated asm is fairly clean, even without optimization:
     4c:   pop    %rbx
     4d:   ret
 ```
-     
+
 With optimization, the loops end up fully unrolled:
 
 ``` 
@@ -1074,6 +1055,7 @@ which previously failed with y not declared at the assignment point (since the d
 * test: samples/testerrors.sh -> bin/testerrors
 
   ci/cd is now effectively:
+
 ```bash
   cd samples
   testit
