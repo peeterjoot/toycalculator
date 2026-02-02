@@ -520,13 +520,16 @@ namespace silly
         symbolToAlloca[funcNameAndVarName] = allocaOp;
     }
 
-    void LoweringContext::infoForVariableDI( mlir::FileLineColLoc loc, llvm::StringRef varName, mlir::Type& elemType,
-                                             unsigned elemSizeInBits, int64_t arraySize, const char*& typeName,
-                                             unsigned& dwType, unsigned& elemStorageSizeInBits )
+    mlir::LogicalResult LoweringContext::infoForVariableDI( mlir::FileLineColLoc loc,
+                                                            mlir::ConversionPatternRewriter& rewriter,
+                                                            mlir::Operation* op, llvm::StringRef varName,
+                                                            mlir::Type& elemType, unsigned elemSizeInBits,
+                                                            int64_t arraySize, const char*& typeName, unsigned& dwType,
+                                                            unsigned& elemStorageSizeInBits )
     {
         if ( !driverState.wantDebug )
         {
-            return;
+            return mlir::success();
         }
 
         typeName = nullptr;
@@ -567,7 +570,8 @@ namespace silly
                 }
                 default:
                 {
-                    llvm_unreachable( "Unsupported integer type size" );
+                    return rewriter.notifyMatchFailure(
+                        op, llvm::formatv( "Unsupported integer type size: {0}", elemSizeInBits ) );
                 }
             }
         }
@@ -588,21 +592,25 @@ namespace silly
                 }
                 default:
                 {
-                    llvm_unreachable( "Unsupported float type size" );
+                    return rewriter.notifyMatchFailure(
+                        op, llvm::formatv( "Unsupported float type size: {0}", elemSizeInBits ) );
                 }
             }
         }
         else
         {
-            llvm_unreachable( "Unsupported type for debug info" );
+            return rewriter.notifyMatchFailure( op, llvm::formatv( "Unsupported type for debug info {0}", elemType ) );
         }
+
+        return mlir::success();
     }
 
-    void LoweringContext::constructInductionVariableDI( mlir::FileLineColLoc fileLoc,
-                                                        mlir::ConversionPatternRewriter& rewriter, mlir::Value value,
-                                                        std::string varName, mlir::StringAttr nameAttr,
-                                                        mlir::Type elemType, unsigned elemSizeInBits,
-                                                        std::string funcName )
+    mlir::LogicalResult LoweringContext::constructInductionVariableDI( mlir::FileLineColLoc fileLoc,
+                                                                       mlir::ConversionPatternRewriter& rewriter,
+                                                                       mlir::Operation* op, mlir::Value value,
+                                                                       std::string varName, mlir::StringAttr nameAttr,
+                                                                       mlir::Type elemType, unsigned elemSizeInBits,
+                                                                       std::string funcName )
     {
         assert( fileLoc );
 
@@ -613,8 +621,11 @@ namespace silly
         unsigned dwType;
         unsigned elemStorageSizeInBits;
 
-        LoweringContext::infoForVariableDI( fileLoc, varName, elemType, elemSizeInBits, 1, typeName, dwType,
-                                            elemStorageSizeInBits );
+        if ( mlir::failed( LoweringContext::infoForVariableDI( fileLoc, rewriter, op, varName, elemType, elemSizeInBits,
+                                                               1, typeName, dwType, elemStorageSizeInBits ) ) )
+        {
+            return mlir::failure();
+        }
 
         mlir::MLIRContext* context = builder.getContext();
 
@@ -630,11 +641,15 @@ namespace silly
         mlir::LLVM::DIExpressionAttr emptyExpr = mlir::LLVM::DIExpressionAttr::get( context, {} );
 
         rewriter.create<mlir::LLVM::DbgValueOp>( fileLoc, value, diVar, emptyExpr );
+
+        return mlir::success();
     }
 
-    void LoweringContext::constructVariableDI( mlir::FileLineColLoc loc, llvm::StringRef varName, mlir::Type& elemType,
-                                               unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp,
-                                               int64_t arraySize )
+    mlir::LogicalResult LoweringContext::constructVariableDI( mlir::FileLineColLoc loc,
+                                                              mlir::ConversionPatternRewriter& rewriter,
+                                                              mlir::Operation* op, llvm::StringRef varName,
+                                                              mlir::Type& elemType, unsigned elemSizeInBits,
+                                                              mlir::LLVM::AllocaOp& allocaOp, int64_t arraySize )
     {
         if ( driverState.wantDebug )
         {
@@ -649,8 +664,12 @@ namespace silly
             unsigned dwType;
             unsigned elemStorageSizeInBits;
 
-            LoweringContext::infoForVariableDI( loc, varName, elemType, elemSizeInBits, arraySize, typeName, dwType,
-                                                elemStorageSizeInBits );
+            if ( mlir::failed( LoweringContext::infoForVariableDI( loc, rewriter, op, varName, elemType, elemSizeInBits,
+                                                                   arraySize, typeName, dwType,
+                                                                   elemStorageSizeInBits ) ) )
+            {
+                return mlir::failure();
+            }
 
             std::string funcName = lookupFuncNameForOp( allocaOp );
             mlir::LLVM::DISubprogramAttr sub = funcState[funcName].subProgramDI;
@@ -696,6 +715,8 @@ namespace silly
         }
 
         createLocalSymbolReference( allocaOp, varName.str() );
+
+        return mlir::success();
     }
 
     mlir::LLVM::GlobalOp LoweringContext::lookupGlobalOp( mlir::StringAttr& stringLit )
@@ -712,9 +733,9 @@ namespace silly
         return globalOp;
     }
 
-    mlir::LLVM::GlobalOp LoweringContext::lookupOrInsertGlobalOp( mlir::ConversionPatternRewriter& rewriter,
-                                                                  mlir::StringAttr& stringLit, mlir::Location loc,
-                                                                  size_t strLen )
+    mlir::LLVM::GlobalOp LoweringContext::lookupOrInsertGlobalOp( mlir::Location loc,
+                                                                  mlir::ConversionPatternRewriter& rewriter,
+                                                                  mlir::StringAttr& stringLit, size_t strLen )
     {
         mlir::LLVM::GlobalOp globalOp;
         StringLit2GlobalOp::iterator it = stringLiterals.find( stringLit.str() );
@@ -762,7 +783,7 @@ namespace silly
         std::string strValue = strAttr.getValue().str();
         size_t strLen = strValue.size();
 
-        mlir::LLVM::GlobalOp globalOp = lookupOrInsertGlobalOp( rewriter, strAttr, loc, strLen );
+        mlir::LLVM::GlobalOp globalOp = lookupOrInsertGlobalOp( loc, rewriter, strAttr, strLen );
         mlir::Value input = rewriter.create<mlir::LLVM::AddressOfOp>( loc, globalOp );
 
         mlir::LLVM::ConstantOp lineConst =
@@ -1097,11 +1118,12 @@ namespace silly
         {
             if ( elemType != tyI8 )
             {
-                throw ExceptionWithContext( __FILE__, __LINE__, __func__, "string assignment requires i8 array" );
+                return rewriter.notifyMatchFailure(
+                    op, llvm::formatv( "string assignment requires i8 array.  have: {0}", elemType ) );
             }
             if ( numElems == 0 )
             {
-                throw ExceptionWithContext( __FILE__, __LINE__, __func__, "invalid array size" );
+                return rewriter.notifyMatchFailure( op, "invalid zero size array" );
             }
 
             mlir::StringAttr strAttr = stringLitOp.getValueAttr();
@@ -1143,9 +1165,8 @@ namespace silly
             {
                 // Assigning a non-string-literal to an array (e.g., t = some_expr;)
                 // This is not supported (arrays are not first-class values)
-                throw ExceptionWithContext(
-                    __FILE__, __LINE__, __func__,
-                    "assignment of non-string-literal to array variable without index is not supported" );
+                return rewriter.notifyMatchFailure(
+                    op, "assignment of non-string-literal to array variable without index is not supported" );
             }
 
             mlir::Value indexVal = optIndex;
@@ -1326,8 +1347,11 @@ namespace silly
                 mlir::LLVM::AllocaOp allocaOp =
                     rewriter.create<mlir::LLVM::AllocaOp>( loc, lState.tyPtr, elemType, sizeVal, alignment );
 
-                lState.constructVariableDI( getLocation( loc ), varName, elemType, elemSizeInBits, allocaOp,
-                                            arraySize );
+                if ( mlir::failed( lState.constructVariableDI( getLocation( loc ), rewriter, op, varName, elemType,
+                                                               elemSizeInBits, allocaOp, arraySize ) ) )
+                {
+                    return mlir::failure();
+                }
 
                 auto init = declareOp.getInitializers();
                 if ( init.size() )
@@ -1403,7 +1427,7 @@ namespace silly
             std::string strValue = strAttr.getValue().str();
             size_t strLen = strValue.size();
 
-            mlir::LLVM::GlobalOp globalOp = lState.lookupOrInsertGlobalOp( rewriter, strAttr, loc, strLen );
+            mlir::LLVM::GlobalOp globalOp = lState.lookupOrInsertGlobalOp( loc, rewriter, strAttr, strLen );
             if ( !globalOp )
             {
                 return rewriter.notifyMatchFailure( op, "Failed to create or lookup string literal global" );
@@ -1849,8 +1873,11 @@ namespace silly
             mlir::Type elemType = value.getType();
             unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
 
-            lState.constructInductionVariableDI( fileLoc, rewriter, value, varName, nameAttr, elemType, elemSizeInBits,
-                                                 funcName );
+            if ( mlir::failed( lState.constructInductionVariableDI( fileLoc, rewriter, op, value, varName, nameAttr,
+                                                                    elemType, elemSizeInBits, funcName ) ) )
+            {
+                return mlir::failure();
+            }
 
             rewriter.eraseOp( op );
             return mlir::success();
@@ -2030,7 +2057,8 @@ namespace silly
             }
             else
             {
-                llvm_unreachable( "Unknown type in negation operation lowering." );
+                return rewriter.notifyMatchFailure(
+                    op, llvm::formatv( "Unknown type in negation operation lowering: {0}", result.getType() ) );
             }
 
             rewriter.replaceOp( op, result );
@@ -2089,7 +2117,8 @@ namespace silly
                     }
                     else
                     {
-                        llvm_unreachable( "float types unsupported for integer binary operation" );
+                        return rewriter.notifyMatchFailure( op,
+                                                            "float types unsupported for integer binary operation" );
                     }
                 }
 
@@ -2114,7 +2143,8 @@ namespace silly
                     }
                     else
                     {
-                        llvm_unreachable( "float types unsupported for integer binary operation" );
+                        return rewriter.notifyMatchFailure( op,
+                                                            "float types unsupported for integer binary operation" );
                     }
                 }
 
@@ -2155,7 +2185,7 @@ namespace silly
             }
             else
             {
-                llvm_unreachable( "float types unsupported for integer binary operation" );
+                return rewriter.notifyMatchFailure( op, "float types unsupported for integer binary operation" );
             }
 
             return mlir::success();

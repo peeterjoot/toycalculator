@@ -1,7 +1,8 @@
 ## TODO
 
 ----------------------------------
--6. testsuite leaves crap in: samples/out parsetests/parsetests -- both of those are in the gitignore, but would be better in build/ -- first easy to fix, second may be more finicky.
+-7. lowering error handling: two throws left in lowering.  purge those, replacing with notify or emitError.  Review all the notifys -- emitError may be more appropriate in some places.
+-6. testsuite leaves crap in: samples/out parsetests/parsetests -- both of those are in the gitignore, but would be better in build/ -- first easy to fix, second may be more finicky.  Also disabled rm -rf out so that ctest -j works -- but that leaves crap that could fool a test rerun -- not a good solution.
 -5. The verify functions that don't have lit tests are all marked with coverage TODOs.  Write tests for those cases.
 -3. `div_zero_int` -- different results on intel vs. arm.
 -2. no test for error: "Attempted GET to string literal".  Audit all the UserError's and make sure that all have tests.
@@ -136,7 +137,6 @@ c[1] = 0 ( = 2 * 0 )
 * Maintainance:
 
   - All the runtime functions should take location context to show where in the users code the error was, if one happens (i.e.: GET functions)
-  - lowering error handling is pschizophrenic: mix of: assert(), throw, llvm::unreachable, rewriter.notifyMatchFailure, emitError, ...
   - Move scf lowering into 1st pass?  Attempt at this in xpgn:streamline-passes-attempt branch (not pushed.)
   - Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
   - Final version of ELIF support meant that I didn't need getStopLocation() anymore (was using it to generate scf.yield with the end of the block location).  Also ended up with getTerminalLocation(), which I'm also not using.  Review those and decide what to do with them.
