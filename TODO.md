@@ -1,6 +1,7 @@
 ## TODO
 
 ----------------------------------
+-9. Would be good to add a CALL verify that checks if the function has a return, to make sure it is not used as a standalone statement without assignment.
 -8 [README] finish making the intro more comprehensive.
 -7. lowering error handling: two throws left in lowering.  purge those, replacing with notify or emitError.  Review all the notifys -- emitError may be more appropriate in some places.
 -6. testsuite leaves crap in: samples/out parsetests/parsetests -- both of those are in the gitignore, but would be better in build/ -- first easy to fix, second may be more finicky.  Also disabled rm -rf out so that ctest -j works -- but that leaves crap that could fool a test rerun -- not a good solution.

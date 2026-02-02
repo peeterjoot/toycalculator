@@ -28,6 +28,7 @@ That initial implementation has evolved into a silly language and its compiler. 
 ```
 FLOAT32 pi = 3.14;
 FLOAT64 e{2.7182};
+FLOAT64 a[3];
 ```
 * Declaration of fixed-size integer (`INT8`, `INT16`, `INT32`, `INT64`) scalars or arrays
 ```
@@ -40,7 +41,6 @@ INT16 n[3]{1,2,3};
 BOOL p = TRUE;
 BOOL r[2]{TRUE,FALSE};
 ```
-The storage requirement of `BOOL` is currently one byte per element, even for arrays.  Array `BOOL` values may use a packed bitmask representation in the future.
 * A `DECLARE` operation (implicit double type) -- this predated the `FLOAT32`, `FLOAT64` declaration syntax and may be removed.
 * A `PRINT` operation for printing to standard output.
 * An `ERROR` operation for printing to standard error.
@@ -55,12 +55,19 @@ FUNCTION foo(TYPE name, TYPE name, ...) : RETURN-TYPE
     //... ;
     RETURN v;
 };
+FUNCTION bar(TYPE name, TYPE name, ...)
+{
+    //... ;
+    RETURN;
+};
 ```
-Here `RETURN-type` is optional.  The `RETURN` statement is currently mandatory, and must be the last statement in the function.
+The `RETURN-type` is optional (functions may be `void`).
+The `RETURN` statement is currently mandatory, and must be the last statement in the function.
+Recursion is supported.
 * User-defined `FUNCTION` calls:
 ```
-CALL function_name(p1, p2); // no return form
-x = CALL function_name(p1, p2) // assignment form
+x = CALL foo(p1, p2) // assignment form
+CALL bar(p1, p2); // no return form
 ```
 * `IF`/`ELIF`/`ELSE` statement support.
 * A `FOR` loop (supporting start, end, and step-size params, and privately scoped induction variables.)
@@ -78,7 +85,7 @@ There is lots of room to add add further language elements to make the compiler 
 
 ## Language Quirks and Bugs.
 
-* Like scripted languages, there is an implicit `main` in this silly language.
+* Like scripted languages, there is an implicit `main` in this silly language.  No user defined `main` function is allowed.
 * Functions can be defined anywhere, but must be defined before use.
 * The `EXIT` statement currently has to be at the end of the program.
 `EXIT` without a numeric value is equivalent to `EXIT 0`, as is a program with no explicit `EXIT`.
@@ -104,6 +111,7 @@ FUNCTION foo()
     RETURN;
 };
 ```
+* The storage requirement of `BOOL` is currently one byte per element, even for arrays.  Array `BOOL` values may use a packed bitmask representation in the future.
 
 ## Interesting files
 
