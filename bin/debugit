@@ -1,1 +1,1 @@
-gdb -q -x ../b ../build/silly
+gdb -q -x ../b ../build/bin/silly

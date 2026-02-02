@@ -1,2 +1,2 @@
-../build/silly --output-directory out -g test.silly
+../build/bin/silly --output-directory out -g test.silly
 clang -g -o out/test out/test.o -L ../build -l silly_runtime -Wl,-rpath,`pwd`/../build

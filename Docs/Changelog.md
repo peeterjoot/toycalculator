@@ -613,6 +613,25 @@
 * [README] start making the intro more comprehensive.
 * [lowering] replace the last throw with notifyMatchFailure.
 * [docs] move Changelog.md `Claude_code_review_Feb_2026.md` TODO.md to Docs/
+* [build] Introduce some directory hierarchy.  Build artifacts are now:
+
+```
+  build/bin/silly
+  build/lib/libsilly_runtime.so
+  build/lib/libSillyDialect.so
+```
+
+  with sources in the following directories:
+
+```
+src/runtime/
+src/dialect/
+src/driver/
+src/include/
+src/grammar/
+```
+
+  Each of these directories (except src/include/) now has it's own CMakeLists.txt, so you can look at the build rules for each component in isolation.  The top level makefile is now pretty minimal.
 
 ## tag: V7 (Jan 4, 2025)
 

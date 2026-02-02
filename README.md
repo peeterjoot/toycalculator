@@ -282,11 +282,11 @@ Array `BOOL` values may use a packed bitmask representation in the future.
 
 ## Interesting Files
 
-* `Silly.g4` — The ANTLR4 grammar
-* `src/driver.cpp` — Compiler driver: handles command-line options, opens output files, and orchestrates all lower-level actions (parse tree walk + MLIR builder, lowering to LLVM IR, assembly printing, and linker invocation)
-* `src/silly.td` — MLIR dialect definition: the compiler's internal view of all grammar elements
-* `src/parser.cpp` — ANTLR4 parse tree walker and MLIR builder
-* `src/lowering.cpp` — LLVM IR lowering classes
+* `src/grammar/Silly.g4` — The ANTLR4 grammar
+* `src/dialect/silly.td` — MLIR dialect definition: the compiler's internal view of all grammar elements
+* `src/driver/driver.cpp` — Compiler driver: handles command-line options, opens output files, and orchestrates all lower-level actions (parse tree walk + MLIR builder, lowering to LLVM IR, assembly printing, and linker invocation)
+* `src/driver/parser.cpp` — ANTLR4 parse tree walker and MLIR builder
+* `src/driver/lowering.cpp` — LLVM IR lowering classes
 * `samples/*.silly` and `bin/testit` — Sample programs and a rudimentary regression test suite
 * `bin/build`, `bin/rebuild` — Build scripts: `build` runs CMake and Ninja (sets compiler overrides if required); `rebuild` runs just Ninja with output teeing and grepping
 * `bin/silly-opt` — Wrapper for mlir-opt that loads the silly dialect shared object
@@ -294,7 +294,7 @@ Array `BOOL` values may use a packed bitmask representation in the future.
 
 ## Command Line Options
 
-Once built, the compiler driver can be run with `build/silly` with the following options:
+Once built, the compiler driver can be run with `build/bin/silly` with the following options:
 
 ### User Options
 
@@ -321,8 +321,8 @@ Once built, the compiler driver can be run with `build/silly` with the following
 cd samples
 rm -rf out
 mkdir out
-../build/silly --output-directory out f.silly -g --emit-llvm --emit-mlir --debug
-../build/silly --output-directory out f.silly -O2
+../build/bin/silly --output-directory out f.silly -g --emit-llvm --emit-mlir --debug
+../build/bin/silly --output-directory out f.silly -O2
 ```
 
 ## Running silly-opt

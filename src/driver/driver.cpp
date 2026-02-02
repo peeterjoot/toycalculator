@@ -449,10 +449,15 @@ void invokeLinker( const char* argv0, llvm::SmallString<128>& exePath, llvm::Sma
     }
     LLVM_DEBUG( { llvm::outs() << "Linker path: " << linkerPath.get() << '\n'; } );
 
-    // Construct the -Wl,-rpath argument
+    // Construct paths that need to persist
+    llvm::SmallString<128> libPath;
+    libPath.assign( driverPath );
+    libPath.append( "/../../lib" );
+
     llvm::SmallString<128> rpathOption;
     rpathOption.assign( "-Wl,-rpath," );
     rpathOption.append( driverPath );
+    rpathOption.append( "/../../lib" );
 
     // Create argv for ExecuteAndWait
     llvm::SmallVector<llvm::StringRef, 16> argv;
@@ -462,7 +467,7 @@ void invokeLinker( const char* argv0, llvm::SmallString<128>& exePath, llvm::Sma
     argv.push_back( exePath );
     argv.push_back( objectPath );
     argv.push_back( "-L" );
-    argv.push_back( driverPath );
+    argv.push_back( libPath );
     argv.push_back( "-l" );
     argv.push_back( "silly_runtime" );
     argv.push_back( rpathOption );
@@ -472,6 +477,13 @@ void invokeLinker( const char* argv0, llvm::SmallString<128>& exePath, llvm::Sma
     int result = llvm::sys::ExecuteAndWait( linkerPath.get(), argv, std::nullopt, {}, 0, 0, &errMsg );
     if ( result != 0 )
     {
+        llvm::outs() << "link command arguments:\n";
+
+        for ( const auto & a : argv )
+        {
+            llvm::outs() << a << '\n';
+        }
+
         throw ExceptionWithContext( __FILE__, __LINE__, __func__,
                                     std::format( "Linker failed with exit code: {}, rc = {}\n", errMsg, result ) );
     }

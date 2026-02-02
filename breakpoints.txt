@@ -1,6 +1,6 @@
 # This is a gdb script.  Use it like so from samples/
 #
-# gdb -q ../build/silly ; source ../breakpoints.txt
+# gdb -q ../build/bin/silly ; source ../breakpoints.txt
 #
 # (bin/debugit does this)
 

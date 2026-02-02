@@ -92,6 +92,6 @@ if ( $debug )
    $flags .= '-g ';
 }
 
-system( qq(../build/silly $prog --stdout --emit-mlir --emit-llvm --no-emit-object --debug ${flags} 2>&1 | grep -v ImplicitTypeIDRegistry) );
+system( qq(../build/bin/silly $prog --stdout --emit-mlir --emit-llvm --no-emit-object --debug ${flags} 2>&1 | grep -v ImplicitTypeIDRegistry) );
 
 # vim: et ts=3 sw=3

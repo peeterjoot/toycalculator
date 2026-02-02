@@ -250,7 +250,7 @@ sub runone
     }
 
     print "##########################################################################\n";
-    my $cmd = qq(mkdir -p out ; ../build/silly --output-directory out $stem.silly $thisflags --emit-llvm --emit-mlir > out/$stem.compile.out 2>&1);
+    my $cmd = qq(mkdir -p out ; ../build/bin/silly --output-directory out $stem.silly $thisflags --emit-llvm --emit-mlir > out/$stem.compile.out 2>&1);
     my $crc = verbose_system( $cmd );
     system("cat out/$stem.compile.out");
     if ( defined $failuretests{$stem} )

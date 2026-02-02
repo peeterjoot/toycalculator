@@ -14,158 +14,25 @@ include(TableGen)
 include(AddLLVM)
 include(AddMLIR)
 
+set(ANTLR_OUTPUT_DIR "${CMAKE_BINARY_DIR}/src/grammar/SillyParser" CACHE INTERNAL "")
+
+message(STATUS "ANTLR output directory: ${ANTLR_OUTPUT_DIR}")
+
+#------------------------------------------------------------------------------
+# global include options for all components
+
 message(STATUS "LLVM_INCLUDE_DIRS: ${LLVM_INCLUDE_DIRS}")
 message(STATUS "MLIR_INCLUDE_DIRS: ${MLIR_INCLUDE_DIRS}")
 
 include_directories(${LLVM_INCLUDE_DIRS})
 include_directories(${MLIR_INCLUDE_DIRS})
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${CMAKE_SOURCE_DIR}/src)
-include_directories(include)
-
-#------------------------------------------------------------------------------
-enable_testing()
-
-add_subdirectory(samples)
-add_subdirectory(parsetests)
-#add_subdirectory(prototypes)
-
-#------------------------------------------------------------------------------
-# antlr4 related rules:
-#
-set(GRAMMAR_FILE "${CMAKE_CURRENT_SOURCE_DIR}/Silly.g4")
-set(ANTLR_OUTPUT_DIR "${CMAKE_BINARY_DIR}/SillyParser")
-
-# Ensure output directory exists
-file(MAKE_DIRECTORY ${ANTLR_OUTPUT_DIR})
-
-add_custom_command(
-OUTPUT
-    ${ANTLR_OUTPUT_DIR}/SillyBaseListener.cpp
-    ${ANTLR_OUTPUT_DIR}/SillyListener.cpp
-    ${ANTLR_OUTPUT_DIR}/SillyParser.cpp
-    ${ANTLR_OUTPUT_DIR}/SillyLexer.cpp
-COMMAND
-    ${CMAKE_CURRENT_SOURCE_DIR}/bin/runantlr --grammar Silly.g4 --outdir ${ANTLR_OUTPUT_DIR}
-DEPENDS
-    ${GRAMMAR_FILE}
-    ${ANTLR4_LOCAL}
-WORKING_DIRECTORY
-    ${CMAKE_CURRENT_SOURCE_DIR}
-COMMENT
-    "Generating ANTLR grammar files"
-)
-
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/src/dialect)
+include_directories(${CMAKE_SOURCE_DIR}/src/dialect)
+include_directories(${CMAKE_SOURCE_DIR}/src/include)
 include_directories(/usr/include/antlr4-runtime)
 
-# Create a custom target to ensure the grammar files are generated
-add_custom_target(
-    GenerateANTLR
-    DEPENDS
-        ${ANTLR_OUTPUT_DIR}/SillyBaseListener.cpp
-        ${ANTLR_OUTPUT_DIR}/SillyListener.cpp
-        ${ANTLR_OUTPUT_DIR}/SillyParser.cpp
-        ${ANTLR_OUTPUT_DIR}/SillyLexer.cpp
-)
 #------------------------------------------------------------------------------
-# mostly tablegen rules:
-#
-
-link_directories(${LLVM_BUILD_LIBRARY_DIR})
-add_definitions(${LLVM_DEFINITIONS})
-
-# TableGen for dialect
-set(LLVM_TARGET_DEFINITIONS src/silly.td)
-
-# Generate dialect declarations
-mlir_tablegen(SillyDialectDecls.hpp.inc -gen-dialect-decls -dialect silly)
-
-# Generate dialect definitions
-mlir_tablegen(SillyDialectDefs.cpp.inc -gen-dialect-defs -dialect silly)
-
-# Generate operation declarations
-mlir_tablegen(SillyDialect.hpp.inc -gen-op-decls -dialect silly)
-
-# Generate operation definitions
-mlir_tablegen(SillyDialect.cpp.inc -gen-op-defs -dialect silly)
-
-# Generate type declarations
-mlir_tablegen(
-  SillyTypes.hpp.inc
-  -gen-typedef-decls
-  --typedefs-dialect=silly
-)
-
-# Generate type definitions
-mlir_tablegen(
-  SillyTypes.cpp.inc
-  -gen-typedef-defs
-  --typedefs-dialect=silly
-)
-
-# Create a single TableGen target for all generated the base dialect files
-add_public_tablegen_target(SillyDialectIncGen
-  DEPENDS
-    ${CMAKE_CURRENT_BINARY_DIR}/SillyDialectDecls.hpp.inc
-    ${CMAKE_CURRENT_BINARY_DIR}/SillyDialectDefs.cpp.inc
-    ${CMAKE_CURRENT_BINARY_DIR}/SillyDialect.hpp.inc
-    ${CMAKE_CURRENT_BINARY_DIR}/SillyDialect.cpp.inc
-)
-
-# And a TableGen target for the types files
-add_public_tablegen_target(SillyTypesIncGen
-  DEPENDS
-    ${CMAKE_CURRENT_BINARY_DIR}/SillyTypes.hpp.inc
-    ${CMAKE_CURRENT_BINARY_DIR}/SillyTypes.cpp.inc
-)
-
-# and one for the MLIR -> LLVM-IR lowering TableGen pass
-set(LLVM_TARGET_DEFINITIONS src/SillyPasses.td)
-
-mlir_tablegen(SillyPasses.hpp.inc --gen-pass-decls -name Silly -I ${CMAKE_SOURCE_DIR}/src -I ${MLIR_INCLUDE_DIRS})
-
-add_public_tablegen_target(SillyPassesIncGen
-  DEPENDS
-    ${CMAKE_CURRENT_BINARY_DIR}/SillyPasses.hpp.inc
-)
-
-#------------------------------------------------------------------------------
-# Targets:
-
-# Add runtime library as a shared object
-add_library(silly_runtime SHARED runtime/Silly_runtime.cpp)
-set_target_properties(silly_runtime PROPERTIES OUTPUT_NAME "silly_runtime")
-target_link_options(silly_runtime PRIVATE -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/runtime/version_script.map)
-
-add_library(SillyDialect SHARED
-  src/SillyDialect.cpp
-  src/SillyTypes.cpp
-  src/SillyPasses.cpp
-)
-
-set(DRIVER_SOURCE_FILES
-  src/driver.cpp
-  src/lowering.cpp
-  src/parser.cpp
-  ${ANTLR_OUTPUT_DIR}/SillyBaseListener.cpp
-  ${ANTLR_OUTPUT_DIR}/SillyListener.cpp
-  ${ANTLR_OUTPUT_DIR}/SillyParser.cpp
-  ${ANTLR_OUTPUT_DIR}/SillyLexer.cpp
-)
-
-add_executable(silly
-  ${DRIVER_SOURCE_FILES}
-)
-
-#------------------------------------------------------------------------------
-# compile options (and target dependencies)
-
-# Include the output directory for header files
-target_include_directories(silly PRIVATE ${ANTLR_OUTPUT_DIR})
-
-# Ensure the ANTLR and TableGen generation runs before building the project
-add_dependencies(SillyDialect GenerateANTLR SillyDialectIncGen SillyPassesIncGen SillyTypesIncGen)
-add_dependencies(silly silly_runtime SillyDialect)
+# compile options for all targets
 
 set(COMMON_COMPILE_OPTIONS
   -Wall
@@ -197,57 +64,10 @@ else()
     message("Compiler is neither g++ nor clang++: ${CMAKE_CXX_COMPILER_ID}")
 endif()
 
-# -O2
-# an attempt to suppress all the rhs == lhs ambiguous messages from the mlir headers:
-#  -Wno-c++20-compat
-
-target_compile_options(silly_runtime PRIVATE ${COMMON_COMPILE_OPTIONS})
-target_compile_options(silly PRIVATE ${COMMON_COMPILE_OPTIONS})
-
 #------------------------------------------------------------------------------
-# Link rules for the silly target:
+enable_testing()
 
-# Check the target architecture
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
-    set(IS_AARCH64 TRUE)
-    set(LLVM_TARGET_ARCH "AArch64")
-else()
-    set(IS_AARCH64 FALSE)
-    set(LLVM_TARGET_ARCH "X86")
-endif()
-
-# Optional: Print the results
-message(STATUS "Architecture is aarch64: ${IS_AARCH64}")
-message(STATUS "LLVM Architecture specific libraries: ${LLVM_ARCH_LIBS}")
-
-target_link_libraries(SillyDialect
-  PUBLIC
-    MLIRIR
-    MLIRSupport
-)
-
-target_link_libraries(silly
-  PRIVATE
-  antlr4-runtime
-  SillyDialect
-  LLVMSupport
-  LLVMMC # llvm::TargetRegistry::lookupTarget
-  LLVMAnalysis # llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>::AnalysisManager()
-  LLVMPasses
-  LLVM${LLVM_TARGET_ARCH}AsmParser
-  LLVM${LLVM_TARGET_ARCH}CodeGen
-  LLVM${LLVM_TARGET_ARCH}Desc
-  LLVM${LLVM_TARGET_ARCH}Info
-  MLIRArithDialect
-  MLIRArithToLLVM
-  MLIRAsmParser
-  MLIRTargetLLVMIRExport    # mlir::translateModuleToLLVMIR
-  MLIRDataLayoutInterfaces
-  MLIRBuiltinToLLVMIRTranslation
-  MLIRControlFlowToLLVM
-  MLIRFuncToLLVM
-  MLIRLLVMToLLVMIRTranslation
-  MLIRMemRefToLLVM
-  MLIRSCFToControlFlow
-)
-
+add_subdirectory(samples)
+add_subdirectory(parsetests)
+add_subdirectory(src)
+#add_subdirectory(prototypes/standalone)
