@@ -596,6 +596,29 @@ Specific changes:
   * Add lit test build infrastructure -- unfortunately depends on my llvm-build/ dir and llvm-project cmake configuration -- but it's a CI/CD start.
   * [tests] ReturnOp verifier and some initial returnop dialect tests.  Move the {ScopeOp,DeclareOp}::verify out of line.
   * [tests] Migrated testit manual testsuite driver to ctest.
+  * [tests] Add testit --clean option.  default off, so that ctest -j works.
+  * Replace lowering asserts like:
+
+    ```
+    assert( false && "unsupported print argument type" );
+    ```
+
+    With:
+
+    ```
+    return rewriter.notifyMatchFailure( op, "unsupported print argument type" );
+    ```
+
+    - change return type of helpers to mlir::LogicalResult (passing outputs
+      by reference if required, and op's as input), then:
+    - Add idiomatic MLIR checking of the form:
+
+    ```
+    if ( mlir::failed( lState.createGetCall( loc, rewriter, op, inputType, result ) ) )
+    {
+        return mlir::failure();
+    }
+    ```
 
 ## tag: V7 (Jan 4, 2025)
 

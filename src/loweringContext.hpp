@@ -83,14 +83,15 @@ namespace silly
                                                      mlir::StringAttr& stringLit, mlir::Location loc, size_t strLen );
 
         /// Creates a call to the appropriate Silly print runtime function.
-        mlir::Value emitPrintArgStruct( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
-                                        mlir::Value input, PrintFlags flags );
+        mlir::LogicalResult emitPrintArgStruct( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
+                                                mlir::Operation* op, mlir::Value input, PrintFlags flags,
+                                                mlir::Value& output );
 
         void createAbortCall( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter );
 
         /// Creates a call to the appropriate Silly get runtime function.
-        mlir::Value createGetCall( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
-                                   mlir::Type inputType );
+        mlir::LogicalResult createGetCall( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
+                                           mlir::Operation* op, mlir::Type inputType, mlir::Value& output );
 
         /// Emits debug information for a function parameter.
         void constructParameterDI( mlir::FileLineColLoc loc, mlir::ConversionPatternRewriter& rewriter,
@@ -100,9 +101,10 @@ namespace silly
         /// Return the PRINT args allocation for this function, big enough for the biggest PRINT list in the function.
         mlir::LLVM::AllocaOp getPrintArgs( const std::string& funcName );
 
-        void generateAssignment( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter, mlir::Value value,
-                                 mlir::Type elemType, mlir::LLVM::AllocaOp allocaOp, unsigned alignment,
-                                 mlir::TypedValue<mlir::IndexType> optIndex );
+        mlir::LogicalResult generateAssignment( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
+                                                mlir::Operation*, mlir::Value value, mlir::Type elemType,
+                                                mlir::LLVM::AllocaOp allocaOp, unsigned alignment,
+                                                mlir::TypedValue<mlir::IndexType> optIndex );
 
         /// Casts a value to the target element type, performing necessary conversions.
         mlir::Value castToElemType( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter, mlir::Value value,

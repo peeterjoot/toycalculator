@@ -10,6 +10,7 @@
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/ErrorHandling.h>
+#include <llvm/Support/FormatVariadic.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/Target/TargetOptions.h>
 #include <llvm/TargetParser/Host.h>
@@ -17,12 +18,10 @@
 #include <mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h>
 #include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Conversion/LLVMCommon/Pattern.h>
-// #include <mlir/Conversion/MemRefToLLVM/MemRefToLLVM.h>
 #include <mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/ControlFlow/IR/ControlFlow.h>
 #include <mlir/Dialect/LLVMIR/LLVMAttrs.h>
-// #include <mlir/Dialect/MemRef/IR/MemRef.h>
 #include <mlir/Dialect/SCF/IR/SCF.h>
 #include <mlir/IR/Block.h>
 #include <mlir/IR/BuiltinAttributes.h>
@@ -775,8 +774,10 @@ namespace silly
     }
 
     // Returns the filled PrintArg struct value for one argument
-    mlir::Value LoweringContext::emitPrintArgStruct( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
-                                                     mlir::Value input, PrintFlags flags )
+    mlir::LogicalResult LoweringContext::emitPrintArgStruct( mlir::Location loc,
+                                                             mlir::ConversionPatternRewriter& rewriter,
+                                                             mlir::Operation* op, mlir::Value input, PrintFlags flags,
+                                                             mlir::Value& output )
     {
         createSillyPrintPrototype();
 
@@ -831,7 +832,11 @@ namespace silly
                 silly::DeclareOp declareOp = var.getDefiningOp<silly::DeclareOp>();
                 mlir::StringRef varName = declareOp.getName();
                 mlir::LLVM::AllocaOp allocaOp = lookupLocalSymbolReference( loadOp, varName.str() );
-                assert( allocaOp.getElemType() == tyI8 );
+                if ( allocaOp.getElemType() != tyI8 )
+                {
+                    return rewriter.notifyMatchFailure( op, "expected i8 alloca type." );
+                }
+
                 if ( mlir::LLVM::ConstantOp constOp = allocaOp.getArraySize().getDefiningOp<mlir::LLVM::ConstantOp>() )
                 {
                     numElems = mlir::cast<mlir::IntegerAttr>( constOp.getValue() ).getInt();
@@ -847,7 +852,7 @@ namespace silly
             }
             else
             {
-                assert( false && "unsupported string source" );
+                return rewriter.notifyMatchFailure( op, "unsupported string source" );
             }
 
             valuePayload =
@@ -856,7 +861,7 @@ namespace silly
         }
         else
         {
-            assert( false && "unsupported print argument type" );
+            return rewriter.notifyMatchFailure( op, "unsupported print argument type" );
         }
 
         // Insert kind (index 0)
@@ -884,11 +889,12 @@ namespace silly
             structVal = rewriter.create<mlir::LLVM::InsertValueOp>( loc, printArgStructTy, structVal, nullPtr, 3 );
         }
 
-        return structVal;
+        output = structVal;
+        return mlir::success();
     }
 
-    mlir::Value LoweringContext::createGetCall( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
-                                                mlir::Type inputType )
+    mlir::LogicalResult LoweringContext::createGetCall( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
+                                                        mlir::Operation* op, mlir::Type inputType, mlir::Value& output )
     {
         const char* name = nullptr;
         bool isBool{};
@@ -933,7 +939,7 @@ namespace silly
                 }
                 default:
                 {
-                    assert( 0 && "Unexpected integer size" );
+                    return rewriter.notifyMatchFailure( op, "Unexpected integer size." );
                 }
             }
         }
@@ -951,12 +957,12 @@ namespace silly
             }
             else
             {
-                assert( 0 && "Unexpected floating point type" );
+                return rewriter.notifyMatchFailure( op, "Unexpected floating point type." );
             }
         }
         else
         {
-            assert( 0 && "Error: unsupported type" );
+            return rewriter.notifyMatchFailure( op, "Unsupported type." );
         }
 
         silly::CallOp callOp =
@@ -968,7 +974,8 @@ namespace silly
             result = rewriter.create<mlir::LLVM::TruncOp>( loc, tyI1, result );
         }
 
-        return result;
+        output = result;
+        return mlir::success();
     }
 
     /// Emit debug info for parameter
@@ -1053,9 +1060,12 @@ namespace silly
         return value;
     }
 
-    void LoweringContext::generateAssignment( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
-                                              mlir::Value value, mlir::Type elemType, mlir::LLVM::AllocaOp allocaOp,
-                                              unsigned alignment, mlir::TypedValue<mlir::IndexType> optIndex )
+    mlir::LogicalResult LoweringContext::generateAssignment( mlir::Location loc,
+                                                             mlir::ConversionPatternRewriter& rewriter,
+                                                             mlir::Operation* op, mlir::Value value,
+                                                             mlir::Type elemType, mlir::LLVM::AllocaOp allocaOp,
+                                                             unsigned alignment,
+                                                             mlir::TypedValue<mlir::IndexType> optIndex )
     {
         mlir::Type valType = value.getType();
 
@@ -1141,17 +1151,21 @@ namespace silly
             mlir::Value indexVal = optIndex;
             mlir::Value destBasePtr = allocaOp.getResult();
 
-            assert( numElems && "non-scalar, non-string assignment must be an array with non-zero size" );
+            if ( !numElems )
+            {
+                return rewriter.notifyMatchFailure(
+                    op, "non-scalar, non-string assignment must be an array with non-zero size" );
+            }
+
             if ( mlir::arith::ConstantIndexOp constOp = indexVal.getDefiningOp<mlir::arith::ConstantIndexOp>() )
             {
                 int64_t idx = constOp.value();
                 if ( idx < 0 || idx >= numElems )
                 {
-                    throw ExceptionWithContext(
-                        __FILE__, __LINE__, __func__,
-                        std::format(
-                            "static out-of-bounds array access: index {} is out of bounds for array of size {}", idx,
-                            numElems ) );
+                    return rewriter.notifyMatchFailure(
+                        op, llvm::formatv(
+                                "static out-of-bounds array access: index {0} is out of bounds for array of size {1}",
+                                idx, numElems ) );
                 }
             }
 
@@ -1187,6 +1201,8 @@ namespace silly
 
             rewriter.create<mlir::LLVM::StoreOp>( loc, value, elemPtr, alignment );
         }
+
+        return mlir::success();
     }
 
     void LoweringContext::insertFill( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
@@ -1288,8 +1304,12 @@ namespace silly
                 {
                     arraySize = shape[0];
 
-                    assert( arraySize > 0 );
-                    assert( shape.size() == 1 );
+                    if ( ( arraySize <= 0 ) || ( shape.size() != 1 ) )
+                    {
+                        return rewriter.notifyMatchFailure(
+                            op, llvm::formatv( "expected non-zero arraySize ({0}), and one varType dimension ({1})",
+                                               arraySize, shape.size() ) );
+                    }
 
                     sizeVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.tyI64,
                                                                        rewriter.getI64IntegerAttr( arraySize ) );
@@ -1325,15 +1345,28 @@ namespace silly
                             mlir::IndexType indexTy = rewriter.getIndexType();
                             mlir::Value idxIndex = rewriter.create<mlir::arith::IndexCastOp>( loc, indexTy, iVal64 );
 
-                            lState.generateAssignment( loc, rewriter, init[i], elemType, allocaOp, alignment,
-                                                       mlir::cast<mlir::TypedValue<mlir::IndexType>>( idxIndex ) );
+                            if ( mlir::failed( lState.generateAssignment(
+                                     loc, rewriter, op, init[i], elemType, allocaOp, alignment,
+                                     mlir::cast<mlir::TypedValue<mlir::IndexType>>( idxIndex ) ) ) )
+                            {
+                                return mlir::failure();
+                            }
                         }
                     }
                     else
                     {
-                        assert( init.size() == 1 );
-                        lState.generateAssignment( loc, rewriter, init[0], elemType, allocaOp, alignment,
-                                                   mlir::TypedValue<mlir::IndexType>{} );
+                        if ( init.size() != 1 )
+                        {
+                            return rewriter.notifyMatchFailure(
+                                declareOp, llvm::formatv( "scalar initializer count: {0} is not one.", init.size() ) );
+                        }
+
+                        if ( mlir::failed( lState.generateAssignment( loc, rewriter, op, init[0], elemType, allocaOp,
+                                                                      alignment,
+                                                                      mlir::TypedValue<mlir::IndexType>{} ) ) )
+                        {
+                            return mlir::failure();
+                        }
                     }
                 }
                 else
@@ -1419,7 +1452,11 @@ namespace silly
             mlir::Type elemType = varTy.getElementType();
             unsigned alignment = lState.preferredTypeAlignment( op, elemType );
 
-            lState.generateAssignment( loc, rewriter, value, elemType, allocaOp, alignment, assignOp.getIndex() );
+            if ( mlir::failed( lState.generateAssignment( loc, rewriter, op, value, elemType, allocaOp, alignment,
+                                                          assignOp.getIndex() ) ) )
+            {
+                return mlir::failure();
+            }
 
             rewriter.eraseOp( op );
             return mlir::success();
@@ -1615,7 +1652,10 @@ namespace silly
                         numElems = intAttr.getInt();
                     }
 
-                    assert( numElems );
+                    if ( !numElems )
+                    {
+                        return rewriter.notifyMatchFailure( op, "zero elements for attempted index access" );
+                    }
 
                     if ( mlir::arith::ConstantIndexOp constOp = indexVal.getDefiningOp<mlir::arith::ConstantIndexOp>() )
                     {
@@ -1862,7 +1902,11 @@ namespace silly
                     pf = static_cast<PrintFlags>( pf | static_cast<int>( silly::PrintFlags::PRINT_FLAGS_CONTINUE ) );
                 }
 
-                mlir::Value argStruct = lState.emitPrintArgStruct( argLoc, rewriter, inputs[i], pf );
+                mlir::Value argStruct;
+                if ( mlir::failed( lState.emitPrintArgStruct( argLoc, rewriter, op, inputs[i], pf, argStruct ) ) )
+                {
+                    return mlir::failure();
+                }
 
                 mlir::LLVM::ConstantOp indexVal =
                     rewriter.create<mlir::LLVM::ConstantOp>( argLoc, lState.tyI64, rewriter.getI64IntegerAttr( i ) );
@@ -1932,7 +1976,11 @@ namespace silly
 
             mlir::Type inputType = getOp.getValue().getType();
 
-            mlir::Value result = lState.createGetCall( loc, rewriter, inputType );
+            mlir::Value result;
+            if ( mlir::failed( lState.createGetCall( loc, rewriter, op, inputType, result ) ) )
+            {
+                return mlir::failure();
+            }
 
             rewriter.replaceOp( op, result );
 
