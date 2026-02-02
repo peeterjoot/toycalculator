@@ -633,6 +633,7 @@
 
 * [README] start making the intro more comprehensive.
 * [lowering] replace the last throw with notifyMatchFailure.
+* [docs] move Changelog.md `Claude_code_review_Feb_2026.md` TODO.md to Docs/
 
 ## tag: V7 (Jan 4, 2025)
 
