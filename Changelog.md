@@ -619,6 +619,7 @@ Specific changes:
         return mlir::failure();
     }
     ```
+ * [README] start making the intro more comprehensive.
 
 ## tag: V7 (Jan 4, 2025)
 

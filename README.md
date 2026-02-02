@@ -18,22 +18,52 @@ The potential of this approach is clear and exciting enough to explore personall
 
 ## What is this project?
 
-Initially, I used MLIR to build a simple symbolic calculator that supported double-like variable declarations, assignments, unary and binary arithmetic operations, and output display.  This used a dialect initially called toy, but renamed to silly to avoid confusion with the mlir tutorial toy dialect.
+Initially, I used MLIR to build a simple symbolic calculator that supported double-like variable declarations, assignments, unary and binary arithmetic operations, and output display.  This used a dialect initially called toy, but was renamed to silly to avoid confusion with the mlir tutorial toy dialect.
 
 As noted earlier, the primary goal of the project was not calculation itself, but to gain concrete, hands-on experience with the MLIR ecosystem.
 
 That initial implementation has evolved into a silly language and its compiler.  There's no good reason to use this language, nor the compiler, but it was fun to build.  The language and compiler now support the following features:
 
-* A `DECLARE` operation (implicit double type).
-* Fixed-size integer declarations (`INT8`, `INT16`, `INT32`, `INT64`).
-* Floating-point declarations (`FLOAT32`, `FLOAT64`).
-* Boolean declaration (`BOOL`).
+* Declaration of floating-point (`FLOAT32`, `FLOAT64`) scalars or arrays
+```
+FLOAT32 pi = 3.14;
+FLOAT64 e{2.7182};
+```
+* Declaration of fixed-size integer (`INT8`, `INT16`, `INT32`, `INT64`) scalars or arrays
+```
+INT32 pi = 3;
+INT64 e{2};
+INT16 n[3]{1,2,3};
+```
+* Declaration of boolean (`BOOL`) scalars or arrays
+```
+BOOL p = TRUE;
+BOOL r[2]{TRUE,FALSE};
+```
+The storage requirement of `BOOL` is currently one byte per element, even for arrays.  Array `BOOL` values may use a packed bitmask representation in the future.
+* A `DECLARE` operation (implicit double type) -- this predated the `FLOAT32`, `FLOAT64` declaration syntax and may be removed.
 * A `PRINT` operation for printing to standard output.
 * An `ERROR` operation for printing to standard error.
 * A `GET` operation for reading from standard input.
 * Single-line comments.
 * An `EXIT` operation.
 * An `ABORT` operation for program termination.
+* User-defined `FUNCTION` declarations, of the form:
+```
+FUNCTION foo(TYPE name, TYPE name, ...) : RETURN-TYPE
+{
+    //... ;
+    RETURN v;
+};
+```
+Here `RETURN-type` is optional.  The `RETURN` statement is currently mandatory, and must be the last statement in the function.
+* User-defined `FUNCTION` calls:
+```
+CALL function_name(p1, p2); // no return form
+x = CALL function_name(p1, p2) // assignment form
+```
+* `IF`/`ELIF`/`ELSE` statement support.
+* A `FOR` loop (supporting start, end, and step-size params, and privately scoped induction variables.)
 * Generalized expressions with full operator precedence, parentheses, unary chaining, and support for arithmetic, comparison, logical, and bitwise operations.
 * Boolean, integer, and floating-point constants, along with expression evaluation.
 * An ASSIGNMENT operator (`=`) for assignment of expressions to scalar or array elements.
@@ -43,9 +73,6 @@ That initial implementation has evolved into a silly language and its compiler. 
 * A `NOT` operator yielding `BOOL`.
 * Array support, including declaration, assignment, printing, returning, exiting, and element access.
 * A `STRING` type as an alias for `INT8` arrays, with string literal assignment and `PRINT` implemented.
-* User-defined functions. Calls use the form `CALL function_name(p1, p2)` or with assignment `x = CALL function_name(p1, p2)`. Declarations use: `FUNCTION foo(type name, type name, ...) : RETURN-type { ... ; RETURN v; };` (where : `RETURN-type` is optional).
-* `IF`/`ELSE` statement support. Logical operators (`AND`, `OR`, `XOR`) are not supported in predicates (only comparisons like `<`, `>`, `<=`, `>=`, etc.). Complex predicates (e.g., `(a < b) AND (c < d)`) are not supported. Nested `IF`s are untested and may or may not work.
-* A `FOR` loop (supporting start, end, and step-size params, and privately scoped induction variables.)
 
 There is lots of room to add add further language elements to make the compiler and language more interesting.  Some ideas for improvements (as well as bug fixes) can be found in TODO.md
 
