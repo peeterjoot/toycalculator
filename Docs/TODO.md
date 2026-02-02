@@ -2,6 +2,7 @@
 
 ### running list of issues and ideas, randomly ordered
 ----------------------------------
+* add install/packaging rules (e.g. install(TARGETS silly ...)).  Can probably remove build/{bin,lib} symlink rules if that's done.
 * have front-end NOT check `Prohibit NOT on non-integer type. t/c: error_notfloat.silly` -- that should also be a NOT verify() check.
 * Would be good to add a CALL verify that checks if the function has a return, to make sure it is not used as a standalone statement without assignment.
 8 [README] finish making the intro more comprehensive.
