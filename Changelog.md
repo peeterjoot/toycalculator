@@ -5,45 +5,44 @@
 * PRINT: Allow a list of values, instead of just one (print all to one line.).  Example use case: `factorial.silly`, `print_multiple.silly`.  Implemented in the peeter/old/print-multiple branch, then squashed and merged to master.
 * Implemented more complex expressions in parameters.  Example application: factorial.silly: `r = CALL factorial( v - 1 );`  Implemented in the generalized-parameter-value-expressions branch, then squashed and merged to master.  (Have grammar support in place to this in for range variables, but that's not done yet.)
 * parser maintainance:
-  - rename setFuncOp to setFuncNameAndOp, also passing in the funcName (and have it set currentFuncName)
-  - Move the mainScopeGenerated related main() funcOp and scope creation to enterStartRule, removing from getLocations
-  - make loc the first param of parseRvalue, like most other functions that take a Location.
-  - Doxygen comments for various private functions.
+  * rename setFuncOp to setFuncNameAndOp, also passing in the funcName (and have it set currentFuncName)
+  * Move the mainScopeGenerated related main() funcOp and scope creation to enterStartRule, removing from getLocations
+  * make loc the first param of parseRvalue, like most other functions that take a Location.
+  * Doxygen comments for various private functions.
 * Allow CALL in unary and binary expressions.
-* Expressions are now allowed in for loop range values:
+* Expressions are now allowed in for loop range values.  Example program:
 
-Example program:
 ```
-INT32 x;
-INT32 a;
-INT32 b;
-INT32 c;
-INT32 z;
-a = 1;
-b = -11;
-c = 2;
-z = 0;
+  INT32 x;
+  INT32 a;
+  INT32 b;
+  INT32 c;
+  INT32 z;
+  a = 1;
+  b = -11;
+  c = 2;
+  z = 0;
 
-FOR ( x : (+a, -b, c + z) )
-{
+  FOR ( x : (+a, -b, c + z) )
+  {
     PRINT x;
-};
+  };
 ```
 
-Example MLIR fragment for this loop:
+  Example MLIR fragment for this loop:
 
 ```
-%3 = silly.load @a : i32
-%4 = silly.load @b : i32
-%5 = "silly.negate"(%4) : (i32) -> i32
-%6 = silly.load @c : i32
-%7 = silly.load @z : i32
-%8 = "silly.add"(%6, %7) : (i32, i32) -> i32
-scf.for %arg0 = %3 to %5 step %8  : i32 {
-  silly.assign @x = %arg0 : i32
-  %9 = silly.load @x : i32
-  "silly.print"(%9) : (i32) -> ()
-}
+  %3 = silly.load @a : i32
+  %4 = silly.load @b : i32
+  %5 = "silly.negate"(%4) : (i32) -> i32
+  %6 = silly.load @c : i32
+  %7 = silly.load @z : i32
+  %8 = "silly.add"(%6, %7) : (i32, i32) -> i32
+  scf.for %arg0 = %3 to %5 step %8  : i32 {
+    silly.assign @x = %arg0 : i32
+    %9 = silly.load @x : i32
+    "silly.print"(%9) : (i32) -> ()
+  }
 ```
 
 * Fix functions returning BOOL that have just a RETURN statement.  Eliminates some of the remnants of the old dummy return rewrite code.
@@ -56,34 +55,36 @@ scf.for %arg0 = %3 to %5 step %8  : i32 {
 * Add error test cases that show that there is no support returning STRING or arrays from functions (grammar only allows scalar types).
 * Fix for `minimal_eliftest.silly` duplicate zero output:
 
-When that was stripped down to just the `check(5)`, I see:
+  When that was stripped down to just the `check(5)`, I see:
 
 ```
-Breakpoint 1, main () at minimal_eliftest.silly:22
-22      CALL check(5);    // should print "positive"
-(gdb) s
-check (val=0) at minimal_eliftest.silly:2
-2       FUNCTION check(INT32 val)
-(gdb) n
-4           IF (val < 0)
-(gdb)
-14              PRINT "zero";
-(gdb)
-zero
-8           ELIF (val > 0)
-(gdb)
-positive
-16          RETURN;
-(gdb)
-main () at minimal_eliftest.silly:2
-2       FUNCTION check(INT32 val)
-(gdb)
-Downloading source file /usr/src/debug/glibc-2.41-11.fc42.aarch64/csu/../sysdeps/nptl/libc_start_call_main.h
-__libc_start_call_main (main=main@entry=0x400634 <_start+52>, argc=argc@entry=1, argv=argv@entry=0xffffffffea28) at ../sysdeps/nptl/libc_start_call_main.h:74
-74        exit (result);
+  Breakpoint 1, main () at minimal_eliftest.silly:22
+  22      CALL check(5);    // should print "positive"
+  (gdb) s
+  check (val=0) at minimal_eliftest.silly:2
+  2       FUNCTION check(INT32 val)
+  (gdb) n
+  4           IF (val < 0)
+  (gdb)
+  14              PRINT "zero";
+  (gdb)
+  zero
+  8           ELIF (val > 0)
+  (gdb)
+  positive
+  16          RETURN;
+  (gdb)
+  main () at minimal_eliftest.silly:2
+  2       FUNCTION check(INT32 val)
+  (gdb)
+  Downloading source file /usr/src/debug/glibc-2.41-11.fc42.aarch64/csu/../sysdeps/nptl/libc_start_call_main.h
+  __libc_start_call_main (main=main@entry=0x400634 <_start+52>, argc=argc@entry=1, argv=argv@entry=0xffffffffea28) at ../sysdeps/nptl/libc_start_call_main.h:74
+  74        exit (result);
+```
 
-The MLIR was just plain wrong.   There insertion point for the zero PRINT is not in the else block:
+  The MLIR was just plain wrong.   There insertion point for the zero PRINT is not in the else block:
 
+```
   func.func private @check(%arg0: i32
     "silly.scope"() ({
       "silly.declare"() <{param_number = 0 : i64, parameter, type = i32}> {sym_name = "val"} : () -> ()
@@ -94,8 +95,8 @@ The MLIR was just plain wrong.   There insertion point for the zero PRINT is not
         %2 = "silly.string_literal"() <{value = "negative"}> : () -> !llvm.ptr
         "silly.print"(%2) : (!llvm.ptr) -> ()
       } else {
->>>>    %2 = "silly.string_literal"() <{value = "zero"}> : () -> !llvm.ptr
->>>>    "silly.print"(%2) : (!llvm.ptr) -> ()
+  >>>>    %2 = "silly.string_literal"() <{value = "zero"}> : () -> !llvm.ptr
+  >>>>    "silly.print"(%2) : (!llvm.ptr) -> ()
         %3 = silly.load @val : i32
         %c0_i64_0 = arith.constant 0 : i64
         %4 = "silly.less"(%c0_i64_0, %3) : (i64, i32) -> i1
@@ -103,118 +104,124 @@ The MLIR was just plain wrong.   There insertion point for the zero PRINT is not
           %5 = "silly.string_literal"() <{value = "positive"}> : () -> !llvm.ptr
           "silly.print"(%5) : (!llvm.ptr) -> ()
         } else {
->>>> should be here.
+  >>>> should be here.
+          }
         }
-      }
-      "silly.return"() : () -> ()
-    }) : () -> ()
-    "silly.yield"() : () -> ()
-  }
+        "silly.return"() : () -> ()
+      }) : () -> ()
+      "silly.yield"() : () -> ()
+    }
 ```
 
-  Sure enough the insertion point selection logic was wrong.  The ifOp search logic was finding the outermost scf.if, not the innermost -- now fixed.
-* Add a FATAL builtin, like PRINT, but prints any message text, then `FILE:LINE:FATAL error aborting` message and then aborts.
+ Sure enough the insertion point selection logic was wrong.  The ifOp search logic was finding the outermost scf.if, not the innermost -- now fixed.
+* Add a FATAL builtin, like PRINT, but prints any message text, then `FILE:LINE:FATAL error aborting` message and then aborts.  Example program:
 
-Example program:
 ```
-INT32 v = 42;
+  INT32 v = 42;
 
-FATAL "Unexpected value: ", v; // line 3.
+  FATAL "Unexpected value: ", v; // line 3.
 ```
 
-Example listing:
+  Example listing:
+
 ```
-module {
-  func.func @main() -> i32 {
-    "silly.scope"() ({
-      "silly.declare"() <{type = i32}> {sym_name = "v"} : () -> () loc(#loc)
-      %c42_i64 = arith.constant 42 : i64 loc(#loc)
-      silly.assign @v = %c42_i64 : i64 loc(#loc)
-      %0 = "silly.string_literal"() <{value = "Unexpected value: "}> : () -> !llvm.ptr loc(#loc1)
-      %1 = silly.load @v : i32 loc(#loc1)
-      "silly.print"(%0, %1) : (!llvm.ptr, i32) -> () loc(#loc1)
-      "silly.abort"() : () -> () loc(#loc1)
-      %c0_i32 = arith.constant 0 : i32 loc(#loc)
-      "silly.return"(%c0_i32) : (i32) -> () loc(#loc)
-    }) : () -> () loc(#loc)
-    "silly.yield"() : () -> () loc(#loc2)
+  module {
+    func.func @main() -> i32 {
+      "silly.scope"() ({
+        "silly.declare"() <{type = i32}> {sym_name = "v"} : () -> () loc(#loc)
+        %c42_i64 = arith.constant 42 : i64 loc(#loc)
+        silly.assign @v = %c42_i64 : i64 loc(#loc)
+        %0 = "silly.string_literal"() <{value = "Unexpected value: "}> : () -> !llvm.ptr loc(#loc1)
+        %1 = silly.load @v : i32 loc(#loc1)
+        "silly.print"(%0, %1) : (!llvm.ptr, i32) -> () loc(#loc1)
+        "silly.abort"() : () -> () loc(#loc1)
+        %c0_i32 = arith.constant 0 : i32 loc(#loc)
+        "silly.return"(%c0_i32) : (i32) -> () loc(#loc)
+      }) : () -> () loc(#loc)
+      "silly.yield"() : () -> () loc(#loc2)
+    } loc(#loc)
   } loc(#loc)
-} loc(#loc)
-#loc = loc("fatal.silly":1:1)
-#loc1 = loc("fatal.silly":3:1)
-#loc2 = loc("fatal.silly":4:1)
-```
-  * Rename FATAL to ERROR, and have that print to stderr, instead of stdout and not abort by itself.  Instead add ABORT statement (no params) that just prints
-    the abort message and does so.  Adjusted the lowering for PrintOp and the runtime accordingly.  New sample code:
-```
-INT32 v = 42;
-
-ERROR "Unexpected value: ", v; // line 3.
-ABORT;
+  #loc = loc("fatal.silly":1:1)
+  #loc1 = loc("fatal.silly":3:1)
+  #loc2 = loc("fatal.silly":4:1)
 ```
 
-MLIR is almost the same, but PRINT now takes an error flag (true in this case):
+* Rename FATAL to ERROR, and have that print to stderr, instead of stdout and not abort by itself.  Instead add ABORT statement (no params) that just prints
+   the abort message and does so.  Adjusted the lowering for PrintOp and the runtime accordingly.  New sample code:
+
 ```
-module {
-  func.func @main() -> i32 {
-    "silly.scope"() ({
-      "silly.declare"() <{type = i32}> {sym_name = "v"} : () -> ()
-      %c42_i64 = arith.constant 42 : i64
-      silly.assign @v = %c42_i64 : i64
-      %0 = "silly.string_literal"() <{value = "Unexpected value: "}> : () -> !llvm.ptr
-      %1 = silly.load @v : i32
-      %true = arith.constant true
-      "silly.print"(%true, %0, %1) : (i1, !llvm.ptr, i32) -> ()
-      "silly.abort"() : () -> ()
-      %c0_i32 = arith.constant 0 : i32
-      "silly.return"(%c0_i32) : (i32) -> ()
-    }) : () -> ()
-    "silly.yield"() : () -> ()
+  INT32 v = 42;
+
+  ERROR "Unexpected value: ", v; // line 3.
+  ABORT;
+```
+
+  MLIR is almost the same, but PRINT now takes an error flag (true in this case):
+
+```
+  module {
+    func.func @main() -> i32 {
+      "silly.scope"() ({
+        "silly.declare"() <{type = i32}> {sym_name = "v"} : () -> ()
+        %c42_i64 = arith.constant 42 : i64
+        silly.assign @v = %c42_i64 : i64
+        %0 = "silly.string_literal"() <{value = "Unexpected value: "}> : () -> !llvm.ptr
+        %1 = silly.load @v : i32
+        %true = arith.constant true
+        "silly.print"(%true, %0, %1) : (i1, !llvm.ptr, i32) -> ()
+        "silly.abort"() : () -> ()
+        %c0_i32 = arith.constant 0 : i32
+        "silly.return"(%c0_i32) : (i32) -> ()
+      }) : () -> ()
+      "silly.yield"() : () -> ()
+    }
   }
-}
-```
- * Adjust test cases to take advantage of new declare w/ initializer syntax
- * Add support for array index expressions like t[i+1] or t[CALL someFunc()]
- * bin/testit: two new tests, one for index expressions, and another with min/max helper functions (which found a bug.)
- * MLIRListener::indexTypeCast: Add support for casting from any size integer type.
- * MLIRListener::parsePredicate: Fix bug: was generating silly.less(x,x) instead of (x,y). (t/c: minmax.silly)
- * parser: remove parseRvalue std::string argument and push the silly::StringLiteralOp creation logic into there, removing it from processAssignment.
- * parser: push the silly::StringLiteralOp logic from parseRvalue down to buildUnaryExpression, and get rid of the last is-string-literal vs. is-not gunk (the StringLiteralOp is now created in buildUnaryExpression and the mlir::Value tested with definingOp.isa instead.)
- * PRINT can now take rvalue expressions in the list.  Example: `printexpr.silly`:
-
-```
-STRING s[10] = " there: ";
-INT32 x = 1;
-FLOAT64 f[1];
-f[0] = 3.14;
-FUNCTION foo() : FLOAT32
-{
-    RETURN 2.71;
-};
-
-PRINT "hi", s, 40 + 2, ", ", -x, ", ", f[0], ", ", CALL foo();
-```
-  * Add a CONTINUE parameter to PRINT/ERROR to suppress the newline.
-  * Implement `--init-fill` option for automatic variable initialization (default zero. test case arrayprod uses 255 -- verified in gdb)
-  * Removed varStates -- it does not work anyways now that we have control flow.  Still have checking for redeclaration, but no longer have any checking for use without assignment (but have --init-fill to compensate a bit.)
-  * Reworked the PRINT runtime (and lowering) so that there's now just one function call, with an alloca'ed array (big enough for the largest number of print arguments in the function in question.)  For example, given this MLIR fragment:
-
-```
-%c42_i64 = arith.constant 42 : i64
-%c0_i32 = arith.constant 0 : i32
-"silly.print"(%c0_i32, %c42_i64) : (i32, i64) -> ()
-
-%cst = arith.constant 4.200000e+01 : f64
-%c0_i32_0 = arith.constant 0 : i32
-"silly.print"(%c0_i32_0, %cst) : (i32, f64) -> ()
-
-%c1_i64 = arith.constant 1 : i64
-%c2_i64 = arith.constant 2 : i64
-%c0_i32_1 = arith.constant 0 : i32
-"silly.print"(%c0_i32_1, %c1_i64, %c2_i64) : (i32, i64, i64) -> ()
 ```
 
-we lower to:
+* Adjust test cases to take advantage of new declare w/ initializer syntax
+* Add support for array index expressions like t[i+1] or t[CALL someFunc()]
+* bin/testit: two new tests, one for index expressions, and another with min/max helper functions (which found a bug.)
+* MLIRListener::indexTypeCast: Add support for casting from any size integer type.
+* MLIRListener::parsePredicate: Fix bug: was generating silly.less(x,x) instead of (x,y). (t/c: minmax.silly)
+* parser: remove parseRvalue std::string argument and push the silly::StringLiteralOp creation logic into there, removing it from processAssignment.
+* parser: push the silly::StringLiteralOp logic from parseRvalue down to buildUnaryExpression, and get rid of the last is-string-literal vs. is-not gunk (the StringLiteralOp is now created in buildUnaryExpression and the mlir::Value tested with definingOp.isa instead.)
+* PRINT can now take rvalue expressions in the list.  Example: `printexpr.silly`:
+
+```
+    STRING s[10] = " there: ";
+    INT32 x = 1;
+    FLOAT64 f[1];
+    f[0] = 3.14;
+    FUNCTION foo() : FLOAT32
+    {
+        RETURN 2.71;
+    };
+
+    PRINT "hi", s, 40 + 2, ", ", -x, ", ", f[0], ", ", CALL foo();
+```
+
+* Add a CONTINUE parameter to PRINT/ERROR to suppress the newline.
+* Implement `--init-fill` option for automatic variable initialization (default zero. test case arrayprod uses 255 -- verified in gdb)
+* Removed varStates -- it does not work anyways now that we have control flow.  Still have checking for redeclaration, but no longer have any checking for use without assignment (but have --init-fill to compensate a bit.)
+* Reworked the PRINT runtime (and lowering) so that there's now just one function call, with an alloca'ed array (big enough for the largest number of print arguments in the function in question.)  For example, given this MLIR fragment:
+
+```
+  %c42_i64 = arith.constant 42 : i64
+  %c0_i32 = arith.constant 0 : i32
+  "silly.print"(%c0_i32, %c42_i64) : (i32, i64) -> ()
+
+  %cst = arith.constant 4.200000e+01 : f64
+  %c0_i32_0 = arith.constant 0 : i32
+  "silly.print"(%c0_i32_0, %cst) : (i32, f64) -> ()
+
+  %c1_i64 = arith.constant 1 : i64
+  %c2_i64 = arith.constant 2 : i64
+  %c0_i32_1 = arith.constant 0 : i32
+  "silly.print"(%c0_i32_1, %c1_i64, %c2_i64) : (i32, i64, i64) -> ()
+```
+
+  lowered to:
+
 ```
   %1 = alloca [4 x { i32, i32, i64, ptr }], align 8
   store i32 1, ptr %1, align 8
@@ -246,380 +253,385 @@ we lower to:
   store ptr null, ptr %.repack12, align 8
   call void @__silly_print(i32 2, ptr nonnull %1), !dbg !10
 ```
-  * new helper functions in unary expression parsing: parseBoolean, parseInteger, parseFloat (also use for
-    initializer list element parsing/building.)
-  * grammar: Remove `INTEGER_PATTERN` from booleanLiteral.  Didn't have any test that relied on or tested that codepath.
-  * Now have grammar/builder support for initializer lists.  Example MLIR:
-```
-      "silly.declare"() <{type = i1}> {sym_name = "j"} : () -> ()
-      "silly.declare"(%true) <{type = i1}> {sym_name = "i"} : (i1) -> ()
-      "silly.declare"(%false) <{type = i1}> {sym_name = "h"} : (i1) -> ()
-      "silly.declare"(%c1_i64) <{type = f64}> {sym_name = "g"} : (i64) -> ()
-      "silly.declare"(%cst, %cst_0) <{size = 3 : i64, type = f32}> {sym_name = "f"} : (f64, f64) -> ()
-      "silly.declare"(%c1_i64_1, %c2_i64, %c3_i64) <{size = 3 : i64, type = i32}> {sym_name = "e"} : (i64, i64, i64) -> ()
-      "silly.declare"(%c1_i64_2) <{type = i64}> {sym_name = "d"} : (i64) -> ()
-      "silly.declare"(%c1_i64_3, %c2_i64_4) <{size = 3 : i64, type = i32}> {sym_name = "c"} : (i64, i64) -> ()
-      "silly.declare"(%c1_i64_5) <{type = i16}> {sym_name = "b"} : (i64) -> ()
-      "silly.declare"(%c1_i64_6) <{type = i8}> {sym_name = "a"} : (i64) -> ()
-```
-  * Adjust bitwiseop.perl compareop.perl to use the new multi-argument PRINT support in all the generated tests.
-  * initializer-syntax now works all the way from grammar to lowering.  Documented it in the README.
-  * Initialization syntax implemented for strings too.  test case: initstring.silly
-  * (branch peeter/old/complex-expressions -- squashed and cherry-picked to master).  Implemented more complex expressions (chains of operators...).  Examples:
+
+* new helper functions in unary expression parsing: parseBoolean, parseInteger, parseFloat (also use for initializer list element parsing/building.)
+* grammar: Remove `INTEGER_PATTERN` from booleanLiteral.  Didn't have any test that relied on or tested that codepath.
+* Now have grammar/builder support for initializer lists.  Example MLIR:
 
 ```
-DCL x;
-x = 5 + 3 * 2;
-PRINT x;
-PRINT 1 + 2 * (3 - 4);  // -1
-PRINT - - 5;            // 5
-PRINT NOT TRUE;         // 0 (FALSE)
-PRINT (10 < 20) EQ 1;   // 1 (TRUE)
+  "silly.declare"() <{type = i1}> {sym_name = "j"} : () -> ()
+  "silly.declare"(%true) <{type = i1}> {sym_name = "i"} : (i1) -> ()
+  "silly.declare"(%false) <{type = i1}> {sym_name = "h"} : (i1) -> ()
+  "silly.declare"(%c1_i64) <{type = f64}> {sym_name = "g"} : (i64) -> ()
+  "silly.declare"(%cst, %cst_0) <{size = 3 : i64, type = f32}> {sym_name = "f"} : (f64, f64) -> ()
+  "silly.declare"(%c1_i64_1, %c2_i64, %c3_i64) <{size = 3 : i64, type = i32}> {sym_name = "e"} : (i64, i64, i64) -> ()
+  "silly.declare"(%c1_i64_2) <{type = i64}> {sym_name = "d"} : (i64) -> ()
+  "silly.declare"(%c1_i64_3, %c2_i64_4) <{size = 3 : i64, type = i32}> {sym_name = "c"} : (i64, i64) -> ()
+  "silly.declare"(%c1_i64_5) <{type = i16}> {sym_name = "b"} : (i64) -> ()
+  "silly.declare"(%c1_i64_6) <{type = i8}> {sym_name = "a"} : (i64) -> ()
 ```
-  * Prohibit NOT on non-integer type.  t/c: `error_notfloat.silly`
-  * [grammar/parser] Prohibit chaining of Comparison operators (examples: `1 < 2 < 3', `1 EQ 1 NE 1`).
-  * [grammar/parser] Introduce operator grammar elements so that I don't have ambiguous arrays of terminal-nodes.  Example:
+
+* Adjust bitwiseop.perl compareop.perl to use the new multi-argument PRINT support in all the generated tests.
+* initializer-syntax now works all the way from grammar to lowering.  Documented it in the README.
+* Initialization syntax implemented for strings too.  test case: initstring.silly
+* (branch peeter/old/complex-expressions -- squashed and cherry-picked to master).  Implemented more complex expressions (chains of operators...).  Examples:
+
+```
+  DCL x;
+  x = 5 + 3 * 2;
+  PRINT x;
+  PRINT 1 + 2 * (3 - 4);  // -1
+  PRINT - - 5;            // 5
+  PRINT NOT TRUE;         // 0 (FALSE)
+  PRINT (10 < 20) EQ 1;   // 1 (TRUE)
+```
+
+* Prohibit NOT on non-integer type.  t/c: `error_notfloat.silly`
+* [grammar/parser] Prohibit chaining of Comparison operators (examples: `1 < 2 < 3', `1 EQ 1 NE 1`).
+* [grammar/parser] Introduce operator grammar elements so that I don't have ambiguous arrays of terminal-nodes.  Example:
 
 ``` 
-binaryExpressionMulDiv
-  : unaryExpression ( multiplicativeOperator unaryExpression )*                  # mulDivExpr
-  ;
- 
-multiplicativeOperator
-  : TIMES_TOKEN | DIV_TOKEN
-  ;
+  binaryExpressionMulDiv
+    : unaryExpression ( multiplicativeOperator unaryExpression )*                  # mulDivExpr
+    ;
+   
+  multiplicativeOperator
+    : TIMES_TOKEN | DIV_TOKEN
+    ;
 ``` 
  
-  This way I get an array of multiplicativeOperator, each with it's own terminal node.  This fixes samples/expression5.silly, now enabled in the regression suite.
-  * Make the following replacements in the grammar for consistency:
+ This way I get an array of multiplicativeOperator, each with it's own terminal node.  This fixes samples/expression5.silly, now enabled in the regression suite.
+
+* Make the following replacements in the grammar for consistency:
 
 ```
-s,\babort\b,abortStatement,g;
-s,\bifelifelse\b,ifElifElseStatement,g;
-s,\bfor\b,forStatement,g;
-s,\bprint\b,printStatement,g;
-s,\bassignment\b,assignmentStatement,g;
-s,\bdeclare\b,declareStatement,g;
-s,\bintDeclare\b,intDeclareStatement,g;
-s,\bfloatDeclare\b,floatDeclareStatement,g;
-s,\bstringDeclare\b,stringDeclareStatement,g;
-s,\bboolDeclare\b,boolDeclareStatement,g;
-s,\bfunction\b,functionStatement,g;
-s,\bget\b,getStatement,g;
-s,\berror\b,errorStatement,g;
+  s,\babort\b,abortStatement,g;
+  s,\bifelifelse\b,ifElifElseStatement,g;
+  s,\bfor\b,forStatement,g;
+  s,\bprint\b,printStatement,g;
+  s,\bassignment\b,assignmentStatement,g;
+  s,\bdeclare\b,declareStatement,g;
+  s,\bintDeclare\b,intDeclareStatement,g;
+  s,\bfloatDeclare\b,floatDeclareStatement,g;
+  s,\bstringDeclare\b,stringDeclareStatement,g;
+  s,\bboolDeclare\b,boolDeclareStatement,g;
+  s,\bfunction\b,functionStatement,g;
+  s,\bget\b,getStatement,g;
+  s,\berror\b,errorStatement,g;
 ```
 
-(plus various matching transformations in the parser)
-  * Fixed previously documented, but stupid, semantics:
+ (plus various matching transformations in the parser)
+* Fixed previously documented, but stupid, semantics:
 
-  Computations occur in assignment operations, and any types are first promoted to the type of the variable.
-    This means that `x = 1.99 + 2.99` has the value `3`, if `x` is an integer variable, but `4.98` if x is a `FLOAT32` or `FLOAT64`.
-  * Document: Floating point to integer conversions use a floor operation, and are not rounded.
-  * A bunch more tests for complex expressions and more.
-  * Generalize initializer expressions, and fix +- in unaryExpression ambiguity.
+ Computations occur in assignment operations, and any types are first promoted to the type of the variable.
+ This means that `x = 1.99 + 2.99` has the value `3`, if `x` is an integer variable, but `4.98` if x is a `FLOAT32` or `FLOAT64`.
+* Document: Floating point to integer conversions use a floor operation, and are not rounded.
+* A bunch more tests for complex expressions and more.
+* Generalize initializer expressions, and fix +- in unaryExpression ambiguity.
 
-The tests array_dynamic_index, array_in_expr, array_in_expr_min, as well
-as testing more general array element expressions, found a fundamental
-grammar bug.
+  The tests array_dynamic_index, array_in_expr, array_in_expr_min, as well
+  as testing more general array element expressions, found a fundamental
+  grammar bug.
 
-A minimal reproducer was:
+  A minimal reproducer was:
 ```
-INT32 i;
-i = 2+1; // parse fails.
-//i = 2 + 1; // parse okay.
-```
-
-The root cause of this was the `(PLUSCHAR_TOKEN | MINUS_TOKEN)?` that was in `FLOAT_PATTERN` and `INTEGER_PATTERN`.
-This leads to parse ambiguity since the +- in unaryExpression and this ended up in conflict.
-
-Fixing this wasn't as easy as just removing those patterns, letting unaryExpression take the load.
-Trying that broke initializer-lists which only allowed literal expressions.
-
-By first allowing expressions in initializer-list elements (requiring
-extensive parser changes), it was then possible to remove `(PLUSCHAR_TOKEN | MINUS_TOKEN)?` from the
-FLOAT and INTEGER patterns.
-
-Specific changes:
-- [grammar, parser] Allow parameter+constant expressions
-- [parser] Remove the previous insertion point hack for declarations.  They are
-  now in program order again (but still hoisted up to the begining of
-  the scope.)
-- [grammar, parser] remove booleanValue, replacing with direct use of expression
-Grammar/parser now compiles, but the insertion point logic is broken: My declaration order hack is now causing trouble.
-- [test] add declaration order test case.
-- [grammar, parser] add declareAssignmentExpression, and remove (PLUSCHAR_TOKEN
-  | MINUS_TOKEN)? from the INTEGER/FLOAT literal patterns.
-- Enable new tests: array_dynamic_index, array_in_expr, array_in_expr_min.
-- [grammar, parser] remove booleanValue, replacing with direct use of expression
-- [grammar, parser] Replace assignmentRvalue with expression in assignmentStatement.  Use declareAssignmentExpression as expression alias, but just in the declaration rules (to distinguish assignment from initialization.)
-  * more tests: `init_expr_unary initlisttrunc initsequence init_expr_bool forward_ref_init init_expr_call`
-  * add placeholder test: `error_nonconst_init.silly` -- doesn't fail, but I want it to (see TODO)
-  * `perl -p -i -e 's/MLIRListener/ParseListener/g'` -- Bad name: It's an MLIR builder or Silly Parse Listener, but not an MLIRListener
-  * Add new error message: return expression found '{}', but no return type for function {}
-  * Add corresponding test case: error_return_expr_no_return_type.silly
-  * Fix array_lvalue_complex.silly (user error -- above).
-  * Fix initlist_param.silly -- that was a test to see that an initializer-list expression can reference a parameter (it still shouldn't reference a variable with the current implementation).  That now works.  The issue was the DeclareOp sequencing for the parameters vs. the variables -- createScope now saves the last declareOp creation point, like registerDeclaration does.  Removes the setFuncNameAndOp() helper function so the consistuient parts of that function can be split up.
-  * Fix the location information for expressions.  location info is now granular, so an expression like c[i] will have a location for i and one for the i.  Example (line 9):
-
-```
-    PRINT "c[", i, "] = ", t;
+  INT32 i;
+  i = 2+1; // parse fails.
+  //i = 2 + 1; // parse okay.
 ```
 
-The MLIR for that is:
+  The root cause of this was the `(PLUSCHAR_TOKEN | MINUS_TOKEN)?` that was in `FLOAT_PATTERN` and `INTEGER_PATTERN`.
+  This leads to parse ambiguity since the +- in unaryExpression and this ended up in conflict.
+
+  Fixing this wasn't as easy as just removing those patterns, letting unaryExpression take the load.
+  Trying that broke initializer-lists which only allowed literal expressions.
+
+  By first allowing expressions in initializer-list elements (requiring
+  extensive parser changes), it was then possible to remove `(PLUSCHAR_TOKEN | MINUS_TOKEN)?` from the
+  FLOAT and INTEGER patterns.
+
+  Specific changes:
+    * [grammar, parser] Allow parameter+constant expressions
+    * [parser] Remove the previous insertion point hack for declarations.  They are
+      now in program order again (but still hoisted up to the begining of
+      the scope.)
+    * [grammar, parser] remove booleanValue, replacing with direct use of expression
+ Grammar/parser now compiles, but the insertion point logic is broken: My declaration order hack is now causing trouble.
+    * [test] add declaration order test case.
+    * [grammar, parser] add declareAssignmentExpression, and remove (PLUSCHAR_TOKEN
+      | MINUS_TOKEN)? from the INTEGER/FLOAT literal patterns.
+    * Enable new tests: array_dynamic_index, array_in_expr, array_in_expr_min.
+    * [grammar, parser] remove booleanValue, replacing with direct use of expression
+    * [grammar, parser] Replace assignmentRvalue with expression in assignmentStatement.  Use declareAssignmentExpression as expression alias, but just in the declaration rules (to distinguish assignment from initialization.)
+* more tests: `init_expr_unary initlisttrunc initsequence init_expr_bool forward_ref_init init_expr_call`
+* add placeholder test: `error_nonconst_init.silly` -- doesn't fail, but I want it to (see TODO)
+* `perl -p -i -e 's/MLIRListener/ParseListener/g'` -- Bad name: It's an MLIR builder or Silly Parse Listener, but not an MLIRListener
+* Add new error message: return expression found '{}', but no return type for function {}
+* Add corresponding test case: error_return_expr_no_return_type.silly
+* Fix array_lvalue_complex.silly (user error -- above).
+* Fix initlist_param.silly -- that was a test to see that an initializer-list expression can reference a parameter (it still shouldn't reference a variable with the current implementation).  That now works.  The issue was the DeclareOp sequencing for the parameters vs. the variables -- createScope now saves the last declareOp creation point, like registerDeclaration does.  Removes the setFuncNameAndOp() helper function so the consistuient parts of that function can be split up.
+* Fix the location information for expressions.  location info is now granular, so an expression like c[i] will have a location for i and one for the i.  Example (line 9):
 
 ```
-        %7 = "silly.string_literal"() <{value = "c["}> : () -> !llvm.ptr loc(#loc14)
-        %8 = silly.load @i : i32 loc(#loc15)
-        %9 = "silly.string_literal"() <{value = "] = "}> : () -> !llvm.ptr loc(#loc16)
-        %10 = silly.load @t : i32 loc(#loc17)
-        %c0_i32_2 = arith.constant 0 : i32 loc(#loc18)
-        "silly.print"(%c0_i32_2, %7, %8, %9, %10) : (i32, !llvm.ptr, i32, !llvm.ptr, i32) -> () loc(#loc18)
+  PRINT "c[", i, "] = ", t;
+```
 
-...
+  The MLIR for that is:
 
-#loc14 = loc("printdi.silly":9:11)
-#loc15 = loc("printdi.silly":9:17)
-#loc16 = loc("printdi.silly":9:20)
-#loc17 = loc("printdi.silly":9:28)
-#loc18 = loc("printdi.silly":9:5)
 ```
-  * Switch scf.for loop bodies to use a proper SSA form.
-    - [grammar] Introduce intType rule (use in intDeclareStatement and forStatement)
-    - [parser] Add vector<pair<string, Value>> for induction variables and push/pop that in the FOR loop enter/exit callbacks.  Split out integerDeclarationType from enterIntDeclareStatement to also use in enterFor.
-    - [parser] ParseListener::parsePrimary -- supplement variable lookup with induction var lookup.
-    - Example of the new MLIR for a loop:
+  %7 = "silly.string_literal"() <{value = "c["}> : () -> !llvm.ptr loc(#loc14)
+  %8 = silly.load @i : i32 loc(#loc15)
+  %9 = "silly.string_literal"() <{value = "] = "}> : () -> !llvm.ptr loc(#loc16)
+  %10 = silly.load @t : i32 loc(#loc17)
+  %c0_i32_2 = arith.constant 0 : i32 loc(#loc18)
+  "silly.print"(%c0_i32_2, %7, %8, %9, %10) : (i32, !llvm.ptr, i32, !llvm.ptr, i32) -> () loc(#loc18)
+  ...
+
+  #loc14 = loc("printdi.silly":9:11)
+  #loc15 = loc("printdi.silly":9:17)
+  #loc16 = loc("printdi.silly":9:20)
+  #loc17 = loc("printdi.silly":9:28)
+  #loc18 = loc("printdi.silly":9:5)
 ```
-      scf.for %arg0 = %0 to %1 step %2  : i32 {
-        %3 = arith.extsi %arg0 : i32 to i64 loc(#loc10)
-        %4 = arith.index_cast %3 : i64 to index loc(#loc10)
-        %5 = silly.load @c[%4] : i32 loc(#loc11)
-        silly.assign @t = %5 : i32 loc(#loc12)
-        %6 = "silly.string_literal"() <{value = "c["}> : () -> !llvm.ptr loc(#loc13)
-        %7 = "silly.string_literal"() <{value = "] = "}> : () -> !llvm.ptr loc(#loc14)
-        %8 = silly.load @t : i32 loc(#loc15)
-        %c0_i32_2 = arith.constant 0 : i32 loc(#loc16)
-        "silly.print"(%c0_i32_2, %6, %arg0, %7, %8) : (i32, !llvm.ptr, i32, !llvm.ptr, i32) -> () loc(#loc16)
-      } loc(#loc9)
+* Switch scf.for loop bodies to use a proper SSA form.
+  * [grammar] Introduce intType rule (use in intDeclareStatement and forStatement)
+  * [parser] Add vector<pair<string, Value>> for induction variables and push/pop that in the FOR loop enter/exit callbacks.  Split out integerDeclarationType from enterIntDeclareStatement to also use in enterFor.
+  * [parser] ParseListener::parsePrimary -- supplement variable lookup with induction var lookup.
+  * Example of the new MLIR for a loop:
 ```
-  This removes the AssignOp for the loop induction variable that I used to avoid figuring out how to cache and
-  lookup the mlir::Value for the induction var.  Unfortunately, this means that I loose the debug instrumentation
-  for that loop variable as a side effect.  Also unfortunately, this also doesn't fix the line number ping pong
-  that I am seeing in loop bodies.  More debugging of the DI is required.
+    scf.for %arg0 = %0 to %1 step %2  : i32 {
+      %3 = arith.extsi %arg0 : i32 to i64 loc(#loc10)
+      %4 = arith.index_cast %3 : i64 to index loc(#loc10)
+      %5 = silly.load @c[%4] : i32 loc(#loc11)
+      silly.assign @t = %5 : i32 loc(#loc12)
+      %6 = "silly.string_literal"() <{value = "c["}> : () -> !llvm.ptr loc(#loc13)
+      %7 = "silly.string_literal"() <{value = "] = "}> : () -> !llvm.ptr loc(#loc14)
+      %8 = silly.load @t : i32 loc(#loc15)
+      %c0_i32_2 = arith.constant 0 : i32 loc(#loc16)
+      "silly.print"(%c0_i32_2, %6, %arg0, %7, %8) : (i32, !llvm.ptr, i32, !llvm.ptr, i32) -> () loc(#loc16)
+    } loc(#loc9)
+```
+    This removes the AssignOp for the loop induction variable that I used to avoid figuring out how to cache and
+    lookup the mlir::Value for the induction var.  Unfortunately, this means that I loose the debug instrumentation
+    for that loop variable as a side effect.  Also unfortunately, this also doesn't fix the line number ping pong
+    that I am seeing in loop bodies.  More debugging of the DI is required.
   * More FOR tests. Also implemented checking of the error messages for expected compile errors.
   * [parser] searchForInduction doesn't need to return a pair -- only the Value is ever used.
   * [parser] pass type from parseExpression all the way down to parsePrimary, and adjust constant creation to use
     that type if specified.  This gets rid of a bunch of ugly sign-extension/truncation.  Example:
 ```
-      %0 = "arith.constant"() <{value = 0 : i32}> : () -> i32 loc(#loc2)
-      %1 = "arith.constant"() <{value = 3 : i32}> : () -> i32 loc(#loc3)
-      %2 = "arith.constant"() <{value = 1 : i32}> : () -> i32 loc(#loc1)
-      "scf.for"(%0, %1, %2) ({
-      ^bb0(%arg0: i32 loc("nested_for.silly":5:1)):
-        %3 = "arith.constant"() <{value = 0 : i32}> : () -> i32 loc(#loc4)
-        %4 = "arith.constant"() <{value = 2 : i32}> : () -> i32 loc(#loc5)
-        %5 = "arith.constant"() <{value = 1 : i32}> : () -> i32 loc(#loc6)
-        "scf.for"(%3, %4, %5) ({
+    %0 = "arith.constant"() <{value = 0 : i32}> : () -> i32 loc(#loc2)
+    %1 = "arith.constant"() <{value = 3 : i32}> : () -> i32 loc(#loc3)
+    %2 = "arith.constant"() <{value = 1 : i32}> : () -> i32 loc(#loc1)
+    "scf.for"(%0, %1, %2) ({
+    ^bb0(%arg0: i32 loc("nested_for.silly":5:1)):
+      %3 = "arith.constant"() <{value = 0 : i32}> : () -> i32 loc(#loc4)
+      %4 = "arith.constant"() <{value = 2 : i32}> : () -> i32 loc(#loc5)
+      %5 = "arith.constant"() <{value = 1 : i32}> : () -> i32 loc(#loc6)
+      "scf.for"(%3, %4, %5) ({
 ```
 
  With all the previous truncatation (from i64) this was really hard to read.
- * [parser] pass the type into the initializer-list creation so that no casting will be required in lowering.  Example:
+* [parser] pass the type into the initializer-list creation so that no casting will be required in lowering.  Example:
 
 ```
-INT32 c[3]{10,20,30};
+  INT32 c[3]{10,20,30};
 ```
 
-gives
+  gives
 
 ```
- %0 = "arith.constant"() <{value = 10 : i32}> : () -> i32 loc(#loc2)
- %1 = "arith.constant"() <{value = 20 : i32}> : () -> i32 loc(#loc3)
- %2 = "arith.constant"() <{value = 30 : i32}> : () -> i32 loc(#loc4)
- "silly.declare"(%0, %1, %2) <{size = 3 : i64, type = i32}> {sym_name = "c"} : (i32, i32, i32) -> () loc(#loc5)
+  %0 = "arith.constant"() <{value = 10 : i32}> : () -> i32 loc(#loc2)
+  %1 = "arith.constant"() <{value = 20 : i32}> : () -> i32 loc(#loc3)
+  %2 = "arith.constant"() <{value = 30 : i32}> : () -> i32 loc(#loc4)
+  "silly.declare"(%0, %1, %2) <{size = 3 : i64, type = i32}> {sym_name = "c"} : (i32, i32, i32) -> () loc(#loc5)
 ```
 
 (everything here has the right type now (not i64), right out of the gate.)
- * Fix nested_for.silly.  Handle insertionPointStack like lastDeclareOp, pushing getOperation() and restoring using  builder.setInsertionPointAfter.
+* Fix nested_for.silly.  Handle insertionPointStack like lastDeclareOp, pushing getOperation() and restoring using  builder.setInsertionPointAfter.
 
- Was seeing:
+  Was seeing:
+
 ```
-      "scf.for"(%3, %4, %5) ({
-      ^bb0(%arg0: i32 loc("nested_for.silly":5:1)):
-        %6 = "arith.constant"() <{value = 0 : i32}> : () -> i32 loc(#loc9)
-        %7 = "arith.constant"() <{value = 2 : i32}> : () -> i32 loc(#loc10)
-        %8 = "arith.constant"() <{value = 1 : i32}> : () -> i32 loc(#loc11)
-        "scf.for"(%6, %7, %8) ({
-        ^bb0(%arg1: i32 loc("nested_for.silly":6:5)):
-        ...
-          "scf.yield"() : () -> () loc(#loc11)
-        }) : (i32, i32, i32) -> () loc(#loc11)
-        %9 = "arith.constant"() <{value = 0 : i32}> : () -> i32 loc(#loc1)
-        "silly.return"(%9) : (i32) -> () loc(#loc1)
-        "scf.yield"() : () -> () loc(#loc8)
-      }) : (i32, i32, i32) -> () loc(#loc8)
-    }) : () -> () loc(#loc1)
+  "scf.for"(%3, %4, %5) ({
+    ^bb0(%arg0: i32 loc("nested_for.silly":5:1)):
+      %6 = "arith.constant"() <{value = 0 : i32}> : () -> i32 loc(#loc9)
+      %7 = "arith.constant"() <{value = 2 : i32}> : () -> i32 loc(#loc10)
+      %8 = "arith.constant"() <{value = 1 : i32}> : () -> i32 loc(#loc11)
+      "scf.for"(%6, %7, %8) ({
+      ^bb0(%arg1: i32 loc("nested_for.silly":6:5)):
+      ...
+        "scf.yield"() : () -> () loc(#loc11)
+      }) : (i32, i32, i32) -> () loc(#loc11)
+      %9 = "arith.constant"() <{value = 0 : i32}> : () -> i32 loc(#loc1)
+      "silly.return"(%9) : (i32) -> () loc(#loc1)
+      "scf.yield"() : () -> () loc(#loc8)
+    }) : (i32, i32, i32) -> () loc(#loc8)
+  }) : () -> () loc(#loc1)
 
-RETURN SHOULD BE HERE ... it's up in the outer for loop body!
+  RETURN SHOULD BE HERE ... it's up in the outer for loop body!
 
     "silly.yield"() : () -> () loc(#loc20)
   }) : () -> () loc(#loc1)
 ```
+
   * Document that negative and zero size step values in FOR loops is not supported, and has undefined behaviour.
   * Implement FOR induction variable debug-instrumentation.
-    - [tablegen] Add silly::debug_name
-    - [parser] resurrect getTerminalLocation, and use it to construct a DebugName OP in enterFor.
-    - [lowering] split out infoForVariableDI from constructVariableDI for use in DebugNameOpLowering.
+    * [tablegen] Add silly::debug_name
+    * [parser] resurrect getTerminalLocation, and use it to construct a DebugName OP in enterFor.
+    * [lowering] split out infoForVariableDI from constructVariableDI for use in DebugNameOpLowering.
       Implement DebugNameOpLowering (mostly calling new helper constructInductionVariableDI), and make DebugName an illegalop.
-  * [lowering]
-
-Example MLIR fragment:
-```
-        "silly.debug_name"(%arg0) <{name = "i"}> : (i64) -> () loc(#loc4)
-loc4 = loc("for_simplest.silly":3:12)
-```
-
-Example LLVM-IR fragment:
+  * [lowering] Example MLIR fragment:
 
 ```
-  %lsr.iv = phi i64 [ %lsr.iv.next, %6 ], [ 2, %0 ], !dbg !11
-  ...
+    "silly.debug_name"(%arg0) <{name = "i"}> : (i64) -> () loc(#loc4)
+    loc4 = loc("for_simplest.silly":3:12)
+```
+
+    Example LLVM-IR fragment:
+
+```
+    %lsr.iv = phi i64 [ %lsr.iv.next, %6 ], [ 2, %0 ], !dbg !11
+    ...
     #dbg_value(i64 %lsr.iv, !12, !DIExpression(DW_OP_constu, 1, DW_OP_minus, DW_OP_stack_value), !13)
 
-!12 = !DILocalVariable(name: "i", scope: !4, file: !1, line: 3, type: !10, align: 64)
+    !12 = !DILocalVariable(name: "i", scope: !4, file: !1, line: 3, type: !10, align: 64)
 ```
 
-Example debug session:
+    Example debug session:
 ```
-(gdb) run
-Starting program: /home/peeter/toycalculator/samples/out/for_simplest
-Downloading separate debug info for system-supplied DSO at 0xfffff7ffa000
-[Thread debugging using libthread_db enabled]
-Using host libthread_db library "/lib64/libthread_db.so.1".
+    (gdb) run
+    Starting program: /home/peeter/toycalculator/samples/out/for_simplest
+    Downloading separate debug info for system-supplied DSO at 0xfffff7ffa000
+    [Thread debugging using libthread_db enabled]
+    Using host libthread_db library "/lib64/libthread_db.so.1".
 
-Breakpoint 2, main () at for_simplest.silly:5
-5           PRINT i;
-(gdb) n
-1
-6           v = i + 1;
-(gdb) p i
-$1 = 1
-(gdb) n
-3       FOR (INT64 i : (1, 5))
-(gdb) n
+    Breakpoint 2, main () at for_simplest.silly:5
+    5           PRINT i;
+    (gdb) n
+    1
+    6           v = i + 1;
+    (gdb) p i
+    $1 = 1
+    (gdb) n
+    3       FOR (INT64 i : (1, 5))
+    (gdb) n
 
-Breakpoint 2, main () at for_simplest.silly:5
-5           PRINT i;
-(gdb) p i
-$2 = 2
-(gdb) what i
-type = int64_t
+    Breakpoint 2, main () at for_simplest.silly:5
+    5           PRINT i;
+    (gdb) p i
+    $2 = 2
+    (gdb) what i
+    type = int64_t
 ```
   * [lowering] Standardize on a 'loc, rewriter' sequence in all helper functions that take both (instead of a hodge podge or 'loc, rewriter' and 'rewriter, loc')
   * Very simplest debug test case for loop induction variables.  For test `for_simplest` check the dwarfdump for:
 
 ```
-DW_AT_name                  i
-DW_AT_alignment             0x00000008
-DW_AT_decl_file             0x00000001 ./for_simplest.silly
-DW_AT_decl_line             0x00000003
+    DW_AT_name                  i
+    DW_AT_alignment             0x00000008
+    DW_AT_decl_file             0x00000001 ./for_simplest.silly
+    DW_AT_decl_line             0x00000003
 ```
-  * loadstore.silly -- This contains all the most basic load and store accesses:
-    - Scalar load and store
-    - Array element access: load and store
-    - string store and load and string literal access.
+* loadstore.silly -- This contains all the most basic load and store accesses:
+  * Scalar load and store
+  * Array element access: load and store
+  * string store and load and string literal access.
 
   This program was specifically for examining the MLIR silly dialect representation of those operations.
-  * Disable: `div_zero_int` -- different results on intel vs. arm.
-  * Refactor DeclareOp, AssignOp and LoadOp to use a proper SSA form (from branch peeter/ssa-form-assign-load, squashed and cherry-picked into master.)
 
-    This introduces a new Silly_VarType, now used in DeclareOp.  AssignOp and LoadOp's now refer to a DeclareOp, instead of a var_name (symbol reference)
+* Disable: `div_zero_int` -- different results on intel vs. arm.
+* Refactor DeclareOp, AssignOp and LoadOp to use a proper SSA form (from branch peeter/ssa-form-assign-load, squashed and cherry-picked into master.)
 
-    The varType:
+  This introduces a new Silly_VarType, now used in DeclareOp.  AssignOp and LoadOp's now refer to a DeclareOp, instead of a var_name (symbol reference)
 
-```
-def Silly_VarType : TypeDef<Silly_Dialect, "var"> {
-  let summary = "Abstract variable location (scalar or array)";
-  let description = [{
-    Represents an abstract handle to a variable's storage.
-    Scalars have empty shape; arrays have a non-empty shape.
-    This type is storage-agnostic and lowered to concrete memory
-    (e.g., LLVM alloca).
-  }];
-
-  let parameters = (ins
-    "mlir::Type":$elementType,
-    "mlir::DenseI64ArrayAttr":$shape // empty = scalar
-  );
-
-  let mnemonic = "var";
-
-  let assemblyFormat = "`<` $elementType $shape `>`";
-}
-```
-
-Declare's now look like:
+  The varType:
 
 ```
-%0 = silly.declare %c1_i64 : i64 {sym_name = "anInitializedScalar"} : <i64 []>
-%1 = silly.declare  :  {sym_name = "aTemporaryScalar"} : <i64 []>
-%2 = silly.declare %c1_i64_0, %c0_i64 : i64, i64 {sym_name = "aVectorLength2"} : <i64 [2]>
-%3 = silly.declare  :  {sym_name = "aStringLength2"} : <i8 [10]>
+  def Silly_VarType : TypeDef<Silly_Dialect, "var"> {
+    let summary = "Abstract variable location (scalar or array)";
+    let description = [{
+      Represents an abstract handle to a variable's storage.
+      Scalars have empty shape; arrays have a non-empty shape.
+      This type is storage-agnostic and lowered to concrete memory
+      (e.g., LLVM alloca).
+    }];
+
+    let parameters = (ins
+      "mlir::Type":$elementType,
+      "mlir::DenseI64ArrayAttr":$shape // empty = scalar
+    );
+
+    let mnemonic = "var";
+
+    let assemblyFormat = "`<` $elementType $shape `>`";
+  }
 ```
 
-Example LoadOp, and AssignOp's
+  Declare's now look like:
 
 ```
-%1 = silly.declare  :  {sym_name = "aTemporaryScalar"} : <i64 []>
-%c3_i64 = arith.constant 3 : i64
-silly.assign %1 : <i64 []> = %c3_i64 : i64
-
-%4 = silly.load %1 : <i64 []> : i64
-...
-"silly.print"(%c0_i32, %4) : (i32, i64) -> ()
+  %0 = silly.declare %c1_i64 : i64 {sym_name = "anInitializedScalar"} : <i64 []>
+  %1 = silly.declare  :  {sym_name = "aTemporaryScalar"} : <i64 []>
+  %2 = silly.declare %c1_i64_0, %c0_i64 : i64, i64 {sym_name = "aVectorLength2"} : <i64 [2]>
+  %3 = silly.declare  :  {sym_name = "aStringLength2"} : <i8 [10]>
 ```
 
-Loads and Assigns now reference a DeclareOp (SSA return value), and not a symbol name.
+  Example LoadOp, and AssignOp's
 
-Specific changes:
-  - [lowering] Adjust all the DeclareOp, AssignOp and LoadOp's to use the new model.
-  - [parser] Adjust all the DeclareOp, AssignOp and LoadOp's to use the new model.
-  - [cmake] Generate SillyTypes.hpp.inc SillyTypes.cpp.inc, adding dependencies.
-  - [TODO] No error for "Attempted GET to string literal"
-  - [TODO] nice to have: custom var printer to show scalar type, as `<i64>` (for example) instead of `<i64 []>`
-  - [tablegen] New Silly_VarType, use in DeclareOp, returning that varType (still has the var_name symbol.)  Adjusted AssignOp and LoadOp to use %foo (a DeclareOp mlir::Value) instead of a var_name symbol reference.  Adjusted all the source/headers that include the tablegen boilerplate headers -- lots of tweaking required.
+```
+  %1 = silly.declare  :  {sym_name = "aTemporaryScalar"} : <i64 []>
+  %c3_i64 = arith.constant 3 : i64
+  silly.assign %1 : <i64 []> = %c3_i64 : i64
 
-  * [types] custom var printer to show scalar type, as `<i64>` (for example) instead of `<i64 []>`.  Unfortunately that required a parse method too.
-  * [cmake] package silly dialect files in libSillyDialect.so instead of static linking to the silly compiler driver.  This should at least theoretically allow the use of mlir-opt to test parse directly (not tried yet.)  Also comment out the mlirtest and simplest test build rules -- I haven't tried those in forever, and don't care to at the moment.
-  * [tablegen] remove the DeclareOp custom asm printer.  It generates output that can't be parsed by mlir-opt.
-  * [dialect] convert library into a plugin so it can be loaded by mlir-opt.
-  * [tests] Add manual tests parsetests/.
-  * [bin] Add: silly-opt -- an easy way to run mlir-opt against a silly dialect file.
-  * Add lit test build infrastructure -- unfortunately depends on my llvm-build/ dir and llvm-project cmake configuration -- but it's a CI/CD start.
-  * [tests] ReturnOp verifier and some initial returnop dialect tests.  Move the {ScopeOp,DeclareOp}::verify out of line.
-  * [tests] Migrated testit manual testsuite driver to ctest.
-  * [tests] Add testit --clean option.  default off, so that ctest -j works.
-  * Replace lowering asserts like:
+  %4 = silly.load %1 : <i64 []> : i64
+  ...
+  "silly.print"(%c0_i32, %4) : (i32, i64) -> ()
+```
 
-    ```
-    assert( false && "unsupported print argument type" );
-    ```
+  Loads and Assigns now reference a DeclareOp (SSA return value), and not a symbol name.
 
-    With:
+  Specific changes:
+  * [lowering] Adjust all the DeclareOp, AssignOp and LoadOp's to use the new model.
+  * [parser] Adjust all the DeclareOp, AssignOp and LoadOp's to use the new model.
+  * [cmake] Generate SillyTypes.hpp.inc SillyTypes.cpp.inc, adding dependencies.
+  * [TODO] No error for "Attempted GET to string literal"
+  * [TODO] nice to have: custom var printer to show scalar type, as `<i64>` (for example) instead of `<i64 []>`
+  * [tablegen] New Silly_VarType, use in DeclareOp, returning that varType (still has the var_name symbol.)  Adjusted AssignOp and LoadOp to use %foo (a DeclareOp mlir::Value) instead of a var_name symbol reference.  Adjusted all the source/headers that include the tablegen boilerplate headers -- lots of tweaking required.
 
-    ```
-    return rewriter.notifyMatchFailure( op, "unsupported print argument type" );
-    ```
+* [types] custom var printer to show scalar type, as `<i64>` (for example) instead of `<i64 []>`.  Unfortunately that required a parse method too.
+* [cmake] package silly dialect files in libSillyDialect.so instead of static linking to the silly compiler driver.  This should at least theoretically allow the use of mlir-opt to test parse directly (not tried yet.)  Also comment out the mlirtest and simplest test build rules -- I haven't tried those in forever, and don't care to at the moment.
+* [tablegen] remove the DeclareOp custom asm printer.  It generates output that can't be parsed by mlir-opt.
+* [dialect] convert library into a plugin so it can be loaded by mlir-opt.
+* [tests] Add manual tests parsetests/.
+* [bin] Add: silly-opt -- an easy way to run mlir-opt against a silly dialect file.
+* Add lit test build infrastructure -- unfortunately depends on my llvm-build/ dir and llvm-project cmake configuration -- but it's a CI/CD start.
+* [tests] ReturnOp verifier and some initial returnop dialect tests.  Move the {ScopeOp,DeclareOp}::verify out of line.
+* [tests] Migrated testit manual testsuite driver to ctest.
+* [tests] Add testit --clean option.  default off, so that ctest -j works.
+* Replace lowering asserts like:
 
-    - change return type of helpers to mlir::LogicalResult (passing outputs
-      by reference if required, and op's as input), then:
-    - Add idiomatic MLIR checking of the form:
+```
+  assert( false && "unsupported print argument type" );
+```
 
-    ```
+  With:
+
+```
+  return rewriter.notifyMatchFailure( op, "unsupported print argument type" );
+```
+
+  * change return type of helpers to mlir::LogicalResult (passing outputs by reference if required, and op's as input), then:
+  * Add idiomatic MLIR checking of the form:
+
+```
     if ( mlir::failed( lState.createGetCall( loc, rewriter, op, inputType, result ) ) )
     {
         return mlir::failure();
     }
-    ```
- * [README] start making the intro more comprehensive.
+```
+
+* [README] start making the intro more comprehensive.
 
 ## tag: V7 (Jan 4, 2025)
 
@@ -631,79 +643,81 @@ Specific changes:
 * Fix shortstring2 t/c (print of empty string literal.)
 * Fix shortstring3 t/c (assignment of empty string literal).
 
-    Ended up in the non-string literal codepath:
+  Ended up in the non-string literal codepath:
 
 ```
   (gdb) up
-#11 0x00000000005065d0 in silly::MLIRListener::enterRhs (this=0x7fffffffd7d8, ctx=0x7296d0) at /home/pjoot/toycalculator/src/parser.cpp:1732
-1732                    builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ resultValue },
+  #11 0x00000000005065d0 in silly::MLIRListener::enterRhs (this=0x7fffffffd7d8, ctx=0x7296d0) at /home/pjoot/toycalculator/src/parser.cpp:1732
+  1732                    builder.create<silly::AssignOp>( loc, mlir::TypeRange{}, mlir::ValueRange{ resultValue },
 ```
 
-    checking s.length() isn't appropriate.
+  checking s.length() isn't appropriate.
 * Added integer literal support to PRINT (t/c: printlit.silly), allowing for a program as simple as:
 
 ```
-PRINT 42;
+  PRINT 42;
 ```
 
-MLIR:
+  MLIR:
 ```
-module {
-  func.func @main() -> i32 {
-    "silly.scope"() ({
-      %c42_i64 = arith.constant 42 : i64
-      silly.print %c42_i64 : i64
-      %cst = arith.constant 4.200000e+01 : f64
-      silly.print %cst : f64
-      %c0_i32 = arith.constant 0 : i32
-      "silly.return"(%c0_i32) : (i32) -> ()
-    }) : () -> ()
-    "silly.yield"() : () -> ()
+  module {
+    func.func @main() -> i32 {
+      "silly.scope"() ({
+        %c42_i64 = arith.constant 42 : i64
+        silly.print %c42_i64 : i64
+        %cst = arith.constant 4.200000e+01 : f64
+        silly.print %cst : f64
+        %c0_i32 = arith.constant 0 : i32
+        "silly.return"(%c0_i32) : (i32) -> ()
+      }) : () -> ()
+      "silly.yield"() : () -> ()
+    }
   }
-}
 ```
 
-LLVM-LL:
+  LLVM-LL:
+
 ```
-declare void @__silly_print_f64(double)
+  declare void @__silly_print_f64(double)
 
-declare void @__silly_print_i64(i64)
+  declare void @__silly_print_i64(i64)
 
-define i32 @main() !dbg !4 {
-  call void @__silly_print_i64(i64 42), !dbg !8
-  call void @__silly_print_f64(double 4.200000e+01), !dbg !9
-  ret i32 0, !dbg !9
-}
+  define i32 @main() !dbg !4 {
+    call void @__silly_print_i64(i64 42), !dbg !8
+    call void @__silly_print_f64(double 4.200000e+01), !dbg !9
+    ret i32 0, !dbg !9
+  }
 ```
 
 * PRINT: Also implement BOOLean print literal (t/c: printboollit.silly)
 
-MLIR:
+  MLIR:
 ```
-module {
-  func.func @main() -> i32 {
-    "silly.scope"() ({
-      %true = arith.constant true
-      silly.print %true : i1
-      %false = arith.constant false
-      silly.print %false : i1
-      %c0_i32 = arith.constant 0 : i32
-      "silly.return"(%c0_i32) : (i32) -> ()
-    }) : () -> ()
-    "silly.yield"() : () -> ()
+  module {
+    func.func @main() -> i32 {
+      "silly.scope"() ({
+        %true = arith.constant true
+        silly.print %true : i1
+        %false = arith.constant false
+        silly.print %false : i1
+        %c0_i32 = arith.constant 0 : i32
+        "silly.return"(%c0_i32) : (i32) -> ()
+      }) : () -> ()
+      "silly.yield"() : () -> ()
+    }
   }
-}
 ```
 
-LL:
-```
-declare void @__silly_print_i64(i64)
+  LL:
 
-define i32 @main() !dbg !4 {
-  call void @__silly_print_i64(i64 1), !dbg !8
-  call void @__silly_print_i64(i64 0), !dbg !9
-  ret i32 0, !dbg !9
-}
+```
+  declare void @__silly_print_i64(i64)
+
+  define i32 @main() !dbg !4 {
+    call void @__silly_print_i64(i64 1), !dbg !8
+    call void @__silly_print_i64(i64 0), !dbg !9
+    ret i32 0, !dbg !9
+  }
 ```
 
 ### 2. README now has a language-reference.
@@ -722,110 +736,110 @@ define i32 @main() !dbg !4 {
 * Implement ELIF.  Was done in the peeter/old/elif-support branch, squashed when merged to master.  This simplifies the IF/ELSE handling considerably.  In particular, I now generate scf.if with both then/else regions automatically, so that there's an implicit terminator.  This means that a program like the following:
 
 ```
-INT32 x;
+  INT32 x;
 
-x = 3;
+  x = 3;
 
-IF ( x < 4 )
-{
-  INT32 y;
-  y = 42;
-  PRINT y;
-};
+    IF ( x < 4 )
+    {
+      INT32 y;
+      y = 42;
+      PRINT y;
+    };
 
-PRINT "Done.";
+    PRINT "Done.";
 ```
 
-now shows up with an empty else block in the MLIR representation:
+  now shows up with an empty else block in the MLIR representation:
 
 ```
-module {
-  func.func @main() -> i32 {
-    "silly.scope"() ({
-      "silly.declare"() <{type = i32}> {sym_name = "y"} : () -> ()
-      "silly.declare"() <{type = i32}> {sym_name = "x"} : () -> ()
-      %c3_i64 = arith.constant 3 : i64
-      silly.assign @x = %c3_i64 : i64
-      %0 = silly.load @x : i32
-      %c4_i64 = arith.constant 4 : i64
-      %1 = "silly.less"(%0, %c4_i64) : (i32, i64) -> i1
-      scf.if %1 {
-        %c42_i64 = arith.constant 42 : i64
-        silly.assign @y = %c42_i64 : i64
-        %3 = silly.load @y : i32
-        silly.print %3 : i32
-      } else {
-      }
-      %2 = "silly.string_literal"() <{value = "Done."}> : () -> !llvm.ptr
-      silly.print %2 : !llvm.ptr
-      %c0_i32 = arith.constant 0 : i32
-      "silly.return"(%c0_i32) : (i32) -> ()
-    }) : () -> ()
-    "silly.yield"() : () -> ()
-  }
-}
-```
-
-We can represent a program with an ELIF fairly easily as a nested scf.if in that new else block:
-
-```
-INT32 x; // line 1
-
-x = 3; // line 3
-
-IF ( x < 4 ) // line 5
-{
-   PRINT x; // line 7
-}
-ELIF ( x > 5 ) // line 9
-{
-   PRINT "Bug if we get here."; // line 11
-};
-
-PRINT 42; // line 13
-```
-
-This looks like:
-
-```
-module {
-  func.func @main() -> i32 {
-    "silly.scope"() ({
-      "silly.declare"() <{type = i32}> {sym_name = "x"} : () -> () loc(#loc)
-      %c3_i64 = arith.constant 3 : i64 loc(#loc1)
-      silly.assign @x = %c3_i64 : i64 loc(#loc1)
-      %0 = silly.load @x : i32 loc(#loc2)
-      %c4_i64 = arith.constant 4 : i64 loc(#loc2)
-      %1 = "silly.less"(%0, %c4_i64) : (i32, i64) -> i1 loc(#loc2)
-      scf.if %1 {
-        %2 = silly.load @x : i32 loc(#loc3)
-        silly.print %2 : i32 loc(#loc3)
-      } else {
-        %2 = silly.load @x : i32 loc(#loc4)
-        %c5_i64 = arith.constant 5 : i64 loc(#loc4)
-        %3 = "silly.less"(%c5_i64, %2) : (i64, i32) -> i1 loc(#loc4)
-        scf.if %3 {
-          %4 = "silly.string_literal"() <{value = "Bug if we get here."}> : () -> !llvm.ptr loc(#loc5)
-          silly.print %4 : !llvm.ptr loc(#loc5)
+  module {
+    func.func @main() -> i32 {
+      "silly.scope"() ({
+        "silly.declare"() <{type = i32}> {sym_name = "y"} : () -> ()
+        "silly.declare"() <{type = i32}> {sym_name = "x"} : () -> ()
+        %c3_i64 = arith.constant 3 : i64
+        silly.assign @x = %c3_i64 : i64
+        %0 = silly.load @x : i32
+        %c4_i64 = arith.constant 4 : i64
+        %1 = "silly.less"(%0, %c4_i64) : (i32, i64) -> i1
+        scf.if %1 {
+          %c42_i64 = arith.constant 42 : i64
+          silly.assign @y = %c42_i64 : i64
+          %3 = silly.load @y : i32
+          silly.print %3 : i32
         } else {
-        } loc(#loc4)
-      } loc(#loc2)
-      %c42_i64 = arith.constant 42 : i64 loc(#loc6)
-      silly.print %c42_i64 : i64 loc(#loc6)
-      %c0_i32 = arith.constant 0 : i32 loc(#loc)
-      "silly.return"(%c0_i32) : (i32) -> () loc(#loc)
-    }) : () -> () loc(#loc)
-    "silly.yield"() : () -> () loc(#loc7)
+        }
+        %2 = "silly.string_literal"() <{value = "Done."}> : () -> !llvm.ptr
+        silly.print %2 : !llvm.ptr
+        %c0_i32 = arith.constant 0 : i32
+        "silly.return"(%c0_i32) : (i32) -> ()
+      }) : () -> ()
+      "silly.yield"() : () -> ()
+    }
+  }
+```
+
+  We can represent a program with an ELIF fairly easily as a nested scf.if in that new else block:
+
+```
+  INT32 x; // line 1
+
+  x = 3; // line 3
+
+  IF ( x < 4 ) // line 5
+  {
+     PRINT x; // line 7
+  }
+  ELIF ( x > 5 ) // line 9
+  {
+     PRINT "Bug if we get here."; // line 11
+  };
+
+  PRINT 42; // line 13
+```
+
+  This looks like:
+
+```
+  module {
+    func.func @main() -> i32 {
+      "silly.scope"() ({
+        "silly.declare"() <{type = i32}> {sym_name = "x"} : () -> () loc(#loc)
+        %c3_i64 = arith.constant 3 : i64 loc(#loc1)
+        silly.assign @x = %c3_i64 : i64 loc(#loc1)
+        %0 = silly.load @x : i32 loc(#loc2)
+        %c4_i64 = arith.constant 4 : i64 loc(#loc2)
+        %1 = "silly.less"(%0, %c4_i64) : (i32, i64) -> i1 loc(#loc2)
+        scf.if %1 {
+          %2 = silly.load @x : i32 loc(#loc3)
+          silly.print %2 : i32 loc(#loc3)
+        } else {
+          %2 = silly.load @x : i32 loc(#loc4)
+          %c5_i64 = arith.constant 5 : i64 loc(#loc4)
+          %3 = "silly.less"(%c5_i64, %2) : (i64, i32) -> i1 loc(#loc4)
+          scf.if %3 {
+            %4 = "silly.string_literal"() <{value = "Bug if we get here."}> : () -> !llvm.ptr loc(#loc5)
+            silly.print %4 : !llvm.ptr loc(#loc5)
+          } else {
+          } loc(#loc4)
+        } loc(#loc2)
+        %c42_i64 = arith.constant 42 : i64 loc(#loc6)
+        silly.print %c42_i64 : i64 loc(#loc6)
+        %c0_i32 = arith.constant 0 : i32 loc(#loc)
+        "silly.return"(%c0_i32) : (i32) -> () loc(#loc)
+      }) : () -> () loc(#loc)
+      "silly.yield"() : () -> () loc(#loc7)
+    } loc(#loc)
   } loc(#loc)
-} loc(#loc)
-#loc = loc("elif.silly":1:1)
-#loc1 = loc("elif.silly":3:5)
-#loc2 = loc("elif.silly":5:1)
-#loc3 = loc("elif.silly":7:4)
-#loc4 = loc("elif.silly":9:1)
-#loc5 = loc("elif.silly":11:4)
-#loc6 = loc("elif.silly":14:1)
-#loc7 = loc("elif.silly":1:7)
+  #loc = loc("elif.silly":1:1)
+  #loc1 = loc("elif.silly":3:5)
+  #loc2 = loc("elif.silly":5:1)
+  #loc3 = loc("elif.silly":7:4)
+  #loc4 = loc("elif.silly":9:1)
+  #loc5 = loc("elif.silly":11:4)
+  #loc6 = loc("elif.silly":14:1)
+  #loc7 = loc("elif.silly":1:7)
 ```
 
 ## tag: V6 (Dec 28, 2025)
@@ -841,54 +855,54 @@ module {
 Example syntax:
 
 ```
-    FOR ( x : (1, 11) )
-    {
-        PRINT x;
-    };
+  FOR ( x : (1, 11) )
+  {
+      PRINT x;
+  };
 
-    FOR ( x : (1, 11, 2) )
-    {
-        PRINT x;
-    };
+  FOR ( x : (1, 11, 2) )
+  {
+      PRINT x;
+  };
 ```
 
 these are equivalent, respectively, to C for loops like:
 
 ```
-    for ( x = 1 ; x <= 10 ; x += 1 ) { ... }
+  for ( x = 1 ; x <= 10 ; x += 1 ) { ... }
 
-    for ( x = 1 ; x <= 10 ; x += 2 ) { ... }
+  for ( x = 1 ; x <= 10 ; x += 2 ) { ... }
 ```
 
 MLIR for that sample program:
 
 ``` 
-    module {
-      func.func @main() -> i32 {
-        "silly.scope"() ({
-          "silly.declare"() <{type = i32}> {sym_name = "x"} : () -> ()
-          %c1_i64 = arith.constant 1 : i64
-          %c11_i64 = arith.constant 11 : i64
-          %c1_i64_0 = arith.constant 1 : i64
-          scf.for %arg0 = %c1_i64 to %c11_i64 step %c1_i64_0  : i64 {
-            silly.assign @x = %arg0 : i64
-            %0 = silly.load @x : i32
-            silly.print %0 : i32
-          }
-          %c1_i64_1 = arith.constant 1 : i64
-          %c11_i64_2 = arith.constant 11 : i64
-          %c2_i64 = arith.constant 2 : i64
-          scf.for %arg0 = %c1_i64_1 to %c11_i64_2 step %c2_i64  : i64 {
-            silly.assign @x = %arg0 : i64
-            %0 = silly.load @x : i32
-            silly.print %0 : i32
-          }
-          %c0_i32 = arith.constant 0 : i32
-          "silly.return"(%c0_i32) : (i32) -> ()
-        }) : () -> ()
-        "silly.yield"() : () -> ()
-      }
-    }
+  module {
+    func.func @main() -> i32 {
+      "silly.scope"() ({
+        "silly.declare"() <{type = i32}> {sym_name = "x"} : () -> ()
+        %c1_i64 = arith.constant 1 : i64
+        %c11_i64 = arith.constant 11 : i64
+        %c1_i64_0 = arith.constant 1 : i64
+        scf.for %arg0 = %c1_i64 to %c11_i64 step %c1_i64_0  : i64 {
+          silly.assign @x = %arg0 : i64
+          %0 = silly.load @x : i32
+          silly.print %0 : i32
+        }
+        %c1_i64_1 = arith.constant 1 : i64
+        %c11_i64_2 = arith.constant 11 : i64
+        %c2_i64 = arith.constant 2 : i64
+        scf.for %arg0 = %c1_i64_1 to %c11_i64_2 step %c2_i64  : i64 {
+          silly.assign @x = %arg0 : i64
+          %0 = silly.load @x : i32
+          silly.print %0 : i32
+        }
+        %c0_i32 = arith.constant 0 : i32
+        "silly.return"(%c0_i32) : (i32) -> ()
+      }) : () -> ()
+      "silly.yield"() : () -> ()
+    }
+  }
 ```
 
 Observe that there's a hack in there: I've inserted a `silly.assign` from the scf.for loop induction variable at the beginning of the loop, so that subsequent symbol based lookups just work.  It would be cleaner to make the FOR loop variable private to the loop body (and have the builder reference the SSA induction variable directly (`forOp.getRegion().front().getArgument(0)`), instead of requiring a variable in the enclosing scope, but I did it this way to avoid the need for any additional dwarf instrumentation for that variable -- basically, I was being lazy, and letting implementation guide the language "design".
@@ -896,50 +910,50 @@ Observe that there's a hack in there: I've inserted a `silly.assign` from the sc
 My LL looks like:
 
 ``` 
-    define i32 @main()
-      %1 = alloca i32, i64 1, align 4,
-        #dbg_declare(ptr %1, !9, !DIExpression(), !8)
-      br label %2,
-     
-    2:                                                ; preds = %5, %0
-      %3 = phi i64 [ 1, %0 ], [ %8, %5 ],
-      %4 = icmp slt i64 %3, 11,
-      br i1 %4, label %5, label %9,
-     
-    5:                                                ; preds = %2
-      %tmp1 = trunc i64 %3 to i32
-      store i32 %tmp1, ptr %1, align 4,
-      %6 = load i32, ptr %1, align 4,
-      %7 = sext i32 %6 to i64,
-      call void @__silly_print_i64(i64 %7),
-      %8 = add i64 %3, 1,
-      br label %2,
-     
-    9:                                                ; preds = %2
-      br label %10,
-     
-    10:                                               ; preds = %13, %9
-      %11 = phi i64 [ 1, %9 ], [ %16, %13 ],
-      %12 = icmp slt i64 %11, 11,
-      br i1 %12, label %13, label %17,
-     
-    13:                                               ; preds = %10
-      %tmp = trunc i64 %11 to i32
-      store i32 %tmp, ptr %1, align 4,
-      %14 = load i32, ptr %1, align 4,
-      %15 = sext i32 %14 to i64,
-      call void @__silly_print_i64(i64 %15),
-      %16 = add i64 %11, 2,
-      br label %10,
-     
-    17:                                               ; preds = %10
-      ret i32 0,
-     
-    ; uselistorder directives
-      uselistorder ptr %1, { 2, 3, 0, 1 }
-      uselistorder i64 %3, { 1, 0, 2 }
-      uselistorder i64 %11, { 1, 0, 2 }
-    }
+  define i32 @main()
+    %1 = alloca i32, i64 1, align 4,
+      #dbg_declare(ptr %1, !9, !DIExpression(), !8)
+    br label %2,
+   
+  2:                                                ; preds = %5, %0
+    %3 = phi i64 [ 1, %0 ], [ %8, %5 ],
+    %4 = icmp slt i64 %3, 11,
+    br i1 %4, label %5, label %9,
+   
+  5:                                                ; preds = %2
+    %tmp1 = trunc i64 %3 to i32
+    store i32 %tmp1, ptr %1, align 4,
+    %6 = load i32, ptr %1, align 4,
+    %7 = sext i32 %6 to i64,
+    call void @__silly_print_i64(i64 %7),
+    %8 = add i64 %3, 1,
+    br label %2,
+   
+  9:                                                ; preds = %2
+    br label %10,
+   
+  10:                                               ; preds = %13, %9
+    %11 = phi i64 [ 1, %9 ], [ %16, %13 ],
+    %12 = icmp slt i64 %11, 11,
+    br i1 %12, label %13, label %17,
+   
+  13:                                               ; preds = %10
+    %tmp = trunc i64 %11 to i32
+    store i32 %tmp, ptr %1, align 4,
+    %14 = load i32, ptr %1, align 4,
+    %15 = sext i32 %14 to i64,
+    call void @__silly_print_i64(i64 %15),
+    %16 = add i64 %11, 2,
+    br label %10,
+   
+  17:                                               ; preds = %10
+    ret i32 0,
+   
+  ; uselistorder directives
+    uselistorder ptr %1, { 2, 3, 0, 1 }
+    uselistorder i64 %3, { 1, 0, 2 }
+    uselistorder i64 %11, { 1, 0, 2 }
+  }
 ```
      
 (with !dbg stripped out for clarity, but that sed left inappropriate trailing commas above.)
@@ -947,88 +961,88 @@ My LL looks like:
 the generated asm is fairly clean, even without optimization:
 
 ``` 
-    0000000000000000 <main>:
-       0:   push   %rbx
-       1:   sub    $0x10,%rsp
-       5:   mov    $0x1,%ebx
-       a:   cmp    $0xa,%rbx
-       e:   jg     25 <main+0x25>
-      10:   mov    %ebx,0xc(%rsp)
-      14:   movslq %ebx,%rdi
-      17:   call   1c <main+0x1c>
-                            18: R_X86_64_PLT32      __silly_print_i64-0x4
-      1c:   inc    %rbx
-      1f:   cmp    $0xa,%rbx
-      23:   jle    10 <main+0x10>
-      25:   mov    $0x1,%ebx
-      2a:   cmp    $0xa,%rbx
-      2e:   jg     46 <main+0x46>
-      30:   mov    %ebx,0xc(%rsp)
-      34:   movslq %ebx,%rdi
-      37:   call   3c <main+0x3c>
-                            38: R_X86_64_PLT32      __silly_print_i64-0x4
-      3c:   add    $0x2,%rbx
-      40:   cmp    $0xa,%rbx
-      44:   jle    30 <main+0x30>
-      46:   xor    %eax,%eax
-      48:   add    $0x10,%rsp
-      4c:   pop    %rbx
-      4d:   ret
+  0000000000000000 <main>:
+     0:   push   %rbx
+     1:   sub    $0x10,%rsp
+     5:   mov    $0x1,%ebx
+     a:   cmp    $0xa,%rbx
+     e:   jg     25 <main+0x25>
+    10:   mov    %ebx,0xc(%rsp)
+    14:   movslq %ebx,%rdi
+    17:   call   1c <main+0x1c>
+                          18: R_X86_64_PLT32      __silly_print_i64-0x4
+    1c:   inc    %rbx
+    1f:   cmp    $0xa,%rbx
+    23:   jle    10 <main+0x10>
+    25:   mov    $0x1,%ebx
+    2a:   cmp    $0xa,%rbx
+    2e:   jg     46 <main+0x46>
+    30:   mov    %ebx,0xc(%rsp)
+    34:   movslq %ebx,%rdi
+    37:   call   3c <main+0x3c>
+                          38: R_X86_64_PLT32      __silly_print_i64-0x4
+    3c:   add    $0x2,%rbx
+    40:   cmp    $0xa,%rbx
+    44:   jle    30 <main+0x30>
+    46:   xor    %eax,%eax
+    48:   add    $0x10,%rsp
+    4c:   pop    %rbx
+    4d:   ret
 ```
      
 With optimization, the loops end up fully unrolled:
 
 ``` 
-    0000000000000000 <main>:
-       0: push %rax
-       1: mov $0x1,%edi
-       6: call b <main+0xb>
-    7: R_X86_64_PLT32 __silly_print_i64-0x4
-       b: mov $0x2,%edi
-      10: call 15 <main+0x15>
-    11: R_X86_64_PLT32 __silly_print_i64-0x4
-      15: mov $0x3,%edi
-      1a: call 1f <main+0x1f>
-    1b: R_X86_64_PLT32 __silly_print_i64-0x4
-      1f: mov $0x4,%edi
-      24: call 29 <main+0x29>
-    25: R_X86_64_PLT32 __silly_print_i64-0x4
-      29: mov $0x5,%edi
-      2e: call 33 <main+0x33>
-    2f: R_X86_64_PLT32 __silly_print_i64-0x4
-      33: mov $0x6,%edi
-      38: call 3d <main+0x3d>
-    39: R_X86_64_PLT32 __silly_print_i64-0x4
-      3d: mov $0x7,%edi
-      42: call 47 <main+0x47>
-    43: R_X86_64_PLT32 __silly_print_i64-0x4
-      47: mov $0x8,%edi
-      4c: call 51 <main+0x51>
-    4d: R_X86_64_PLT32 __silly_print_i64-0x4
-      51: mov $0x9,%edi
-      56: call 5b <main+0x5b>
-    57: R_X86_64_PLT32 __silly_print_i64-0x4
-      5b: mov $0xa,%edi
-      60: call 65 <main+0x65>
-    61: R_X86_64_PLT32 __silly_print_i64-0x4
-      65: mov $0x1,%edi
-      6a: call 6f <main+0x6f>
-    6b: R_X86_64_PLT32 __silly_print_i64-0x4
-      6f: mov $0x3,%edi
-      74: call 79 <main+0x79>
-    75: R_X86_64_PLT32 __silly_print_i64-0x4
-      79: mov $0x5,%edi
-      7e: call 83 <main+0x83>
-    7f: R_X86_64_PLT32 __silly_print_i64-0x4
-      83: mov $0x7,%edi
-      88: call 8d <main+0x8d>
-    89: R_X86_64_PLT32 __silly_print_i64-0x4
-      8d: mov $0x9,%edi
-      92: call 97 <main+0x97>
-    93: R_X86_64_PLT32 __silly_print_i64-0x4
-      97: xor %eax,%eax
-      99: pop %rcx
-      9a: ret
+  0000000000000000 <main>:
+     0: push %rax
+     1: mov $0x1,%edi
+     6: call b <main+0xb>
+  7: R_X86_64_PLT32 __silly_print_i64-0x4
+     b: mov $0x2,%edi
+    10: call 15 <main+0x15>
+  11: R_X86_64_PLT32 __silly_print_i64-0x4
+    15: mov $0x3,%edi
+    1a: call 1f <main+0x1f>
+  1b: R_X86_64_PLT32 __silly_print_i64-0x4
+    1f: mov $0x4,%edi
+    24: call 29 <main+0x29>
+  25: R_X86_64_PLT32 __silly_print_i64-0x4
+    29: mov $0x5,%edi
+    2e: call 33 <main+0x33>
+  2f: R_X86_64_PLT32 __silly_print_i64-0x4
+    33: mov $0x6,%edi
+    38: call 3d <main+0x3d>
+  39: R_X86_64_PLT32 __silly_print_i64-0x4
+    3d: mov $0x7,%edi
+    42: call 47 <main+0x47>
+  43: R_X86_64_PLT32 __silly_print_i64-0x4
+    47: mov $0x8,%edi
+    4c: call 51 <main+0x51>
+  4d: R_X86_64_PLT32 __silly_print_i64-0x4
+    51: mov $0x9,%edi
+    56: call 5b <main+0x5b>
+  57: R_X86_64_PLT32 __silly_print_i64-0x4
+    5b: mov $0xa,%edi
+    60: call 65 <main+0x65>
+  61: R_X86_64_PLT32 __silly_print_i64-0x4
+    65: mov $0x1,%edi
+    6a: call 6f <main+0x6f>
+  6b: R_X86_64_PLT32 __silly_print_i64-0x4
+    6f: mov $0x3,%edi
+    74: call 79 <main+0x79>
+  75: R_X86_64_PLT32 __silly_print_i64-0x4
+    79: mov $0x5,%edi
+    7e: call 83 <main+0x83>
+  7f: R_X86_64_PLT32 __silly_print_i64-0x4
+    83: mov $0x7,%edi
+    88: call 8d <main+0x8d>
+  89: R_X86_64_PLT32 __silly_print_i64-0x4
+    8d: mov $0x9,%edi
+    92: call 97 <main+0x97>
+  93: R_X86_64_PLT32 __silly_print_i64-0x4
+    97: xor %eax,%eax
+    99: pop %rcx
+    9a: ret
 ```
  
 (which surprised me slightly, but the unrolling is "only" a 2x increase in code size, so I guess it's in the allowable range.)
@@ -1038,51 +1052,50 @@ With optimization, the loops end up fully unrolled:
 This fixes ifdcl.silly:
 
 ```
-INT32 x;
+  INT32 x;
 
-x = 3;
+  x = 3;
 
-IF ( x < 4 )
-{
-  INT32 y;
-  y = 42;
-  PRINT y;
-};
+  IF ( x < 4 )
+  {
+    INT32 y;
+    y = 42;
+    PRINT y;
+  };
 
-PRINT "Done.";
+  PRINT "Done.";
 ```
 
 which previously failed with y not declared at the assignment point (since the declaration needs the symbol table, which is associated with the ScopeOp)
 
 ### 4. Maintainance:
-* test:
-    samples/testerrors.sh -> bin/testerrors
+* test: samples/testerrors.sh -> bin/testerrors
 
-    ci/cd is now effectively:
-```
-    cd samples
-    testit
-    testerrors
+  ci/cd is now effectively:
+```bash
+  cd samples
+  testit
+  testerrors
 ```
 
 * parser:
-    - switch to `throw exception_with_context` exclusively for errors (no more asserts other than null pointer checks before dereferences.)
-    - buildUnaryExpression.  return the value, instead of pass by reference.
-    - buildNonStringUnaryExpression.  New helper function.  Just does the no-string-liternal assertion like check (now throw.)
-    - various: add formatLocation( loc ) into the thrown error message where possible.
-    - purge auto usage.
-    - add asserts before any pointer dereferences
-    - convert parser:stripQuotes asserts into throw with context
-    - doxygen for parser.hpp
-    - make formatLocation const.
-    - pass loc down to getFuncOp, getEnclosingScopeOp, and lookupDeclareForVar.
-    - getFuncOp/getEnclosingScopeOp: throw if not found.
-    - buildUnaryExpression: pass loc as first arg, like most other places.
-    - Remove dead code: theTypes, getCompilerType, isBoolean, isInteger, isFloat
-    - parser.hpp: move inlines out of class dcl for clarity and put public first.
-    - parser.cpp: put all the inlines first.  Uninline a few things.
-    - remove a bunch of old if-0'd out `LLVM_DEBUG` code.
-    - throw `user_error` for syntax errors, and `exception_with_context` only for internal errors. all the enter/exit callbacks catch `user_error` (all for consistency, even if they don't need to, settting hasErrors and calling mlir::emitError(loc) to bubble the error up to the user.)
+  * switch to `throw exception_with_context` exclusively for errors (no more asserts other than null pointer checks before dereferences.)
+  * buildUnaryExpression.  return the value, instead of pass by reference.
+  * buildNonStringUnaryExpression.  New helper function.  Just does the no-string-liternal assertion like check (now throw.)
+  * various: add formatLocation( loc ) into the thrown error message where possible.
+  * purge auto usage.
+  * add asserts before any pointer dereferences
+  * convert parser:stripQuotes asserts into throw with context
+  * doxygen for parser.hpp
+  * make formatLocation const.
+  * pass loc down to getFuncOp, getEnclosingScopeOp, and lookupDeclareForVar.
+  * getFuncOp/getEnclosingScopeOp: throw if not found.
+  * buildUnaryExpression: pass loc as first arg, like most other places.
+  * Remove dead code: theTypes, getCompilerType, isBoolean, isInteger, isFloat
+  * parser.hpp: move inlines out of class dcl for clarity and put public first.
+  * parser.cpp: put all the inlines first.  Uninline a few things.
+  * remove a bunch of old if-0'd out `LLVM_DEBUG` code.
+  * throw `user_error` for syntax errors, and `exception_with_context` only for internal errors. all the enter/exit callbacks catch `user_error` (all for consistency, even if they don't need to, settting hasErrors and calling mlir::emitError(loc) to bubble the error up to the user.)
 
 * Remove `HACK_BUILDER` code.
 * Remove constants.hpp.
@@ -1130,260 +1143,263 @@ The language now supports functions, calls, parameters, returns, and basic condi
 ### 4. Array element access and assignment (rvalues and lvalues)
 
 * Added support for array element assignment: `t[i] = expr;`
-  - Generalized `silly.assign` to take an optional `index` operand (`Optional<Index>`).
-  - Updated grammar to allow `scalarOrArrayElement` (variable optionally indexed) on the LHS of assignments.
-  - Implemented lowering of indexed `silly.assign` using `llvm.getelementptr` + `store`, with static out-of-bounds checking for constant indices.
-  - Added custom assembly format: `silly.assign @t[%index] = %value : type`.
+  * Generalized `silly.assign` to take an optional `index` operand (`Optional<Index>`).
+  * Updated grammar to allow `scalarOrArrayElement` (variable optionally indexed) on the LHS of assignments.
+  * Implemented lowering of indexed `silly.assign` using `llvm.getelementptr` + `store`, with static out-of-bounds checking for constant indices.
+  * Added custom assembly format: `silly.assign @t[%index] = %value : type`.
 
 * Added support for loading array elements (rvalues): `x = t[i];`
-  - Generalized `silly.load` to take an optional `index` operand.
-  - Implemented lowering using `llvm.getelementptr` + `load`, with static bounds checking.
-  - Added custom assembly format: `silly.load @t[%index] : element_type` (scalar case prints without brackets).
+  * Generalized `silly.load` to take an optional `index` operand.
+  * Implemented lowering using `llvm.getelementptr` + `load`, with static bounds checking.
+  * Added custom assembly format: `silly.load @t[%index] : element_type` (scalar case prints without brackets).
 
 * Parser and frontend changes:
-  - Introduced `scalarOrArrayElement` and `indexExpression` grammar rules.
-  - Grammar: Extended unary expression handling and many statement types (PRINT, RETURN, EXIT, call arguments, etc.) to accept array element references.
-  - PRINT/RETURN/EXIT of array elements is supported and tested, but lots more testing should be done in other contexts (call arguments, ...).  It is possible that additional builder/lowering work will show up from such testing.
-  - Added `indexTypeCast` helper for converting parsed index values to `index` type.
-  - Updated `intarray.silly` sample to demonstrate full round-trip (declare → assign element → load element → print).  Also added rudimentary test for unary and binary expressions with array elements, and exit.
-  - Updated `function_intret_void.silly` with return of array element.
-  - New test `exitarrayelement.silly` to test exit with non-zero array element (zero tested in `intarray.silly`)
+  * Introduced `scalarOrArrayElement` and `indexExpression` grammar rules.
+  * Grammar: Extended unary expression handling and many statement types (PRINT, RETURN, EXIT, call arguments, etc.) to accept array element references.
+  * PRINT/RETURN/EXIT of array elements is supported and tested, but lots more testing should be done in other contexts (call arguments, ...).  It is possible that additional builder/lowering work will show up from such testing.
+  * Added `indexTypeCast` helper for converting parsed index values to `index` type.
+  * Updated `intarray.silly` sample to demonstrate full round-trip (declare → assign element → load element → print).  Also added rudimentary test for unary and binary expressions with array elements, and exit.
+  * Updated `function_intret_void.silly` with return of array element.
+  * New test `exitarrayelement.silly` to test exit with non-zero array element (zero tested in `intarray.silly`)
 
 * Lowering improvements:
-  - Factored out `castToElemType` helper for consistent type conversion during stores/loads.
-  - Fixed several bugs during iterative development (GEP indexing, type handling, optional operand creation).
+  * Factored out `castToElemType` helper for consistent type conversion during stores/loads.
+  * Fixed several bugs during iterative development (GEP indexing, type handling, optional operand creation).
 
 * README and TODO updates:
-  - README now reflects full array element support and notes remaining limitations (no direct printing of array elements, no loops yet).
-  - TODO updated with future array enhancements (runtime bounds checking, richer index expressions, element printing).
+  * README now reflects full array element support and notes remaining limitations (no direct printing of array elements, no loops yet).
+  * TODO updated with future array enhancements (runtime bounds checking, richer index expressions, element printing).
 
 * Added test case `error_intarray_bad_constaccess.silly` (currently commented in testerrors.sh – static bounds checking catches the error at compile time).
 
 ## tag: V4 (July 7, 2025)
 
 The big changes in this tag relative to V3 are:
+
 * Adds support (grammar, builder, lowering) for function declarations, and function calls.  Much of the work for this was done in branch `peeter/old/use_mlir_funcop_with_scopeop`, later squashed and merged as a big commit.
-Here's an example
+  Here's an example
 
 ```
-FUNCTION bar ( INT16 w, INT32 z )
-{
-    PRINT "In bar";
-    PRINT w;
-    PRINT z;
-    RETURN;
-};
+  FUNCTION bar ( INT16 w, INT32 z )
+  {
+      PRINT "In bar";
+      PRINT w;
+      PRINT z;
+      RETURN;
+  };
 
-FUNCTION foo ( )
-{
-    INT16 v;
-    v = 3;
-    PRINT "In foo";
-    CALL bar( v, 42 );
-    PRINT "Called bar";
-    RETURN;
-};
+  FUNCTION foo ( )
+  {
+      INT16 v;
+      v = 3;
+      PRINT "In foo";
+      CALL bar( v, 42 );
+      PRINT "Called bar";
+      RETURN;
+  };
 
-PRINT "In main";
-CALL foo();
-PRINT "Back in main";
+  PRINT "In main";
+  CALL foo();
+  PRINT "Back in main";
 ```
 
-Here is the MLIR for this program:
+  Here is the MLIR for this program:
 
 ```
-module {
-  func.func private @foo() {
-    "silly.scope"() ({
-      "silly.declare"() <{type = i16}> {sym_name = "v"} : () -> ()
-      %c3_i64 = arith.constant 3 : i64
-      "silly.assign"(%c3_i64) <{var_name = @v}> : (i64) -> ()
-      %0 = "silly.string_literal"() <{value = "In foo"}> : () -> !llvm.ptr
-      silly.print %0 : !llvm.ptr
-      %1 = "silly.load"() <{var_name = @v}> : () -> i16
-      %c42_i64 = arith.constant 42 : i64
-      %2 = arith.trunci %c42_i64 : i64 to i32
-      "silly.call"(%1, %2) <{callee = @bar}> : (i16, i32) -> ()
-      %3 = "silly.string_literal"() <{value = "Called bar"}> : () -> !llvm.ptr
-      silly.print %3 : !llvm.ptr
-      "silly.return"() : () -> ()
-    }) : () -> ()
-    "silly.yield"() : () -> ()
+  module {
+    func.func private @foo() {
+      "silly.scope"() ({
+        "silly.declare"() <{type = i16}> {sym_name = "v"} : () -> ()
+        %c3_i64 = arith.constant 3 : i64
+        "silly.assign"(%c3_i64) <{var_name = @v}> : (i64) -> ()
+        %0 = "silly.string_literal"() <{value = "In foo"}> : () -> !llvm.ptr
+        silly.print %0 : !llvm.ptr
+        %1 = "silly.load"() <{var_name = @v}> : () -> i16
+        %c42_i64 = arith.constant 42 : i64
+        %2 = arith.trunci %c42_i64 : i64 to i32
+        "silly.call"(%1, %2) <{callee = @bar}> : (i16, i32) -> ()
+        %3 = "silly.string_literal"() <{value = "Called bar"}> : () -> !llvm.ptr
+        silly.print %3 : !llvm.ptr
+        "silly.return"() : () -> ()
+      }) : () -> ()
+      "silly.yield"() : () -> ()
+    }
+    func.func private @bar(%arg0: i16, %arg1: i32) {
+      "silly.scope"() ({
+        "silly.declare"() <{param_number = 0 : i64, parameter, type = i16}> {sym_name = "w"} : () -> ()
+        "silly.declare"() <{param_number = 1 : i64, parameter, type = i32}> {sym_name = "z"} : () -> ()
+        %0 = "silly.string_literal"() <{value = "In bar"}> : () -> !llvm.ptr
+        silly.print %0 : !llvm.ptr
+        %1 = "silly.load"() <{var_name = @w}> : () -> i16
+        silly.print %1 : i16
+        %2 = "silly.load"() <{var_name = @z}> : () -> i32
+        silly.print %2 : i32
+        "silly.return"() : () -> ()
+      }) : () -> ()
+      "silly.yield"() : () -> ()
+    }
+    func.func @main() -> i32 {
+      "silly.scope"() ({
+        %c0_i32 = arith.constant 0 : i32
+        %0 = "silly.string_literal"() <{value = "In main"}> : () -> !llvm.ptr
+        silly.print %0 : !llvm.ptr
+        "silly.call"() <{callee = @foo}> : () -> ()
+        %1 = "silly.string_literal"() <{value = "Back in main"}> : () -> !llvm.ptr
+        silly.print %1 : !llvm.ptr
+        "silly.return"(%c0_i32) : (i32) -> ()
+      }) : () -> ()
+      "silly.yield"() : () -> ()
+    }
   }
-  func.func private @bar(%arg0: i16, %arg1: i32) {
-    "silly.scope"() ({
-      "silly.declare"() <{param_number = 0 : i64, parameter, type = i16}> {sym_name = "w"} : () -> ()
-      "silly.declare"() <{param_number = 1 : i64, parameter, type = i32}> {sym_name = "z"} : () -> ()
-      %0 = "silly.string_literal"() <{value = "In bar"}> : () -> !llvm.ptr
-      silly.print %0 : !llvm.ptr
-      %1 = "silly.load"() <{var_name = @w}> : () -> i16
-      silly.print %1 : i16
-      %2 = "silly.load"() <{var_name = @z}> : () -> i32
-      silly.print %2 : i32
-      "silly.return"() : () -> ()
-    }) : () -> ()
-    "silly.yield"() : () -> ()
+```
+
+  Here's a sample program with an assigned CALL value:
+
+```
+  FUNCTION bar ( INT16 w )
+  {
+      PRINT w;
+      RETURN;
+  };
+
+  PRINT "In main";
+  CALL bar( 3 );
+  PRINT "Back in main";
+```
+
+  The MLIR for this one looks like:
+
+```
+  module {
+    func.func private @bar(%arg0: i16) {
+      "silly.scope"() ({
+        "silly.declare"() <{param_number = 0 : i64, parameter, type = i16}> {sym_name = "w"} : () -> ()
+        %0 = "silly.load"() <{var_name = @w}> : () -> i16
+        silly.print %0 : i16
+        "silly.return"() : () -> ()
+      }) : () -> ()
+      "silly.yield"() : () -> ()
+    }
+    func.func @main() -> i32 {
+      "silly.scope"() ({
+        %c0_i32 = arith.constant 0 : i32
+        %0 = "silly.string_literal"() <{value = "In main"}> : () -> !llvm.ptr
+        silly.print %0 : !llvm.ptr
+        %c3_i64 = arith.constant 3 : i64
+        %1 = arith.trunci %c3_i64 : i64 to i16
+        "silly.call"(%1) <{callee = @bar}> : (i16) -> ()
+        %2 = "silly.string_literal"() <{value = "Back in main"}> : () -> !llvm.ptr
+        silly.print %2 : !llvm.ptr
+        "silly.return"(%c0_i32) : (i32) -> ()
+      }) : () -> ()
+      "silly.yield"() : () -> ()
+    }
   }
-  func.func @main() -> i32 {
-    "silly.scope"() ({
-      %c0_i32 = arith.constant 0 : i32
-      %0 = "silly.string_literal"() <{value = "In main"}> : () -> !llvm.ptr
-      silly.print %0 : !llvm.ptr
-      "silly.call"() <{callee = @foo}> : () -> ()
-      %1 = "silly.string_literal"() <{value = "Back in main"}> : () -> !llvm.ptr
-      silly.print %1 : !llvm.ptr
-      "silly.return"(%c0_i32) : (i32) -> ()
-    }) : () -> ()
-    "silly.yield"() : () -> ()
-  }
-}
 ```
 
-Here's a sample program with an assigned CALL value:
+  I've implemented a two stage lowering, where the silly.scope, silly.yield, silly.call, and silly.returns are stripped out leaving just the func and llvm dialects.  Code from that stage of the lowering is cleaner looking
 
 ```
-FUNCTION bar ( INT16 w )
-{
-    PRINT w;
-    RETURN;
-};
-
-PRINT "In main";
-CALL bar( 3 );
-PRINT "Back in main";
-```
-
-The MLIR for this one looks like:
-
-```
-module {
+  llvm.mlir.global private constant @str_1(dense<[66, 97, 99, 107, 32, 105, 110, 32, 109, 97, 105, 110]> : tensor<12xi8>) {addr_space = 0 : i32} : !llvm.array<12 x i8>
+  func.func private @__silly_print_string(i64, !llvm.ptr)
+  llvm.mlir.global private constant @str_0(dense<[73, 110, 32, 109, 97, 105, 110]> : tensor<7xi8>) {addr_space = 0 : i32} : !llvm.array<7 x i8>
+  func.func private @__silly_print_i64(i64)
   func.func private @bar(%arg0: i16) {
-    "silly.scope"() ({
-      "silly.declare"() <{param_number = 0 : i64, parameter, type = i16}> {sym_name = "w"} : () -> ()
-      %0 = "silly.load"() <{var_name = @w}> : () -> i16
-      silly.print %0 : i16
-      "silly.return"() : () -> ()
-    }) : () -> ()
-    "silly.yield"() : () -> ()
+    %0 = llvm.mlir.constant(1 : i64) : i64
+    %1 = llvm.alloca %0 x i16 {alignment = 2 : i64, bindc_name = "w.addr"} : (i64) -> !llvm.ptr
+    llvm.store %arg0, %1 : i16, !llvm.ptr
+    %2 = llvm.load %1 : !llvm.ptr -> i16
+    %3 = llvm.sext %2 : i16 to i64
+    call @__silly_print_i64(%3) : (i64) -> ()
+    return
   }
   func.func @main() -> i32 {
-    "silly.scope"() ({
-      %c0_i32 = arith.constant 0 : i32
-      %0 = "silly.string_literal"() <{value = "In main"}> : () -> !llvm.ptr
-      silly.print %0 : !llvm.ptr
-      %c3_i64 = arith.constant 3 : i64
-      %1 = arith.trunci %c3_i64 : i64 to i16
-      "silly.call"(%1) <{callee = @bar}> : (i16) -> ()
-      %2 = "silly.string_literal"() <{value = "Back in main"}> : () -> !llvm.ptr
-      silly.print %2 : !llvm.ptr
-      "silly.return"(%c0_i32) : (i32) -> ()
-    }) : () -> ()
-    "silly.yield"() : () -> ()
+    %0 = llvm.mlir.constant(0 : i32) : i32
+    %1 = llvm.mlir.addressof @str_0 : !llvm.ptr
+    %2 = llvm.mlir.constant(7 : i64) : i64
+    call @__silly_print_string(%2, %1) : (i64, !llvm.ptr) -> ()
+    %3 = llvm.mlir.constant(3 : i64) : i64
+    %4 = llvm.mlir.constant(3 : i16) : i16
+    call @bar(%4) : (i16) -> ()
+    %5 = llvm.mlir.addressof @str_1 : !llvm.ptr
+    %6 = llvm.mlir.constant(12 : i64) : i64
+    call @__silly_print_string(%6, %5) : (i64, !llvm.ptr) -> ()
+    return %0 : i32
   }
-}
 ```
 
-I've implemented a two stage lowering, where the silly.scope, silly.yield, silly.call, and silly.returns are stripped out leaving just the func and llvm dialects.  Code from that stage of the lowering is cleaner looking
+  There are some dead code constants left there (%3), seeming due to type conversion, but they get stripped out nicely by the time we get to LLVM-IR:
 
 ```
-llvm.mlir.global private constant @str_1(dense<[66, 97, 99, 107, 32, 105, 110, 32, 109, 97, 105, 110]> : tensor<12xi8>) {addr_space = 0 : i32} : !llvm.array<12 x i8>
-func.func private @__silly_print_string(i64, !llvm.ptr)
-llvm.mlir.global private constant @str_0(dense<[73, 110, 32, 109, 97, 105, 110]> : tensor<7xi8>) {addr_space = 0 : i32} : !llvm.array<7 x i8>
-func.func private @__silly_print_i64(i64)
-func.func private @bar(%arg0: i16) {
-  %0 = llvm.mlir.constant(1 : i64) : i64
-  %1 = llvm.alloca %0 x i16 {alignment = 2 : i64, bindc_name = "w.addr"} : (i64) -> !llvm.ptr
-  llvm.store %arg0, %1 : i16, !llvm.ptr
-  %2 = llvm.load %1 : !llvm.ptr -> i16
-  %3 = llvm.sext %2 : i16 to i64
-  call @__silly_print_i64(%3) : (i64) -> ()
-  return
-}
-func.func @main() -> i32 {
-  %0 = llvm.mlir.constant(0 : i32) : i32
-  %1 = llvm.mlir.addressof @str_0 : !llvm.ptr
-  %2 = llvm.mlir.constant(7 : i64) : i64
-  call @__silly_print_string(%2, %1) : (i64, !llvm.ptr) -> ()
-  %3 = llvm.mlir.constant(3 : i64) : i64
-  %4 = llvm.mlir.constant(3 : i16) : i16
-  call @bar(%4) : (i16) -> ()
-  %5 = llvm.mlir.addressof @str_1 : !llvm.ptr
-  %6 = llvm.mlir.constant(12 : i64) : i64
-  call @__silly_print_string(%6, %5) : (i64, !llvm.ptr) -> ()
-  return %0 : i32
-}
-```
+  @str_1 = private constant [12 x i8] c"Back in main"
+  @str_0 = private constant [7 x i8] c"In main"
 
-There are some dead code constants left there (%3), seeming due to type conversion, but they get stripped out nicely by the time we get to LLVM-IR:
+  declare void @__silly_print_string(i64, ptr)
 
-```
-@str_1 = private constant [12 x i8] c"Back in main"
-@str_0 = private constant [7 x i8] c"In main"
+  declare void @__silly_print_i64(i64)
 
-declare void @__silly_print_string(i64, ptr)
+  define void @bar(i16 %0) {
+    %2 = alloca i16, i64 1, align 2
+    store i16 %0, ptr %2, align 2
+    %3 = load i16, ptr %2, align 2
+    %4 = sext i16 %3 to i64
+    call void @__silly_print_i64(i64 %4)
+    ret void
+  }
 
-declare void @__silly_print_i64(i64)
-
-define void @bar(i16 %0) {
-  %2 = alloca i16, i64 1, align 2
-  store i16 %0, ptr %2, align 2
-  %3 = load i16, ptr %2, align 2
-  %4 = sext i16 %3 to i64
-  call void @__silly_print_i64(i64 %4)
-  ret void
-}
-
-define i32 @main() {
-  call void @__silly_print_string(i64 7, ptr @str_0)
-  call void @bar(i16 3)
-  call void @__silly_print_string(i64 12, ptr @str_1)
-  ret i32 0
-}
+  define i32 @main() {
+    call void @__silly_print_string(i64 7, ptr @str_0)
+    call void @bar(i16 3)
+    call void @__silly_print_string(i64 12, ptr @str_1)
+    ret i32 0
+  }
 ```
 
 * Generalize NegOp lowering to support all types, not just f64.
 * Allow PRINT of string literals, avoiding requirement for variables.  Example:
 
 ```
-    %0 = "silly.string_literal"() <{value = "A string literal!"}> : () -> !llvm.ptr loc(#loc)
-    "silly.print"(%0) : (!llvm.ptr) -> () loc(#loc)
+  %0 = "silly.string_literal"() <{value = "A string literal!"}> : () -> !llvm.ptr loc(#loc)
+  "silly.print"(%0) : (!llvm.ptr) -> () loc(#loc)
 ```
 
-There were lots of internal changes made along the way, one of which ended up reverted:
+  There were lots of internal changes made along the way, one of which ended up reverted:
 * Cache constantop values so that they need not be repeated -- that caching should be function specific, and will have to be generalized.
 
+
 Other internal changes include:
+
 * Generate the __silly_print... prototypes on demand, to clutter up the generated code less.  Can do this by saving and restoring the insertion point to the module level (where the symbol table and globals live.)
 * Introduce a string literal op, replacing the customized string assign operator:
 
 ```
-    silly.string_assign "s" = "hi"
+  silly.string_assign "s" = "hi"
 ```
 
 with plain old assign, after first constructing a string literal object:
 
 ```
-    %0 = "silly.string_literal"() <{value = "hi"}> : () -> !llvm.ptr
-    silly.assign "s", %0 : !llvm.ptr
+  %0 = "silly.string_literal"() <{value = "hi"}> : () -> !llvm.ptr
+  silly.assign "s", %0 : !llvm.ptr
 ```
 
 * Standardize Type handling in lowering.  Cache all the supported int/float types so that I can do compares to those.  This meant that a wide variety of operations, for example:
-  - IntegerType::get(...)
-  - builder.getI64Type(), ...
-  - rewriter.getI64Type(), ...
-  - mlir::isa
-  - mlir::dyn_cast
+  * IntegerType::get(...)
+  * builder.getI64Type(), ...
+  * rewriter.getI64Type(), ...
+  * mlir::isa
+  * mlir::dyn_cast
   could all be eliminated, replaced with the cached type values of interest.
 * Grammar: add ifelifelse rule (samples/if.silly).  No builder nor lowering support yet.
 * Lowering: Fix StoreOp alignment (had i64's with align 4 in the generated ll.)
 * Replace silly::ProgramOp with mlir::func::FuncOp (prep for adding scopes and callable functions.)
 * Grammar now has FUNCTION syntax (assert stub in parser, no builder/lowering yet.)
-* Grammar: rename VARIABLENAME_PATTERN -> IDENTIFIER
+* Grammar: rename `VARIABLENAME_PATTERN -> IDENTIFIER`
 * Parser: intercept errors instead of letting parse tree walker autocorrect and continue.
-* New error tests: error_keyword_declare.silly error_keyword_declare2.silly
+* New error tests: `error_keyword_declare.silly error_keyword_declare2.silly`
 * Split lowering into two passes, with separate pass for FuncOp, so that we have option of keeping function symbol tables through (dcl/assign/load) op lowering.
 * Parser now using symbol table anchored to silly::FuncOp, replacing hashes.  lowering still uses a hash, but it's function:: qualified.
-* constants.hpp: ENTRY_SYMBOL_NAME, ... (avoiding hardcoded duplication.)
+* constants.hpp: `ENTRY_SYMBOL_NAME`, ... (avoiding hardcoded duplication.)
 * Refactor "main" DI instrumentation for generic function support, and generalize the !DISubroutineType creation logic for user defined functions.
 * Introduce useModuleInsertionPoint to save and restore the insertion point to the module body (lowering)
 * Until ready to support premature return (when control flow possibilities are allowed), have enforced mandatory RETURN at function end in the grammar.
@@ -1437,53 +1453,53 @@ This release:
 * Declare variables with BOOL, INT8, INT16, INT32, INT64, FLOAT32, FLOAT64 types:
 
 ```
-BOOL b;
-INT16 i;
-FLOAT32 f;
+  BOOL b;
+  INT16 i;
+  FLOAT32 f;
 ```
 
 * TRUE, FALSE, and floating point constants:
 
 ```
-b = TRUE;
-f = 5 + 3.14E0;
+  b = TRUE;
+  f = 5 + 3.14E0;
 ```
 
 * An EXIT builtin to return a Unix command line value (must be the last statement in the program):
 
 ```
-EXIT 1;
-EXIT x;
-
+  EXIT 1;
+  EXIT x;
 ```
+
 * Expression type conversions:
 
 ```
-INT16 x;
-FLOAT32 y;
-y = 3.14E0;
-x = 1 + y;
+  INT16 x;
+  FLOAT32 y;
+  y = 3.14E0;
+  x = 1 + y;
 ```
 
-The type conversion rules in the language are not like C.
-Instead, all expression elements are converted to the type of the destination before the operation, and integers are truncated.
-Example:
+  The type conversion rules in the language are not like C.
+  Instead, all expression elements are converted to the type of the destination before the operation, and integers are truncated.
+  Example:
 
 ```
-INT32 x;
-x = 1.78 + 3.86E0;
-FLOAT64 f;
-f = x;
-PRINT f;
-f = 1.78 + 3.86E0;
-PRINT f;
+  INT32 x;
+  x = 1.78 + 3.86E0;
+  FLOAT64 f;
+  f = x;
+  PRINT f;
+  f = 1.78 + 3.86E0;
+  PRINT f;
 ```
 
-The expected output for this program is:
+  The expected output for this program is:
 
 ```
-4.000000
-5.640000
+  4.000000
+  5.640000
 ```
 
 ### MLIR examples
@@ -1491,69 +1507,69 @@ The expected output for this program is:
 The MLIR for the language now matches the statements of the language much more closely.  Consider test.silly for example:
 
 ```
-DCL x;
-x = 5 + 3.14E0;
-PRINT x;
-DCL y;
-y = x * 2;
-PRINT y;
+  DCL x;
+  x = 5 + 3.14E0;
+  PRINT x;
+  DCL y;
+  y = x * 2;
+  PRINT y;
 ```
 
 for which the MLIR is now free of memref dialect:
 
 ```
-"builtin.module"() ({
-  "silly.program"() ({
-    "silly.declare"() <{name = "x", type = f64}> : () -> () loc(#loc)
-    %0 = "arith.constant"() <{value = 5 : i64}> : () -> i64 loc(#loc1)
-    %1 = "arith.constant"() <{value = 3.140000e+00 : f64}> : () -> f64 loc(#loc1)
-    %2 = "silly.add"(%0, %1) : (i64, f64) -> f64 loc(#loc1)
-    "silly.assign"(%2) <{name = "x"}> : (f64) -> () loc(#loc1)
-    %3 = "silly.load"() <{name = "x"}> : () -> f64 loc(#loc2)
-    "silly.print"(%3) : (f64) -> () loc(#loc2)
-    "silly.declare"() <{name = "y", type = f64}> : () -> () loc(#loc3)
-    %4 = "silly.load"() <{name = "x"}> : () -> f64 loc(#loc4)
-    %5 = "arith.constant"() <{value = 2 : i64}> : () -> i64 loc(#loc4)
-    %6 = "silly.mul"(%4, %5) : (f64, i64) -> f64 loc(#loc4)
-    "silly.assign"(%6) <{name = "y"}> : (f64) -> () loc(#loc4)
-    %7 = "silly.load"() <{name = "y"}> : () -> f64 loc(#loc5)
-    "silly.print"(%7) : (f64) -> () loc(#loc5)
-    "silly.exit"() : () -> () loc(#loc)
+  "builtin.module"() ({
+    "silly.program"() ({
+      "silly.declare"() <{name = "x", type = f64}> : () -> () loc(#loc)
+      %0 = "arith.constant"() <{value = 5 : i64}> : () -> i64 loc(#loc1)
+      %1 = "arith.constant"() <{value = 3.140000e+00 : f64}> : () -> f64 loc(#loc1)
+      %2 = "silly.add"(%0, %1) : (i64, f64) -> f64 loc(#loc1)
+      "silly.assign"(%2) <{name = "x"}> : (f64) -> () loc(#loc1)
+      %3 = "silly.load"() <{name = "x"}> : () -> f64 loc(#loc2)
+      "silly.print"(%3) : (f64) -> () loc(#loc2)
+      "silly.declare"() <{name = "y", type = f64}> : () -> () loc(#loc3)
+      %4 = "silly.load"() <{name = "x"}> : () -> f64 loc(#loc4)
+      %5 = "arith.constant"() <{value = 2 : i64}> : () -> i64 loc(#loc4)
+      %6 = "silly.mul"(%4, %5) : (f64, i64) -> f64 loc(#loc4)
+      "silly.assign"(%6) <{name = "y"}> : (f64) -> () loc(#loc4)
+      %7 = "silly.load"() <{name = "y"}> : () -> f64 loc(#loc5)
+      "silly.print"(%7) : (f64) -> () loc(#loc5)
+      "silly.exit"() : () -> () loc(#loc)
+    }) : () -> () loc(#loc)
   }) : () -> () loc(#loc)
-}) : () -> () loc(#loc)
-#loc = loc("test.silly":1:1)
-#loc1 = loc("test.silly":2:5)
-#loc2 = loc("test.silly":3:1)
-#loc3 = loc("test.silly":4:1)
-#loc4 = loc("test.silly":5:5)
-#loc5 = loc("test.silly":6:1)
+  #loc = loc("test.silly":1:1)
+  #loc1 = loc("test.silly":2:5)
+  #loc2 = loc("test.silly":3:1)
+  #loc3 = loc("test.silly":4:1)
+  #loc4 = loc("test.silly":5:5)
+  #loc5 = loc("test.silly":6:1)
 ```
 
 I'm still using llvm.alloca, but that now doesn't show up until lowering:
 
 ```
-; ModuleID = 'test.silly'
-source_filename = "test.silly"
+  ; ModuleID = 'test.silly'
+  source_filename = "test.silly"
 
-declare void @__silly_print(double)
+  declare void @__silly_print(double)
 
-define i32 @main() {
-  %1 = alloca double, i64 1, align 8
-  store double 8.140000e+00, ptr %1, align 8
-  %2 = load double, ptr %1, align 8
-  call void @__silly_print(double %2)
-  %3 = alloca double, i64 1, align 8
-  %4 = load double, ptr %1, align 8
-  %5 = fmul double %4, 2.000000e+00
-  store double %5, ptr %3, align 8
-  %6 = load double, ptr %3, align 8
-  call void @__silly_print(double %6)
-  ret i32 0
-}
+  define i32 @main() {
+    %1 = alloca double, i64 1, align 8
+    store double 8.140000e+00, ptr %1, align 8
+    %2 = load double, ptr %1, align 8
+    call void @__silly_print(double %2)
+    %3 = alloca double, i64 1, align 8
+    %4 = load double, ptr %1, align 8
+    %5 = fmul double %4, 2.000000e+00
+    store double %5, ptr %3, align 8
+    %6 = load double, ptr %3, align 8
+    call void @__silly_print(double %6)
+    ret i32 0
+  }
 
-!llvm.module.flags = !{!0}
+  !llvm.module.flags = !{!0}
 
-!0 = !{i32 2, !"Debug Info Version", i32 3}
+  !0 = !{i32 2, !"Debug Info Version", i32 3}
 ```
 
 Example of the generated assembly code for this program:
@@ -1577,22 +1593,22 @@ Language elements:
 * Declare a double equivalent variable:
 
 ```
-DCL variablename;
+  DCL variablename;
 ```
 
 * Unary assignments to a variable (constants or plus or minus variable-name):
 
 ```
-x = 3;
-x = +x;
-x = -x;
+  x = 3;
+  x = +x;
+  x = -x;
 ```
 
 * Rudimentary binary operations:
 
 ```
-x = 5 + 3;
-y = x * 2;
+  x = 5 + 3;
+  y = x * 2;
 ```
 
 * A PRINT builtin.
@@ -1602,24 +1618,26 @@ y = x * 2;
 This version of the compiler used the memref dialect.  Example:
 
 ```
-> ./build/silly  samples/foo.silly  -g
-"builtin.module"() ({
-  "silly.program"() ({
-    %0 = "memref.alloca"() <{operandSegmentSizes = array<i32: 0, 0>}> : () -> memref<f64> loc(#loc1)
-    "silly.declare"() <{name = "x"}> : () -> () loc(#loc1)
-    %1 = "arith.constant"() <{value = 3 : i64}> : () -> i64 loc(#loc2)
-    %2 = "silly.unary"(%1) <{op = "+"}> : (i64) -> f64 loc(#loc2)
-    "memref.store"(%2, %0) : (f64, memref<f64>) -> () loc(#loc2)
-    "silly.assign"(%2) <{name = "x"}> : (f64) -> () loc(#loc3)
-    "silly.print"(%0) : (memref<f64>) -> () loc(#loc4)
-    "silly.return"() : () -> () loc(#loc1)
-  }) : () -> () loc(#loc1)
-}) : () -> () loc(#loc)
-#loc = loc("../samples/foo.silly":1:1)
-#loc1 = loc("../samples/foo.silly":1:1)
-#loc2 = loc("../samples/foo.silly":2:5)
-#loc3 = loc("../samples/foo.silly":2:1)
-#loc4 = loc("../samples/foo.silly":4:6)
+  > ./build/silly  samples/foo.silly  -g
+  "builtin.module"() ({
+    "silly.program"() ({
+      %0 = "memref.alloca"() <{operandSegmentSizes = array<i32: 0, 0>}> : () -> memref<f64> loc(#loc1)
+      "silly.declare"() <{name = "x"}> : () -> () loc(#loc1)
+      %1 = "arith.constant"() <{value = 3 : i64}> : () -> i64 loc(#loc2)
+      %2 = "silly.unary"(%1) <{op = "+"}> : (i64) -> f64 loc(#loc2)
+      "memref.store"(%2, %0) : (f64, memref<f64>) -> () loc(#loc2)
+      "silly.assign"(%2) <{name = "x"}> : (f64) -> () loc(#loc3)
+      "silly.print"(%0) : (memref<f64>) -> () loc(#loc4)
+      "silly.return"() : () -> () loc(#loc1)
+    }) : () -> () loc(#loc1)
+  }) : () -> () loc(#loc)
+  #loc = loc("../samples/foo.silly":1:1)
+  #loc1 = loc("../samples/foo.silly":1:1)
+  #loc2 = loc("../samples/foo.silly":2:5)
+  #loc3 = loc("../samples/foo.silly":2:1)
+  #loc4 = loc("../samples/foo.silly":4:6)
 ```
 
 That was removed in V1, which now uses a MLIR dialect that matches the language more closely, deferring alloca to lowering.
+
+<!-- vim: set et ts=2 sw=2 -->
