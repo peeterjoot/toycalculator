@@ -10,7 +10,7 @@ testit - A little test driver.
 
 =head1 SYNOPSIS
 
-testit [--help] --no-fatal [--just tcname] [--optimize] [--no-debug] [--clean]
+testit [--help] --no-fatal [--just tcname] [--optimize] [--no-debug] [--clean] [--outdir dir]
 
 =head1 DESCRIPTION
 
@@ -19,6 +19,10 @@ This used to be the testsuite, but now just runs a single test.  The testsuite o
 Options:
 
 =over 4
+
+=item --outdir
+
+dirname.  Will be created with 'mkdir -p' if it doesn't exist.
 
 =item --no-fatal
 
@@ -76,12 +80,14 @@ my $optimize = 0;
 my $debug = 1;
 my $clean = 0;
 my $assembly = 1;
+my $outdir;
 
 #Getopt::Long::Configure( 'pass_through' ) ;
 GetOptions (
    'help'               => sub { pod2usage(-verbose => 2) ; },
    'fatal!'             => \$fatal,
    'just=s'             => \$just,
+   'outdir=s'           => \$outdir,
    'optimize!'          => \$optimize,
    'assembly!'          => \$assembly,
    'debug!'             => \$debug,
@@ -96,6 +102,8 @@ if ( defined $just )
     $just =~ s/\.silly$//;
 }
 
+my $TOP = `git rev-parse --show-toplevel 2>/dev/null`; chomp $TOP;
+
 my $flags = '';
 
 if ( $optimize )
@@ -108,9 +116,14 @@ if ( $debug )
     $flags .= ' -g';
 }
 
+if ( !defined $outdir )
+{
+    $outdir = 'out'
+}
+
 if ( $clean )
 {
-    system( qq(rm -rf out) );
+    system( qq(rm -rf $outdir) );
 }
 
 my %testflags = (
@@ -124,7 +137,7 @@ my %decl_order_tests =
     'two_declare_no_init' => 'a,b',
 );
 
-# The test list is moved to samples/CMakeLists.txt -- this is now just for --just
+# The test list is moved to tests/endtoend/CMakeLists.txt -- this is now just for --just
 my %tests = map { $_ => 1 } (qw(
 ));
 #error_nonconst_init -- want this to be a compile error, but it isn't yet.
@@ -250,9 +263,9 @@ sub runone
     }
 
     print "##########################################################################\n";
-    my $cmd = qq(mkdir -p out ; ../build/bin/silly --output-directory out $stem.silly $thisflags --emit-llvm --emit-mlir > out/$stem.compile.out 2>&1);
+    my $cmd = qq(mkdir -p $outdir ; ${TOP}/build/bin/silly --output-directory $outdir $stem.silly $thisflags --emit-llvm --emit-mlir > ${outdir}/$stem.compile.out 2>&1);
     my $crc = verbose_system( $cmd );
-    system("cat out/$stem.compile.out");
+    system("cat ${outdir}/$stem.compile.out");
     if ( defined $failuretests{$stem} )
     {
         if ($crc)
@@ -262,7 +275,7 @@ sub runone
 
             if ( $expected_compile_error_message{$stem} )
             {
-                check_expected_compile_error( $stem, "out/$stem.compile.out" );
+                check_expected_compile_error( $stem, "${outdir}/$stem.compile.out" );
             }
         }
         else
@@ -273,21 +286,27 @@ sub runone
         next;
     }
 
-    verbose_system( qq(objdump -dr --no-show-raw-insn out/${stem}.o > out/${stem}.s) );
+    verbose_system( qq(objdump -dr --no-show-raw-insn ${outdir}/${stem}.o > ${outdir}/${stem}.s) );
 
     if ( $assembly )
     {
-        verbose_system( qq(cat out/${stem}.s) );
+        verbose_system( qq(cat ${outdir}/${stem}.s) );
     }
 
     my $rc;
-    if ( defined $expectedInput{${stem}} ) {
-        $rc = verbose_system( qq(echo "$expectedInput{${stem}}" | ./out/${stem} > out/${stem}.out 2>out/${stem}.stderr.out) );
-    } else {
-        $rc = verbose_system( qq(./out/${stem} > out/${stem}.out 2>out/${stem}.stderr.out) );
+    my $exe = "${outdir}/${stem}";
+    unless ( $exe =~ m,^[/\.], )
+    {
+        $exe = "./$exe";
     }
-    verbose_system( qq(echo 'stdout:' ; cat out/${stem}.out) );
-    verbose_system( qq(echo 'stderr:' ; cat out/${stem}.stderr.out) );
+
+    if ( defined $expectedInput{${stem}} ) {
+        $rc = verbose_system( qq(echo "$expectedInput{${stem}}" | ${exe} > ${outdir}/${stem}.out 2>${outdir}/${stem}.stderr.out) );
+    } else {
+        $rc = verbose_system( qq(${exe} > ${outdir}/${stem}.out 2>${outdir}/${stem}.stderr.out) );
+    }
+    verbose_system( qq(echo 'stdout:' ; cat ${outdir}/${stem}.out) );
+    verbose_system( qq(echo 'stderr:' ; cat ${outdir}/${stem}.stderr.out) );
 
     print "${stem}: returned: $rc\n\n\n\n\n";
 
@@ -301,8 +320,8 @@ sub runone
 
     if ( -e "expected/${stem}.out" )
     {
-        my $crc = verbose_system( qq(diff -wup expected/${stem}.out out/${stem}.out) );
-        complain( "ERROR: diff -wup expected/${stem}.out out/${stem}.out: $crc\n") if ( $crc );
+        my $crc = verbose_system( qq(diff -wup expected/${stem}.out ${outdir}/${stem}.out) );
+        complain( "ERROR: diff -wup expected/${stem}.out ${outdir}/${stem}.out: $crc\n") if ( $crc );
     }
     else
     {
@@ -312,42 +331,43 @@ sub runone
 
     if ( -e "expected/${stem}.stderr.out" )
     {
-        my $crc = verbose_system( qq(diff -wup expected/${stem}.stderr.out out/${stem}.stderr.out) );
-        complain( "ERROR: diff -wup expected/${stem}.stderr.out out/${stem}.stderr.out: $crc\n") if ( $crc );
+        my $crc = verbose_system( qq(diff -wup expected/${stem}.stderr.out ${outdir}/${stem}.stderr.out) );
+        complain( "ERROR: diff -wup expected/${stem}.stderr.out ${outdir}/${stem}.stderr.out: $crc\n") if ( $crc );
     }
 
     # DI testing HACK for one issue, now fixed:
     if ( $stem eq 'f' )
     {
         # Could check a lot more, but start with this:
-        my $cmd = qq(dwarfdump out/f.o | tee out/f.dd | grep -A3 DW_AT_linkage_name.*bar0 | tail -1);
+        my $cmd = qq(dwarfdump ${outdir}/f.o | tee ${outdir}/f.dd | grep -A3 DW_AT_linkage_name.*bar0 | tail -1);
         my $line = `$cmd` ; chomp $line;
 
         unless ( $line =~ /DW_AT_decl_line.*0x00000003/ )
         {
-            complain( "ERROR: unexpected dwarfdump output for f.silly in out/f.dd.  Expected DW_AT_decl_line 0x00000003, found: '$line'" );
+            complain( "ERROR: unexpected dwarfdump output for f.silly in ${outdir}/f.dd.  Expected DW_AT_decl_line 0x00000003, found: '$line'" );
         }
     }
 
     if ( $stem eq 'for_simplest' )
     {
         # Could check a lot more, but start with this:
-        my $cmd = qq(dwarfdump out/for_simplest.o | tee out/for_simplest.dd | grep -A3 'DW_AT_name.*myLoopVar' | tail -1);
+        my $cmd = qq(dwarfdump ${outdir}/for_simplest.o | tee ${outdir}/for_simplest.dd | grep -A3 'DW_AT_name.*myLoopVar' | tail -1);
         my $line = `$cmd` ; chomp $line;
 
         unless ( $line =~ /DW_AT_decl_line.*0x00000003/ )
         {
-            complain( "ERROR: unexpected dwarfdump output for for_simplest.silly (variable myLoopVar) in out/for_simplest.dd.  Expected DW_AT_decl_line 0x00000003, found: '$line'" );
+            complain( "ERROR: unexpected dwarfdump output for for_simplest.silly (variable myLoopVar) in ${outdir}/for_simplest.dd.  Expected DW_AT_decl_line 0x00000003, found: '$line'" );
         }
     }
 
     if ( defined $decl_order_tests{$stem} )
     {
-        check_decl_order( "out/${stem}.mlir", $decl_order_tests{$stem} );
+        check_decl_order( "${outdir}/${stem}.mlir", $decl_order_tests{$stem} );
     }
 
     print "${stem}: TEST WAS SUCCESSFUL\n"; # for ctest rule
 }
+
 sub complain
 {
     my ($message) = @_;

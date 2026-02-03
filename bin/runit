@@ -83,7 +83,7 @@ if ( !($prog =~ /\.silly/) )
 
 unless ( $prog =~ m,/, )
 {
-   $prog = "../samples/$prog";
+   $prog = "../tests/endtoend/$prog";
 }
 
 my $flags = '';

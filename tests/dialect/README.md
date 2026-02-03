@@ -4,5 +4,5 @@ Run using:
 
 ```
 cd ../build
-ninja check-silly-parsetests
+ninja check-silly-dialecttests
 ```

@@ -263,7 +263,7 @@ RUN ./buildllvm
 
 ### 7. **Enhance Testing Infrastructure**
 
-**Current State:** Good coverage with samples + ctest, but gaps.
+**Current State:** Good coverage with test/endtoend + ctest, but gaps.
 
 **Additions:**
 
@@ -281,7 +281,7 @@ TEST(ExpressionParser, RandomArithmetic) {
 
 **B) Fuzzing:**
 ```bash
-# samples/fuzz/
+# test/endtoend/fuzz/
 # Generate random valid silly programs
 # Check: (1) no crashes, (2) output matches interpreter
 ```
@@ -297,6 +297,24 @@ tests/
   │   ├── semantic/
   │   └── runtime/
   └── perf/         # Performance benchmarks
+```
+
+**NOTE**
+I've introduced two test subdirs: tests/endtoend and tests/dialect.  Perhaps split further:
+```
+tests/
+  ├── endtoend/
+  │   ├── zero-return/
+  │       ├── for/
+  │       ├── function/
+  │       ├── if/
+  │       ├── assignment/
+  │       ├── declaration/
+  │       ├── initialization/
+  │       ├── .../
+  │   ├── other-return/
+  │   ├── negative/
+  ├── dialect/
 ```
 
 **D) Coverage Your TODO:**
@@ -446,7 +464,7 @@ editors/
 
 **C) Formatter:**
 ```bash
-silly-fmt samples/*.silly
+silly-fmt test/endtoend/*.silly
 # Like clang-format but for silly
 ```
 
@@ -510,8 +528,9 @@ mlir::emitError(loc) << "undefined variable '" << name << "'\n"
 ## 🚀 Suggested Next Steps (3-month roadmap)
 
 ### Month 1: Foundation
-- [ ] Convert exceptions to MLIR diagnostics (parser.cpp first)
-- [ ] Add semantic analysis pass (catches init_list errors)
+- [x] Convert exceptions to MLIR diagnostics (lowering.cpp)
+- [ ] Convert exceptions to MLIR diagnostics (parser.cpp)
+- [ ] Add semantic analysis pass (catches `init_list` errors)
 - [ ] Improve debug location handling (fix line jumping)
 - [ ] Document architecture
 

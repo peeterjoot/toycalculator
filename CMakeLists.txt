@@ -67,7 +67,6 @@ endif()
 #------------------------------------------------------------------------------
 enable_testing()
 
-add_subdirectory(samples)
-add_subdirectory(parsetests)
+add_subdirectory(tests/endtoend)
+add_subdirectory(tests/dialect)
 add_subdirectory(src)
-#add_subdirectory(prototypes/standalone)

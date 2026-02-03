@@ -2,12 +2,13 @@
 
 ### running list of issues and ideas, randomly ordered
 ----------------------------------
+* Add a silly --driver-verbose flag to show the link command line.
 * add install/packaging rules (e.g. install(TARGETS silly ...)).  Can probably remove build/{bin,lib} symlink rules if that's done.
 * have front-end NOT check `Prohibit NOT on non-integer type. t/c: error_notfloat.silly` -- that should also be a NOT verify() check.
 * Would be good to add a CALL verify that checks if the function has a return, to make sure it is not used as a standalone statement without assignment.
 8 [README] finish making the intro more comprehensive.
 * lowering error handling: two throws left in lowering.  purge those, replacing with notify or emitError.  Review all the notifys -- emitError may be more appropriate in some places.
-* testsuite leaves crap in: samples/out parsetests/parsetests -- both of those are in the gitignore, but would be better in build/ -- first easy to fix, second may be more finicky.  Also disabled rm -rf out so that ctest -j works -- but that leaves crap that could fool a test rerun -- not a good solution.
+* testsuite leaves crap in: tests/dialect/tests/dialect/ -- it's in the gitignore, but would be better in build/
 * The verify functions that don't have lit tests are all marked with coverage TODOs.  Write tests for those cases.
 * `div_zero_int` -- different results on intel vs. arm.
 * no test for error: "Attempted GET to string literal".  Audit all the UserError's and make sure that all have tests.
@@ -29,7 +30,7 @@
   (gdb) c
   The program is not being run.
   (gdb) run
-  Starting program: /home/peeter/toycalculator/samples/out/printdi
+  Starting program: /home/peeter/toycalculator/tests/endtoend/out/printdi
   [Thread debugging using libthread_db enabled]
   Using host libthread_db library "/lib64/libthread_db.so.1".
 
@@ -188,7 +189,7 @@
 ----------------------------------
 ## Debugging:
 
-* Expand Dwarf DI test cases (have just one in `bin/testit` for `samples/f.silly`, and it is completely manual, and only checks bar0 line number.)
+* Expand Dwarf DI test cases (have just one in `bin/testit` for `tests/endtoend/f.silly`, and it is completely manual, and only checks bar0 line number.)
 
 * t/c: function.silly: see if this is still and issue, and debug it, if it is.
 

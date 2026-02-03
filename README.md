@@ -287,10 +287,10 @@ Array `BOOL` values may use a packed bitmask representation in the future.
 * `src/driver/driver.cpp` — Compiler driver: handles command-line options, opens output files, and orchestrates all lower-level actions (parse tree walk + MLIR builder, lowering to LLVM IR, assembly printing, and linker invocation)
 * `src/driver/parser.cpp` — ANTLR4 parse tree walker and MLIR builder
 * `src/driver/lowering.cpp` — LLVM IR lowering classes
-* `samples/*.silly` and `bin/testit` — Sample programs and a rudimentary regression test suite
+* `tests/endtoend/*.silly` and `bin/testit` — Sample programs and a rudimentary regression test suite
 * `bin/build`, `bin/rebuild` — Build scripts: `build` runs CMake and Ninja (sets compiler overrides if required); `rebuild` runs just Ninja with output teeing and grepping
 * `bin/silly-opt` — Wrapper for mlir-opt that loads the silly dialect shared object
-* `parsetests/*.mlir` — Silly dialect-level error checking for verify functions
+* `tests/dialect/*.mlir` — Silly dialect-level error checking for verify functions
 
 ## Command Line Options
 
@@ -318,11 +318,11 @@ Once built, the compiler driver can be run with `build/bin/silly` with the follo
 ### Examples
 
 ```bash
-cd samples
+cd tests/endtoend
 rm -rf out
 mkdir out
-../build/bin/silly --output-directory out f.silly -g --emit-llvm --emit-mlir --debug
-../build/bin/silly --output-directory out f.silly -O2
+../../build/bin/silly --output-directory out f.silly -g --emit-llvm --emit-mlir --debug
+../../build/bin/silly --output-directory out f.silly -O2
 ```
 
 ## Running silly-opt
@@ -330,9 +330,9 @@ mkdir out
 Example:
 
 ```bash
-cd samples
+cd tests/endtoend
 testit -j loadstore.silly
-bin/silly-opt --pretty --source out/loadstore.mlir
+silly-opt --pretty --source out/loadstore.mlir
 ```
 
 By default, silly-opt output goes to stdout.
@@ -400,12 +400,13 @@ Depending on what I currently have booted, this project has been built on only a
 
 ### Testing
 
-Testing is ctest-based:
+Testing is ctest-based. Examples:
 
 ```bash
 cd build
-ctest                           # full test suite
-ctest -R silly-parsetests       # just the low-level dialect verify tests
+ctest -j 3                      # Run the full test suite
+ctest -R EndToEnd --verbose     # Run all the tests/endtoend/ tests.
+ctest -R silly-dialecttests     # Run the low-level dialect verify tests (tests/dialect/)
 ```
 
 ---

@@ -175,9 +175,7 @@ foreach(test_file IN LISTS TEST_FILES)
 
     add_test(
         NAME EndToEnd.${test_name}
-        COMMAND ${CMAKE_SOURCE_DIR}/bin/testit
-                -j
-                ${test_file}
+        COMMAND ${CMAKE_SOURCE_DIR}/bin/testit --just ${test_file} --out ${CMAKE_BINARY_DIR}/out/${test_name} --clean
         WORKING_DIRECTORY ${SAMPLES_DIR}
     )
 

@@ -1,9 +1,8 @@
-cscope.out
 antlr-4.10-complete.jar
 build
+cscope.out
 .junk
-samples/out
-parsetests/parsetests
 tags
+tests/dialect/tests/dialect
+tests/endtoend/.gdbinit
 .url
-samples/.gdbinit

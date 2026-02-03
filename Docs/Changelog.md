@@ -582,7 +582,7 @@
 * [cmake] package silly dialect files in libSillyDialect.so instead of static linking to the silly compiler driver.  This should at least theoretically allow the use of mlir-opt to test parse directly (not tried yet.)  Also comment out the mlirtest and simplest test build rules -- I haven't tried those in forever, and don't care to at the moment.
 * [tablegen] remove the DeclareOp custom asm printer.  It generates output that can't be parsed by mlir-opt.
 * [dialect] convert library into a plugin so it can be loaded by mlir-opt.
-* [tests] Add manual tests parsetests/.
+* [tests] Add manual tests tests/dialect/.
 * [bin] Add: silly-opt -- an easy way to run mlir-opt against a silly dialect file.
 * Add lit test build infrastructure -- unfortunately depends on my llvm-build/ dir and llvm-project cmake configuration -- but it's a CI/CD start.
 * [tests] ReturnOp verifier and some initial returnop dialect tests.  Move the {ScopeOp,DeclareOp}::verify out of line.
@@ -632,6 +632,7 @@ src/grammar/
 ```
 
   Each of these directories (except src/include/) now has it's own CMakeLists.txt, so you can look at the build rules for each component in isolation.  The top level makefile is now pretty minimal.
+  * [tests] Move samples/ to tests/endtoend/, and parsetests/ to tests/dialect/ (adjusting cmake and scripts and docs accordingly)
 
 ## tag: V7 (Jan 4, 2025)
 
