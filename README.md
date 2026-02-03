@@ -24,7 +24,7 @@ In short, I was intrigued enough to explore MLIR personally, even without a work
 
 ### What is this project?
 
-Initially, I used MLIR to build a simple symbolic calculator that supported double-like variable declarations, assignments, unary and binary arithmetic operations, and output display.
+Initially, I used MLIR to build a simple symbolic calculator that supported double-like variable declarations (`DCL`, `DECLARE` -- now removed), assignments, unary and binary arithmetic operations, and output display.
 This used a dialect initially called toy, but that dialect was renamed to silly to avoid confusion with the MLIR tutorial toy dialect.
 
 As noted earlier, the primary goal of the project was not calculation itself, but to gain concrete, hands-on experience with the MLIR ecosystem.
@@ -56,11 +56,6 @@ INT16 values[3]{10, 20, 30};  // initialized array
 ```silly
 BOOL flag = TRUE;
 BOOL bits[2]{TRUE, FALSE};
-```
-
-**Legacy `DECLARE` operation** (implicit double type, may be removed):
-```silly
-DECLARE x;  // equivalent to: FLOAT64 x;
 ```
 
 ### Input/Output Operations

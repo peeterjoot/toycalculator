@@ -765,15 +765,6 @@ namespace silly
     }
     CATCH_USER_ERROR
 
-    void ParseListener::enterDeclareStatement( SillyParser::DeclareStatementContext *ctx )
-    {
-        assert( ctx );
-        mlir::Location loc = getStartLocation( ctx );
-
-        enterDeclareHelper( loc, ctx->IDENTIFIER(), ctx->declareAssignmentExpression(), ctx->expression(),
-                            ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), tyF64 );
-    }
-
     void ParseListener::enterBoolDeclareStatement( SillyParser::BoolDeclareStatementContext *ctx )
     {
         assert( ctx );

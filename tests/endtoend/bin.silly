@@ -1,2 +1,2 @@
-DCL x = 5 + 3;
+FLOAT64 x = 5 + 3;
 PRINT x;

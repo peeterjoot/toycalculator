@@ -1,4 +1,4 @@
-DCL x;
-DCL x;
+FLOAT64 x;
+FLOAT64 x;
 x = 1;
 PRINT x;

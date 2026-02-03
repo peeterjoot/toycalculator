@@ -24,7 +24,7 @@ startRule
 // A statement can be a declaration, assignment, PRINT, GET, ERROR, ABORT, IF, FOR, CALL, FUNCTION or comment.
 statement
   : (callStatement | functionStatement | ifElifElseStatement |
-     declareStatement | boolDeclareStatement | intDeclareStatement | floatDeclareStatement | stringDeclareStatement |
+     boolDeclareStatement | intDeclareStatement | floatDeclareStatement | stringDeclareStatement |
      assignmentStatement | printStatement | errorStatement | abortStatement | getStatement | forStatement
     )
     ENDOFSTATEMENT_TOKEN
@@ -55,14 +55,6 @@ functionStatement
     (COLON_TOKEN scalarType)?
     LEFT_CURLY_BRACKET_TOKEN statement* returnStatement ENDOFSTATEMENT_TOKEN
     RIGHT_CURLY_BRACKET_TOKEN
-  ;
-
-// A declaration of a new variable (e.g., 'DCL x;' or 'DECLARE x;').  These are currently implicitly double.
-declareStatement
-  : (DCL_TOKEN|DECLARE_TOKEN)
-    IDENTIFIER (arrayBoundsExpression)?
-    ((EQUALS_TOKEN declareAssignmentExpression) |
-     (LEFT_CURLY_BRACKET_TOKEN (expression (COMMA_TOKEN expression)*)? RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
 boolDeclareStatement

@@ -1,4 +1,4 @@
-DCL x = 5 + 3.14E0;
+FLOAT64 x = 5 + 3.14E0;
 PRINT x;
-DCL y = x * 2;
+FLOAT64 y = x * 2;
 PRINT y;

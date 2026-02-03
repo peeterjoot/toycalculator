@@ -1,4 +1,4 @@
-DCL x;
+FLOAT64 x;
 x = 5;
 PRINT x;
 x = 3 * 2;

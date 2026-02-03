@@ -126,7 +126,6 @@ namespace silly
         void enterCallStatement( SillyParser::CallStatementContext *ctx ) override;
         void exitFunctionStatement( SillyParser::FunctionStatementContext *ctx ) override;
         void enterReturnStatement( SillyParser::ReturnStatementContext *ctx ) override;
-        void enterDeclareStatement( SillyParser::DeclareStatementContext *ctx ) override;
         void enterBoolDeclareStatement( SillyParser::BoolDeclareStatementContext *ctx ) override;
         void enterIntDeclareStatement( SillyParser::IntDeclareStatementContext *ctx ) override;
         void enterFloatDeclareStatement( SillyParser::FloatDeclareStatementContext *ctx ) override;

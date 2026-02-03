@@ -635,4 +635,5 @@ src/grammar/
   * [tests] Move samples/ to tests/endtoend/, and parsetests/ to tests/dialect/ (adjusting cmake and scripts and docs accordingly)
   * [layout] move some old crud out of bin/ (to bin/.old for now.)
   * [tests] Fix: testsuite leaves crap in: tests/dialect/tests/dialect/ -- it's in the gitignore, but would be better in build/
+  * [grammar,parser,readme,tests] Get rid of DCL/DECLARE
 
