@@ -15,7 +15,6 @@ tests/dialect/lit.cfg.py:15:    os.path.join(config.test_source_root, "..", ".."
 
 (should be able to configure and build from anywhere -- even out of tree.)
 
-* Add a silly --driver-verbose flag to show the link command line.
 * have front-end NOT check `Prohibit NOT on non-integer type. t/c: error_notfloat.silly` -- that should also be a NOT verify() check.
 * Would be good to add a CALL verify that checks if the function has a return, to make sure it is not used as a standalone statement without assignment.
 * lowering error handling: Review all the notifys -- emitError may be more appropriate in some places.

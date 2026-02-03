@@ -314,6 +314,7 @@ Once built, the compiler driver can be run with `build/bin/silly` with the follo
 * `--debug-mlir` — Enable MLIR-specific debugging
 * `--stdout` — Send MLIR and LLVM IR output to stdout instead of files
 * `--no-emit-object` — Skip object file generation
+* `--verbose-link` — Show the link command.  This is implicit if the link fails.
 
 ### Examples
 

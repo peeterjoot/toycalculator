@@ -59,6 +59,10 @@ static llvm::cl::opt<bool> debugInfo( "g",
                                                       "creation in the lowered LLVM IR)" ),
                                       llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
+static llvm::cl::opt<bool> verboseLink( "verbose-link",
+                                      llvm::cl::desc( "Display the link command line on stderr"),
+                                      llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+
 static llvm::cl::opt<bool> compileOnly( "c", llvm::cl::desc( "Compile only and don't link." ), llvm::cl::init( false ),
                                         llvm::cl::cat( SillyCategory ) );
 
@@ -430,6 +434,19 @@ int main( int argc, char** argv )
     return (int)ReturnCodes::success;
 }
 
+static
+void showLinkCommand(const std::string & linker, llvm::SmallVector<llvm::StringRef, 16> & argv)
+{
+    llvm::errs() << "# " << linker;
+
+    for ( const auto & a : argv )
+    {
+        llvm::errs() << a << ' ';
+    }
+
+    llvm::errs() << '\n';
+}
+
 void invokeLinker( const char* argv0, llvm::SmallString<128>& exePath, llvm::SmallString<128>& objectPath )
 {
     // Get the driver path
@@ -472,16 +489,19 @@ void invokeLinker( const char* argv0, llvm::SmallString<128>& exePath, llvm::Sma
     argv.push_back( "silly_runtime" );
     argv.push_back( rpathOption );
 
+    if ( verboseLink == true )
+    {
+        showLinkCommand( linkerPath.get(), argv );
+    }
+
     // Execute the linker
     std::string errMsg;
     int result = llvm::sys::ExecuteAndWait( linkerPath.get(), argv, std::nullopt, {}, 0, 0, &errMsg );
     if ( result != 0 )
     {
-        llvm::outs() << "link command arguments:\n";
-
-        for ( const auto & a : argv )
+        if ( verboseLink == false ) // already showed this
         {
-            llvm::outs() << a << '\n';
+            showLinkCommand( linkerPath.get(), argv );
         }
 
         throw ExceptionWithContext( __FILE__, __LINE__, __func__,
