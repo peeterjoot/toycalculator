@@ -288,7 +288,7 @@ Array `BOOL` values may use a packed bitmask representation in the future.
 * `src/driver/parser.cpp` — ANTLR4 parse tree walker and MLIR builder
 * `src/driver/lowering.cpp` — LLVM IR lowering classes
 * `tests/endtoend/*.silly` and `bin/testit` — Sample programs and a rudimentary regression test suite
-* `bin/build`, `bin/rebuild` — Build scripts: `build` runs CMake and Ninja (sets compiler overrides if required); `rebuild` runs just Ninja with output teeing and grepping
+* `bin/build`, — Build script: `build` runs CMake and Ninja (sets compiler overrides if required)
 * `bin/silly-opt` — Wrapper for mlir-opt that loads the silly dialect shared object
 * `tests/dialect/*.mlir` — Silly dialect-level error checking for verify functions
 
@@ -346,7 +346,7 @@ Run `silly-opt --help` for all available options.
 sudo apt-get install libantlr4-runtime-dev antlr4
 ```
 
-This assumes that the ANTLR4 runtime, after installation, is version 4.10. If not, update accordingly (see `bin/runantlr`).
+This assumes that the ANTLR4 runtime, after installation, is version 4.10.
 
 On WSL2/Ubuntu, the installed runtime version may not match the generator version.
 Workaround:

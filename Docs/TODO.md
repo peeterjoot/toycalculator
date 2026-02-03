@@ -3,12 +3,11 @@
 ### running list of issues and ideas, randomly ordered
 ----------------------------------
 * Add a silly --driver-verbose flag to show the link command line.
-* add install/packaging rules (e.g. install(TARGETS silly ...)).  Can probably remove build/{bin,lib} symlink rules if that's done.
 * have front-end NOT check `Prohibit NOT on non-integer type. t/c: error_notfloat.silly` -- that should also be a NOT verify() check.
-* Would be good to add a CALL verify that checks if the function has a return, to make sure it is not used as a standalone statement without assignment.
-8 [README] finish making the intro more comprehensive.
-* lowering error handling: two throws left in lowering.  purge those, replacing with notify or emitError.  Review all the notifys -- emitError may be more appropriate in some places.
 * testsuite leaves crap in: tests/dialect/tests/dialect/ -- it's in the gitignore, but would be better in build/
+
+* Would be good to add a CALL verify that checks if the function has a return, to make sure it is not used as a standalone statement without assignment.
+* lowering error handling: Review all the notifys -- emitError may be more appropriate in some places.
 * The verify functions that don't have lit tests are all marked with coverage TODOs.  Write tests for those cases.
 * `div_zero_int` -- different results on intel vs. arm.
 * no test for error: "Attempted GET to string literal".  Audit all the UserError's and make sure that all have tests.
@@ -62,6 +61,7 @@
 * Grammar probably allows for function declared in a function.  prohibit that or at least test for it?
 * Need a sema pass: For example, initializer-list shouldn't reference variables, only constant-expressions, or expressions with parameters.  t/c for this: `error_nonconst_init.silly`
 * Have an effective lexical scope for loop variables, but am emitting DI for them at a function scope.  This will probably do something weird if a loop variable is used in multiple loops.
+* add install/packaging rules (e.g. install(TARGETS silly ...)).  Can probably remove build/{bin,lib} symlink rules if that's done.
 
 ----------------------------------
 ### Bugs

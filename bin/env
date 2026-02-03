@@ -1,4 +1,4 @@
-export PATH=~/toycalculator/bin:$PATH
+export PATH=~/toycalculator/bin:~/toycalculator/build/bin:$PATH
 
 #LLVMBIN=/usr/local/llvm-21.1.0/bin
 

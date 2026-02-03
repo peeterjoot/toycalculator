@@ -6,7 +6,7 @@
 
 =head1 NAME
 
-runit - <one-line-description>
+runit - run an end to end test with full debug instrumentation and artifact collection
 
 =head1 SYNOPSIS
 

@@ -2,7 +2,6 @@
 #
 # gdb -q ../../build/bin/silly ; source ../../breakpoints.txt
 #
-# (bin/debugit does this)
 
 b main
 # pick which sample program to use for the compiler debugging.
