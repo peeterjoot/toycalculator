@@ -84,5 +84,5 @@ add_custom_command(TARGET SillyDialect POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E create_symlink
         ../src/dialect/libSillyDialect.so
         ${CMAKE_BINARY_DIR}/lib/libSillyDialect.so
-    COMMENT "Creating symlink: build/lib/libSillyDialect.so -> src/dialect/libSillyDialect.so"
+    COMMENT "Creating symlink: ${CMAKE_BINARY_DIR}/lib/libSillyDialect.so -> src/dialect/libSillyDialect.so"
 )

@@ -3,6 +3,5 @@ build
 cscope.out
 .junk
 tags
-tests/dialect/tests/dialect
 tests/endtoend/.gdbinit
 .url

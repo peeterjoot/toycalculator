@@ -3,6 +3,8 @@ These are low levels tests for the silly dialect operators that have verify func
 Run using:
 
 ```
-cd ../build
+cd ../../build
 ninja check-silly-dialecttests
+# or
+ctest -R silly-dialecttests
 ```

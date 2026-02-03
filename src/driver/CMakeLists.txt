@@ -74,5 +74,5 @@ add_custom_command(TARGET silly POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E create_symlink
         ${CMAKE_CURRENT_BINARY_DIR}/silly
         ${CMAKE_BINARY_DIR}/bin/silly
-    COMMENT "Creating symlink: build/bin/silly -> build/src/driver/silly"
+    COMMENT "Creating symlink: ${CMAKE_BINARY_DIR}/bin/silly -> ${CMAKE_CURRENT_BINARY_DIR}/silly"
 )

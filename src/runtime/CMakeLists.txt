@@ -13,5 +13,5 @@ add_custom_command(TARGET silly_runtime POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E create_symlink
         ../src/runtime/libsilly_runtime.so
         ${CMAKE_BINARY_DIR}/lib/libsilly_runtime.so
-    COMMENT "Creating symlink: build/lib/libsilly_runtime.so -> src/runtime/libsilly_runtime.so"
+    COMMENT "Creating symlink: ${CMAKE_BINARY_DIR}/lib/libsilly_runtime.so -> src/runtime/libsilly_runtime.so"
 )

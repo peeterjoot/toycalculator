@@ -634,6 +634,7 @@ src/grammar/
   Each of these directories (except src/include/) now has it's own CMakeLists.txt, so you can look at the build rules for each component in isolation.  The top level makefile is now pretty minimal.
   * [tests] Move samples/ to tests/endtoend/, and parsetests/ to tests/dialect/ (adjusting cmake and scripts and docs accordingly)
   * [layout] move some old crud out of bin/ (to bin/.old for now.)
+  * [tests] Fix: testsuite leaves crap in: tests/dialect/tests/dialect/ -- it's in the gitignore, but would be better in build/
 
 ## tag: V7 (Jan 4, 2025)
 
