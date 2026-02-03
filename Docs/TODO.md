@@ -2,10 +2,12 @@
 
 ### running list of issues and ideas, randomly ordered
 ----------------------------------
-* Add a silly --driver-verbose flag to show the link command line.
-* have front-end NOT check `Prohibit NOT on non-integer type. t/c: error_notfloat.silly` -- that should also be a NOT verify() check.
 * testsuite leaves crap in: tests/dialect/tests/dialect/ -- it's in the gitignore, but would be better in build/
 
+
+
+* Add a silly --driver-verbose flag to show the link command line.
+* have front-end NOT check `Prohibit NOT on non-integer type. t/c: error_notfloat.silly` -- that should also be a NOT verify() check.
 * Would be good to add a CALL verify that checks if the function has a return, to make sure it is not used as a standalone statement without assignment.
 * lowering error handling: Review all the notifys -- emitError may be more appropriate in some places.
 * The verify functions that don't have lit tests are all marked with coverage TODOs.  Write tests for those cases.
