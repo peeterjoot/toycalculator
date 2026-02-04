@@ -36,6 +36,7 @@ namespace silly
         // '<'
         if ( parser.parseLess() )
         {
+            // TODO: no coverage -- mlir parser raises this error first.  see: bad_declare_ty_no_less.mlir
             parser.emitError( parser.getCurrentLocation(), "expected '<'" );
             return Type();
         }
@@ -44,6 +45,7 @@ namespace silly
         ::mlir::Type elementType;
         if ( parser.parseType( elementType ) )
         {
+            // coverage: bad_declare_ty_no_etype.mlir
             parser.emitError( parser.getCurrentLocation(), "Failed to parse element type" );
             return ::mlir::Type();
         }
@@ -57,12 +59,14 @@ namespace silly
             int64_t size;
             if ( parser.parseInteger( size ) )
             {
+                // coverage: bad_var_type_abc.mlir
                 parser.emitError( parser.getCurrentLocation(), "array-size must be an integer" );
                 return ::mlir::Type();
             }
 
             if ( size <= 0 )
             {
+                // coverage: bad_declare_negative_array_shape.mlir
                 parser.emitError( parser.getCurrentLocation(), "array size must be positive" );
                 return ::mlir::Type();
             }
@@ -71,6 +75,7 @@ namespace silly
 
             if ( parser.parseRSquare() )
             {
+                // coverage: bad_declare_2darray.mlir
                 parser.emitError( parser.getCurrentLocation(), "array-size must be followed immediately by ]" );
                 return ::mlir::Type();
             }
@@ -79,6 +84,7 @@ namespace silly
         // '>'
         if ( parser.parseGreater() )
         {
+            // TODO: no coverage -- mlir parser raises this error first. see: bad_declare_ty_no_gt.mlir
             parser.emitError( parser.getCurrentLocation(), "expected '>'" );
             return ::mlir::Type();
         }

@@ -68,19 +68,20 @@ namespace silly
         // Symbol name must exist and be non-empty
         if ( getSymName().empty() )
         {
-            // TODO: no coverage.
+            // coverage: bad_declare_empty_sym_name.mlir
             return emitOpError( "requires a non-empty 'sym_name' attribute of type StringAttr." );
         }
 
         // Parameter consistency
         if ( isParameter() && !getParamNumberAttr() )
         {
-            // TODO: no coverage.
+            // coverage: bad_param_no_number.mlir
             return emitOpError( "parameter declarations require a 'param_number' attribute." );
         }
+
         if ( !isParameter() && getParamNumberAttr() )
         {
-            // TODO: no coverage.
+            // coverage: bad_param_number_no_param.mlir
             return emitOpError( "non-parameter declarations cannot have a 'param_number' attribute." );
         }
 
@@ -88,7 +89,8 @@ namespace silly
         auto varType = mlir::dyn_cast<silly::varType>( getVar().getType() );
         if ( !varType )
         {
-            // TODO: no coverage.
+            // TODO: no coverage -- not sure if we can get here.  Think that the MLIR infra enforces this before the verify.
+            // See: bad_declare_not_var_return.mlir
             return emitOpError( "result must be of type !silly.var" );
         }
 
@@ -99,12 +101,12 @@ namespace silly
         {
             if ( shape.size() != 1 )
             {
-                // TODO: no coverage.
+                // TODO: no coverage -- not sure if we can get here.  See: bad_declare_2darray.mlir -- type parser raises error first
                 return emitOpError( "only 1D arrays are supported (rank must be 0 or 1)" );
             }
             if ( shape[0] <= 0 )
             {
-                // TODO: no coverage.
+                // TODO: no coverage -- see: bad_declare_negative_array_shape.mlir -- type parser raises error first.
                 return emitOpError( "array size must be a positive integer" );
             }
         }
@@ -126,7 +128,7 @@ namespace silly
         {
             if ( init.getType() != elemTy )
             {
-                // TODO: no coverage.
+                // coverage: bad_dcl_init_mismatch_types.mlir
                 return emitOpError( "initializer type " )
                        << init.getType() << " does not match variable element type " << elemTy;
             }
@@ -158,8 +160,8 @@ namespace silly
         auto func = dyn_cast_or_null<mlir::func::FuncOp>( funcOp );
         if ( !func )
         {
-            // TODO: no coverage
-            return emitOpError( "silly.scope containing this return must be inside a 'func.func'" );
+            // coverage: bad_scope_not_in_func.mlir
+            return emitOpError( "silly.scope must be inside a 'func.func'" );
         }
 
         return mlir::success();
@@ -214,15 +216,9 @@ namespace silly
             }
 
             // check that the operand type matches func return type
-            if ( getOperands().empty() )
+            if ( getOperandTypes()[0] != retTy )
             {
                 // coverage: bad_return_mismatch.mlir bad_return_string.mlir bad_return_type_mismatch_f64_i32.mlir
-                return emitOpError( "return operand type (<no operand>) does not match function return type (" )
-                       << retTy << ")";
-            }
-            else if ( getOperandTypes()[0] != retTy )
-            {
-                // TODO: no test coverage
                 return emitOpError( "return operand type (" )
                        << getOperand( 0 ).getType() << ") does not match function return type (" << retTy << ")";
             }
