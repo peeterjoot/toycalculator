@@ -1,0 +1,33 @@
+#error_array_oob_const.silly
+#error_zero_step_for.silly
+#error_nonconst_init.silly
+#error_invalid_unary.silly
+#error_invalid_bool_add.silly
+#error_intarray_bad_constaccess.silly
+#error_decl_in_elif_else.silly
+#error_decl_in_if.silly
+set(FAILURE_TESTS
+    error_arrayreturn.silly
+    error_array_too_many_init.silly
+    error_chained_comparison2.silly
+    error_chained_equality.silly
+    error_expressions4c.silly
+    error_expressions4d.silly
+    error_expressions4e.silly
+    error_induction_var_in_step.silly
+    error_init_list1.silly
+    error_init_list2.silly
+    error_invalid_binary.silly
+    error_keyword_declare2.silly
+    error_keyword_declare.silly
+    error_nested_ivar_conflict.silly
+    error_notfloat.silly
+    error_redeclare.silly
+    error_return_expr_no_return_type.silly
+    error_shadow_induction.silly
+    error_stringreturn.silly
+    error_triple_nested_for_with_shadowing.silly
+    error_undeclare.silly
+)
+
+add_endtoend_tests(EndToEnd.failure ${FAILURE_TESTS})

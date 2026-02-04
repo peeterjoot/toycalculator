@@ -300,22 +300,7 @@ tests/
 ```
 
 **NOTE**
-I've introduced two test subdirs: tests/endtoend and tests/dialect.  Perhaps split further:
-```
-tests/
-  ├── endtoend/
-  │   ├── zero-return/
-  │       ├── for/
-  │       ├── function/
-  │       ├── if/
-  │       ├── assignment/
-  │       ├── declaration/
-  │       ├── initialization/
-  │       ├── .../
-  │   ├── other-return/
-  │   ├── negative/
-  ├── dialect/
-```
+I've introduced two test subdirs: tests/endtoend/* and tests/dialect, so now there's a more coherent structure.  Could be refined further.
 
 **D) Coverage Your TODO:**
 Map every `UserError` to a test:

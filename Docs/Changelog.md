@@ -637,3 +637,4 @@ src/grammar/
 * [tests] Fix: testsuite leaves crap in: tests/dialect/tests/dialect/ -- it's in the gitignore, but would be better in build/
 * [grammar,parser,readme,tests] Get rid of DCL/DECLARE
 * [make] /build/ no longer hardcoded in bin/silly-opt and bin/testit
+* [tests] introduce a directory heirarchy for the endtoend tests.
