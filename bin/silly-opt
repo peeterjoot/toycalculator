@@ -10,7 +10,7 @@ silly-opt - Run mlir-opt against a silly-dialect file.
 
 =head1 SYNOPSIS
 
-silly-opt [--help] [--generic | --pretty] [--source myfile.mlir] [--out myout.mlir] [--verbose]
+silly-opt [--help] [--generic | --pretty] [--source myfile.mlir] [--out myout.mlir] [--verbose] [--pluginpath dir]
 
 =head1 DESCRIPTION
 
@@ -19,6 +19,10 @@ Process a silly dialect mlir file (or stdin) using mlir-opt.  By default output 
 Options:
 
 =over 4
+
+=item --pluginpath dir
+
+Path to the plugin shared object (just the directory part: .../build/lib)
 
 =item --output thefile.mlir
 
@@ -79,14 +83,16 @@ my $pretty;
 my $source;
 my $out;
 my $verbose = 0;
+my $pluginpath;
 ($myName = $0) =~ s@.*[/\\]@@ ;
 
 #Getopt::Long::Configure( 'pass_through' ) ;
 GetOptions (
    'help'               => sub { pod2usage(-verbose => 2) ; },
-   'generic!'	        => \$generic,
-   'pretty!'	        => \$pretty,
+   'generic!'	         => \$generic,
+   'pretty!'	         => \$pretty,
    'source=s'           => \$source,
+   'pluginpath=s'       => \$pluginpath,
    'out=s'              => \$out,
    'verbose!'           => \$verbose,
 ) or pod2usage(-verbose => 0) ;
@@ -96,7 +102,6 @@ die unless ( scalar(@prefix) eq 1 );
 my $prefix = $prefix[0];
 
 my $MLIROPT = "$prefix/bin/mlir-opt";
-my $TOP = `git rev-parse --show-toplevel 2>/dev/null` ; chomp $TOP ;
 
 my $opts = '';
 
@@ -122,7 +127,12 @@ if ( !defined $out )
    $out = '-';
 }
 
-my $cmd = "${MLIROPT} --load-dialect-plugin=${TOP}/build/lib/libSillyDialect.so ${opts} ${source} -o ${out}";
+if (!defined $pluginpath)
+{
+   my $TOP = `git rev-parse --show-toplevel 2>/dev/null` ; chomp $TOP ;
+   $pluginpath = "${TOP}/build/lib";
+}
+my $cmd = "${MLIROPT} --load-dialect-plugin=${pluginpath}/libSillyDialect.so ${opts} ${source} -o ${out}";
 my $rc = mysystem( $cmd );
 
 exit $rc;

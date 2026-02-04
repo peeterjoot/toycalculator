@@ -7,8 +7,6 @@
 
 ```
 bin/build
-bin/silly-opt:125:my $cmd = "${MLIROPT} --load-dialect-plugin=${TOP}/build/lib/libSillyDialect.so ${opts} ${source} -o ${out}";
-bin/testit:266:    my $cmd = qq(mkdir -p $outdir ; ${TOP}/build/bin/silly --output-directory $outdir $stem.silly $thisflags --emit-llvm --emit-mlir > ${outdir}/$stem.compile.out 2>&1);
 tests/dialect/lit.cfg.py:11:config.test_exec_root = os.path.join(config.test_source_root, "..", "..", "build", "tests", "dialect")
 tests/dialect/lit.cfg.py:15:    os.path.join(config.test_source_root, "..", "..", "build", "lit.site.cfg.py")
 ```

@@ -13,6 +13,6 @@ config.Not = "@LLVM_PREFIX@/bin/not"
 #%t	temp base
 #%T	temp dir
 
-config.substitutions.append(('%OptSilly', f'{config.silly_opt}'))
+config.substitutions.append(('%OptSilly', f'{config.silly_opt}' + " --plugin " + "@CMAKE_BINARY_DIR@" + "/lib"))
 config.substitutions.append(('%FileCheck', f'{config.FileCheck}'))
 config.substitutions.append(('%Not', f'{config.Not}'))
