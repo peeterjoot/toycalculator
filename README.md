@@ -241,7 +241,7 @@ Variable modification is likely supported but untested.
 ---
 
 There is lots of room to add further language elements to make the compiler and language more interesting.
-Some ideas for improvements (as well as bug fixes) can be found in TODO.md
+Some ideas for improvements (as well as bug fixes) can be found in the [TODO](Docs/TODO.md)
 
 ## Language Quirks and Bugs
 
@@ -252,7 +252,7 @@ No user-defined `main` function is allowed.
 `EXIT` without a numeric value is equivalent to `EXIT 0`, as is a program with no explicit `EXIT`.
 * The `RETURN` statement must be at the end of a function.
 It is currently mandatory.
-* See TODO.md for a long list of nice-to-have features that I haven't gotten around to yet, and may never.
+* See the [TODO](Docs/TODO.md) for a long list of nice-to-have features that I haven't gotten around to yet, and may never.
 * `GET` into a `BOOL` value will abort if the input value is not 0 or 1.
 This is inconsistent with assignment to a `BOOL` variable, which will truncate without raising a runtime error.
 * Variables declared in `FOR` or `IF` conditions persist past the block that declared them, as if they were declared in the enclosing scope of the function.
@@ -277,15 +277,15 @@ Array `BOOL` values may use a packed bitmask representation in the future.
 
 ## Interesting Files
 
-* `src/grammar/Silly.g4` — The ANTLR4 grammar
-* `src/dialect/silly.td` — MLIR dialect definition: the compiler's internal view of all grammar elements
-* `src/driver/driver.cpp` — Compiler driver: handles command-line options, opens output files, and orchestrates all lower-level actions (parse tree walk + MLIR builder, lowering to LLVM IR, assembly printing, and linker invocation)
-* `src/driver/parser.cpp` — ANTLR4 parse tree walker and MLIR builder
-* `src/driver/lowering.cpp` — LLVM IR lowering classes
-* `tests/endtoend/*.silly` and `bin/testit` — Sample programs and a rudimentary regression test suite
-* `bin/build`, — Build script: `build` runs CMake and Ninja (sets compiler overrides if required)
-* `bin/silly-opt` — Wrapper for mlir-opt that loads the silly dialect shared object
-* `tests/dialect/*.mlir` — Silly dialect-level error checking for verify functions
+* The [ANTLR4 grammar](src/grammar/Silly.g4) for the silly language.
+* Tablegen definition for the [silly MLIR dialect](src/dialect/silly.td).  This is the compiler's internal view of all grammar elements.
+* The [Compiler driver](src/driver/driver.cpp).  This parses and handles command-line options, opens output files, and orchestrates all lower-level actions (parse tree walk + MLIR builder, lowering to LLVM IR, assembly printing, and linker invocation.)
+* The [ANTLR4 parse tree walker and MLIR builder](src/driver/parser.cpp).
+* The [LLVM IR lowering classes](src/driver/lowering.cpp) used to transform silly dialect operators to LLVM-IR.
+* Sample programs in `tests/endtoend/` and a [test driver](bin/testit).  These serve as samples and test cases, and most of these are run as part of the ctest suite.
+* A [build script](bin/build) that runs both cmake and ninja, setting various options.
+* A [mlir-opt wrapper](bin/silly-opt), that loads the silly dialect shared object
+* A set of silly dialect lit tests (`tests/dialect/`) that are used to unit test the dialect verify functions.
 
 ## Command Line Options
 
@@ -827,3 +827,15 @@ Single-line comments begin with `//` and extend to the end of the line.
 - Explicit program termination (`EXIT`, `ABORT`)
 
 ---
+
+# Changelogs
+
+* [V8](Docs/Changelog.md) This is the current working version, not yet tagged.
+* [V7](Docs/Changelog.V7.md) (Jan 4, 2025)
+* [V6](Docs/Changelog.V6.md) (Dec 28, 2025)
+* [V5](Docs/Changelog.V5.md) (Dec 22, 2025)
+* [V4](Docs/Changelog.V4.md) (July 7, 2025)
+* [V3](Docs/Changelog.V3.md) (Jun 2, 2025)
+* [V2](Docs/Changelog.V2.md) (May 25, 2025)
+* [V1](Docs/Changelog.V1.md) (May 17, 2025)
+* [V0](Docs/Changelog.V0.md) (May 4, 2025)

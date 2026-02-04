@@ -1,5 +1,5 @@
 /**
- * @file    prototypes/simplest.cpp
+ * @file    simplest.cpp
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   Standalone MLIR -> LLVM-IR generation program with DWARF instrumentation.
  *

@@ -1,5 +1,5 @@
 /**
- * @file    prototypes/mlirtest.cpp
+ * @file    mlirtest.cpp
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   This is a standalone MLIR -> LLVM-IR generation program, with working DWARF instrumentation, but done wrong.
  *
