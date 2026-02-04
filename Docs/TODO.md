@@ -3,6 +3,7 @@
 ### running list of issues and ideas, randomly ordered
 ----------------------------------
 
+* Forward declarations for functions
 * [make] /build/ is hardcoded in these places:
 
 ```
