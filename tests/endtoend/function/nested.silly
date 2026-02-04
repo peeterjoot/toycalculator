@@ -1,0 +1,19 @@
+FUNCTION foo( INT32 v ) : INT32
+{
+    INT32 r = 1 + v;
+
+    FUNCTION bar( INT32 v )
+    {
+        PRINT "bar's v = ", v;
+
+        RETURN;
+    };
+
+    CALL bar( r );
+
+    RETURN r;
+};
+
+INT32 x = CALL foo( 3 );
+
+PRINT "foo's return = ", x;

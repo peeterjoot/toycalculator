@@ -3,7 +3,11 @@
 ### running list of issues and ideas, randomly ordered
 ----------------------------------
 
-* Forward declarations for functions
+* Don't like the loc printout in UserError error messages.  Also shouldn't print the ctx, but use the location of the ctx to print out the actual line of source, and highlight the column where the error is.
+* Have an effective lexical scope for loop variables, but am emitting DI for them at a function scope.  This will probably do something weird if a loop variable is used in multiple loops.
+* Grammar allows for function declared in a function -- but variable scoping doesn't work. See: nested.silly -- could fix, or could work around by prohibiting this.
+* Forward declarations for functions?
+* Allow: `INT64 a = 1, b = 2, c = 3;` (`chained_comparison_parens.silly`)?, or `INT64 a{1}, b{2}, c{3};`
 * [make] /build/ is hardcoded in these places:
 
 ```
@@ -16,11 +20,11 @@ tests/dialect/lit.cfg.py:15:    os.path.join(config.test_source_root, "..", ".."
 
 * Would be good to add a CALL verify that checks if the function has a return, to make sure it is not used as a standalone statement without assignment.
 * lowering error handling: Review all the notifys -- emitError may be more appropriate in some places.
-* The verify functions that don't have lit tests are all marked with coverage TODOs.  Write tests for those cases.
 * `div_zero_int` -- different results on intel vs. arm.
 * `negative_step_for.silly` -- would be better to put in a (perhaps optional) runtime check for negative or zero step sizes in FOR statements.  test case for the zero step condition: `zero_step_for.silly` -- not included in automation, as it infinite loops (would be better if it did not.)
-* Don't like the loc printout in UserError error messages.  Also shouldn't print the ctx, but use the location of the ctx to print out the actual line of source, and highlight the column where the error is.
 * `error_invalid_unary` -- regression by tweaking the test. was triggering on y undeclared, not on the parse error -- which doesn't actually drive a compile error!
+* Forgetting RETURN in `array_elem_as_arg.silly` has a very confusing error.
+* Need a sema pass: For example, initializer-list shouldn't reference variables, only constant-expressions, or expressions with parameters.  t/c for this: `error_nonconst_init.silly`
 * Need tests for debug capability.  For example, new induction variable support (t/c: `for_simplest.silly` -- only tested manually.)  Start with at least generalizing the test hacks in testit.  Example addition, also check for:
 
 ```
@@ -63,12 +67,6 @@ tests/dialect/lit.cfg.py:15:    os.path.join(config.test_source_root, "..", ".."
 
   (see that we have two hits to PRINT and the assignment before the breakpoint hits again.)
 
-* Allow: INT64 a = 1, b = 2, c = 3; (`chained_comparison_parens.silly`).
-* Forgetting RETURN in `array_elem_as_arg.silly` has a very confusing error.
-* Grammar probably allows for function declared in a function.  prohibit that or at least test for it?
-* Need a sema pass: For example, initializer-list shouldn't reference variables, only constant-expressions, or expressions with parameters.  t/c for this: `error_nonconst_init.silly`
-* Have an effective lexical scope for loop variables, but am emitting DI for them at a function scope.  This will probably do something weird if a loop variable is used in multiple loops.
-* add install/packaging rules (e.g. install(TARGETS silly ...)).  Can probably remove build/{bin,lib} symlink rules if that's done.
 
 ----------------------------------
 ### Bugs
@@ -117,7 +115,7 @@ tests/dialect/lit.cfg.py:15:    os.path.join(config.test_source_root, "..", ".."
 ```
 
   Grok suggests suppressing all real location information for the geps and other variable references that are probably bouncing the lines around (or reworking the runtime so there isn't multiple print function calls.)  I've since eliminated the multiple print calls,
-  but still have this issue in arrayprod.  Using unknownLoc for the print args doesn't help -- tried as an experiment.
+  but still have this issue in arrayprod.  Using unknownLoc for the print args doesn't help -- tried as an experiment.  What's probably required is a fusedLoc for all elements that contribute to a multiple instruction sequence that's tied to a single line (always do that, or perhaps just for PRINT?)
 
 ```
   %8 = bitcast ptr %1 to ptr, !dbg !24
