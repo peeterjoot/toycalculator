@@ -90,8 +90,7 @@ add_custom_command(TARGET SillyDialect POST_BUILD
 if(SILLY_ENABLE_INSTALL)
     # Set RPATH for installed binary
     set_target_properties(SillyDialect PROPERTIES
-        INSTALL_RPATH "$LLVM_PREFIX/lib64"
-        INSTALL_RPATH_USE_LINK_PATH FALSE
+        INSTALL_RPATH "${LLVM_PREFIX}/lib64"
     )
 
     install(TARGETS SillyDialect

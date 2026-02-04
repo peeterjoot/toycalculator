@@ -23,8 +23,7 @@ add_executable(silly
 if(SILLY_ENABLE_INSTALL)
     # Set RPATH for installed binary
     set_target_properties(silly PROPERTIES
-        INSTALL_RPATH "$ORIGIN/../lib:$LLVM_PREFIX/lib64"
-        INSTALL_RPATH_USE_LINK_PATH FALSE
+        INSTALL_RPATH "$ORIGIN/../lib;${LLVM_PREFIX}/lib64"
     )
 
     install(TARGETS silly

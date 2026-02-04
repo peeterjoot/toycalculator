@@ -1,6 +1,6 @@
 # Changelog: V8 Release (WIP)
 
-(These notes are up to and including 7b5575fff66dc516b7081a7fe97ed20069d1e663)
+(These notes are up to and including a536346e48e77b6a379eb53318e7a297a6acf844)
 
 ## Major Features
 
@@ -194,6 +194,10 @@ build/
 **Command-Line Options**
 - `--verbose-link`: Show linker command (implicit on failure)
 - Existing options maintained and documented
+
+### Install configuration
+- Added cmake `SILLY_ENABLE_INSTALL` rules (bin/build configures the install path to
+  /opt/silly/)
 
 ## Grammar & Parser Changes
 

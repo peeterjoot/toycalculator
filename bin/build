@@ -110,8 +110,8 @@ if ( $hack )
    $flags .= '-DHACK_BUILDER=1 ';
 }
 
-#$flags .= '-DSILLY_ENABLE_INSTALL=ON ';
-#$flags .= '-DCMAKE_INSTALL_PREFIX=/opt/silly ';
+$flags .= '-DSILLY_ENABLE_INSTALL=ON ';
+$flags .= '-DCMAKE_INSTALL_PREFIX=/opt/silly ';
 
 if ( $dobuild ) {
    mysystem(qq(
