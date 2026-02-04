@@ -639,3 +639,4 @@ src/grammar/
 * [make] /build/ no longer hardcoded in bin/silly-opt and bin/testit
 * [tests] introduce a directory heirarchy for the endtoend tests.
 * [tests] fill in some of the verify() testing coverage holes.
+* [dialect, builder, lowering] Removed the DeclareOp parameter field.  Already have a `param_number`, which also implies param.

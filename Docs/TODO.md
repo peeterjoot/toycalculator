@@ -3,7 +3,6 @@
 ### running list of issues and ideas, randomly ordered
 ----------------------------------
 
-* Why does DeclareOp have both a `param_number` and param field.  can't `param_number` imply param?
 * [make] /build/ is hardcoded in these places:
 
 ```

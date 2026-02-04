@@ -54,13 +54,12 @@ def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
   let summary = "Declare an abstract variable location (scalar or array).";
   let description = [{
     Declares a variable (scalar or array) or function parameter with a name and type.
-    For parameters, the `parameter` attribute is set, and `param_number` indicates the parameter index.
+    For parameters, `param_number` indicates the parameter index.
     The result is an abstract handle (!silly.var) to the variable's location, storage-agnostic.
     Initializers are provided as operands; for arrays, excess initializers are an error.
   }];
   let arguments = (ins
     Variadic<AnyType>:$initializers,
-    OptionalAttr<UnitAttr>:$parameter,
     OptionalAttr<I64Attr>:$param_number,
     StrAttr:$sym_name
   );
@@ -68,10 +67,6 @@ def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
   let traits = [Symbol];
 
   let hasVerifier = 1;
-
-  let extraClassDeclaration = [{
-    bool isParameter() { return getParameterAttr() != nullptr; }
-  }];
 }
 
 def Silly_IntOrFloat : TypeConstraint<

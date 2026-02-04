@@ -1259,10 +1259,10 @@ namespace silly
         {
             silly::DeclareOp declareOp = cast<silly::DeclareOp>( op );
             mlir::Location loc = declareOp.getLoc();
-            bool param = declareOp.isParameter();
+            mlir::IntegerAttr paramNumberAttr = declareOp.getParamNumberAttr();
 
             //   silly.declare "x" : i32
-            LLVM_DEBUG( llvm::dbgs() << std::format( "Lowering silly.declare: param: {}", param ) << declareOp
+            LLVM_DEBUG( llvm::dbgs() << "Lowering silly.declare: " << declareOp
                                      << '\n' );
 
             rewriter.setInsertionPoint( op );
@@ -1271,13 +1271,8 @@ namespace silly
             silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
             mlir::Type elemType = varTy.getElementType();
 
-            if ( param )
+            if ( paramNumberAttr )
             {
-                mlir::IntegerAttr paramNumberAttr = declareOp.getParamNumberAttr();
-                if ( !paramNumberAttr )
-                {
-                    return rewriter.notifyMatchFailure( op, "Parameter missing param_number attribute" );
-                }
                 int64_t paramIndex = paramNumberAttr.getInt();
                 mlir::func::FuncOp funcOp = op->getParentOfType<mlir::func::FuncOp>();
                 if ( paramIndex >= funcOp.getNumArguments() )

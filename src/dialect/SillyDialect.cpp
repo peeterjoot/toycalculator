@@ -72,19 +72,6 @@ namespace silly
             return emitOpError( "requires a non-empty 'sym_name' attribute of type StringAttr." );
         }
 
-        // Parameter consistency
-        if ( isParameter() && !getParamNumberAttr() )
-        {
-            // coverage: bad_param_no_number.mlir
-            return emitOpError( "parameter declarations require a 'param_number' attribute." );
-        }
-
-        if ( !isParameter() && getParamNumberAttr() )
-        {
-            // coverage: bad_param_number_no_param.mlir
-            return emitOpError( "non-parameter declarations cannot have a 'param_number' attribute." );
-        }
-
         // Result type must be !silly.var<...>
         auto varType = mlir::dyn_cast<silly::varType>( getVar().getType() );
         if ( !varType )
