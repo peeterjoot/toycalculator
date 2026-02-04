@@ -261,6 +261,7 @@ namespace silly
         mlir::Operation *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
         if ( symbolOp )
         {
+            // coverage: error_redeclare.silly
             throw UserError( loc, std::format( "Variable {} already declared", varName ) );
         }
 
@@ -316,6 +317,7 @@ namespace silly
 
             if ( initializers.size() > numElements )
             {
+                // coverage: error_array_too_many_init.silly, error_init_list1.silly, error_init_list2.silly
                 throw UserError(
                     loc,
                     std::format( "For variable '{}', more initializers ({}) specified than number of elements ({}).\n",
@@ -417,14 +419,12 @@ namespace silly
         mlir::Operation *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
         if ( !symbolOp )
         {
+            // coverage: error_induction_var_in_step.silly
             throw UserError( loc, std::format( "Undeclared variable {} (symbol lookup failed.)", varName ) );
         }
 
         silly::DeclareOp declareOp = mlir::dyn_cast<silly::DeclareOp>( symbolOp );
-        if ( !declareOp )
-        {
-            throw UserError( loc, std::format( "Undeclared variable {} (DeclareOp not found)", varName ) );
-        }
+        assert( declareOp ); // not sure I could trigger NULL declareOp with user code.
 
         return declareOp;
     }
@@ -575,6 +575,7 @@ namespace silly
         {
             if ( !returnType )
             {
+                // coverage: error_return_expr_no_return_type.silly
                 throw UserError( loc, std::format( "return expression found '{}', but no return type for function {}",
                                                    expression->getText(), currentFuncName ) );
             }
@@ -745,6 +746,7 @@ namespace silly
         {
             if ( declareAssignmentExpression )
             {
+                // TODO: no coverage.
                 throw UserError(
                     loc,
                     std::format(
@@ -981,6 +983,7 @@ namespace silly
 
         if ( isVariableDeclared( loc, varName ) )
         {
+            // coverage: error_shadow_induction.silly
             throw UserError( loc, std::format( "Induction variable {} clashes with declared variable in: {}\n", varName,
                                                ctx->getText() ) );
         }
@@ -988,6 +991,7 @@ namespace silly
         mlir::Value p = searchForInduction( varName );
         if ( p )
         {
+            // coverage: error_triple_nested_for_with_shadowing.silly error_nested_ivar_conflict.silly
             throw UserError(
                 loc, std::format( "Induction variable {} used by enclosing FOR: {}\n", varName, ctx->getText() ) );
         }
@@ -1138,6 +1142,7 @@ namespace silly
             }
             else if ( !shape.empty() )
             {
+                // TODO: no coverage.
                 throw UserError( loc, std::format( "Attempted GET to string literal or array?: {}", ctx->getText() ) );
             }
             else
@@ -1342,6 +1347,7 @@ namespace silly
 
         if ( !isVariableDeclared( loc, currentVarName ) )
         {
+            // coverage: error_undeclare.silly
             throw UserError( loc, std::format( "Attempt to assign to undeclared variable: {}\n", ctx->getText() ) );
         }
 
@@ -1712,6 +1718,7 @@ namespace silly
             {
                 if ( !value.getType().isInteger() )
                 {
+                    // coverage: error_notfloat.silly
                     throw UserError( loc, std::format( "NOT on non-integer type: {}\n", ctx->getText() ) );
                 }
 

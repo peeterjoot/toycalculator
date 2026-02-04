@@ -375,6 +375,7 @@ tests/
 - `--driverpath` for flexible cmake build directory configuration
 - Better integration with CTest
 - DWARF validation with `dwarfdump`
+- Remove all the test lists (success and failure cases) -- moved to ctest.
 
 ### Build Scripts
 

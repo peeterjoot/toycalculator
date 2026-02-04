@@ -152,38 +152,15 @@ my %tests = map { $_ => 1 } (qw(
 ));
 #error_nonconst_init -- want this to be a compile error, but it isn't yet.
 
-my %failuretests = map {$_ => 1} (qw(
-error_arrayreturn
-error_array_too_many_init
-error_chained_comparison2
-error_chained_equality
-error_expressions4c
-error_expressions4d
-error_expressions4e
-error_induction_var_in_step
-error_init_list1
-error_init_list2
-error_invalid_binary
-error_keyword_declare
-error_keyword_declare2
-error_nested_ivar_conflict
-error_notfloat
-error_redeclare
-error_return_expr_no_return_type
-error_shadow_induction
-error_stringreturn
-error_triple_nested_for_with_shadowing
-error_undeclare
-));
 #error_zero_step_for -- infinite loops.  would be better to have runtime check for that and abort.
 #error_invalid_unary -- regression. was triggering on y undeclared, not on the parse error -- which doesn't actually drive a compile error!
 #error_intarray_bad_constaccess
 #error_array_oob_const -- dup?
 #error_decl_in_if -- probably want this to fail (like scopebug)
 #error_decl_in_elif_else -- probably also want this to fail too.
-
 my %expected_compile_error_message =
 (
+  'error_get_string' => q(error: Attempted GET to string literal or array),
   'error_induction_var_in_step' => q(error: Undeclared variable i (symbol lookup failed.)),
   'error_triple_nested_for_with_shadowing' => q(error: Induction variable i used by enclosing FOR:),
   'error_shadow_induction' => q(error: Induction variable i clashes with declared variable in:),
@@ -277,7 +254,7 @@ sub runone
     my $cmd = qq(mkdir -p $outdir ; ${driverpath}/silly --output-directory $outdir $stem.silly $thisflags --emit-llvm --emit-mlir > ${outdir}/$stem.compile.out 2>&1);
     my $crc = verbose_system( $cmd );
     system("cat ${outdir}/$stem.compile.out");
-    if ( defined $failuretests{$stem} )
+    if ( defined $expected_compile_error_message{$stem})
     {
         if ($crc)
         {

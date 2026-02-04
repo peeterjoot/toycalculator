@@ -18,7 +18,6 @@ tests/dialect/lit.cfg.py:15:    os.path.join(config.test_source_root, "..", ".."
 * lowering error handling: Review all the notifys -- emitError may be more appropriate in some places.
 * The verify functions that don't have lit tests are all marked with coverage TODOs.  Write tests for those cases.
 * `div_zero_int` -- different results on intel vs. arm.
-* no test for error: "Attempted GET to string literal".  Audit all the UserError's and make sure that all have tests.
 * `negative_step_for.silly` -- would be better to put in a (perhaps optional) runtime check for negative or zero step sizes in FOR statements.  test case for the zero step condition: `zero_step_for.silly` -- not included in automation, as it infinite loops (would be better if it did not.)
 * Don't like the loc printout in UserError error messages.  Also shouldn't print the ctx, but use the location of the ctx to print out the actual line of source, and highlight the column where the error is.
 * `error_invalid_unary` -- regression by tweaking the test. was triggering on y undeclared, not on the parse error -- which doesn't actually drive a compile error!
