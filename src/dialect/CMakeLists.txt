@@ -86,3 +86,16 @@ add_custom_command(TARGET SillyDialect POST_BUILD
         ${CMAKE_BINARY_DIR}/lib/libSillyDialect.so
     COMMENT "Creating symlink: ${CMAKE_BINARY_DIR}/lib/libSillyDialect.so -> src/dialect/libSillyDialect.so"
 )
+
+if(SILLY_ENABLE_INSTALL)
+    # Set RPATH for installed binary
+    set_target_properties(SillyDialect PROPERTIES
+        INSTALL_RPATH "$LLVM_PREFIX/lib64"
+        INSTALL_RPATH_USE_LINK_PATH FALSE
+    )
+
+    install(TARGETS SillyDialect
+        LIBRARY DESTINATION lib
+        NAMELINK_SKIP
+    )
+endif()

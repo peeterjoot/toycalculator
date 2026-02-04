@@ -20,6 +20,18 @@ add_executable(silly
   ${ANTLR_SOURCES}
 )
 
+if(SILLY_ENABLE_INSTALL)
+    # Set RPATH for installed binary
+    set_target_properties(silly PROPERTIES
+        INSTALL_RPATH "$ORIGIN/../lib:$LLVM_PREFIX/lib64"
+        INSTALL_RPATH_USE_LINK_PATH FALSE
+    )
+
+    install(TARGETS silly
+        RUNTIME DESTINATION bin
+    )
+endif()
+
 # Include the output directory for header files
 target_include_directories(silly PRIVATE ${ANTLR_OUTPUT_DIR})
 
@@ -66,8 +78,6 @@ target_link_libraries(silly
   MLIRSCFToControlFlow
 )
 
-# At the end of src/driver/CMakeLists.txt, after add_executable(silly ...)
-
 # Create bin directory and symlink
 add_custom_command(TARGET silly POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin
@@ -76,3 +86,4 @@ add_custom_command(TARGET silly POST_BUILD
         ${CMAKE_BINARY_DIR}/bin/silly
     COMMENT "Creating symlink: ${CMAKE_BINARY_DIR}/bin/silly -> ${CMAKE_CURRENT_BINARY_DIR}/silly"
 )
+
