@@ -631,6 +631,16 @@ namespace silly
                                          formatLocation( locs.first ), formatLocation( locs.second ) );
         } );
 
+        if ( currentFuncName != ENTRY_SYMBOL_NAME )
+        {
+            // coverage: error_nested.silly
+            //
+            // To support this, exitFor would have to pop an insertion point and current-function-name,
+            // and we'd have to push an insertion-point/function-name instead of just assuming that
+            // we started in main and will return to there.
+            throw UserError( locs.first, std::format( "Nested functions are not currently supported." ) );
+        }
+
         mainIP = builder.saveInsertionPoint();
 
         builder.setInsertionPointToStart( mod.getBody() );

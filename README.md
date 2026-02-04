@@ -723,6 +723,7 @@ FUNCTION void(INT32 a, INT32 b) {
 - Parameters and return types must be scalar types
 - A `RETURN` statement is required and must be the last statement
 - Recursion is supported
+- Nested functions are not currently supported
 
 ---
 

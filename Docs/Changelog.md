@@ -234,6 +234,7 @@ build/
   - `parseFloat()`
 - Consistent parameter ordering: `loc` first in most functions
 - Doxygen comments for private functions
+- Prohibit nested functions.  t/c: `error_nested.silly`.
 
 **State Management**
 - Removed: `currentAssignLoc`, `callIsHandled`, `assignmentTargetValid`

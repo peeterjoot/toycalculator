@@ -160,6 +160,7 @@ my %tests = map { $_ => 1 } (qw(
 #error_decl_in_elif_else -- probably also want this to fail too.
 my %expected_compile_error_message =
 (
+  'error_nested' => q(error: Nested functions are not currently supported.),
   'error_get_string' => q(error: Attempted GET to string literal or array),
   'error_induction_var_in_step' => q(error: Undeclared variable i (symbol lookup failed.)),
   'error_triple_nested_for_with_shadowing' => q(error: Induction variable i used by enclosing FOR:),
@@ -271,7 +272,7 @@ sub runone
             die "Expected failure running $stem.silly";
         }
 
-        next;
+        return;
     }
 
     verbose_system( qq(objdump -dr --no-show-raw-insn ${outdir}/${stem}.o > ${outdir}/${stem}.s) );

@@ -21,6 +21,7 @@ set(FAILURE_TESTS
     error_keyword_declare2.silly
     error_keyword_declare.silly
     error_nested_ivar_conflict.silly
+    error_nested.silly
     error_notfloat.silly
     error_redeclare.silly
     error_return_expr_no_return_type.silly
