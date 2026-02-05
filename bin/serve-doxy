@@ -1,0 +1,13 @@
+
+cd `git rev-parse --show-toplevel`/Docs/doxygen/html
+tnd # tmux rename-window silly-doxygen
+python3 -m http.server 8000
+
+
+# then from mac:
+# ssh -A -L 8000:localhost:8000 fedoravm
+#
+# and access from browser with:
+#
+# http://localhost:8000/
+#

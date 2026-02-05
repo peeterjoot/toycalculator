@@ -384,7 +384,7 @@ Any 21.1.* version after that will probably work as well.
 build
 ```
 
-The build script currently assumes that I'm the one building it, and is likely not sufficiently general for other people to use. It will surely break as I upgrade the systems I build on.
+The build script (which also runs cscope, doxygen and ctags by default), currently assumes that I'm the one building it, and is likely not sufficiently general for other people to use. It will surely break as I upgrade the systems I build on.
 
 Linux-only is assumed.
 

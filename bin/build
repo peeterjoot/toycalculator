@@ -10,7 +10,11 @@ build - delete and recreate the build directory, run the cmake ninja generator a
 
 =head1 SYNOPSIS
 
-build [--help] [--serial] [--[no-]cscope] [--[no-]build] [--hack] [--no-ccache]
+build [--help] [--serial]
+[--[no-]cscope]
+[--[no-]ctags]
+[--[no-]doxygen]
+[--[no-]build] [--hack] [--no-ccache]
 
 =head1 DESCRIPTION
 
@@ -46,7 +50,9 @@ select STDERR ; $| = 1 ;
 select STDOUT ; $| = 1 ;
 
 my $myName = '' ;
-my $doscope = 0;
+my $docscope = 1;
+my $doctags = 1;
+my $dodoxygen = 1;
 my $dobuild = 1;
 my $serial = 0;
 my $hack = 0;
@@ -56,11 +62,13 @@ my $ccache = 1;
 #Getopt::Long::Configure( 'pass_through' ) ;
 GetOptions (
    'help'               => sub { pod2usage(-verbose => 2) ; },
-   'cscope!'		      => \$doscope,
-   'build!'		         => \$dobuild,
-   'serial!'	         => \$serial,
-   'hack!'	            => \$hack,
-   'ccache!'	         => \$ccache,
+   'cscope!'            => \$docscope,
+   'ctags!'             => \$doctags,
+   'doxygen!'           => \$dodoxygen,
+   'build!'             => \$dobuild,
+   'serial!'            => \$serial,
+   'hack!'              => \$hack,
+   'ccache!'            => \$ccache,
 ) or pod2usage(-verbose => 0) ;
 
 # Didn't pick consistent install prefixes for my mlir builds (WSL2/Ubuntu, and Fedora-42)... find it:
@@ -129,8 +137,16 @@ tail o
 ));
 }
 
-if ( $doscope ) {
+if ( $docscope ) {
    mysystem( "my_scope --build --searchdir $prefix --verbose --index inc" );
+}
+
+if ( $doctags ) {
+   mysystem( "ctags" );
+}
+
+if ( $dodoxygen ) {
+   mysystem( "doxygen" );
 }
 
 exit 0;
