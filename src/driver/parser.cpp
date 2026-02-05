@@ -511,14 +511,14 @@ namespace silly
         {
             mlir::Location loc = getTokenLocation( offendingSymbol );
 
-            emitUserError( loc, std::format( "Unrecoverable parse error: {}", msg ), currentFuncName,
+            emitUserError( loc, std::format( "parse error: {}", msg ), currentFuncName,
                            driverState.filename, false );
         }
         else
         {
             mlir::Location loc = builder.getUnknownLoc();
             emitUserError( loc,
-                           std::format( "{}:{}:{}: Unrecoverable parse error in {}:{}:{}: {}", __FILE__, __LINE__,
+                           std::format( "{}:{}:{}: parse error in {}:{}:{}: {}", __FILE__, __LINE__,
                                         __func__, driverState.filename, line, charPositionInLine, msg ),
                            currentFuncName, driverState.filename, true );
         }
