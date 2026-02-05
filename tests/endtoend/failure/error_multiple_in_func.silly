@@ -1,0 +1,11 @@
+FUNCTION moo( INT32 v ) : INT32
+{
+    INT32 r = 1 + v;
+
+    INT32 y = x;
+    INT32 z = w;
+
+    RETURN r;
+};
+
+

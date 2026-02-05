@@ -136,7 +136,8 @@ namespace silly
         void createDICompileUnit();
 
         /// Emits debug metadata for a function if debugging is enabled.
-        void createPerFuncState( mlir::func::FuncOp funcOp );
+        /// @retval true if error
+        bool createPerFuncState( mlir::func::FuncOp funcOp );
 
         /// Associates an AllocaOp with a local variable name in the current function.
         void createLocalSymbolReference( mlir::LLVM::AllocaOp allocaOp, const std::string& varName );

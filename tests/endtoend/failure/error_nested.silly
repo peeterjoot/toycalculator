@@ -9,6 +9,7 @@ FUNCTION foo( INT32 v ) : INT32
         RETURN;
     };
 
+    INT32 y = x;
     CALL bar( r );
 
     RETURN r;

@@ -235,6 +235,8 @@ build/
 - Consistent parameter ordering: `loc` first in most functions
 - Doxygen comments for private functions
 - Prohibit nested functions.  t/c: `error_nested.silly`.
+- Error handling and error message printing completely overhauled.  There's no
+  more use of exception handling classes.
 
 **State Management**
 - Removed: `currentAssignLoc`, `callIsHandled`, `assignmentTargetValid`

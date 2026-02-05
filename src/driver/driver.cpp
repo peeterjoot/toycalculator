@@ -35,9 +35,9 @@
 
 #include <format>
 #include <fstream>
+#include <exception>
 
 #include "SillyDialect.hpp"
-#include "SillyExceptions.hpp"
 #include "SillyLexer.h"
 #include "SillyPasses.hpp"
 #include "driver.hpp"
@@ -45,6 +45,34 @@
 #include "parser.hpp"
 
 #define DEBUG_TYPE "silly-driver"
+
+// FIXME: phase this out
+namespace silly
+{
+    /// An exception class for internal errors that builds a file:line:func triplet along with the reason.
+    class ExceptionWithContext : public std::exception
+    {
+       public:
+        /// Example usage:
+        ///
+        /// ```
+        /// throw ExceptionWithContext(__FILE__, __LINE__, __func__, "Blah blah blah");
+        /// ```
+        ExceptionWithContext( const char* file, int line, const char* func, const std::string& imessage )
+        {
+            message = std::format( "{}:{}:{}: {}", file, line, func, imessage );
+        }
+
+        /// Fetch the message text from the throw point.
+        const char* what() const noexcept override
+        {
+            return message.c_str();
+        }
+
+       private:
+        std::string message;
+    };
+}    // namespace silly
 
 // Define a category for silly compiler options
 static llvm::cl::OptionCategory SillyCategory( "Silly Compiler Options" );

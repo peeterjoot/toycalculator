@@ -32,7 +32,6 @@
 #include <format>
 #include <numeric>
 
-#include "SillyExceptions.hpp"
 #include "lowering.hpp"
 #include "loweringContext.hpp"
 
@@ -402,7 +401,7 @@ namespace silly
         return mlir::LLVM::DISubroutineTypeAttr::get( context, llvm::DINode::FlagZero, paramTypes );
     }
 
-    void LoweringContext::createPerFuncState( mlir::func::FuncOp funcOp )
+    bool LoweringContext::createPerFuncState( mlir::func::FuncOp funcOp )
     {
         size_t maxPrintArgs = 0;
         std::string funcName;
@@ -470,6 +469,11 @@ namespace silly
             mlir::Location loc = builder.getUnknownLoc();
 
             silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
+            if (!scopeOp)
+            {
+                return true;
+            }
+
             mlir::Block* scopeBlock = &scopeOp.getBody().front();
 
             builder.setInsertionPointToStart( scopeBlock );
@@ -480,6 +484,8 @@ namespace silly
 
             builder.restoreInsertionPoint( savedIP );
         }
+
+        return false;
     }
 
     mlir::LLVM::AllocaOp LoweringContext::getPrintArgs( const std::string& funcName )
@@ -2280,7 +2286,14 @@ namespace silly
                     llvm::dbgs() << "Generating !DISubroutineType() for mlir::func::FuncOp: " << funcOp.getSymName()
                                  << "\n";
                 } );
-                lState.createPerFuncState( funcOp );
+
+                bool error = lState.createPerFuncState( funcOp );
+                if ( error )
+                {
+                    LLVM_DEBUG( llvm::dbgs() << "!DISubroutineType() creation for " << funcOp.getSymName() << " failed" );
+                    signalPassFailure();
+                    return;
+                }
             }
 
             LLVM_DEBUG( {

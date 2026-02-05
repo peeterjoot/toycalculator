@@ -23,7 +23,6 @@
 
 #include "SillyBaseListener.h"
 #include "SillyDialect.hpp"
-#include "SillyExceptions.hpp"
 #include "driver.hpp"
 #include "printflags.hpp"
 
@@ -34,37 +33,6 @@ namespace silly
 
     /// Formats location for error messages.
     inline std::string formatLocation( mlir::Location loc );
-
-    /// Surface a user error.
-    class UserError : public std::exception
-    {
-       public:
-        UserError( mlir::Location iloc, const std::string &ifunction, const std::string &imessage )
-            : loc{ iloc }, functionName{ ifunction }, message{ imessage }
-        {
-        }
-
-        /// Fetch the message text from the throw point.
-        const char *what() const noexcept override
-        {
-            return message.c_str();
-        }
-
-        mlir::Location getLocation() const
-        {
-            return loc;
-        }
-
-        const std::string & function() const
-        {
-            return functionName;
-        }
-
-       private:
-        mlir::Location loc;
-        std::string functionName;
-        std::string message;
-    };
 
     /// Context for MLIR dialect registration.
     class DialectCtx
@@ -179,7 +147,7 @@ namespace silly
         std::vector<std::pair<std::string, mlir::Value>> inductionVariables;
 
         /// Syntax errors detected.
-        bool hasErrors{};
+        int errorCount{};
 
         // convenience types, so that get calls aren't needed all over the place
 
@@ -219,6 +187,12 @@ namespace silly
         ///
         ////////////////////////////////////////////////////////////////////////
 
+        /// Emit a user-friendly error message in GCC/Clang style
+        ///
+        /// errorCount is incremented as a side effect.
+        void emitUserError( mlir::Location loc, const std::string& message, const std::string& funcName,
+                            const std::string& sourceFile, bool internal );
+
         void enterDeclareHelper( mlir::Location loc, tNode *identifier,
                                  SillyParser::DeclareAssignmentExpressionContext *declareAssignmentExpression,
                                  const std::vector<SillyParser::ExpressionContext *> &expressions, tNode *hasInitList,
@@ -243,8 +217,8 @@ namespace silly
 
         inline mlir::Location getTerminalLocation( antlr4::tree::TerminalNode *node );
 
-        /// Strip double quotes off of a string.
-        inline std::string stripQuotes( mlir::Location loc, const std::string &input ) const;
+        /// Strip double quotes off of a string, and build a string literal op for it
+        silly::StringLiteralOp buildStringLiteral( mlir::Location loc, const std::string &input );
 
         /// Creates a silly::ScopeOp and initializes function state.
         void createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp func,
@@ -264,7 +238,7 @@ namespace silly
                                   const std::vector<SillyParser::ExpressionContext *> *expressions );
 
         /// Return true if the variable is declared
-        bool isVariableDeclared( mlir::Location loc, const std::string &varName );
+        bool isVariableDeclared( mlir::Location loc, const std::string &varName, bool & error );
 
         /// Construct a Value for a TRUE or FALSE boolean literal string
         inline mlir::Value parseBoolean( mlir::Location loc, const std::string &s );
@@ -394,7 +368,7 @@ namespace silly
 
     inline mlir::ModuleOp ParseListener::getModule()
     {
-        if ( hasErrors )
+        if ( errorCount )
         {
             return mlir::ModuleOp{};
         }

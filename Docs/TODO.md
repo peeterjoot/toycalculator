@@ -1,26 +1,16 @@
 ## TODO
 
-### running list of issues and ideas, randomly ordered
+----------------
+### diagnostics
+
+* implement error numbers/classes.  give the option of also showing suppressed internal errors.
+* implement gcc like limit on the number of errors.
+* need better error checking mechanism.  some tests have multiple errors.  example: error_multiple_in_func.silly
+
+### running list of other issues and ideas, randomly ordered
 ----------------------------------
 
-* In this test we have "In function" output only once:
-
-```
-fedoravm:/home/peeter/toycalculator/tests/endtoend/failure> silly error_nested.silly
-error_nested.silly: In function ‘foo’:
-error_nested.silly:5:5: error: Nested functions are not currently supported.
-    5 |     FUNCTION bar( INT32 v )
-      |     ^
-error_nested.silly:14:12: error: Undeclared variable r (symbol lookup failed.)
-   14 |     RETURN r;
-      |            ^
-
-```
-
-It looks good, but the second print is also in foo, not back in main (but exitFunction is inappropriately resetting currentFunction to main.)  While this is just an error case, we could fix that mismatch if we managed currentFunction as a stack instead (can then use stack.back() instead of currentFunction everywhere.) -- that would faciliate later support of nested functions if desired.
-
-Once that is fixed, we will end up with "In function" twice.  GCC doesn't do that -- it would probably look better without it the second time (keep a static string of the last function name displayed.)
-
+* refactor driver.cpp -- it's a spagetti code mess.
 * Have an effective lexical scope for loop variables, but am emitting DI for them at a function scope.  This will probably do something weird if a loop variable is used in multiple loops.
 * Grammar allows for function declared in a function, now prohibited (`error_nested.silly`).  This wouldn't be too hard to fix, see notes in parser.cpp (enterFunction), however, scoping rules for function lookup would have to be decided.
 * Forward declarations for functions?

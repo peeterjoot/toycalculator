@@ -486,18 +486,6 @@ for (const auto &[name, value] : inductionVariables) {
 }
 ```
 
-**C) Error Messages:**
-Your TODO #1 mentions this - consider:
-```cpp
-// Instead of printing raw location
-mlir::emitError(loc) << "undefined variable: " << name;
-
-// Add source excerpt:
-mlir::emitError(loc) << "undefined variable '" << name << "'\n"
-    << getSourceLine(loc) << "\n"
-    << getColumnMarker(loc);
-```
-
 ---
 
 ## 📊 Testing Recommendations Priority
@@ -514,7 +502,7 @@ mlir::emitError(loc) << "undefined variable '" << name << "'\n"
 
 ### Month 1: Foundation
 - [x] Convert exceptions to MLIR diagnostics (lowering.cpp)
-- [ ] Convert exceptions to MLIR diagnostics (parser.cpp)
+- [x] Convert exceptions to front-end appropriate diagnostics (parser.cpp)
 - [ ] Add semantic analysis pass (catches `init_list` errors)
 - [ ] Improve debug location handling (fix line jumping)
 - [ ] Document architecture
@@ -631,7 +619,6 @@ This is conceptually what Flang does, just with different components at each sta
 
 If you have just one week, tackle these high-impact, low-effort items:
 
-1. **Day 1:** Audit all `UserError` throws, ensure each has test
 2. **Day 2:** Create `docs/ARCHITECTURE.md` (helps others + yourself)
 3. **Day 3:** Fix one debug location issue (use fusedLoc instead of unknownLoc)
 4. **Day 4:** Split `lowering.cpp` into 3-4 files by category
