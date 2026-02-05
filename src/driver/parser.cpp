@@ -31,6 +31,11 @@ namespace silly
     void ParseListener::emitUserError( mlir::Location loc, const std::string &message, const std::string &funcName,
                                        const std::string &sourceFile, bool internal )
     {
+        bool inColor = isatty(fileno(stderr)) && driverState.colorErrors;
+        const char* RED = inColor ? "\033[1;31m" : "";
+        const char* CYAN = inColor ? "\033[0;36m" : "";
+        const char* RESET = inColor ? "\033[0m" : "";
+
         if ( internal && errorCount )
         {
             errorCount++;
@@ -41,8 +46,9 @@ namespace silly
         auto fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc );
         if ( !fileLoc )
         {
-            llvm::errs() << std::format( "{}error: {}\n", internal ? "internal " : "", message );
+            llvm::errs() << std::format( "{}{}error: {}{}\n", RED, internal ? "internal " : "", RESET, message );
         }
+
 
         std::string filename = fileLoc.getFilename().str();
         unsigned line = fileLoc.getLine();
@@ -55,8 +61,8 @@ namespace silly
         lastFunc = funcName;
 
         // Print: filename:line:col: error: message
-        llvm::errs() << std::format( "{}:{}:{}: {}error: {}\n", filename, line, col, internal ? "internal " : "",
-                                     message );
+        llvm::errs() << std::format( "{}{}:{}:{}: {}{}error: {}{}\n", CYAN, filename, line, col, RED, internal ? "internal " : "",
+                                     RESET, message );
 
         // Try to read and display the source line
         if ( !sourceFile.empty() || !filename.empty() )
@@ -548,7 +554,7 @@ namespace silly
         if ( !symbolOp )
         {
             // coverage: error_induction_var_in_step.silly
-            emitUserError( loc, std::format( "Undeclared variable {} (symbol lookup failed.)", varName ),
+            emitUserError( loc, std::format( "Undeclared variable {}", varName ),
                            currentFuncName, driverState.filename, false );
             return declareOp;
         }

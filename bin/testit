@@ -178,7 +178,7 @@ my %expected_compile_error_message =
   'error_get_string' => [
     q(error_get_string.silly:2:1: error: Attempted GET to string literal or array?), ],
   'error_induction_var_in_step' => [
-    q(error_induction_var_in_step.silly:1:23: error: Undeclared variable i (symbol lookup failed.)), ],
+    q(error_induction_var_in_step.silly:1:23: error: Undeclared variable i), ],
   'error_init_list1' => [
     q(error_init_list1.silly:1:1: error: For variable 'w', more initializers (3) specified than number of elements (1).), ],
   'error_init_list2' => [
@@ -190,8 +190,8 @@ my %expected_compile_error_message =
   'error_keyword_declare' => [
     q(error_keyword_declare.silly:1:7: error: parse error: mismatched input 'INT32' expecting IDENTIFIER), ],
   'error_multiple_in_func' => [
-    q(error_multiple_in_func.silly:5:15: error: Undeclared variable x (symbol lookup failed.)),
-    q(error_multiple_in_func.silly:6:15: error: Undeclared variable w (symbol lookup failed.)), ],
+    q(error_multiple_in_func.silly:5:15: error: Undeclared variable x),
+    q(error_multiple_in_func.silly:6:15: error: Undeclared variable w), ],
   'error_nested_ivar_conflict' => [
     q(error_nested_ivar_conflict.silly:3:5: error: Induction variable i used by enclosing FOR), ],
   'error_nested' => [

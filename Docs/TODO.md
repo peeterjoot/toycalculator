@@ -7,7 +7,6 @@
 
 * implement error numbers/classes.  give the option of also showing suppressed internal errors.
 * implement gcc like limit on the number of errors.
-* color error message
 
 #### misc
 * refactor driver.cpp -- it's a spagetti code mess.

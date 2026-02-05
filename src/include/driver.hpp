@@ -17,6 +17,9 @@ namespace silly
         /// True if -g is passed.
         bool wantDebug;
 
+        /// True for color error messages (when output is a terminal.)
+        bool colorErrors;
+
         /// Source file name passed to the driver.
         std::string filename;
 

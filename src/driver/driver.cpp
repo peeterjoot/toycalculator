@@ -117,6 +117,9 @@ static llvm::cl::opt<bool> noEmitObject( "no-emit-object", llvm::cl::desc( "Skip
 static llvm::cl::opt<bool> llvmDEBUG( "debug-llvm", llvm::cl::desc( "Include MLIR dump, and turn off multithreading" ),
                                       llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
+static llvm::cl::opt<bool> noColorErrors( "no-color-errors", llvm::cl::desc( "Disable color error messages" ),
+                                        llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+
 static llvm::cl::opt<int> initFillValue( "init-fill", llvm::cl::desc( "Initializer fill value." ),
                                          llvm::cl::init( 0 ), llvm::cl::ValueRequired,
                                          llvm::cl::cat( SillyCategory ) );
@@ -206,6 +209,7 @@ int main( int argc, char** argv )
     st.isOptimized = optLevel != OptLevel::O0 ? true : false;
     st.fillValue = (uint8_t)initFillValue;
     st.wantDebug = debugInfo;
+    st.colorErrors = !noColorErrors;
     st.filename = filename;
 
     try

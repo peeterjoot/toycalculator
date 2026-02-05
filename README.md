@@ -298,6 +298,7 @@ Once built, the compiler driver can be run with `build/bin/silly` with the follo
 * `-c` — Compile only (don't link)
 * `--init-fill nnn` — Set fill character for stack variables (numeric value ≤ 255). Default is zero-initialized.
 * `--output-directory` — Specify output directory for generated files
+* `--no-color-errors` — If stderr is output to a TTY, error messages will be in color by default.  This disables that color output.
 
 ### Debug/Hacking Options
 
