@@ -1,6 +1,6 @@
 # Changelog: V8 Release (WIP)
 
-(These notes are up to and including fd383d8e1475a0bd40bc5977339404db51d24839)
+(These notes are up to and including 66f51eb76f0a9ded0e8adfc2a8bebe62b5ab7371)
 
 ## Major Features
 
@@ -243,7 +243,7 @@ build/
 - Removed: `currentVarName`, `currentIndexExpr`, `varStates`
 - Simplified control flow with fewer state variables
 - Induction variable stack: `vector<pair<string, Value>>`
-- Generate gcc/clang style error output with context.  Example:
+- Generate gcc/clang style error output with context (with color by default).  Example:
 ```
 > silly error_nested.silly
 error_nested.silly: In function ‘foo’:
@@ -378,7 +378,7 @@ tests/
 
 ## Tools & Utilities
 
-### New Tools
+### Tools
 
 **silly-opt**
 - Wrapper for `mlir-opt` with silly dialect loaded
@@ -392,6 +392,13 @@ tests/
 - Better integration with CTest
 - DWARF validation with `dwarfdump`
 - Remove all the test lists (success and failure cases) -- moved to ctest.
+
+## Compiler driver
+
+**silly**
+- `--no-color-errors` option to disable color error messages.
+- Internally reorganized a bit (no longer a monolithic main).  Also removed
+  exception handling based error diagnostics.
 
 ### Build Scripts
 
