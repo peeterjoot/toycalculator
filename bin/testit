@@ -161,30 +161,55 @@ my %tests = map { $_ => 1 } (qw(
 #'error_invalid_unary' => q(line 3:4 token recognition error at:),
 my %expected_compile_error_message =
 (
-  'error_arrayreturn' => q(error_arrayreturn.silly:1:24: error: parse error: mismatched input '[' expecting '{'),
-  'error_array_too_many_init' => q(error_array_too_many_init.silly:1:1: error: For variable 'a', more initializers (4) specified than number of elements (3).),
-  'error_chained_comparison2' => q(error_chained_comparison2.silly:4:16: error: parse error: mismatched input '<' expecting ';'),
-  'error_chained_equality' => q(error_chained_equality.silly:2:17: error: parse error: mismatched input 'EQ' expecting ';'),
-  'error_expressions4c' => q(error_expressions4c.silly:1:13: error: parse error: mismatched input '<' expecting ';'),
-  'error_expressions4d' => q(error_expressions4d.silly:1:14: error: parse error: mismatched input 'EQ' expecting ';'),
-  'error_expressions4e' => q(error_expressions4e.silly:1:14: error: parse error: mismatched input 'NE' expecting ';'),
-  'error_get_string' => q(error_get_string.silly:2:1: error: Attempted GET to string literal or array?),
-  'error_induction_var_in_step' => q(error_induction_var_in_step.silly:1:23: error: Undeclared variable i (symbol lookup failed.)),
-  'error_init_list1' => q(error_init_list1.silly:1:1: error: For variable 'w', more initializers (3) specified than number of elements (1).),
-  'error_init_list2' => q(error_init_list2.silly:1:1: error: For variable 'w', more initializers (3) specified than number of elements (2).),
-  'error_invalid_binary' => q(error_invalid_binary.silly:3:9: error: parse error: extraneous input 'z' expecting ';'),
-  'error_keyword_declare2' => q(error_keyword_declare2.silly:1:7: error: parse error: extraneous input 'INT32' expecting IDENTIFIER),
-  'error_keyword_declare' => q(error_keyword_declare.silly:1:7: error: parse error: mismatched input 'INT32' expecting IDENTIFIER),
-  'error_multiple_in_func' => q(error_multiple_in_func.silly:5:15: error: Undeclared variable x (symbol lookup failed.)),
-  'error_nested_ivar_conflict' => q(error_nested_ivar_conflict.silly:3:5: error: Induction variable i used by enclosing FOR),
-  'error_nested' => q(error_nested.silly:5:5: error: Nested functions are not currently supported.),
-  'error_notfloat' => q(error_notfloat.silly:1:7: error: NOT on non-integer type),
-  'error_redeclare' => q(error_redeclare.silly:2:1: error: Variable x already declared),
-  'error_return_expr_no_return_type' => q(error_return_expr_no_return_type.silly:3:5: error: return expression found '0', but no return type for function foo),
-  'error_shadow_induction' => q(error_shadow_induction.silly:4:1: error: Induction variable i clashes with declared variable),
-  'error_stringreturn' => q(error_stringreturn.silly:1:19: error: parse error: mismatched input 'STRING' expecting {'INT8', 'INT16', 'INT32', 'INT64', 'FLOAT32', 'FLOAT64', 'BOOL'}),
-  'error_triple_nested_for_with_shadowing' => q(error_triple_nested_for_with_shadowing.silly:3:9: error: Induction variable i used by enclosing FOR),
-  'error_undeclare' => q(error_undeclare.silly:1:1: error: Attempt to assign to undeclared variable: x),
+  'error_arrayreturn' => [
+    q(error_arrayreturn.silly:1:24: error: parse error: mismatched input '[' expecting '{'), ],
+  'error_array_too_many_init' => [
+    q(error_array_too_many_init.silly:1:1: error: For variable 'a', more initializers (4) specified than number of elements (3).), ],
+  'error_chained_comparison2' => [
+    q(error_chained_comparison2.silly:4:16: error: parse error: mismatched input '<' expecting ';'), ],
+  'error_chained_equality' => [
+    q(error_chained_equality.silly:2:17: error: parse error: mismatched input 'EQ' expecting ';'), ],
+  'error_expressions4c' => [
+    q(error_expressions4c.silly:1:13: error: parse error: mismatched input '<' expecting ';'), ],
+  'error_expressions4d' => [
+    q(error_expressions4d.silly:1:14: error: parse error: mismatched input 'EQ' expecting ';'), ],
+  'error_expressions4e' => [
+    q(error_expressions4e.silly:1:14: error: parse error: mismatched input 'NE' expecting ';'), ],
+  'error_get_string' => [
+    q(error_get_string.silly:2:1: error: Attempted GET to string literal or array?), ],
+  'error_induction_var_in_step' => [
+    q(error_induction_var_in_step.silly:1:23: error: Undeclared variable i (symbol lookup failed.)), ],
+  'error_init_list1' => [
+    q(error_init_list1.silly:1:1: error: For variable 'w', more initializers (3) specified than number of elements (1).), ],
+  'error_init_list2' => [
+    q(error_init_list2.silly:1:1: error: For variable 'w', more initializers (3) specified than number of elements (2).), ],
+  'error_invalid_binary' => [
+    q(error_invalid_binary.silly:3:9: error: parse error: extraneous input 'z' expecting ';'), ],
+  'error_keyword_declare2' => [
+    q(error_keyword_declare2.silly:1:7: error: parse error: extraneous input 'INT32' expecting IDENTIFIER), ],
+  'error_keyword_declare' => [
+    q(error_keyword_declare.silly:1:7: error: parse error: mismatched input 'INT32' expecting IDENTIFIER), ],
+  'error_multiple_in_func' => [
+    q(error_multiple_in_func.silly:5:15: error: Undeclared variable x (symbol lookup failed.)),
+    q(error_multiple_in_func.silly:6:15: error: Undeclared variable w (symbol lookup failed.)), ],
+  'error_nested_ivar_conflict' => [
+    q(error_nested_ivar_conflict.silly:3:5: error: Induction variable i used by enclosing FOR), ],
+  'error_nested' => [
+    q(error_nested.silly:5:5: error: Nested functions are not currently supported.), ],
+  'error_notfloat' => [
+    q(error_notfloat.silly:1:7: error: NOT on non-integer type), ],
+  'error_redeclare' => [
+    q(error_redeclare.silly:2:1: error: Variable x already declared), ],
+  'error_return_expr_no_return_type' => [
+    q(error_return_expr_no_return_type.silly:3:5: error: return expression found '0', but no return type for function foo), ],
+  'error_shadow_induction' => [
+    q(error_shadow_induction.silly:4:1: error: Induction variable i clashes with declared variable), ],
+  'error_stringreturn' => [
+    q(error_stringreturn.silly:1:19: error: parse error: mismatched input 'STRING' expecting {'INT8', 'INT16', 'INT32', 'INT64', 'FLOAT32', 'FLOAT64', 'BOOL'}), ],
+  'error_triple_nested_for_with_shadowing' => [
+    q(error_triple_nested_for_with_shadowing.silly:3:9: error: Induction variable i used by enclosing FOR), ],
+  'error_undeclare' => [
+    q(error_undeclare.silly:1:1: error: Attempt to assign to undeclared variable: x), ],
 );
 
 if ( defined $just )
@@ -270,9 +295,10 @@ sub runone
         {
             print "TEST: $stem.silly failed as expected: rc = $crc\n";
 
-            if ( $expected_compile_error_message{$stem} )
+            my @expected = @{$expected_compile_error_message{$stem}};
+            foreach ( @expected )
             {
-                check_expected_compile_error( $stem, "${outdir}/$stem.compile.out" );
+                check_expected_compile_error( $stem, $_, "${outdir}/$stem.compile.out" );
             }
 
             print "${stem}: TEST WAS SUCCESSFUL\n"; # for ctest rule
@@ -419,10 +445,7 @@ sub check_decl_order
 
 sub check_expected_compile_error
 {
-    my ($stem, $outfile) = @_;
-
-    my $expected = $expected_compile_error_message{$stem}
-        or return;   # nothing to check
+    my ($stem, $expected, $outfile) = @_;
 
     open my $fh, '<', $outfile
         or die "Cannot open $outfile: $!";
