@@ -8,7 +8,7 @@
 
 namespace silly
 {
-    /// State to pass from the driver to lowering
+    /// State to pass from the driver to parser/builder/lowering
     struct DriverState
     {
         /// True if not OptLevel::O0

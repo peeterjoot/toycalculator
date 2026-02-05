@@ -17,6 +17,7 @@ add_executable(silly
   driver.cpp
   lowering.cpp
   parser.cpp
+  diagnostics.cpp
   ${ANTLR_SOURCES}
 )
 

@@ -19,17 +19,16 @@
 
 #include "SillyDialect.hpp"
 #include "SillyExceptions.hpp"
+#include "diagnostics.hpp"
 #include "parser.hpp"
 
 #define DEBUG_TYPE "silly-parser"
 
-#define ENTRY_SYMBOL_NAME "main"
-
-#define CATCH_USER_ERROR                                \
-    catch ( const UserError &e )                        \
-    {                                                   \
-        mlir::emitError( e.getLocation() ) << e.what(); \
-        hasErrors = true;                               \
+#define CATCH_USER_ERROR                                                                \
+    catch ( const UserError &e )                                                        \
+    {                                                                                   \
+        emitUserError( e.getLocation(), e.what(), e.function(), driverState.filename ); \
+        hasErrors = true;                                                               \
     }
 
 namespace silly
@@ -167,9 +166,9 @@ namespace silly
         }
 
         mlir::FileLineColLoc startLoc =
-            mlir::FileLineColLoc::get( builder.getStringAttr( filename ), startLine, startCol + 1 );
+            mlir::FileLineColLoc::get( builder.getStringAttr( driverState.filename ), startLine, startCol + 1 );
         mlir::FileLineColLoc endLoc =
-            mlir::FileLineColLoc::get( builder.getStringAttr( filename ), endLine, endCol + 1 );
+            mlir::FileLineColLoc::get( builder.getStringAttr( driverState.filename ), endLine, endCol + 1 );
 
         return { startLoc, endLoc };
     }
@@ -188,16 +187,21 @@ namespace silly
         return locs.second;
     }
 
+    inline mlir::Location ParseListener::getTokenLocation( antlr4::Token *token )
+    {
+        assert( token );
+        size_t line = token->getLine();
+        size_t column = token->getCharPositionInLine() + 1;
+
+        return mlir::FileLineColLoc::get( builder.getStringAttr( driverState.filename ), line, column );
+    }
+
     inline mlir::Location ParseListener::getTerminalLocation( antlr4::tree::TerminalNode *node )
     {
         assert( node );
         antlr4::Token *token = node->getSymbol();
 
-        assert( token );
-        size_t line = token->getLine();
-        size_t column = token->getCharPositionInLine() + 1;
-
-        return mlir::FileLineColLoc::get( builder.getStringAttr( filename ), line, column );
+        return getTokenLocation( token );
     }
 
     DialectCtx::DialectCtx()
@@ -262,7 +266,7 @@ namespace silly
         if ( symbolOp )
         {
             // coverage: error_redeclare.silly
-            throw UserError( loc, std::format( "Variable {} already declared", varName ) );
+            throw UserError( loc, currentFuncName, std::format( "Variable {} already declared", varName ) );
         }
 
         if ( f.lastDeclareOp )
@@ -319,7 +323,7 @@ namespace silly
             {
                 // coverage: error_array_too_many_init.silly, error_init_list1.silly, error_init_list2.silly
                 throw UserError(
-                    loc,
+                    loc, currentFuncName,
                     std::format( "For variable '{}', more initializers ({}) specified than number of elements ({}).\n",
                                  varName, initializers.size(), numElements ) );
             }
@@ -380,10 +384,20 @@ namespace silly
                                      size_t charPositionInLine, const std::string &msg, std::exception_ptr e )
     {
         hasErrors = true;
-        std::string tokenText = offendingSymbol ? offendingSymbol->getText() : "<none>";
-        throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                    std::format( "Syntax error in {}:{}:{}: {} (token: {} )", filename, line,
-                                                 charPositionInLine, msg, tokenText ) );
+        if ( offendingSymbol )
+        {
+            mlir::Location loc = getTokenLocation( offendingSymbol );
+
+            emitUserError( loc, "Unrecoverable parse error", currentFuncName, driverState.filename );
+        }
+        else
+        {
+            std::string tokenText = offendingSymbol ? offendingSymbol->getText() : "<none>";
+
+            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
+                                        std::format( "Unrecoverable parse error in {}:{}:{}: {} (token: {} )", driverState.filename,
+                                                     line, charPositionInLine, msg, tokenText ) );
+        }
     }
 
     silly::ScopeOp getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp )
@@ -420,11 +434,12 @@ namespace silly
         if ( !symbolOp )
         {
             // coverage: error_induction_var_in_step.silly
-            throw UserError( loc, std::format( "Undeclared variable {} (symbol lookup failed.)", varName ) );
+            throw UserError( loc, currentFuncName,
+                             std::format( "Undeclared variable {} (symbol lookup failed.)", varName ) );
         }
 
         silly::DeclareOp declareOp = mlir::dyn_cast<silly::DeclareOp>( symbolOp );
-        assert( declareOp ); // not sure I could trigger NULL declareOp with user code.
+        assert( declareOp );    // not sure I could trigger NULL declareOp with user code.
 
         return declareOp;
     }
@@ -462,8 +477,8 @@ namespace silly
         return nullptr;
     }
 
-    ParseListener::ParseListener( const std::string &filenameIn )
-        : filename( filenameIn ),
+    ParseListener::ParseListener( const DriverState &ds )
+        : driverState{ ds },
           dialect(),
           builder( &dialect.context ),
           mod( mlir::ModuleOp::create( getStartLocation( nullptr ) ) )
@@ -520,12 +535,8 @@ namespace silly
 
             std::vector<mlir::Value> initializers;
 
-            silly::DeclareOp dcl =
-                builder.create<silly::DeclareOp>( startLoc,
-                                                  varType,
-                                                  initializers,
-                                                  builder.getI64IntegerAttr( i ),
-                                                  symNameAttr );
+            silly::DeclareOp dcl = builder.create<silly::DeclareOp>( startLoc, varType, initializers,
+                                                                     builder.getI64IntegerAttr( i ), symNameAttr );
 
             f.lastDeclareOp = dcl.getOperation();
         }
@@ -576,8 +587,9 @@ namespace silly
             if ( !returnType )
             {
                 // coverage: error_return_expr_no_return_type.silly
-                throw UserError( loc, std::format( "return expression found '{}', but no return type for function {}",
-                                                   expression->getText(), currentFuncName ) );
+                throw UserError( loc, currentFuncName,
+                                 std::format( "return expression found '{}', but no return type for function {}",
+                                              expression->getText(), currentFuncName ) );
             }
 
             value = parseExpression( expression, returnType );
@@ -638,7 +650,8 @@ namespace silly
             // To support this, exitFor would have to pop an insertion point and current-function-name,
             // and we'd have to push an insertion-point/function-name instead of just assuming that
             // we started in main and will return to there.
-            throw UserError( locs.first, std::format( "Nested functions are not currently supported." ) );
+            throw UserError( locs.first, currentFuncName,
+                             std::format( "Nested functions are not currently supported." ) );
         }
 
         mainIP = builder.saveInsertionPoint();
@@ -689,6 +702,7 @@ namespace silly
 
     mlir::Value ParseListener::handleCall( SillyParser::CallExpressionContext *ctx )
     {
+        mlir::Value ret{};
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
         tNode *id = ctx->IDENTIFIER();
@@ -696,6 +710,12 @@ namespace silly
         std::string funcName = id->getText();
         PerFunctionState &f = funcState( funcName );
         mlir::func::FuncOp funcOp = f.getFuncOp();
+        if (!funcOp)
+        {
+            // Tolerate errors now that there's not a throw on the first error.
+            return ret;
+        }
+
         mlir::FunctionType funcType = funcOp.getFunctionType();
         std::vector<mlir::Value> parameters;
 
@@ -713,7 +733,7 @@ namespace silly
                 SillyParser::ExpressionContext *p = e->expression();
                 assert( p );
                 std::string paramText = p->getText();
-                std::cout << std::format( "CALL function {}: param: {}\n", funcName, paramText );
+                // LLVM_DEBUG( { llvm::errs() << std::format( "CALL function {}: param: {}\n", funcName, paramText ) } );
 
                 mlir::Type ty = funcType.getInputs()[i];
                 mlir::Value value = parseExpression( p, ty );
@@ -728,7 +748,12 @@ namespace silly
         silly::CallOp callOp = builder.create<silly::CallOp>( loc, resultTypes, funcName, parameters );
 
         // Return the first result (or null for void calls)
-        return resultTypes.empty() ? mlir::Value{} : callOp.getResults()[0];
+        if (!resultTypes.empty())
+        {
+            ret = callOp.getResults()[0];
+        }
+
+        return ret;
     }
 
     void ParseListener::enterCallStatement( SillyParser::CallStatementContext *ctx )
@@ -758,7 +783,7 @@ namespace silly
             {
                 // TODO: no coverage.
                 throw UserError(
-                    loc,
+                    loc, currentFuncName,
                     std::format(
                         "Declaration cannot have both assignment expression and initialization-list expression." ) );
             }
@@ -994,8 +1019,8 @@ namespace silly
         if ( isVariableDeclared( loc, varName ) )
         {
             // coverage: error_shadow_induction.silly
-            throw UserError( loc, std::format( "Induction variable {} clashes with declared variable in: {}\n", varName,
-                                               ctx->getText() ) );
+            throw UserError( loc, currentFuncName,
+                             std::format( "Induction variable {} clashes with declared variable\n", varName ) );
         }
 
         mlir::Value p = searchForInduction( varName );
@@ -1003,7 +1028,8 @@ namespace silly
         {
             // coverage: error_triple_nested_for_with_shadowing.silly error_nested_ivar_conflict.silly
             throw UserError(
-                loc, std::format( "Induction variable {} used by enclosing FOR: {}\n", varName, ctx->getText() ) );
+                loc, currentFuncName,
+                std::format( "Induction variable {} used by enclosing FOR\n", varName ) );
         }
 
         mlir::Type elemType = integerDeclarationType( loc, ctx->intType() );
@@ -1153,7 +1179,8 @@ namespace silly
             else if ( !shape.empty() )
             {
                 // TODO: no coverage.
-                throw UserError( loc, std::format( "Attempted GET to string literal or array?: {}", ctx->getText() ) );
+                throw UserError( loc, currentFuncName,
+                                 std::format( "Attempted GET to string literal or array?" ) );
             }
             else
             {
@@ -1358,7 +1385,8 @@ namespace silly
         if ( !isVariableDeclared( loc, currentVarName ) )
         {
             // coverage: error_undeclare.silly
-            throw UserError( loc, std::format( "Attempt to assign to undeclared variable: {}\n", ctx->getText() ) );
+            throw UserError( loc, currentFuncName,
+                             std::format( "Attempt to assign to undeclared variable: {}\n", currentVarName ) );
         }
 
         if ( indexExpr )
@@ -1729,7 +1757,8 @@ namespace silly
                 if ( !value.getType().isInteger() )
                 {
                     // coverage: error_notfloat.silly
-                    throw UserError( loc, std::format( "NOT on non-integer type: {}\n", ctx->getText() ) );
+                    throw UserError( loc, currentFuncName,
+                                     std::format( "NOT on non-integer type\n" ) );
                 }
 
                 // NOT x: (x == 0)

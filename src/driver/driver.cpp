@@ -113,6 +113,7 @@ enum class ReturnCodes : int
     success,
     cannotOpenFile,
     semanticError,
+    parseError,
     unknownError
 };
 
@@ -173,9 +174,15 @@ int main( int argc, char** argv )
         inputStream.basic_ios<char>::rdbuf( std::cin.rdbuf() );
     }
 
+    DriverState st;
+    st.isOptimized = optLevel != OptLevel::O0 ? true : false;
+    st.fillValue = (uint8_t)initFillValue;
+    st.wantDebug = debugInfo;
+    st.filename = filename;
+
     try
     {
-        ParseListener listener( filename );
+        ParseListener listener( st );
 
         antlr4::ANTLRInputStream antlrInput( inputStream );
         SillyLexer lexer( &antlrInput );
@@ -228,11 +235,19 @@ int main( int argc, char** argv )
             dirWithStem = stem;
         }
 
+        mlir::ModuleOp mod = listener.getModule();
+
+        if ( !mod )
+        {
+            // should have already emitted diagnostics.
+            return (int)ReturnCodes::parseError;
+        }
+
         if ( emitMLIR )
         {
             if ( toStdout )
             {
-                listener.getModule().print( llvm::outs(), flags );
+                mod.print( llvm::outs(), flags );
             }
             else
             {
@@ -244,12 +259,11 @@ int main( int argc, char** argv )
                 {
                     throw ExceptionWithContext( __FILE__, __LINE__, __func__, "Failed to open file: " + EC.message() );
                 }
-                listener.getModule().print( out, flags );
+                mod.print( out, flags );
             }
         }
 
-        mlir::ModuleOp& module = listener.getModule();
-        mlir::MLIRContext* context = module.getContext();
+        mlir::MLIRContext* context = mod.getContext();
 
         // Register dialect translations
         mlir::registerLLVMDialectTranslation( *context );
@@ -267,15 +281,9 @@ int main( int argc, char** argv )
             pm.enableIRPrinting();
         }
 
-        DriverState st;
-        st.isOptimized = optLevel != OptLevel::O0 ? true : false;
-        st.fillValue = (uint8_t)initFillValue;
-        st.wantDebug = debugInfo;
-        st.filename = filename;
-
         LLVM_DEBUG( {
             llvm::errs() << "IR before stage I lowering:\n";
-            module->dump();
+            mod->dump();
         } );
 
         pm.addPass( mlir::createSillyToLLVMLoweringPass( &st ) );
@@ -283,10 +291,10 @@ int main( int argc, char** argv )
         pm.addPass( mlir::createFinalizeMemRefToLLVMConversionPass() );
         pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
 
-        if ( llvm::failed( pm.run( module ) ) )
+        if ( llvm::failed( pm.run( mod ) ) )
         {
             llvm::errs() << "IR after stage I lowering failure:\n";
-            module->dump();
+            mod->dump();
             throw ExceptionWithContext( __FILE__, __LINE__, __func__, "Stage I LLVM lowering failed" );
         }
 
@@ -298,24 +306,24 @@ int main( int argc, char** argv )
 
         pm2.addPass( mlir::createConvertFuncToLLVMPass() );
 
-        if ( llvm::failed( pm2.run( module ) ) )
+        if ( llvm::failed( pm2.run( mod ) ) )
         {
             llvm::errs() << "IR after stage II lowering failure:\n";
-            module->dump();
+            mod->dump();
             throw ExceptionWithContext( __FILE__, __LINE__, __func__, "Stage II LLVM lowering failed" );
         }
 
         if ( toStdout )
         {
             llvm::outs() << "Before module lowering:\n";
-            module.print( llvm::outs(), flags );
+            mod.print( llvm::outs(), flags );
         }
 
         // The module should now contain mostly LLVM-IR instructions, with the exception of the top level module,
         // and the MLIR style loc() references.  Those last two MLIR artifacts will be convered to LLVM-IR
         // now, also producing !DILocation's for all the loc()s.
         llvm::LLVMContext llvmContext;
-        std::unique_ptr<llvm::Module> llvmModule = mlir::translateModuleToLLVMIR( module, llvmContext, filename );
+        std::unique_ptr<llvm::Module> llvmModule = mlir::translateModuleToLLVMIR( mod, llvmContext, filename );
 
         if ( !llvmModule )
         {

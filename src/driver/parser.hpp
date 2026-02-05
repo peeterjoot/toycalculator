@@ -18,12 +18,13 @@
 #include <format>
 #include <map>
 #include <string>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 
 #include "SillyBaseListener.h"
 #include "SillyDialect.hpp"
 #include "SillyExceptions.hpp"
+#include "driver.hpp"
 #include "printflags.hpp"
 
 namespace silly
@@ -38,7 +39,8 @@ namespace silly
     class UserError : public std::exception
     {
        public:
-        UserError( mlir::Location iloc, const std::string &imessage ) : loc{ iloc }, message{ imessage }
+        UserError( mlir::Location iloc, const std::string &ifunction, const std::string &imessage )
+            : loc{ iloc }, functionName{ ifunction }, message{ imessage }
         {
         }
 
@@ -53,8 +55,14 @@ namespace silly
             return loc;
         }
 
+        const std::string & function() const
+        {
+            return functionName;
+        }
+
        private:
         mlir::Location loc;
+        std::string functionName;
         std::string message;
     };
 
@@ -81,7 +89,11 @@ namespace silly
         // Getter and setter for op, just to hide the casting
         mlir::func::FuncOp getFuncOp()
         {
-            mlir::func::FuncOp funcOp = mlir::cast<mlir::func::FuncOp>( op );
+            mlir::func::FuncOp funcOp{};
+            if ( op )
+            {
+                funcOp = mlir::cast<mlir::func::FuncOp>( op );
+            }
 
             return funcOp;
         }
@@ -107,8 +119,8 @@ namespace silly
     {
        public:
         /// Constructor.
-        /// @param filenameIn Source filename for location information.
-        ParseListener( const std::string &filenameIn );
+        /// @param ds Driver state, including the source filename for location information.
+        ParseListener( const DriverState &ds );
 
         /// Override to throw on syntax errors.
         void syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
@@ -139,13 +151,12 @@ namespace silly
         void enterAssignmentStatement( SillyParser::AssignmentStatementContext *ctx ) override;
         void enterExitStatement( SillyParser::ExitStatementContext *ctx ) override;
 
-        /// Returns the constructed ModuleOp.
-        /// @throw ExceptionWithContext if syntax errors occurred.
-        inline mlir::ModuleOp &getModule();
+        /// Returns the constructed ModuleOp or nullptr.
+        inline mlir::ModuleOp getModule();
 
        private:
-        /// Source filename.
-        std::string filename;
+        /// Source filename, ...
+        const DriverState &driverState;
 
         /// Dialect context.
         DialectCtx dialect;
@@ -228,7 +239,9 @@ namespace silly
         /// Side effect: Creates a silly::ScopeOp for main, if not already done.
         inline mlir::Location getStopLocation( antlr4::ParserRuleContext *ctx );
 
-        inline mlir::Location getTerminalLocation(antlr4::tree::TerminalNode* node);
+        inline mlir::Location getTokenLocation( antlr4::Token *token );
+
+        inline mlir::Location getTerminalLocation( antlr4::tree::TerminalNode *node );
 
         /// Strip double quotes off of a string.
         inline std::string stripQuotes( mlir::Location loc, const std::string &input ) const;
@@ -267,13 +280,13 @@ namespace silly
         /// Create that functionStateMap entry for funcName if it doesn't exist.
         inline PerFunctionState &funcState( const std::string &funcName );
 
-        mlir::Type integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext * ctx );
+        mlir::Type integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext *ctx );
 
         inline mlir::Value searchForInduction( const std::string &varName );
 
         inline void pushInductionVariable( const std::string &varName, mlir::Value i );
 
-        inline void popInductionVariable( );
+        inline void popInductionVariable();
 
         /// Parses scalar type string to MLIR type.
         mlir::Type parseScalarType( const std::string &ty );
@@ -379,13 +392,13 @@ namespace silly
                                 const std::string &currentVarName, mlir::Value currentIndexExpr );
     };
 
-    inline mlir::ModuleOp &ParseListener::getModule()
+    inline mlir::ModuleOp ParseListener::getModule()
     {
         if ( hasErrors )
         {
-            throw ExceptionWithContext( __FILE__, __LINE__, __func__,
-                                        std::format( "Cannot emit MLIR due to syntax errors in {}", filename ) );
+            return mlir::ModuleOp{};
         }
+
         return mod;
     }
 }    // namespace silly

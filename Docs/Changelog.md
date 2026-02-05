@@ -241,6 +241,19 @@ build/
 - Removed: `currentVarName`, `currentIndexExpr`, `varStates`
 - Simplified control flow with fewer state variables
 - Induction variable stack: `vector<pair<string, Value>>`
+- Generate gcc/clang style error output with context.  Example:
+```
+> silly error_nested.silly
+error_nested.silly: In function ‘foo’:
+error_nested.silly:5:5: error: Nested functions are not currently supported.
+    5 |     FUNCTION bar( INT32 v )
+      |     ^
+error_nested.silly:14:12: error: Undeclared variable r (symbol lookup failed.)
+   14 |     RETURN r;
+      |            ^
+> echo $?
+3
+```
 
 **Insertion Point Handling**
 - Fixed insertion point stack management
