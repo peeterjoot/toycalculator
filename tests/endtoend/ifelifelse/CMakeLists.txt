@@ -1,16 +1,16 @@
 set(IFELIFELSE_TESTS
-    elif2.silly
-    elif3.silly
-    elif4.silly
-    elif5.silly
-    elif6.silly
-    elif.silly
-    ifdcl.silly
-    if.silly
-    minimal_eliftest.silly
-    nested_if_basic.silly
-    nested_if_deep.silly
-    nested_if_elif_else.silly
+    elif2
+    elif3
+    elif4
+    elif5
+    elif6
+    elif
+    ifdcl
+    if
+    minimal_eliftest
+    nested_if_basic
+    nested_if_deep
+    nested_if_elif_else
 )
 
 add_endtoend_tests(EndToEnd.ifelifelse ${IFELIFELSE_TESTS})

@@ -1,6 +1,6 @@
 set(DEBUG_TESTS
-    foo.silly
-    f.silly
+    foo
+    f
 )
 
 add_endtoend_tests(EndToEnd.debug ${DEBUG_TESTS})

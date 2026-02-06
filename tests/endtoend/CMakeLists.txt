@@ -11,7 +11,7 @@ function(add_endtoend_tests TEST_CATEGORY)
             COMMAND ${CMAKE_SOURCE_DIR}/bin/testit
                 --driverpath ${CMAKE_BINARY_DIR}/bin
                 --just ${test_file}
-                --out ${CMAKE_BINARY_DIR}/out/${test_name}
+                --out ${CMAKE_BINARY_DIR}/out/${TEST_CATEGORY}/${test_name}
                 --clean
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )

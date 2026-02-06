@@ -1,7 +1,7 @@
 set(SIMPLE_TESTS
-    simplest.silly
-    simpleless.silly
-    empty.silly
+    simplest
+    simpleless
+    empty
 )
 
 add_endtoend_tests(EndToEnd.simple ${SIMPLE_TESTS})

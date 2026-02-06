@@ -28,6 +28,7 @@
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/TargetParser/Host.h>
 #include <mlir/Conversion/Passes.h>
+#include <mlir/Parser/Parser.h>
 #include <mlir/Pass/PassManager.h>
 #include <mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h>
 #include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
@@ -58,11 +59,19 @@ enum class ReturnCodes : int
 {
     success,
     openFailed,
+    badExtension,
     directoryError,
     filenameParseError,
     linkFailed,
     loweringFailed,
     parseError,
+};
+
+enum class InputType
+{
+    Silly,    // .silly or other source
+    MLIR,     // .mlir
+    Unknown
 };
 
 // Define a category for silly compiler options
@@ -119,6 +128,18 @@ static llvm::cl::opt<OptLevel> optLevel( "O", llvm::cl::desc( "Optimization leve
                                                            clEnumValN( OptLevel::O2, "2", "Moderate optimization" ),
                                                            clEnumValN( OptLevel::O3, "3", "Aggressive optimization" ) ),
                                          llvm::cl::init( OptLevel::O0 ), llvm::cl::cat( SillyCategory ) );
+
+static InputType getInputType( llvm::StringRef filename )
+{
+    llvm::StringRef ext = llvm::sys::path::extension( filename );
+    if ( ext == ".mlir" )
+        return InputType::MLIR;
+    if ( ext == ".mlsilly" ) // allow alternate spelling for testing so we can do a debug dump of parsed mlir, and use a different name.
+        return InputType::MLIR;
+    if ( ext == ".silly" )
+        return InputType::Silly;
+    return InputType::Unknown;
+}
 
 static void llvmInitialization( int argc, char** argv )
 {
@@ -506,25 +527,49 @@ static void lowerAssembleAndLinkModule( mlir::ModuleOp mod, const llvm::SmallStr
     }
 }
 
+static mlir::OwningOpRef<mlir::ModuleOp> parseMLIRFile( const std::string& filename, mlir::MLIRContext* context )
+{
+    auto fileOrErr = llvm::MemoryBuffer::getFile( filename );
+    if ( std::error_code EC = fileOrErr.getError() )
+    {
+        llvm::errs() << std::format( DRIVER_NAME ": error: Cannot open file '{}': {}\n", filename, EC.message() );
+        std::exit( (int)ReturnCodes::openFailed );
+    }
+
+    llvm::SourceMgr sourceMgr;
+    sourceMgr.AddNewSourceBuffer( std::move( *fileOrErr ), llvm::SMLoc{} );
+
+    auto mod = mlir::parseSourceFile<mlir::ModuleOp>( sourceMgr, context );
+    if ( !mod )
+    {
+        llvm::errs() << std::format( DRIVER_NAME ": error: Failed to parse MLIR file '{}'\n", filename );
+        std::exit( (int)ReturnCodes::parseError );
+    }
+
+    return mod;
+}
+
 int main( int argc, char** argv )
 {
     llvmInitialization( argc, argv );
-
-    std::ifstream inputStream;
-    std::string filename = inputFilename;
-    inputStream.open( filename );
-    if ( !inputStream.is_open() )
-    {
-        llvm::errs() << std::format( DRIVER_NAME ": error: Cannot open file {}\n", filename );
-        std::exit( (int)ReturnCodes::openFailed );
-    }
 
     silly::DriverState st;
     st.isOptimized = optLevel != OptLevel::O0 ? true : false;
     st.fillValue = (uint8_t)initFillValue;
     st.wantDebug = debugInfo;
     st.colorErrors = !noColorErrors;
-    st.filename = filename;
+    st.filename = inputFilename;
+
+    InputType ity = getInputType( st.filename );
+    if ( ity == InputType::Unknown )
+    {
+        llvm::errs() << std::format( DRIVER_NAME ": error: filename {} extension is neither .silly nor .mlir\n",
+                                     st.filename );
+        std::exit( (int)ReturnCodes::badExtension );
+    }
+
+    // once this goes out of scope, the module is toast and can't be referenced further.
+    silly::DialectCtx dialectLoader;
 
     mlir::OpPrintingFlags flags;
     if ( debugInfo )
@@ -532,14 +577,32 @@ int main( int argc, char** argv )
         flags.enableDebugInfo( true );
     }
 
-    silly::ParseListener listener( st );    // has to be here on the stack, or else the returned mod references
-                                            // destructed state, and all hell ensues.
+    silly::ParseListener listener( st, &dialectLoader.context );
 
-    mlir::ModuleOp mod = runParserAndBuilder( listener, st, inputStream );
-    if ( !mod )
+    mlir::ModuleOp mod;
+    mlir::OwningOpRef<mlir::ModuleOp> rmod;
+
+    if ( ity == InputType::Silly )
     {
-        // should have already emitted diagnostics.
-        std::exit( (int)ReturnCodes::parseError );
+        std::ifstream inputStream;
+        inputStream.open( st.filename );
+        if ( !inputStream.is_open() )
+        {
+            llvm::errs() << std::format( DRIVER_NAME ": error: Cannot open file {}\n", st.filename );
+            std::exit( (int)ReturnCodes::openFailed );
+        }
+
+        mod = runParserAndBuilder( listener, st, inputStream );
+        if ( !mod )
+        {
+            // should have already emitted diagnostics.
+            std::exit( (int)ReturnCodes::parseError );
+        }
+    }
+    else
+    {
+        rmod = parseMLIRFile( st.filename, &dialectLoader.context );
+        mod = rmod.get();
     }
 
     llvm::SmallString<128> dirWithStem;

@@ -35,9 +35,8 @@ namespace silly
     inline std::string formatLocation( mlir::Location loc );
 
     /// Context for MLIR dialect registration.
-    class DialectCtx
+    struct DialectCtx
     {
-       public:
         /// MLIR context with loaded dialects.
         mlir::MLIRContext context;
 
@@ -88,7 +87,7 @@ namespace silly
        public:
         /// Constructor.
         /// @param ds Driver state, including the source filename for location information.
-        ParseListener( const DriverState &ds );
+        ParseListener( const DriverState &ds, mlir::MLIRContext *context );
 
         /// Override to throw on syntax errors.
         void syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
@@ -126,8 +125,8 @@ namespace silly
         /// Source filename, ...
         const DriverState &driverState;
 
-        /// Dialect context.
-        DialectCtx dialect;
+        /// Context for all the loaded dialects.
+        mlir::MLIRContext *ctx;
 
         /// MLIR builder.
         mlir::OpBuilder builder;
@@ -190,8 +189,8 @@ namespace silly
         /// Emit a user-friendly error message in GCC/Clang style
         ///
         /// errorCount is incremented as a side effect.
-        void emitUserError( mlir::Location loc, const std::string& message, const std::string& funcName,
-                            const std::string& sourceFile, bool internal );
+        void emitUserError( mlir::Location loc, const std::string &message, const std::string &funcName,
+                            const std::string &sourceFile, bool internal );
 
         void enterDeclareHelper( mlir::Location loc, tNode *identifier,
                                  SillyParser::DeclareAssignmentExpressionContext *declareAssignmentExpression,
@@ -238,7 +237,7 @@ namespace silly
                                   const std::vector<SillyParser::ExpressionContext *> *expressions );
 
         /// Return true if the variable is declared
-        bool isVariableDeclared( mlir::Location loc, const std::string &varName, bool & error );
+        bool isVariableDeclared( mlir::Location loc, const std::string &varName, bool &error );
 
         /// Construct a Value for a TRUE or FALSE boolean literal string
         inline mlir::Value parseBoolean( mlir::Location loc, const std::string &s );
@@ -370,7 +369,7 @@ namespace silly
     {
         if ( errorCount )
         {
-            return mlir::ModuleOp{};
+            return nullptr;
         }
 
         return mod;

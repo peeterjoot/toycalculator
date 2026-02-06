@@ -106,6 +106,7 @@ GetOptions (
 if ( defined $just )
 {
     $just =~ s/\.silly$//;
+    $just =~ s/\.mlsilly$//;
 }
 
 if ( !defined $driverpath )
@@ -278,7 +279,17 @@ sub runone
     }
 
     print "##########################################################################\n";
-    my $cmd = qq(mkdir -p $outdir ; ${driverpath}/silly --output-directory $outdir $stem.silly $thisflags --emit-llvm --emit-mlir > ${outdir}/$stem.compile.out 2>&1);
+    my $source;
+    if ( -e "$stem.mlsilly" )
+    {
+        $source = "$stem.mlsilly";
+    }
+    else
+    {
+        $source = "$stem.silly";
+    }
+
+    my $cmd = qq(mkdir -p $outdir ; ${driverpath}/silly --output-directory $outdir $source $thisflags --emit-llvm --emit-mlir > ${outdir}/$stem.compile.out 2>&1);
     my $crc = verbose_system( $cmd );
     system("cat ${outdir}/$stem.compile.out");
     if ( defined $expected_compile_error_message{$stem})

@@ -397,8 +397,9 @@ tests/
 
 **silly**
 - `--no-color-errors` option to disable color error messages.
-- Internally reorganized a bit (no longer a monolithic main).  Also removed
-  exception handling based error diagnostics.
+- Internally reorganized, removed exception handling based error diagnostics.
+- Added support for ingesting silly-dialect MLIR sources (with either .mlir or .mlsilly suffix).
+- Silly language sources must now have a .silly suffix.
 
 ### Build Scripts
 

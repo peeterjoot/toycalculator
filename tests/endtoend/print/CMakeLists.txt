@@ -1,12 +1,12 @@
 set(PRINT_TESTS
-    printboollit.silly
-    printcont.silly
-    printdi_nested.silly
-    printdi.silly
-    printexpr.silly
-    printlit.silly
-    print_multiple.silly
-    printsome.silly
+    printboollit
+    printcont
+    printdi_nested
+    printdi
+    printexpr
+    printlit
+    print_multiple
+    printsome
 )
 
 add_endtoend_tests(EndToEnd.print ${PRINT_TESTS})

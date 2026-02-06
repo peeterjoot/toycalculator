@@ -598,10 +598,10 @@ namespace silly
         return nullptr;
     }
 
-    ParseListener::ParseListener( const DriverState &ds )
+    ParseListener::ParseListener( const DriverState &ds, mlir::MLIRContext* context )
         : driverState{ ds },
-          dialect(),
-          builder( &dialect.context ),
+          ctx{context},
+          builder( ctx ),
           mod( mlir::ModuleOp::create( getStartLocation( nullptr ) ) )
     {
         builder.setInsertionPointToStart( mod.getBody() );

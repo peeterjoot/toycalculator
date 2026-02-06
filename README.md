@@ -320,7 +320,11 @@ rm -rf out
 mkdir out
 ../../build/bin/silly --output-directory out f.silly -g --emit-llvm --emit-mlir --debug
 ../../build/bin/silly --output-directory out f.silly -O2
+../../build/bin/silly --output-directory out f.mlsilly -O2
 ```
+
+The compiler can consume either silly sources (with .silly suffix), or MLIR silly-dialect sources (with .mlir or .mlsilly suffix).
+Specifying a MLIR silly-dialect source means that the compiler will bypass the front end (parser/builder) and go straight to lowering.
 
 ## Running silly-opt
 

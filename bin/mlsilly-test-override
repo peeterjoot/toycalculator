@@ -1,0 +1,85 @@
+#!/usr/bin/perl
+
+#-----------------------------------------------------------------------------
+# POD Format Documentation.  Read "perldoc perlpod" for an example.
+# When done, check syntax with "podchecker".
+
+=head1 NAME
+
+mlsilly-test-override - copies silly compiler generated .mlir files into the tests dir to test mlir parse codepath
+
+=head1 SYNOPSIS
+
+mlsilly-test-override [--help] [<options>]
+
+=head1 DESCRIPTION
+
+testit will run .mlsilly files as an override if it finds one.  Clean up manually after this with:
+
+git status | grep -F .mlsilly | xargs rm
+
+=head1 SUPPORTED PLATFORMS
+
+ Unix (Linux verified)
+
+=head1 SUPPORT
+
+ Send email to peeterjoot@pm.me
+
+=head1 AUTHORS
+
+ Peeter Joot
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+use strict ;
+use warnings ;
+use Getopt::Long ;
+use Pod::Usage ;
+
+# Suppress sourcing of users' .bashrc files in invoked shells
+delete $ENV{'ENV'} ;
+delete $ENV{'BASH_ENV'} ;
+
+# Set STDOUT and STDERR to unbuffered
+select STDERR ; $| = 1 ;
+select STDOUT ; $| = 1 ;
+
+my $myName = '' ;
+
+($myName = $0) =~ s@.*[/\\]@@ ;
+
+#Getopt::Long::Configure( 'pass_through' ) ;
+GetOptions (
+    'help'               => sub { pod2usage(-verbose => 2) ; },
+) or pod2usage(-verbose => 0) ;
+
+#my $TOP = `git rev-parse --show-toplevel 2>/dev/null`; chomp $TOP;
+#chdir( "$TOP/build/out" ) or die;
+
+my $pwd = `pwd`; chomp $pwd;
+die "This script must run this from build/out" unless ( $pwd =~ m,/build/out$, );
+
+open my $fh, "find -name '*.mlir'|";
+while (<$fh>) {
+    chomp;
+    next unless m{^\./EndToEnd\.};
+
+    if (m{^\./(EndToEnd\..*?)/([^/]+)\.mlir$}) {
+        my $srcdir   = $1;          # EndToEnd.types/loadstore
+        my $basename = $2;          # loadstore
+
+        my $target_dir = $srcdir;
+        $target_dir =~ s/^EndToEnd\.//;     # → types/loadstore
+        $target_dir =~ s{\.}{/}g;           # → types/loadstore
+        $target_dir =~ s,/.*,,;
+
+        my $target = "../../tests/endtoend/$target_dir/$basename.mlsilly";
+
+        my $cmd = "cp $_ $target";
+        print("# $cmd\n");
+        system($cmd);
+    }
+}

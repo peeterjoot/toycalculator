@@ -7,6 +7,10 @@
 
 * any driver error should delete any files opened (.o, .s, .ll, .mlir, ...) -- do I need callbacks, or is LLVM taking care of that?
 * consider OO structure for driver.cpp
+* tried to use mlir::OwningOpRef<mlir::ModuleOp> for ParseListener::getModule (and the mod op it contains), but
+  couldn't get it to work and reverted all such experimentation.  This means that I leak the mlir::ModuleOp
+  and it only gets freed implicitly on return from main.  That's clumsy, and would probably show up as
+  a valgrind leak.  Revisit this separate from trying to add the .mlir read+parse.
 
 #### diagnostics
 

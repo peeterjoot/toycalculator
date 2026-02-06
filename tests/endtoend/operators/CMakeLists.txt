@@ -1,17 +1,17 @@
 set(OPERATORS_TESTS
-    lessbug2.silly
-    lessbug3.silly
-    lessbug.silly
-    lesseqop.silly
-    lessop.silly
-    not_on_expr.silly
-    not.silly
-    neqop.silly
-    eqop.silly
-    andop.silly
-    orop.silly
-    xorop.silly
-    unary.silly
+    lessbug2
+    lessbug3
+    lessbug
+    lesseqop
+    lessop
+    not_on_expr
+    not
+    neqop
+    eqop
+    andop
+    orop
+    xorop
+    unary
 )
 
 add_endtoend_tests(EndToEnd.operators ${OPERATORS_TESTS})
