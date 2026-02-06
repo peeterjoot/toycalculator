@@ -225,7 +225,8 @@ def Silly_GetOp : Op<Silly_Dialect, "get"> {
   let assemblyFormat = "attr-dict `:` type(results)";
 }
 
-def Silly_ArithBinOpKind : EnumAttr<"ArithBinOpKind", "arithmetic binary operation kind", "i32"> [
+def Silly_ArithBinOpKind : EnumAttr<Silly_Dialect, "ArithBinOpKind",
+                                    "arithmetic binary operation kind", "i32"> [
   EnumCase<"Mul", 0, "mul">,
   EnumCase<"Div", 1, "div">,
   EnumCase<"Mod", 2, "mod">,
@@ -236,11 +237,12 @@ def Silly_ArithBinOpKind : EnumAttr<"ArithBinOpKind", "arithmetic binary operati
   EnumCase<"Xor", 7, "xor">,
 ];
 
-def Silly_CmpOpKind : EnumAttr<"ArithCmpOpKind", "arithmetic binary operation kind", "i32"> [
-  EnumCase<"Less", 0, "less">,
-  EnumCase<"LessEq", 1, "less_eq">,
-  EnumCase<"Equal", 2, "eq">,
-  EnumCase<"NotEqual", 3, "neq">,
+def Silly_CmpOpKind : EnumAttr<Silly_Dialect, "ArithCmpOpKind",
+                               "arithmetic comparison operation kind", "i32"> [
+  EnumCase<"Less",    0, "less">,
+  EnumCase<"LessEq",  1, "less_eq">,
+  EnumCase<"Equal",   2, "eq">,
+  EnumCase<"NotEqual",3, "neq">,
 ];
 
 def Silly_ArithBinOp : Op<Silly_Dialect, "arith_binop"> {
