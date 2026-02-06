@@ -1,0 +1,5 @@
+FLOAT64 x{6.2};
+FLOAT64 y{3.1};
+PRINT x % y;
+PRINT x % 3.1;
+PRINT x % 2.0;

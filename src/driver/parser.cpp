@@ -23,7 +23,10 @@
 #include "SillyDialect.hpp"
 #include "parser.hpp"
 
+/// Implicit function declaration for the body of a silly language program.
 #define ENTRY_SYMBOL_NAME "main"
+
+/// --debug- class for the parser
 #define DEBUG_TYPE "silly-parser"
 
 namespace silly
@@ -31,10 +34,10 @@ namespace silly
     void ParseListener::emitUserError( mlir::Location loc, const std::string &message, const std::string &funcName,
                                        const std::string &sourceFile, bool internal )
     {
-        bool inColor = isatty(fileno(stderr)) && driverState.colorErrors;
-        const char* RED = inColor ? "\033[1;31m" : "";
-        const char* CYAN = inColor ? "\033[0;36m" : "";
-        const char* RESET = inColor ? "\033[0m" : "";
+        bool inColor = isatty( fileno( stderr ) ) && driverState.colorErrors;
+        const char *RED = inColor ? "\033[1;31m" : "";
+        const char *CYAN = inColor ? "\033[0;36m" : "";
+        const char *RESET = inColor ? "\033[0m" : "";
 
         if ( internal && errorCount )
         {
@@ -61,8 +64,8 @@ namespace silly
         lastFunc = funcName;
 
         // Print: filename:line:col: error: message
-        llvm::errs() << std::format( "{}{}:{}:{}: {}{}error: {}{}\n", CYAN, filename, line, col, RED, internal ? "internal " : "",
-                                     RESET, message );
+        llvm::errs() << std::format( "{}{}:{}:{}: {}{}error: {}{}\n", CYAN, filename, line, col, RED,
+                                     internal ? "internal " : "", RESET, message );
 
         // Try to read and display the source line
         if ( !sourceFile.empty() || !filename.empty() )
@@ -97,6 +100,7 @@ namespace silly
         errorCount++;
     }
 
+    /// A string representation of an mlir::Type
     inline std::string mlirTypeToString( mlir::Type t )
     {
         std::string s;
@@ -302,7 +306,7 @@ namespace silly
         return nullptr;
     }
 
-    bool ParseListener::isVariableDeclared( mlir::Location loc, const std::string &varName, bool & error )
+    bool ParseListener::isVariableDeclared( mlir::Location loc, const std::string &varName, bool &error )
     {
         // Get the single scope
         PerFunctionState &f = funcState( currentFuncName );
@@ -517,15 +521,14 @@ namespace silly
         {
             mlir::Location loc = getTokenLocation( offendingSymbol );
 
-            emitUserError( loc, std::format( "parse error: {}", msg ), currentFuncName,
-                           driverState.filename, false );
+            emitUserError( loc, std::format( "parse error: {}", msg ), currentFuncName, driverState.filename, false );
         }
         else
         {
             mlir::Location loc = builder.getUnknownLoc();
             emitUserError( loc,
-                           std::format( "{}:{}:{}: parse error in {}:{}:{}: {}", __FILE__, __LINE__,
-                                        __func__, driverState.filename, line, charPositionInLine, msg ),
+                           std::format( "{}:{}:{}: parse error in {}:{}:{}: {}", __FILE__, __LINE__, __func__,
+                                        driverState.filename, line, charPositionInLine, msg ),
                            currentFuncName, driverState.filename, true );
         }
     }
@@ -554,8 +557,8 @@ namespace silly
         if ( !symbolOp )
         {
             // coverage: error_induction_var_in_step.silly
-            emitUserError( loc, std::format( "Undeclared variable {}", varName ),
-                           currentFuncName, driverState.filename, false );
+            emitUserError( loc, std::format( "Undeclared variable {}", varName ), currentFuncName, driverState.filename,
+                           false );
             return declareOp;
         }
 
@@ -598,9 +601,9 @@ namespace silly
         return nullptr;
     }
 
-    ParseListener::ParseListener( const DriverState &ds, mlir::MLIRContext* context )
+    ParseListener::ParseListener( const DriverState &ds, mlir::MLIRContext *context )
         : driverState{ ds },
-          ctx{context},
+          ctx{ context },
           builder( ctx ),
           mod( mlir::ModuleOp::create( getStartLocation( nullptr ) ) )
     {
@@ -1126,8 +1129,6 @@ namespace silly
 
     void ParseListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx )
     {
-        // Restore EXACTLY where we were before creating the scf.if
-        // This places new ops right AFTER the scf.if
         builder.setInsertionPointAfter( insertionPointStack.back() );
         insertionPointStack.pop_back();
     }
@@ -1170,7 +1171,8 @@ namespace silly
         }
         if ( error )
         {
-            emitUserError( loc, std::format( "{}:{}:{}: isVariableDeclared check failed", __FILE__, __LINE__, __func__ ),
+            emitUserError( loc,
+                           std::format( "{}:{}:{}: isVariableDeclared check failed", __FILE__, __LINE__, __func__ ),
                            currentFuncName, driverState.filename, true );
             return;
         }
@@ -1630,6 +1632,24 @@ namespace silly
         return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
     }
 
+    inline mlir::Value ParseListener::createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty,
+                                                         mlir::Value lhs, mlir::Value rhs )
+    {
+        return builder
+            .create<silly::ArithBinOp>(
+                loc, ty, silly::ArithBinOpKindAttr::get( this->ctx, what ), lhs, rhs )
+            .getResult();
+    }
+
+    inline mlir::Value ParseListener::createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what,
+                                                       mlir::Value lhs, mlir::Value rhs )
+    {
+        return builder
+            .create<silly::CmpBinOp>(
+                loc, tyI1, silly::CmpBinOpKindAttr::get( this->ctx, what ), lhs, rhs )
+            .getResult();
+    }
+
     mlir::Value ParseListener::parseOr( antlr4::ParserRuleContext *ctx, mlir::Type ty )
     {
         assert( ctx );
@@ -1662,7 +1682,7 @@ namespace silly
 
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
 
-                value = builder.create<silly::OrOp>( loc, ty, value, rhs ).getResult();
+                value = createBinaryArith( loc, silly::ArithBinOpKind::Or, ty, value, rhs );
             }
 
             return value;
@@ -1703,7 +1723,7 @@ namespace silly
 
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
 
-                value = builder.create<silly::XorOp>( loc, ty, value, rhs ).getResult();
+                value = createBinaryArith( loc, silly::ArithBinOpKind::Xor, ty, value, rhs );
             }
 
             return value;
@@ -1749,7 +1769,7 @@ namespace silly
 
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
 
-                value = builder.create<silly::AndOp>( loc, ty, value, rhs ).getResult();
+                value = createBinaryArith( loc, silly::ArithBinOpKind::And, ty, value, rhs );
             }
 
             return value;
@@ -1795,11 +1815,11 @@ namespace silly
 
                 if ( eqNeCtx->equalityOperator()->EQUALITY_TOKEN() )
                 {
-                    value = builder.create<silly::EqualOp>( loc, tyI1, value, rhs ).getResult();
+                    value = createBinaryCmp( loc, silly::CmpBinOpKind::Equal, value, rhs );
                 }
                 else if ( eqNeCtx->equalityOperator()->NOTEQUAL_TOKEN() )
                 {
-                    value = builder.create<silly::NotEqualOp>( loc, tyI1, value, rhs ).getResult();
+                    value = createBinaryCmp( loc, silly::CmpBinOpKind::NotEqual, value, rhs );
                 }
                 else
                 {
@@ -1858,19 +1878,19 @@ namespace silly
 
                 if ( op->LESSTHAN_TOKEN() )
                 {
-                    value = builder.create<silly::LessOp>( loc, tyI1, value, rhs ).getResult();
+                    value = createBinaryCmp( loc, silly::CmpBinOpKind::Less, value, rhs );
                 }
                 else if ( op->GREATERTHAN_TOKEN() )
                 {
-                    value = builder.create<silly::LessOp>( loc, tyI1, rhs, value ).getResult();
+                    value = createBinaryCmp( loc, silly::CmpBinOpKind::Less, rhs, value );
                 }
                 else if ( op->LESSEQUAL_TOKEN() )
                 {
-                    value = builder.create<silly::LessEqualOp>( loc, tyI1, value, rhs ).getResult();
+                    value = createBinaryCmp( loc, silly::CmpBinOpKind::LessEq, value, rhs );
                 }
                 else if ( op->GREATEREQUAL_TOKEN() )
                 {
-                    value = builder.create<silly::LessEqualOp>( loc, tyI1, rhs, value ).getResult();
+                    value = createBinaryCmp( loc, silly::CmpBinOpKind::LessEq, rhs, value );
                 }
                 else
                 {
@@ -1933,11 +1953,11 @@ namespace silly
                 SillyParser::AdditionOperatorContext *op = ops[i - 1];
                 if ( op->PLUSCHAR_TOKEN() )
                 {
-                    value = builder.create<silly::AddOp>( loc, ty, value, rhs ).getResult();
+                    value = createBinaryArith( loc, silly::ArithBinOpKind::Add, ty, value, rhs );
                 }
                 else if ( op->MINUS_TOKEN() )
                 {
-                    value = builder.create<silly::SubOp>( loc, ty, value, rhs ).getResult();
+                    value = createBinaryArith( loc, silly::ArithBinOpKind::Sub, ty, value, rhs );
                 }
                 else
                 {
@@ -1999,11 +2019,15 @@ namespace silly
 
                 if ( op->TIMES_TOKEN() )
                 {
-                    value = builder.create<silly::MulOp>( loc, ty, value, rhs ).getResult();
+                    value = createBinaryArith( loc, silly::ArithBinOpKind::Mul, ty, value, rhs );
                 }
                 else if ( op->DIV_TOKEN() )
                 {
-                    value = builder.create<silly::DivOp>( loc, ty, value, rhs ).getResult();
+                    value = createBinaryArith( loc, silly::ArithBinOpKind::Div, ty, value, rhs );
+                }
+                else if ( op->MOD_TOKEN() )
+                {
+                    value = createBinaryArith( loc, silly::ArithBinOpKind::Mod, ty, value, rhs );
                 }
                 else
                 {
@@ -2067,7 +2091,7 @@ namespace silly
                 // NOT x: (x == 0)
                 mlir::Value zero =
                     builder.create<mlir::arith::ConstantIntOp>( loc, 0, value.getType().getIntOrFloatBitWidth() );
-                value = builder.create<silly::EqualOp>( loc, tyI1, value, zero ).getResult();
+                value = createBinaryCmp( loc, silly::CmpBinOpKind::Equal, value, zero );
             }
             else
             {

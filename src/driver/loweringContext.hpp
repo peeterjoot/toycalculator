@@ -18,10 +18,12 @@ namespace silly
 {
     struct DriverState;
 
+    /// Per-function lowering state
     struct PerFunctionState
     {
-        mlir::LLVM::DISubprogramAttr subProgramDI;
-        mlir::LLVM::AllocaOp printArgs;
+        mlir::LLVM::DISubprogramAttr subProgramDI; ///< Dwarf DI for that function, used to emit variable DI in lowering
+
+        mlir::LLVM::AllocaOp printArgs; ///< The alloca op for PRINT arguments.  This is sized big enough to hold the biggest number of arguments used for any PRINT statement in the function (all PRINT calls use this storage for their variable argument list.)
     };
 
     /// Context object holding state and helper functions used during lowering
@@ -62,7 +64,7 @@ namespace silly
         /// Constructs the lowering context.
         /// @param moduleOp The module being lowered.
         /// @param driverState Reference to driver configuration state.
-        LoweringContext( mlir::ModuleOp& moduleOp, const DriverState& driverState );
+        LoweringContext( mlir::ModuleOp& moduleOp, DriverState& driverState );
 
         /// Returns the preferred alignment for an element type according to the data layout.
         unsigned preferredTypeAlignment( mlir::Operation* op, mlir::Type elemType );
@@ -76,6 +78,7 @@ namespace silly
                                                  unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp,
                                                  int64_t arraySize );
 
+        /// FOR loop variables are effectively scoped for just the FOR.  This emits the DI for them.
         mlir::LogicalResult constructInductionVariableDI( mlir::FileLineColLoc fileLoc,
                                                           mlir::ConversionPatternRewriter& rewriter,
                                                           mlir::Operation* op, mlir::Value value, std::string varName,
@@ -91,6 +94,7 @@ namespace silly
                                                 mlir::Operation* op, mlir::Value input, PrintFlags flags,
                                                 mlir::Value& output );
 
+        /// A silly::CallOp generator for the __silly_abort runtime function.
         void createAbortCall( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter );
 
         /// Creates a call to the appropriate Silly get runtime function.
@@ -105,6 +109,7 @@ namespace silly
         /// Return the PRINT args allocation for this function, big enough for the biggest PRINT list in the function.
         mlir::LLVM::AllocaOp getPrintArgs( const std::string& funcName );
 
+        /// Helper function to generate MLIR for a silly language assignment statement (`foo = bar;`)
         mlir::LogicalResult generateAssignment( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
                                                 mlir::Operation*, mlir::Value value, mlir::Type elemType,
                                                 mlir::LLVM::AllocaOp allocaOp, unsigned alignment,
@@ -164,6 +169,9 @@ namespace silly
         /// Creates an f64 zero constant.
         inline mlir::LLVM::ConstantOp getF64zero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter );
 
+        /// mlir::LLVM::FRemOp lowers to fmod (at least on some targets), so -lm will be required at link time.
+        inline void markMathLibRequired();
+
        private:
         /// Returns the MLIR context.
         inline mlir::MLIRContext* getContext();
@@ -205,6 +213,7 @@ namespace silly
         /// Creates a DISubroutineType attribute for a function.
         mlir::LLVM::DISubroutineTypeAttr createDISubroutineType( mlir::func::FuncOp funcOp );
 
+        /// Map silly types to llvm::dwarf::DW_ATE* types
         mlir::LogicalResult infoForVariableDI( mlir::FileLineColLoc loc, mlir::ConversionPatternRewriter& rewriter,
                                                mlir::Operation* op, llvm::StringRef varName, mlir::Type& elemType,
                                                unsigned elemSizeInBits, int64_t arraySize, const char*& typeName,
@@ -216,8 +225,10 @@ namespace silly
         /// Map from function name to its DISubprogram attribute.
         std::unordered_map<std::string, PerFunctionState> funcState;
 
-        /// Map from string literal content to its GlobalOp.
+        /// Type for mapping from string literal content to its GlobalOp.
         using StringLit2GlobalOp = std::unordered_map<std::string, mlir::LLVM::GlobalOp>;
+
+        /// Map from string literal content to its GlobalOp.
         StringLit2GlobalOp stringLiterals;
 
         /// Prototype for __silly_print.
@@ -248,7 +259,7 @@ namespace silly
         mlir::func::FuncOp getFuncF64;
 
         /// Reference to driver configuration state.
-        const DriverState& driverState;
+        DriverState& driverState;
 
         /// The module being lowered.
         mlir::ModuleOp& mod;

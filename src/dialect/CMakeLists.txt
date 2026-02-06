@@ -34,6 +34,18 @@ mlir_tablegen(
   --typedefs-dialect=silly
 )
 
+# Generate enum attribute declarations
+mlir_tablegen(
+  SillyDialectEnums.h.inc
+  -gen-enum-decls
+)
+
+# Generate enum attribute definitions
+mlir_tablegen(
+  SillyDialectEnums.cpp.inc
+  -gen-enum-defs
+)
+
 # Create a single TableGen target for all generated the base dialect files
 add_public_tablegen_target(SillyDialectIncGen
   DEPENDS
@@ -41,6 +53,8 @@ add_public_tablegen_target(SillyDialectIncGen
     ${CMAKE_CURRENT_BINARY_DIR}/SillyDialectDefs.cpp.inc
     ${CMAKE_CURRENT_BINARY_DIR}/SillyDialect.hpp.inc
     ${CMAKE_CURRENT_BINARY_DIR}/SillyDialect.cpp.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/SillyDialectEnums.h.inc
+    ${CMAKE_CURRENT_BINARY_DIR}/SillyDialectEnums.cpp.inc
 )
 
 # And a TableGen target for the types files

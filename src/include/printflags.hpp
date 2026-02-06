@@ -29,9 +29,9 @@ namespace silly
     /// One PrintArg for each PRINT argument
     struct PrintArg
     {
-        PrintKind kind;      // I64, F64, STRING, ...
-        PrintFlags flags;    // newline, stdout/err selection, and perhaps eventually format flags
-        int64_t i;           // value for I64 case (or bitcast double for F64 case), or for STRING, the string length.
-        const char* ptr;     // only used for STRING.
+        PrintKind kind;      ///< I64, F64, STRING, ...
+        PrintFlags flags;    ///< newline, stdout/err selection, and perhaps eventually format flags
+        int64_t i;           ///< value for I64 case (or bitcast double for F64 case), or for STRING, the string length.
+        const char* ptr;     ///< only used for STRING.
     };
 }    // namespace silly

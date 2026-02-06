@@ -6,12 +6,13 @@
 /// @description
 ///
 /// This dialect implements:
-/// - A couple of simple numeric operators (unary negation, binary +-*/),
+/// - Numeric operators (unary negation, binary +-*/),
 /// - An exit operation,
 /// - A declare operation,
-/// - An assignment operation, and
-/// - A print operation.
-/// - A Function operation (for the implicit main, and any user defined functions.)
+/// - An assignment operation,
+/// - A print operation,
+/// - enums and types associated with the above
+/// - ...
 ///
 include "mlir/IR/BuiltinTypes.td"
 include "mlir/IR/BuiltinAttributes.td"
@@ -20,6 +21,7 @@ include "mlir/IR/DialectBase.td"
 include "mlir/IR/SymbolInterfaces.td"
 include "mlir/Interfaces/FunctionInterfaces.td"
 include "mlir/Dialect/LLVMIR/LLVMTypes.td"
+include "mlir/IR/EnumAttr.td"
 
 def Silly_Dialect : Dialect {
   let name = "silly";
@@ -224,94 +226,82 @@ def Silly_GetOp : Op<Silly_Dialect, "get"> {
   let assemblyFormat = "attr-dict `:` type(results)";
 }
 
+def Silly_ArithBinOpKind : I32EnumAttr<
+    "ArithBinOpKind",
+    "arithmetic binary operation kind",
+    [
+      I32EnumAttrCase<"Mul", 0, "mul">,
+      I32EnumAttrCase<"Div", 1, "div">,
+      I32EnumAttrCase<"Mod", 2, "mod">,
+      I32EnumAttrCase<"Add", 3, "add">,
+      I32EnumAttrCase<"Sub", 4, "sub">,
+      I32EnumAttrCase<"Or",  5, "or">,
+      I32EnumAttrCase<"And", 6, "and">,
+      I32EnumAttrCase<"Xor", 7, "xor">
+]> {
+  let cppNamespace = "::silly";
+}
+
+def Silly_ArithBinOp : Op<Silly_Dialect, "arith_binop"> {
+  let summary = "Generic arithmetic binary operation (mul, div, mod, etc.)";
+  let description = [{
+    Performs a binary arithmetic operation selected by the kind attribute.
+    Both operands must have the same type. The result type matches the operands.
+    Division and modulo behavior follows language semantics (integer/floating-point).
+  }];
+
+  let arguments = (ins
+    Silly_ArithBinOpKind:$kind,
+    Silly_IntOrFloat:$lhs,
+    Silly_IntOrFloat:$rhs
+  );
+
+  let results = (outs Silly_IntOrFloat:$result);
+
+  let assemblyFormat = [{
+    $kind $lhs `:` type($lhs)
+    `,` $rhs `:` type($rhs)
+    `->` type($result) attr-dict
+  }];
+}
+
+def Silly_CmpBinOpKind : I32EnumAttr<"CmpBinOpKind",
+                                  "arithmetic comparison operation kind", [
+  I32EnumAttrCase<"Less",    0, "less">,
+  I32EnumAttrCase<"LessEq",  1, "less_eq">,
+  I32EnumAttrCase<"Equal",   2, "eq">,
+  I32EnumAttrCase<"NotEqual",3, "neq">,
+]> {
+  let cppNamespace = "::silly";
+}
+
+def Silly_CmpBinOp : Op<Silly_Dialect, "cmp"> {
+  let summary = "Generic comparison operation (less, less_eq, etc.)";
+  let description = [{
+    Performs a comparison selected by the kind attribute.
+    Operands must have the same type. Result is always i1 (boolean).
+  }];
+
+  let arguments = (ins
+    Silly_CmpBinOpKind:$kind,
+    Silly_IntOrFloat:$lhs,
+    Silly_IntOrFloat:$rhs
+  );
+
+  let results = (outs I1:$result);
+
+  let assemblyFormat = [{
+    $kind $lhs `:` type($lhs)
+    `,` $rhs `:` type($rhs)
+    `->` type($result) attr-dict
+  }];
+}
+
 def Silly_NegOp : Op<Silly_Dialect, "negate"> {
   let summary = "Negation operation (e.g., -x)";
   let arguments = (ins Silly_IntOrFloat:$lhs);
   let results = (outs Silly_IntOrFloat:$result);
   //let assemblyFormat = "`-` $lhs `:` type($lhs) attr-dict";
-}
-
-def Silly_AddOp : Op<Silly_Dialect, "add"> {
-  let summary = "Addition operation (e.g., x + y)";
-  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
-  let results = (outs Silly_IntOrFloat:$result);
-  //let assemblyFormat = "$lhs `+` $rhs `:` type($result) attr-dict";
-}
-
-def Silly_SubOp : Op<Silly_Dialect, "sub"> {
-  let summary = "Subtraction operation (e.g., x - y)";
-  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
-  let results = (outs Silly_IntOrFloat:$result);
-  //let assemblyFormat = "$lhs `-` $rhs `:` type($result) attr-dict";
-}
-
-def Silly_MulOp : Op<Silly_Dialect, "mul"> {
-  let summary = "Multiplication operation (e.g., x * y)";
-  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
-  let results = (outs Silly_IntOrFloat:$result);
-  //let assemblyFormat = "$lhs `*` $rhs `:` type($result) attr-dict";
-}
-
-def Silly_DivOp : Op<Silly_Dialect, "div"> {
-  let summary = "Division operation (e.g., x / y)";
-  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
-  let results = (outs Silly_IntOrFloat:$result);
-  //let assemblyFormat = "$lhs `/` $rhs `:` type($result) attr-dict";
-}
-
-def Silly_ModOp : Op<Silly_Dialect, "mod"> {
-  let summary = "modulo operation (e.g., x / y)";
-  let arguments = (ins AnyInteger:$lhs, AnyInteger:$rhs);
-  let results = (outs AnyInteger:$result);
-}
-
-def Silly_LessOp : Op<Silly_Dialect, "less"> {
-  let summary = "Less than operation (e.g., x < y)";
-  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
-  let results = (outs I1:$result);
-  //let assemblyFormat = "$lhs `<` $rhs `:` type($result) attr-dict";
-}
-
-def Silly_LessEqualOp : Op<Silly_Dialect, "less_eq"> {
-  let summary = "Less than or equal operation (e.g., x <= y)";
-  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
-  let results = (outs I1:$result);
-  //let assemblyFormat = "$lhs `<=` $rhs `:` type($result) attr-dict";
-}
-
-def Silly_EqualOp : Op<Silly_Dialect, "eq"> {
-  let summary = "Equal operation (e.g., x EQ y)";
-  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
-  let results = (outs I1:$result);
-  //let assemblyFormat = "$lhs `==` $rhs `:` type($result) attr-dict";
-}
-
-def Silly_NotEqualOp : Op<Silly_Dialect, "neq"> {
-  let summary = "Not equal operation (e.g., x NE y)";
-  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
-  let results = (outs I1:$result);
-  //let assemblyFormat = "$lhs `!=` $rhs `:` type($result) attr-dict";
-}
-
-def Silly_OrOp : Op<Silly_Dialect, "or"> {
-  let summary = "Bitwise or boolean OR operation (e.g., x OR y)";
-  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
-  let results = (outs Silly_IntOrFloat:$result);
-  //let assemblyFormat = "$lhs `|` $rhs `:` type($result) attr-dict";
-}
-
-def Silly_AndOp : Op<Silly_Dialect, "and"> {
-  let summary = "Bitwise or boolean AND operation (e.g., x AND y)";
-  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
-  let results = (outs Silly_IntOrFloat:$result);
-  //let assemblyFormat = "$lhs `&` $rhs `:` type($result) attr-dict";
-}
-
-def Silly_XorOp : Op<Silly_Dialect, "xor"> {
-  let summary = "Bitwise or boolean XOR operation (e.g., x XOR y)";
-  let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
-  let results = (outs Silly_IntOrFloat:$result);
-  //let assemblyFormat = "$lhs `^` $rhs `:` type($result) attr-dict";
 }
 
 // vim: et ts=2 sw=2

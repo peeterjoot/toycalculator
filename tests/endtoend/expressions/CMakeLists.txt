@@ -1,22 +1,25 @@
 set(EXPRESSIONS_TESTS
+    0minus
+    addi
+    bin
+    chained_comparison_parens
+    conversions
+    converti
     expressions1
     expressions2
     expressions3
+    expressions4
     expressions4a
     expressions4b
-    expressions4
     expressions5
     expressions6
     expressions_assignment
     expressions_in_call
     expressions_in_for
     expressions_in_if
-    bin
-    0minus
-    chained_comparison_parens
-    addi
-    converti
-    conversions
+    mod
+    mod2
+    mult
     neg
     test
 )

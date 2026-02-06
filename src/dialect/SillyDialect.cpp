@@ -16,13 +16,16 @@
 
 #include "SillyDialect.hpp"
 
-// Pull in generated op method bodies, adaptors, verify(), fold(), etc.
-#define GET_OP_CLASSES
-#include "SillyDialect.cpp.inc"
-
 // Pull in generated type method bodies (parse, print, etc. if any)
 #define GET_TYPEDEF_CLASSES
 #include "SillyTypes.cpp.inc"
+
+#define GET_ATTRDEF_CLASSES
+#include "SillyDialectEnums.cpp.inc"
+
+// Pull in generated op method bodies, adaptors, verify(), fold(), etc.
+#define GET_OP_CLASSES
+#include "SillyDialect.cpp.inc"
 
 using namespace mlir;
 
@@ -217,11 +220,13 @@ namespace silly
 
 #include "SillyDialectDefs.cpp.inc"
 
+/// Glue code for Silly dialect registration
 extern "C" void registerSillyDialect( mlir::DialectRegistry &registry )
 {
     registry.insert<silly::SillyDialect>();
 }
 
+/// Silly dialect plugin initialization
 extern "C" LLVM_ATTRIBUTE_WEAK ::mlir::DialectPluginLibraryInfo mlirGetDialectPluginInfo()
 {
     return { /*.apiVersion =*/MLIR_PLUGIN_API_VERSION,

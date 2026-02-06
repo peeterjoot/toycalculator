@@ -436,7 +436,7 @@ The expression grammar supports **generalized expressions** with proper preceden
 | Precedence | Operators                  | Associativity | Notes                               |
 |------------|----------------------------|---------------|-------------------------------------|
 | 1 (highest)| `NOT`, unary `+`, unary `-`| right         | Unary operators chain right-to-left |
-| 2          | `*`, `/`                   | left          | Multiplicative                      |
+| 2          | `*`, `/`, `%`              | left          | Multiplicative                      |
 | 3          | `+`, `-`                   | left          | Additive                            |
 | 4          | `<`, `>`, `<=`, `>=`       | left          | Relational (non-associative in practice) |
 | 5          | `EQ`, `NE`                 | left          | Equality                            |
@@ -602,6 +602,7 @@ Binary arithmetic operators work on numeric operands.
 | `-`      | Subtraction    |
 | `*`      | Multiplication |
 | `/`      | Division       |
+| `%`      | Modulus        |
 
 ```text
 x = a + b;

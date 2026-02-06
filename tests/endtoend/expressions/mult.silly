@@ -1,0 +1,2 @@
+// Very simplest binop<mul> test:
+PRINT 2 * 3;

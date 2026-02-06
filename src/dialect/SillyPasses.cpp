@@ -13,6 +13,7 @@
 
 namespace mlir
 {
+    /// Silly dialect pass glue code.
     void registerSillyPasses()
     {
         ::registerSillyPasses();    // Call the generated inline function

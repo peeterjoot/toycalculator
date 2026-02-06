@@ -244,7 +244,7 @@ additionOperator
   ;
 
 multiplicativeOperator
-  : TIMES_TOKEN | DIV_TOKEN
+  : TIMES_TOKEN | DIV_TOKEN | MOD_TOKEN
   ;
 // ─────────────────────────────────────────────────────────────
 
@@ -267,7 +267,7 @@ arrayBoundsExpression
 
 // A binary operator for addition, subtraction, multiplication, or division, ...
 binaryOperator
-  : MINUS_TOKEN | PLUSCHAR_TOKEN | TIMES_TOKEN | DIV_TOKEN
+  : MINUS_TOKEN | PLUSCHAR_TOKEN | TIMES_TOKEN | DIV_TOKEN | MOD_TOKEN
   | LESSTHAN_TOKEN | GREATERTHAN_TOKEN | LESSEQUAL_TOKEN | GREATEREQUAL_TOKEN
   | EQUALITY_TOKEN | NOTEQUAL_TOKEN
   | BOOLEANOR_TOKEN | BOOLEANAND_TOKEN | BOOLEANXOR_TOKEN
@@ -370,6 +370,11 @@ MINUS_TOKEN
 // Matches the multiplication operator (e.g., '*').
 TIMES_TOKEN
   : '*'
+  ;
+
+// Matches the multiplication operator (e.g., '%').
+MOD_TOKEN
+  : '%'
   ;
 
 // Matches a North american decimal separator

@@ -10,7 +10,7 @@ testit - A little test driver.
 
 =head1 SYNOPSIS
 
-testit [--help] --no-fatal [--just tcname] [--optimize] [--no-debug] [--clean] [--outdir dir] [--driverpath dir]
+testit [--help] --no-fatal [--just tcname] [--optimize] [--no-debug] [--clean] [--outdir dir] [--driverpath dir] [--lldebug]
 
 =head1 DESCRIPTION
 
@@ -43,6 +43,10 @@ Do not pass -g to compiler.
 =item --optimize
 
 Pass -O 2 to compiler.
+
+=item --lldebug
+
+Pass the llvm/mlir --debug option to the silly driver.
 
 =back
 
@@ -82,6 +86,7 @@ my $fatal = 1;
 my $just;
 my $optimize = 0;
 my $debug = 1;
+my $lldebug = 0;
 my $clean = 0;
 my $assembly = 1;
 my $outdir;
@@ -97,6 +102,7 @@ GetOptions (
    'optimize!'          => \$optimize,
    'assembly!'          => \$assembly,
    'debug!'             => \$debug,
+   'lldebug!'           => \$lldebug,
    'clean!'             => \$clean,
 ) or pod2usage(-verbose => 0) ;
 
@@ -125,6 +131,11 @@ if ( $optimize )
 if ( $debug )
 {
     $flags .= ' -g';
+}
+
+if ( $lldebug )
+{
+    $flags .= ' --debug';
 }
 
 if ( !defined $outdir )
@@ -352,7 +363,7 @@ sub runone
         $erc = 0;
     }
 
-    complain( "stem: $rc != $erc" ) if ( $rc ne $erc );
+    complain( "${stem}: expected $erc, and got $rc" ) if ( $rc ne $erc );
 
     if ( -e "expected/${stem}.out" )
     {

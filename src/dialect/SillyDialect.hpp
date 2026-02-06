@@ -13,11 +13,14 @@
 #include <mlir/Bytecode/BytecodeOpInterface.h>
 #include <mlir/IR/SymbolTable.h>
 
-// Your custom type header (contains Silly_VarType class forward/definition)
-#include "SillyTypes.hpp"
-
 // Generated: dialect class forward declaration + getDialectNamespace()
 #include "SillyDialectDecls.hpp.inc"
+
+// Silly_VarType class forward/definition:
+#include "SillyTypes.hpp"
+
+#define GET_ATTRDEF_CLASSES
+#include "SillyDialectEnums.h.inc"
 
 // Generated: full op class definitions (AbortOp, DeclareOp, etc.)
 // This must come AFTER Decls, before any .cpp.inc files
