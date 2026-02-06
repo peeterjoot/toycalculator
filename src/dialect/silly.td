@@ -228,15 +228,13 @@ def Silly_GetOp : Op<Silly_Dialect, "get"> {
 def Silly_ArithBinOpKind : I32EnumAttr<"ArithBinOpKind",
                                        "arithmetic binary operation kind", [
   I32EnumAttrCase<"Mul", 0, "mul">,
-//  I32EnumAttrCase<"Div", 1, "div">,
-//  I32EnumAttrCase<"Mod", 2, "mod">,
-//  I32EnumAttrCase<"Add", 3, "add">,
-//  I32EnumAttrCase<"Sub", 4, "sub">,
-//  I32EnumAttrCase<"Or",  5, "or">,
-//  I32EnumAttrCase<"And", 6, "and">,
-//  I32EnumAttrCase<"Xor", 7, "xor">,
-
-  //let cppNamespace = "::silly";
+  I32EnumAttrCase<"Div", 1, "div">,
+  I32EnumAttrCase<"Mod", 2, "mod">,
+  I32EnumAttrCase<"Add", 3, "add">,
+  I32EnumAttrCase<"Sub", 4, "sub">,
+  I32EnumAttrCase<"Or",  5, "or">,
+  I32EnumAttrCase<"And", 6, "and">,
+  I32EnumAttrCase<"Xor", 7, "xor">,
 ]>;
 
 def Silly_ArithBinOp : Op<Silly_Dialect, "arith_binop"> {
@@ -256,36 +254,29 @@ def Silly_ArithBinOp : Op<Silly_Dialect, "arith_binop"> {
   let results = (outs Silly_IntOrFloat:$result);
 }
 
-//def Silly_CmpOpKind : I32EnumAttr<"CmpOpKind",
-//                                  "arithmetic comparison operation kind", [
-//  I32EnumAttrCase<"Less",    0, "less">,
-//  I32EnumAttrCase<"LessEq",  1, "less_eq">,
-//  I32EnumAttrCase<"Equal",   2, "eq">,
-//  I32EnumAttrCase<"NotEqual",3, "neq">,
-//]>;
-//
-//def Silly_Cmp : Op<Silly_Dialect, "cmp"> {
-//  let summary = "Generic comparison operation (less, less_eq, etc.)";
-//  let description = [{
-//    Performs a comparison selected by the kind attribute.
-//    Operands must have the same type. Result is always i1 (boolean).
-//  }];
-//
-//  let arguments = (ins
-//    Silly_CmpOpKind:$kind,
-//    Silly_IntOrFloat:$lhs,
-//    Silly_IntOrFloat:$rhs
-//  );
-//
-//  let results = (outs I1:$result);
-//
-//  //let assemblyFormat = [{
-//  //  `(` $kind `,` $lhs `,` $rhs `)`
-//  //  `:` type($result) attr-dict
-//  //}];
-//
-//  //let hasVerifier = 1;
-//}
+def Silly_CmpOpKind : I32EnumAttr<"CmpOpKind",
+                                  "arithmetic comparison operation kind", [
+  I32EnumAttrCase<"Less",    0, "less">,
+  I32EnumAttrCase<"LessEq",  1, "less_eq">,
+  I32EnumAttrCase<"Equal",   2, "eq">,
+  I32EnumAttrCase<"NotEqual",3, "neq">,
+]>;
+
+def Silly_Cmp : Op<Silly_Dialect, "cmp"> {
+  let summary = "Generic comparison operation (less, less_eq, etc.)";
+  let description = [{
+    Performs a comparison selected by the kind attribute.
+    Operands must have the same type. Result is always i1 (boolean).
+  }];
+
+  let arguments = (ins
+    Silly_CmpOpKind:$kind,
+    Silly_IntOrFloat:$lhs,
+    Silly_IntOrFloat:$rhs
+  );
+
+  let results = (outs I1:$result);
+}
 
 def Silly_NegOp : Op<Silly_Dialect, "negate"> {
   let summary = "Negation operation (e.g., -x)";
