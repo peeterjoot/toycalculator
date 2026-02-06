@@ -469,7 +469,7 @@ namespace silly
             mlir::Location loc = builder.getUnknownLoc();
 
             silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
-            if (!scopeOp)
+            if ( !scopeOp )
             {
                 return true;
             }
@@ -1268,8 +1268,7 @@ namespace silly
             mlir::IntegerAttr paramNumberAttr = declareOp.getParamNumberAttr();
 
             //   silly.declare "x" : i32
-            LLVM_DEBUG( llvm::dbgs() << "Lowering silly.declare: " << declareOp
-                                     << '\n' );
+            LLVM_DEBUG( llvm::dbgs() << "Lowering silly.declare: " << declareOp << '\n' );
 
             rewriter.setInsertionPoint( op );
 
@@ -2042,7 +2041,7 @@ namespace silly
             if ( mlir::IntegerType resulti = mlir::dyn_cast<mlir::IntegerType>( result.getType() ) )
             {
                 mlir::LLVM::ConstantOp zero;
-                if (mlir::failed(lState.getIzero( loc, rewriter, op, resulti.getWidth(), zero )))
+                if ( mlir::failed( lState.getIzero( loc, rewriter, op, resulti.getWidth(), zero ) ) )
                 {
                     return mlir::failure();
                 }
@@ -2063,7 +2062,8 @@ namespace silly
                 else
                 {
                     return rewriter.notifyMatchFailure(
-                        op, llvm::formatv( "Unknown floating point type in negation operation lowering: {0}", result.getType() ) );
+                        op, llvm::formatv( "Unknown floating point type in negation operation lowering: {0}",
+                                           result.getType() ) );
                 }
 
                 result = rewriter.create<mlir::LLVM::FSubOp>( loc, zero, result );
@@ -2078,6 +2078,110 @@ namespace silly
             return mlir::success();
         }
     };
+
+    template <class llvmIOpType, class llvmFOpType, bool allowFloat>
+    mlir::LogicalResult binaryOpLoweringHelper( mlir::Location loc, LoweringContext& lState, mlir::Operation* op,
+                                                mlir::ArrayRef<mlir::Value> operands,
+                                                mlir::ConversionPatternRewriter& rewriter, mlir::Type resultType )
+    {
+        mlir::Value lhs = operands[0];
+        mlir::Value rhs = operands[1];
+        if ( resultType.isIntOrIndex() )
+        {
+            unsigned rwidth = resultType.getIntOrFloatBitWidth();
+
+            if ( mlir::IntegerType lTyI = mlir::dyn_cast<mlir::IntegerType>( lhs.getType() ) )
+            {
+                unsigned width = lTyI.getWidth();
+
+                if ( rwidth > width )
+                {
+                    lhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, resultType, lhs );
+                }
+                else if ( rwidth < width )
+                {
+                    lhs = rewriter.create<mlir::LLVM::TruncOp>( loc, resultType, lhs );
+                }
+            }
+            else if ( lState.isTypeFloat( lhs.getType() ) )
+            {
+                if ( allowFloat )
+                {
+                    lhs = rewriter.create<mlir::LLVM::FPToSIOp>( loc, resultType, lhs );
+                }
+                else
+                {
+                    return rewriter.notifyMatchFailure( op, "float types unsupported for integer binary operation" );
+                }
+            }
+
+            if ( mlir::IntegerType rTyI = mlir::dyn_cast<mlir::IntegerType>( rhs.getType() ) )
+            {
+                unsigned width = rTyI.getWidth();
+
+                if ( rwidth > width )
+                {
+                    rhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, resultType, rhs );
+                }
+                else if ( rwidth < width )
+                {
+                    rhs = rewriter.create<mlir::LLVM::TruncOp>( loc, resultType, rhs );
+                }
+            }
+            else if ( lState.isTypeFloat( rhs.getType() ) )
+            {
+                if ( allowFloat )
+                {
+                    rhs = rewriter.create<mlir::LLVM::FPToSIOp>( loc, resultType, rhs );
+                }
+                else
+                {
+                    return rewriter.notifyMatchFailure( op, "float types unsupported for integer binary operation" );
+                }
+            }
+
+            llvmIOpType result = rewriter.create<llvmIOpType>( loc, lhs, rhs );
+            rewriter.replaceOp( op, result );
+        }
+        else if ( allowFloat )
+        {
+            // Floating-point addition: ensure both operands are f64.
+            if ( mlir::IntegerType lTyI = mlir::dyn_cast<mlir::IntegerType>( lhs.getType() ) )
+            {
+                unsigned width = lTyI.getWidth();
+
+                if ( width == 1 )
+                {
+                    lhs = rewriter.create<mlir::LLVM::UIToFPOp>( loc, resultType, lhs );
+                }
+                else
+                {
+                    lhs = rewriter.create<mlir::LLVM::SIToFPOp>( loc, resultType, lhs );
+                }
+            }
+            if ( mlir::IntegerType rTyI = mlir::dyn_cast<mlir::IntegerType>( rhs.getType() ) )
+            {
+                unsigned width = rTyI.getWidth();
+
+                if ( width == 1 )
+                {
+                    rhs = rewriter.create<mlir::LLVM::UIToFPOp>( loc, resultType, rhs );
+                }
+                else
+                {
+                    rhs = rewriter.create<mlir::LLVM::SIToFPOp>( loc, resultType, rhs );
+                }
+            }
+            llvmFOpType result = rewriter.create<llvmFOpType>( loc, lhs, rhs );
+            rewriter.replaceOp( op, result );
+        }
+        else
+        {
+            return rewriter.notifyMatchFailure( op, "float types unsupported for integer binary operation" );
+        }
+
+        return mlir::success();
+    }
 
     // Lower silly.binary to LLVM arithmetic.
     template <class SillyBinaryOpType, class llvmIOpType, class llvmFOpType, bool allowFloat>
@@ -2103,105 +2207,85 @@ namespace silly
 
             mlir::Type resultType = binaryOp.getResult().getType();
 
-            mlir::Value lhs = operands[0];
-            mlir::Value rhs = operands[1];
-            if ( resultType.isIntOrIndex() )
+            return binaryOpLoweringHelper<llvmIOpType, llvmFOpType, allowFloat>( loc, lState, op, operands, rewriter,
+                                                                                 resultType );
+        }
+    };
+
+    class ArithBinOpLowering : public mlir::ConversionPattern
+    {
+        LoweringContext& lState;
+
+       public:
+        ArithBinOpLowering( LoweringContext& state, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : ConversionPattern( silly::ArithBinOp::getOperationName(), benefit, context ), lState( state )
+        {
+        }
+
+        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
+                                             mlir::ConversionPatternRewriter& rewriter ) const override
+        {
+            silly::ArithBinOp binaryOp = cast<silly::ArithBinOp>( op );
+            silly::ArithBinOpKind kind = binaryOp.getKind();
+
+            mlir::Location loc = binaryOp.getLoc();
+
+            LLVM_DEBUG( llvm::dbgs() << "Lowering silly.binary: " << *op << '\n' );
+
+            mlir::Type resultType = binaryOp.getResult().getType();
+
+            switch ( kind )
             {
-                unsigned rwidth = resultType.getIntOrFloatBitWidth();
-
-                if ( mlir::IntegerType lTyI = mlir::dyn_cast<mlir::IntegerType>( lhs.getType() ) )
+                case silly::ArithBinOpKind::Add:
                 {
-                    unsigned width = lTyI.getWidth();
-
-                    if ( rwidth > width )
-                    {
-                        lhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, resultType, lhs );
-                    }
-                    else if ( rwidth < width )
-                    {
-                        lhs = rewriter.create<mlir::LLVM::TruncOp>( loc, resultType, lhs );
-                    }
+                    return binaryOpLoweringHelper<mlir::LLVM::AddOp, mlir::LLVM::FAddOp, true>(
+                        loc, lState, op, operands, rewriter, resultType );
                 }
-                else if ( lState.isTypeFloat( lhs.getType() ) )
+                case silly::ArithBinOpKind::Sub:
                 {
-                    if ( allowFloat )
-                    {
-                        lhs = rewriter.create<mlir::LLVM::FPToSIOp>( loc, resultType, lhs );
-                    }
-                    else
-                    {
-                        return rewriter.notifyMatchFailure( op,
-                                                            "float types unsupported for integer binary operation" );
-                    }
+                    return binaryOpLoweringHelper<mlir::LLVM::SubOp, mlir::LLVM::FSubOp, true>(
+                        loc, lState, op, operands, rewriter, resultType );
+                }
+                case silly::ArithBinOpKind::Mul:
+                {
+                    return binaryOpLoweringHelper<mlir::LLVM::MulOp, mlir::LLVM::FMulOp, true>(
+                        loc, lState, op, operands, rewriter, resultType );
                 }
 
-                if ( mlir::IntegerType rTyI = mlir::dyn_cast<mlir::IntegerType>( rhs.getType() ) )
+                case silly::ArithBinOpKind::Div:
                 {
-                    unsigned width = rTyI.getWidth();
-
-                    if ( rwidth > width )
-                    {
-                        rhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, resultType, rhs );
-                    }
-                    else if ( rwidth < width )
-                    {
-                        rhs = rewriter.create<mlir::LLVM::TruncOp>( loc, resultType, rhs );
-                    }
-                }
-                else if ( lState.isTypeFloat( rhs.getType() ) )
-                {
-                    if ( allowFloat )
-                    {
-                        rhs = rewriter.create<mlir::LLVM::FPToSIOp>( loc, resultType, rhs );
-                    }
-                    else
-                    {
-                        return rewriter.notifyMatchFailure( op,
-                                                            "float types unsupported for integer binary operation" );
-                    }
+                    return binaryOpLoweringHelper<mlir::LLVM::SDivOp, mlir::LLVM::FDivOp, true>(
+                        loc, lState, op, operands, rewriter, resultType );
                 }
 
-                llvmIOpType result = rewriter.create<llvmIOpType>( loc, lhs, rhs );
-                rewriter.replaceOp( op, result );
-            }
-            else if ( allowFloat )
-            {
-                // Floating-point addition: ensure both operands are f64.
-                if ( mlir::IntegerType lTyI = mlir::dyn_cast<mlir::IntegerType>( lhs.getType() ) )
+                case silly::ArithBinOpKind::And:
                 {
-                    unsigned width = lTyI.getWidth();
-
-                    if ( width == 1 )
-                    {
-                        lhs = rewriter.create<mlir::LLVM::UIToFPOp>( loc, resultType, lhs );
-                    }
-                    else
-                    {
-                        lhs = rewriter.create<mlir::LLVM::SIToFPOp>( loc, resultType, lhs );
-                    }
+                    return binaryOpLoweringHelper<mlir::LLVM::AndOp, mlir::LLVM::FAddOp, false>(
+                        loc, lState, op, operands, rewriter, resultType );
                 }
-                if ( mlir::IntegerType rTyI = mlir::dyn_cast<mlir::IntegerType>( rhs.getType() ) )
+
+                case silly::ArithBinOpKind::Or:
                 {
-                    unsigned width = rTyI.getWidth();
-
-                    if ( width == 1 )
-                    {
-                        rhs = rewriter.create<mlir::LLVM::UIToFPOp>( loc, resultType, rhs );
-                    }
-                    else
-                    {
-                        rhs = rewriter.create<mlir::LLVM::SIToFPOp>( loc, resultType, rhs );
-                    }
+                    return binaryOpLoweringHelper<mlir::LLVM::OrOp, mlir::LLVM::FAddOp, false>(
+                        loc, lState, op, operands, rewriter, resultType );
                 }
-                llvmFOpType result = rewriter.create<llvmFOpType>( loc, lhs, rhs );
-                rewriter.replaceOp( op, result );
-            }
-            else
-            {
-                return rewriter.notifyMatchFailure( op, "float types unsupported for integer binary operation" );
+
+                case silly::ArithBinOpKind::Mod:
+                {
+                    assert( 0 && "NYI" );
+                    break;
+                }
+
+                case silly::ArithBinOpKind::Xor:
+                {
+                    return binaryOpLoweringHelper<mlir::LLVM::XOrOp, mlir::LLVM::FAddOp, false>(
+                        loc, lState, op, operands, rewriter, resultType );
+                }
             }
 
-            return mlir::success();
+            llvm_unreachable( "unknown arith binop kind" );
+
+            return mlir::failure();
         }
     };
 
@@ -2290,7 +2374,8 @@ namespace silly
                 bool error = lState.createPerFuncState( funcOp );
                 if ( error )
                 {
-                    LLVM_DEBUG( llvm::dbgs() << "!DISubroutineType() creation for " << funcOp.getSymName() << " failed" );
+                    LLVM_DEBUG( llvm::dbgs()
+                                << "!DISubroutineType() creation for " << funcOp.getSymName() << " failed" );
                     signalPassFailure();
                     return;
                 }
@@ -2310,7 +2395,7 @@ namespace silly
                                     silly::EqualOp, silly::LessEqualOp, silly::LessOp, silly::LoadOp, silly::MulOp,
                                     silly::NegOp, silly::NotEqualOp, silly::OrOp, silly::PrintOp, silly::GetOp,
                                     silly::StringLiteralOp, silly::SubOp, silly::XorOp, silly::AbortOp,
-                                    silly::DebugName>();
+                                    silly::DebugName, silly::ArithBinOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
                                   silly::ScopeOp, silly::YieldOp, silly::ReturnOp, silly::CallOp, mlir::func::CallOp,
                                   mlir::scf::IfOp, mlir::scf::ForOp, mlir::scf::YieldOp>();
@@ -2320,7 +2405,7 @@ namespace silly
                              DivOpLowering, EqualOpLowering, LessEqualOpLowering, LessOpLowering, LoadOpLowering,
                              MulOpLowering, NegOpLowering, NotEqualOpLowering, OrOpLowering, PrintOpLowering,
                              AbortOpLowering, GetOpLowering, StringLiteralOpLowering, SubOpLowering, XorOpLowering,
-                             DebugNameOpLowering>( lState, &getContext(), 1 );
+                             DebugNameOpLowering, ArithBinOpLowering>( lState, &getContext(), 1 );
 
                 if ( failed( applyFullConversion( mod, target, std::move( patterns ) ) ) )
                 {

@@ -1999,12 +1999,15 @@ namespace silly
 
                 if ( op->TIMES_TOKEN() )
                 {
-                    // value = builder.create<silly::MulOp>( loc, ty, value, rhs ).getResult();
+#if 0
+                    value = builder.create<silly::MulOp>( loc, ty, value, rhs ).getResult();
+#else
                     value =
                         builder
                             .create<silly::ArithBinOp>(
                                 loc, ty, silly::ArithBinOpKindAttr::get( this->ctx, silly::ArithBinOpKind::Mul ), value, rhs )
                             .getResult();
+#endif
                 }
                 else if ( op->DIV_TOKEN() )
                 {
