@@ -225,17 +225,21 @@ def Silly_GetOp : Op<Silly_Dialect, "get"> {
   let assemblyFormat = "attr-dict `:` type(results)";
 }
 
-def Silly_ArithBinOpKind : I32EnumAttr<"ArithBinOpKind",
-                                       "arithmetic binary operation kind", [
-  I32EnumAttrCase<"Mul", 0, "mul">,
-  I32EnumAttrCase<"Div", 1, "div">,
-  I32EnumAttrCase<"Mod", 2, "mod">,
-  I32EnumAttrCase<"Add", 3, "add">,
-  I32EnumAttrCase<"Sub", 4, "sub">,
-  I32EnumAttrCase<"Or",  5, "or">,
-  I32EnumAttrCase<"And", 6, "and">,
-  I32EnumAttrCase<"Xor", 7, "xor">,
-]>;
+def Silly_ArithBinOpKind : I32EnumAttr<
+    "ArithBinOpKind",
+    "arithmetic binary operation kind",
+    [
+      I32EnumAttrCase<"Mul", 0, "mul">,
+      I32EnumAttrCase<"Div", 1, "div">,
+      I32EnumAttrCase<"Mod", 2, "mod">,
+      I32EnumAttrCase<"Add", 3, "add">,
+      I32EnumAttrCase<"Sub", 4, "sub">,
+      I32EnumAttrCase<"Or",  5, "or">,
+      I32EnumAttrCase<"And", 6, "and">,
+      I32EnumAttrCase<"Xor", 7, "xor">
+]> {
+  let cppNamespace = "::silly";
+}
 
 def Silly_ArithBinOp : Op<Silly_Dialect, "arith_binop"> {
   let summary = "Generic arithmetic binary operation (mul, div, mod, etc.)";
@@ -252,6 +256,12 @@ def Silly_ArithBinOp : Op<Silly_Dialect, "arith_binop"> {
   );
 
   let results = (outs Silly_IntOrFloat:$result);
+
+  let assemblyFormat = [{
+    $kind $lhs `:` type($lhs)
+    `,` $rhs `:` type($rhs)
+    `->` type($result) attr-dict
+  }];
 }
 
 def Silly_CmpOpKind : I32EnumAttr<"CmpOpKind",
@@ -260,7 +270,9 @@ def Silly_CmpOpKind : I32EnumAttr<"CmpOpKind",
   I32EnumAttrCase<"LessEq",  1, "less_eq">,
   I32EnumAttrCase<"Equal",   2, "eq">,
   I32EnumAttrCase<"NotEqual",3, "neq">,
-]>;
+]> {
+  let cppNamespace = "::silly";
+}
 
 def Silly_Cmp : Op<Silly_Dialect, "cmp"> {
   let summary = "Generic comparison operation (less, less_eq, etc.)";
@@ -276,6 +288,12 @@ def Silly_Cmp : Op<Silly_Dialect, "cmp"> {
   );
 
   let results = (outs I1:$result);
+
+  let assemblyFormat = [{
+    $kind $lhs `:` type($lhs)
+    `,` $rhs `:` type($rhs)
+    `->` type($result) attr-dict
+  }];
 }
 
 def Silly_NegOp : Op<Silly_Dialect, "negate"> {

@@ -31,10 +31,10 @@ namespace silly
     void ParseListener::emitUserError( mlir::Location loc, const std::string &message, const std::string &funcName,
                                        const std::string &sourceFile, bool internal )
     {
-        bool inColor = isatty(fileno(stderr)) && driverState.colorErrors;
-        const char* RED = inColor ? "\033[1;31m" : "";
-        const char* CYAN = inColor ? "\033[0;36m" : "";
-        const char* RESET = inColor ? "\033[0m" : "";
+        bool inColor = isatty( fileno( stderr ) ) && driverState.colorErrors;
+        const char *RED = inColor ? "\033[1;31m" : "";
+        const char *CYAN = inColor ? "\033[0;36m" : "";
+        const char *RESET = inColor ? "\033[0m" : "";
 
         if ( internal && errorCount )
         {
@@ -61,8 +61,8 @@ namespace silly
         lastFunc = funcName;
 
         // Print: filename:line:col: error: message
-        llvm::errs() << std::format( "{}{}:{}:{}: {}{}error: {}{}\n", CYAN, filename, line, col, RED, internal ? "internal " : "",
-                                     RESET, message );
+        llvm::errs() << std::format( "{}{}:{}:{}: {}{}error: {}{}\n", CYAN, filename, line, col, RED,
+                                     internal ? "internal " : "", RESET, message );
 
         // Try to read and display the source line
         if ( !sourceFile.empty() || !filename.empty() )
@@ -302,7 +302,7 @@ namespace silly
         return nullptr;
     }
 
-    bool ParseListener::isVariableDeclared( mlir::Location loc, const std::string &varName, bool & error )
+    bool ParseListener::isVariableDeclared( mlir::Location loc, const std::string &varName, bool &error )
     {
         // Get the single scope
         PerFunctionState &f = funcState( currentFuncName );
@@ -517,15 +517,14 @@ namespace silly
         {
             mlir::Location loc = getTokenLocation( offendingSymbol );
 
-            emitUserError( loc, std::format( "parse error: {}", msg ), currentFuncName,
-                           driverState.filename, false );
+            emitUserError( loc, std::format( "parse error: {}", msg ), currentFuncName, driverState.filename, false );
         }
         else
         {
             mlir::Location loc = builder.getUnknownLoc();
             emitUserError( loc,
-                           std::format( "{}:{}:{}: parse error in {}:{}:{}: {}", __FILE__, __LINE__,
-                                        __func__, driverState.filename, line, charPositionInLine, msg ),
+                           std::format( "{}:{}:{}: parse error in {}:{}:{}: {}", __FILE__, __LINE__, __func__,
+                                        driverState.filename, line, charPositionInLine, msg ),
                            currentFuncName, driverState.filename, true );
         }
     }
@@ -554,8 +553,8 @@ namespace silly
         if ( !symbolOp )
         {
             // coverage: error_induction_var_in_step.silly
-            emitUserError( loc, std::format( "Undeclared variable {}", varName ),
-                           currentFuncName, driverState.filename, false );
+            emitUserError( loc, std::format( "Undeclared variable {}", varName ), currentFuncName, driverState.filename,
+                           false );
             return declareOp;
         }
 
@@ -598,9 +597,9 @@ namespace silly
         return nullptr;
     }
 
-    ParseListener::ParseListener( const DriverState &ds, mlir::MLIRContext* context )
+    ParseListener::ParseListener( const DriverState &ds, mlir::MLIRContext *context )
         : driverState{ ds },
-          ctx{context},
+          ctx{ context },
           builder( ctx ),
           mod( mlir::ModuleOp::create( getStartLocation( nullptr ) ) )
     {
@@ -1170,7 +1169,8 @@ namespace silly
         }
         if ( error )
         {
-            emitUserError( loc, std::format( "{}:{}:{}: isVariableDeclared check failed", __FILE__, __LINE__, __func__ ),
+            emitUserError( loc,
+                           std::format( "{}:{}:{}: isVariableDeclared check failed", __FILE__, __LINE__, __func__ ),
                            currentFuncName, driverState.filename, true );
             return;
         }
@@ -1999,7 +1999,12 @@ namespace silly
 
                 if ( op->TIMES_TOKEN() )
                 {
-                    value = builder.create<silly::MulOp>( loc, ty, value, rhs ).getResult();
+                    // value = builder.create<silly::MulOp>( loc, ty, value, rhs ).getResult();
+                    value =
+                        builder
+                            .create<silly::ArithBinOp>(
+                                loc, ty, silly::ArithBinOpKindAttr::get( this->ctx, silly::ArithBinOpKind::Mul ), value, rhs )
+                            .getResult();
                 }
                 else if ( op->DIV_TOKEN() )
                 {
