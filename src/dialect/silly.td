@@ -259,6 +259,12 @@ def Silly_DivOp : Op<Silly_Dialect, "div"> {
   //let assemblyFormat = "$lhs `/` $rhs `:` type($result) attr-dict";
 }
 
+def Silly_ModOp : Op<Silly_Dialect, "mod"> {
+  let summary = "modulo operation (e.g., x / y)";
+  let arguments = (ins AnyInteger:$lhs, AnyInteger:$rhs);
+  let results = (outs AnyInteger:$result);
+}
+
 def Silly_LessOp : Op<Silly_Dialect, "less"> {
   let summary = "Less than operation (e.g., x < y)";
   let arguments = (ins Silly_IntOrFloat:$lhs, Silly_IntOrFloat:$rhs);
