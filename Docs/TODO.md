@@ -11,6 +11,7 @@
   couldn't get it to work and reverted all such experimentation.  This means that I leak the mlir::ModuleOp
   and it only gets freed implicitly on return from main.  That's clumsy, and would probably show up as
   a valgrind leak.  Revisit this separate from trying to add the .mlir read+parse.
+* add a --no-verify flag, or perhaps only do this with --debug
 
 #### diagnostics
 

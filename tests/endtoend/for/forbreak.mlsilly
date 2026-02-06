@@ -1,0 +1,47 @@
+// INT64 v;
+// FOR (INT64 i : (1, 5)) {
+//     PRINT i;
+//     v = i + 1;
+//     IF (i == 3) { BREAK; };
+// };
+// PRINT "after loop: ", v;
+
+module {
+  func.func @main() -> i32 {
+    %c0_i32 = arith.constant 0 : i32
+    %c1_i64 = arith.constant 1 : i64
+    %c3_i64 = arith.constant 3 : i64
+    %c5_i64 = arith.constant 5 : i64
+    %true = arith.constant true
+    %false = arith.constant false
+    
+    "silly.scope"() ({
+      %0 = "silly.declare"() <{sym_name = "v"}> : () -> !silly.var<i64>
+      
+      scf.while (%i = %c1_i64, %broke = %false) : (i64, i1) -> (i64, i1) {
+        %not_broke = arith.xori %broke, %true : i1
+        %in_range = arith.cmpi slt, %i, %c5_i64 : i64
+        %continue = arith.andi %in_range, %not_broke : i1
+        scf.condition(%continue) %i, %broke : i64, i1
+      } do {
+      ^bb0(%loop_var: i64, %break_flag: i1):
+        "silly.print"(%c0_i32, %loop_var) : (i32, i64) -> ()
+        %2 = "silly.add"(%loop_var, %c1_i64) : (i64, i64) -> i64
+        silly.assign %0 : <i64> = %2 : i64
+        
+        %is_three = arith.cmpi eq, %loop_var, %c3_i64 : i64
+        %should_break = arith.ori %break_flag, %is_three : i1
+        
+        %next = arith.addi %loop_var, %c1_i64 : i64
+        scf.yield %next, %should_break : i64, i1
+      }
+
+      %lit = "silly.string_literal"() <{value = "after loop: "}> : () -> !llvm.ptr
+      %p = silly.load %0 : <i64> : i64
+      "silly.print"(%c0_i32, %lit, %p) : (i32, !llvm.ptr, i64) -> ()
+
+      "silly.return"(%c0_i32) : (i32) -> ()
+    }) : () -> ()
+    "silly.yield"() : () -> ()
+  }
+}

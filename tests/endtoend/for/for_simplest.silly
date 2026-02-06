@@ -6,4 +6,4 @@ FOR (INT64 myLoopVar : (1, 5))
     v = myLoopVar + 1;
 };
 
-PRINT v;
+PRINT "after loop: ", v;
