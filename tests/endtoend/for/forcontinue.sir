@@ -1,0 +1,43 @@
+// FOR (INT64 i : (0, 10)) {
+//     PRINT "pre: ", i;
+//     IF (i % 2 == 1) { CONTINUE; };
+//     PRINT "post: ", i;
+// };
+
+// CONTINUE sample using scf.for
+module {
+  func.func @main() -> i32 {
+    %c0_i32 = arith.constant 0 : i32
+    %c0_i64 = arith.constant 0 : i64
+    %c1_i1 = arith.constant 1 : i1
+    %c1_i64 = arith.constant 1 : i64
+    %c2_i64 = arith.constant 2 : i64
+    %c10_i64 = arith.constant 10 : i64
+    
+    "silly.scope"() ({
+      scf.for %i = %c0_i64 to %c10_i64 step %c1_i64 : i64 {
+        // printf("pre: %d\n", i);
+        %pre_str = "silly.string_literal"() <{value = "pre: "}> : () -> !llvm.ptr
+        "silly.print"(%c0_i32, %pre_str, %i) : (i32, !llvm.ptr, i64) -> ()
+        
+        // if (i % 2 == 1) continue;
+        %mod = arith.remui %i, %c2_i64 : i64
+        %is_odd = arith.cmpi eq, %mod, %c1_i64 : i64
+        
+        // Only execute "post" if NOT odd (i.e., if we're not continuing)
+        %is_even = arith.xori %is_odd, %c1_i1 : i1
+        
+        scf.if %is_odd {
+          %cont_str = "silly.string_literal"() <{value = "continue: "}> : () -> !llvm.ptr
+          "silly.print"(%c0_i32, %cont_str, %i) : (i32, !llvm.ptr, i64) -> ()
+        } else {
+          %post_str = "silly.string_literal"() <{value = "post: "}> : () -> !llvm.ptr
+          "silly.print"(%c0_i32, %post_str, %i) : (i32, !llvm.ptr, i64) -> ()
+        }
+      }
+      
+      "silly.return"(%c0_i32) : (i32) -> ()
+    }) : () -> ()
+    "silly.yield"() : () -> ()
+  }
+}

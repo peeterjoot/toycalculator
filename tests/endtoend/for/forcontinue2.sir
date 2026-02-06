@@ -1,0 +1,90 @@
+// FOR (INT64 i : (0, 10))
+// {
+//     PRINT "pre: ", i;
+// 
+//     IF (i % 2 == 1)
+//     {
+//         PRINT "2n + 1";
+// 
+//         IF (i % 3 == 1)
+//         {
+//             PRINT "3n + 1";
+// 
+//             CONTINUE;
+//         };
+//     };
+// 
+//     PRINT "post: ", i;
+// };
+
+// CONTINUE within a FOR sample using scf.while
+module {
+  func.func @main() -> i32 {
+    %c0_i32 = arith.constant 0 : i32
+    %c0_i64 = arith.constant 0 : i64
+    %c1_i64 = arith.constant 1 : i64
+    %c2_i64 = arith.constant 2 : i64
+    %c3_i64 = arith.constant 3 : i64
+    %c10_i64 = arith.constant 10 : i64
+    %true = arith.constant true
+    %false = arith.constant false
+    
+    "silly.scope"() ({
+      scf.while (%i = %c0_i64) : (i64) -> (i64) {
+        %continue_loop = arith.cmpi slt, %i, %c10_i64 : i64
+        scf.condition(%continue_loop) %i : i64
+      } do {
+      ^bb0(%loop_var: i64):
+        // PRINT "pre: ", i;
+        %pre_str = "silly.string_literal"() <{value = "pre: "}> : () -> !llvm.ptr
+        "silly.print"(%c0_i32, %pre_str, %loop_var) : (i32, !llvm.ptr, i64) -> ()
+        
+        // Track if we should skip rest of body (continue)
+        // IF (i % 2 == 1)
+        %mod2 = arith.remui %loop_var, %c2_i64 : i64
+        %is_odd = arith.cmpi eq, %mod2, %c1_i64 : i64
+        
+        %continued = scf.if %is_odd -> (i1) {
+          // PRINT "2n + 1";
+          %str1 = "silly.string_literal"() <{value = "2n + 1"}> : () -> !llvm.ptr
+          "silly.print"(%c0_i32, %str1) : (i32, !llvm.ptr) -> ()
+          
+          // IF (i % 3 == 1)
+          %mod3 = arith.remui %loop_var, %c3_i64 : i64
+          %is_3n_plus_1 = arith.cmpi eq, %mod3, %c1_i64 : i64
+          
+          %cont_inner = scf.if %is_3n_plus_1 -> (i1) {
+            // PRINT "3n + 1";
+            %str2 = "silly.string_literal"() <{value = "3n + 1"}> : () -> !llvm.ptr
+            "silly.print"(%c0_i32, %str2) : (i32, !llvm.ptr) -> ()
+            
+            // CONTINUE - return true to indicate we continued
+            scf.yield %true : i1
+          } else {
+            scf.yield %false : i1
+          }
+          
+          scf.yield %cont_inner : i1
+        } else {
+          scf.yield %false : i1
+        }
+        
+        // Only print "post" if we didn't continue
+        scf.if %continued {
+          // Skip "post" - we continued
+        } else {
+          // PRINT "post: ", i;
+          %post_str = "silly.string_literal"() <{value = "post: "}> : () -> !llvm.ptr
+          "silly.print"(%c0_i32, %post_str, %loop_var) : (i32, !llvm.ptr, i64) -> ()
+        }
+        
+        // Increment
+        %next = arith.addi %loop_var, %c1_i64 : i64
+        scf.yield %next : i64
+      }
+      
+      "silly.return"(%c0_i32) : (i32) -> ()
+    }) : () -> ()
+    "silly.yield"() : () -> ()
+  }
+}

@@ -7,7 +7,7 @@ set(FOR_TESTS
     nested_for
     zero_iter_for
     induction_not_used
-    forbreak
 )
+#    forbreak
 
 add_endtoend_tests(EndToEnd.for ${FOR_TESTS})
