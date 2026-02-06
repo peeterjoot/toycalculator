@@ -3,6 +3,7 @@ build
 cscope.out
 .junk
 tags
+tests/endtoend/.gdbinit
 tests/endtoend/*/.gdbinit
 Docs/doxygen
 .url

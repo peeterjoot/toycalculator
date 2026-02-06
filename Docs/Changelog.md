@@ -1,6 +1,6 @@
 # Changelog: V8 Release (WIP)
 
-(These notes are up to and including 66f51eb76f0a9ded0e8adfc2a8bebe62b5ab7371)
+(These notes are up to and including 50f5037cf83bfbfa29bb1ca55cd826a9af3ebe07)
 
 ## Major Features
 
@@ -400,6 +400,7 @@ tests/
 - Internally reorganized, removed exception handling based error diagnostics.
 - Added support for ingesting silly-dialect MLIR sources (with either .mlir or .mlsilly suffix).
 - Silly language sources must now have a .silly suffix.
+- Support for reading silly language sources from stdin has been removed.
 
 ### Build Scripts
 
