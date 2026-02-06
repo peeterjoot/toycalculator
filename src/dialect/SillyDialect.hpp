@@ -13,7 +13,10 @@
 #include <mlir/Bytecode/BytecodeOpInterface.h>
 #include <mlir/IR/SymbolTable.h>
 
-// Your custom type header (contains Silly_VarType class forward/definition)
+#define GET_ATTRDEF_CLASSES
+#include "SillyDialectEnums.h.inc"
+
+// Silly_VarType class forward/definition:
 #include "SillyTypes.hpp"
 
 // Generated: dialect class forward declaration + getDialectNamespace()

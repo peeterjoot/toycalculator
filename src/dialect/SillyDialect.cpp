@@ -16,13 +16,16 @@
 
 #include "SillyDialect.hpp"
 
-// Pull in generated op method bodies, adaptors, verify(), fold(), etc.
-#define GET_OP_CLASSES
-#include "SillyDialect.cpp.inc"
-
 // Pull in generated type method bodies (parse, print, etc. if any)
 #define GET_TYPEDEF_CLASSES
 #include "SillyTypes.cpp.inc"
+
+#define GET_ATTRDEF_CLASSES
+#include "SillyDialectEnums.cpp.inc"
+
+// Pull in generated op method bodies, adaptors, verify(), fold(), etc.
+#define GET_OP_CLASSES
+#include "SillyDialect.cpp.inc"
 
 using namespace mlir;
 

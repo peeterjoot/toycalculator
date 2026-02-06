@@ -235,6 +235,8 @@ def Silly_ArithBinOpKind : I32EnumAttr<"ArithBinOpKind",
 //  I32EnumAttrCase<"Or",  5, "or">,
 //  I32EnumAttrCase<"And", 6, "and">,
 //  I32EnumAttrCase<"Xor", 7, "xor">,
+
+  //let cppNamespace = "::silly";
 ]>;
 
 def Silly_ArithBinOp : Op<Silly_Dialect, "arith_binop"> {
