@@ -28,6 +28,7 @@
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/TargetParser/Host.h>
 #include <mlir/Conversion/Passes.h>
+#include <mlir/IR/Verifier.h>
 #include <mlir/Parser/Parser.h>
 #include <mlir/Pass/PassManager.h>
 #include <mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h>
@@ -58,13 +59,14 @@ enum class OptLevel : int
 enum class ReturnCodes : int
 {
     success,
-    openFailed,
-    badExtension,
+    badExtensionError,
     directoryError,
     filenameParseError,
-    linkFailed,
-    loweringFailed,
+    linkError,
+    loweringError,
+    openError,
     parseError,
+    verifyError,
 };
 
 enum class InputType
@@ -134,7 +136,9 @@ static InputType getInputType( llvm::StringRef filename )
     llvm::StringRef ext = llvm::sys::path::extension( filename );
     if ( ext == ".mlir" )
         return InputType::MLIR;
-    if ( ext == ".mlsilly" ) // allow alternate spelling for testing so we can do a debug dump of parsed mlir, and use a different name.
+    // allow alternate spelling for testing so we can do a debug dump of parsed mlir, and
+    // use a different name:
+    if ( ext == ".mlsilly" )
         return InputType::MLIR;
     if ( ext == ".silly" )
         return InputType::Silly;
@@ -230,7 +234,7 @@ static void serializeModuleMLIR( mlir::ModuleOp mod, mlir::OpPrintingFlags flags
             {
                 llvm::errs() << std::format( DRIVER_NAME ": error: Cannot open file {}: {}\n", std::string( path ),
                                              EC.message() );
-                std::exit( (int)ReturnCodes::openFailed );
+                std::exit( (int)ReturnCodes::openError );
             }
             mod.print( out, flags );
         }
@@ -255,7 +259,7 @@ static void writeLL( std::unique_ptr<llvm::Module>& llvmModule, const llvm::Smal
             // it knows how to deal with StringRef)
             llvm::errs() << std::format( DRIVER_NAME ": error: Failed to open file '{}': {}\n", std::string( path ),
                                          EC.message() );
-            std::exit( (int)ReturnCodes::openFailed );
+            std::exit( (int)ReturnCodes::openError );
         }
 
         llvmModule->print( out, nullptr, debugInfo /* print debug info */ );
@@ -335,7 +339,7 @@ static void invokeLinker( const char* argv0, const llvm::SmallString<128>& exePa
 
         llvm::errs() << std::format( DRIVER_NAME ": error: Linker failed with exit code: {}, rc = {}\n", errMsg,
                                      result );
-        std::exit( (int)ReturnCodes::linkFailed );
+        std::exit( (int)ReturnCodes::linkError );
     }
 }
 
@@ -352,7 +356,7 @@ static void assembleAndLink( const llvm::SmallString<128>& dirWithStem, const ch
     if ( !target )
     {
         llvm::errs() << std::format( DRIVER_NAME ": error: Failed to find target: {}\n", error );
-        std::exit( (int)ReturnCodes::loweringFailed );
+        std::exit( (int)ReturnCodes::loweringError );
     }
 
     // Create the target machine
@@ -361,7 +365,7 @@ static void assembleAndLink( const llvm::SmallString<128>& dirWithStem, const ch
     if ( !targetMachine )
     {
         llvm::errs() << std::format( DRIVER_NAME ": error: Failed to create target machine\n" );
-        std::exit( (int)ReturnCodes::loweringFailed );
+        std::exit( (int)ReturnCodes::loweringError );
     }
 
     // Optimize the module (optional)
@@ -406,7 +410,7 @@ static void assembleAndLink( const llvm::SmallString<128>& dirWithStem, const ch
     {
         llvm::errs() << std::format( DRIVER_NAME ": error: Failed to open output file '{}': {}\n",
                                      std::string( outputFilename ), EC.message() );
-        std::exit( (int)ReturnCodes::openFailed );
+        std::exit( (int)ReturnCodes::openError );
     }
 
     llvmModule->setDataLayout( targetMachine->createDataLayout() );
@@ -414,7 +418,7 @@ static void assembleAndLink( const llvm::SmallString<128>& dirWithStem, const ch
     if ( targetMachine->addPassesToEmitFile( codegenPM, dest, nullptr, llvm::CodeGenFileType::ObjectFile ) )
     {
         llvm::errs() << std::format( DRIVER_NAME ": error: TargetMachine can't emit an object file\n" );
-        std::exit( (int)ReturnCodes::loweringFailed );
+        std::exit( (int)ReturnCodes::loweringError );
     }
 
     codegenPM.run( *llvmModule );
@@ -467,7 +471,7 @@ static void lowerAssembleAndLinkModule( mlir::ModuleOp mod, const llvm::SmallStr
         llvm::errs() << "IR after stage I lowering failure:\n";
         mod->dump();
         llvm::errs() << DRIVER_NAME ": error: Stage I LLVM lowering failed\n";
-        std::exit( (int)ReturnCodes::loweringFailed );
+        std::exit( (int)ReturnCodes::loweringError );
     }
 
     mlir::PassManager pm2( context );
@@ -483,7 +487,7 @@ static void lowerAssembleAndLinkModule( mlir::ModuleOp mod, const llvm::SmallStr
         llvm::errs() << "IR after stage II lowering failure:\n";
         mod->dump();
         llvm::errs() << DRIVER_NAME ": error: Stage II LLVM lowering failed\n";
-        std::exit( (int)ReturnCodes::loweringFailed );
+        std::exit( (int)ReturnCodes::loweringError );
     }
 
     if ( toStdout )
@@ -501,7 +505,7 @@ static void lowerAssembleAndLinkModule( mlir::ModuleOp mod, const llvm::SmallStr
     if ( !llvmModule )
     {
         llvm::errs() << DRIVER_NAME ": error: Failed to translate to LLVM IR\n";
-        std::exit( (int)ReturnCodes::loweringFailed );
+        std::exit( (int)ReturnCodes::loweringError );
     }
 
     bool emitObject = !noEmitObject;
@@ -511,7 +515,7 @@ static void lowerAssembleAndLinkModule( mlir::ModuleOp mod, const llvm::SmallStr
         if ( llvm::verifyModule( *llvmModule, &llvm::errs() ) )
         {
             llvm::errs() << DRIVER_NAME ": error: Invalid LLVM IR module\n";
-            std::exit( (int)ReturnCodes::loweringFailed );
+            std::exit( (int)ReturnCodes::loweringError );
         }
 
         // Dump the pre-optimized LL if we aren't creating a .o
@@ -533,7 +537,7 @@ static mlir::OwningOpRef<mlir::ModuleOp> parseMLIRFile( const std::string& filen
     if ( std::error_code EC = fileOrErr.getError() )
     {
         llvm::errs() << std::format( DRIVER_NAME ": error: Cannot open file '{}': {}\n", filename, EC.message() );
-        std::exit( (int)ReturnCodes::openFailed );
+        std::exit( (int)ReturnCodes::openError );
     }
 
     llvm::SourceMgr sourceMgr;
@@ -565,7 +569,7 @@ int main( int argc, char** argv )
     {
         llvm::errs() << std::format( DRIVER_NAME ": error: filename {} extension is neither .silly nor .mlir\n",
                                      st.filename );
-        std::exit( (int)ReturnCodes::badExtension );
+        std::exit( (int)ReturnCodes::badExtensionError );
     }
 
     // once this goes out of scope, the module is toast and can't be referenced further.
@@ -589,7 +593,7 @@ int main( int argc, char** argv )
         if ( !inputStream.is_open() )
         {
             llvm::errs() << std::format( DRIVER_NAME ": error: Cannot open file {}\n", st.filename );
-            std::exit( (int)ReturnCodes::openFailed );
+            std::exit( (int)ReturnCodes::openError );
         }
 
         mod = runParserAndBuilder( listener, st, inputStream );
@@ -610,6 +614,13 @@ int main( int argc, char** argv )
     makeOutputDirectory( st.filename, dirWithStem );
 
     serializeModuleMLIR( mod, flags, dirWithStem );
+
+    if ( mlir::failed( mlir::verify( mod ) ) )
+    {
+        llvm::errs() << DRIVER_NAME ": error: MLIR failed verification\n";
+        mod->dump();
+        std::exit( (int)ReturnCodes::verifyError );
+    }
 
     lowerAssembleAndLinkModule( mod, dirWithStem, st, flags, argv[0], (void*)&main );
 
