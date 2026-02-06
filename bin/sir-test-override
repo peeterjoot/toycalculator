@@ -6,17 +6,17 @@
 
 =head1 NAME
 
-mlsilly-test-override - copies silly compiler generated .mlir files into the tests dir to test mlir parse codepath
+sir-test-override - copies silly compiler generated .mlir files into the tests dir to test mlir parse codepath
 
 =head1 SYNOPSIS
 
-mlsilly-test-override [--help] [<options>]
+sir-test-override [--help] [<options>]
 
 =head1 DESCRIPTION
 
-testit will run .mlsilly files as an override if it finds one.  Clean up manually after this with:
+testit will run .sir files as an override if it finds one.  Clean up manually after this with:
 
-git status | grep -F .mlsilly | xargs rm
+git status | grep -F .sir | xargs rm
 
 =head1 SUPPORTED PLATFORMS
 
@@ -76,7 +76,7 @@ while (<$fh>) {
         $target_dir =~ s{\.}{/}g;           # → types/loadstore
         $target_dir =~ s,/.*,,;
 
-        my $target = "../../tests/endtoend/$target_dir/$basename.mlsilly";
+        my $target = "../../tests/endtoend/$target_dir/$basename.sir";
 
         my $cmd = "cp $_ $target";
         print("# $cmd\n");

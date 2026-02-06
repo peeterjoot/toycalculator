@@ -346,7 +346,7 @@ scf.for %i = %start to %end step %step {
     // ... loop body
 }
 
-THIS "break" code suggestion IS WRONG.  There's a different way, but it requires switching FOR to scf.while, which is more complicated -- see: tests/endtoend/for/forbreak.mlsilly
+THIS "break" code suggestion IS WRONG.  There's a different way, but it requires switching FOR to scf.while, which is more complicated -- see: tests/endtoend/for/forbreak.sir
 
 // CONTINUE:
 scf.for %i = %start to %end step %step {

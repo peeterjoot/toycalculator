@@ -398,7 +398,7 @@ tests/
 **silly**
 - `--no-color-errors` option to disable color error messages.
 - Internally reorganized, removed exception handling based error diagnostics.
-- Added support for ingesting silly-dialect MLIR sources (with either .mlir or .mlsilly suffix).
+- Added support for ingesting silly-dialect MLIR sources (with either .mlir or .sir suffix).
 - Silly language sources must now have a .silly suffix.
 - Support for reading silly language sources from stdin has been removed.
 

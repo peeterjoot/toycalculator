@@ -134,14 +134,17 @@ static llvm::cl::opt<OptLevel> optLevel( "O", llvm::cl::desc( "Optimization leve
 static InputType getInputType( llvm::StringRef filename )
 {
     llvm::StringRef ext = llvm::sys::path::extension( filename );
-    if ( ext == ".mlir" )
+
+    if ( ext == ".mlir" || ext == ".sir" )
+    {
         return InputType::MLIR;
-    // allow alternate spelling for testing so we can do a debug dump of parsed mlir, and
-    // use a different name:
-    if ( ext == ".mlsilly" )
-        return InputType::MLIR;
+    }
+
     if ( ext == ".silly" )
+    {
         return InputType::Silly;
+    }
+
     return InputType::Unknown;
 }
 

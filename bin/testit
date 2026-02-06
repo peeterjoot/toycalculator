@@ -106,7 +106,7 @@ GetOptions (
 if ( defined $just )
 {
     $just =~ s/\.silly$//;
-    $just =~ s/\.mlsilly$//;
+    $just =~ s/\.sir$//;
 }
 
 if ( !defined $driverpath )
@@ -280,9 +280,9 @@ sub runone
 
     print "##########################################################################\n";
     my $source;
-    if ( -e "$stem.mlsilly" )
+    if ( -e "$stem.sir" )
     {
-        $source = "$stem.mlsilly";
+        $source = "$stem.sir";
     }
     else
     {
