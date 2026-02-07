@@ -1630,6 +1630,28 @@ namespace silly
         return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
     }
 
+    inline mlir::Value ParseListener::createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty,
+                                                         mlir::Value lhs, mlir::Value rhs )
+    {
+        return builder
+            .create<silly::ArithBinOp>(
+                loc, ty, silly::ArithBinOpKindAttr::get( this->ctx, what ), lhs, rhs )
+            .getResult();
+    }
+
+    inline mlir::Value ParseListener::createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what,
+                                                       mlir::Value lhs, mlir::Value rhs )
+    {
+        assert( 0 && "NYI" );
+        return nullptr;
+#if 0
+        return builder
+            .create<silly::CmpBinOp>(
+                loc, silly::CmpBinOpKindAttr::get( this->ctx, what ), lhs, rhs )
+            .getResult();
+#endif
+    }
+
     mlir::Value ParseListener::parseOr( antlr4::ParserRuleContext *ctx, mlir::Type ty )
     {
         assert( ctx );
@@ -1662,7 +1684,7 @@ namespace silly
 
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
 
-                value = builder.create<silly::OrOp>( loc, ty, value, rhs ).getResult();
+                value = createBinaryArith( loc, silly::ArithBinOpKind::Or, ty, value, rhs );
             }
 
             return value;
@@ -1703,7 +1725,7 @@ namespace silly
 
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
 
-                value = builder.create<silly::XorOp>( loc, ty, value, rhs ).getResult();
+                value = createBinaryArith( loc, silly::ArithBinOpKind::Xor, ty, value, rhs );
             }
 
             return value;
@@ -1749,7 +1771,7 @@ namespace silly
 
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
 
-                value = builder.create<silly::AndOp>( loc, ty, value, rhs ).getResult();
+                value = createBinaryArith( loc, silly::ArithBinOpKind::And, ty, value, rhs );
             }
 
             return value;
@@ -1795,11 +1817,11 @@ namespace silly
 
                 if ( eqNeCtx->equalityOperator()->EQUALITY_TOKEN() )
                 {
-                    value = builder.create<silly::EqualOp>( loc, tyI1, value, rhs ).getResult();
+                    value = createBinaryCmp( loc, silly::CmpBinOpKind::Equal, value, rhs );
                 }
                 else if ( eqNeCtx->equalityOperator()->NOTEQUAL_TOKEN() )
                 {
-                    value = builder.create<silly::NotEqualOp>( loc, tyI1, value, rhs ).getResult();
+                    value = createBinaryCmp( loc, silly::CmpBinOpKind::NotEqual, value, rhs );
                 }
                 else
                 {
@@ -1858,19 +1880,19 @@ namespace silly
 
                 if ( op->LESSTHAN_TOKEN() )
                 {
-                    value = builder.create<silly::LessOp>( loc, tyI1, value, rhs ).getResult();
+                    value = createBinaryCmp( loc, silly::CmpBinOpKind::Less, value, rhs );
                 }
                 else if ( op->GREATERTHAN_TOKEN() )
                 {
-                    value = builder.create<silly::LessOp>( loc, tyI1, rhs, value ).getResult();
+                    value = createBinaryCmp( loc, silly::CmpBinOpKind::Less, rhs, value );
                 }
                 else if ( op->LESSEQUAL_TOKEN() )
                 {
-                    value = builder.create<silly::LessEqualOp>( loc, tyI1, value, rhs ).getResult();
+                    value = createBinaryCmp( loc, silly::CmpBinOpKind::LessEq, value, rhs );
                 }
                 else if ( op->GREATEREQUAL_TOKEN() )
                 {
-                    value = builder.create<silly::LessEqualOp>( loc, tyI1, rhs, value ).getResult();
+                    value = createBinaryCmp( loc, silly::CmpBinOpKind::LessEq, rhs, value );
                 }
                 else
                 {
@@ -1933,11 +1955,11 @@ namespace silly
                 SillyParser::AdditionOperatorContext *op = ops[i - 1];
                 if ( op->PLUSCHAR_TOKEN() )
                 {
-                    value = builder.create<silly::AddOp>( loc, ty, value, rhs ).getResult();
+                    value = createBinaryArith( loc, silly::ArithBinOpKind::Add, ty, value, rhs );
                 }
                 else if ( op->MINUS_TOKEN() )
                 {
-                    value = builder.create<silly::SubOp>( loc, ty, value, rhs ).getResult();
+                    value = createBinaryArith( loc, silly::ArithBinOpKind::Sub, ty, value, rhs );
                 }
                 else
                 {
@@ -1999,19 +2021,15 @@ namespace silly
 
                 if ( op->TIMES_TOKEN() )
                 {
-#if 0
-                    value = builder.create<silly::MulOp>( loc, ty, value, rhs ).getResult();
-#else
-                    value =
-                        builder
-                            .create<silly::ArithBinOp>(
-                                loc, ty, silly::ArithBinOpKindAttr::get( this->ctx, silly::ArithBinOpKind::Mul ), value, rhs )
-                            .getResult();
-#endif
+                    value = createBinaryArith( loc, silly::ArithBinOpKind::Mul, ty, value, rhs );
                 }
                 else if ( op->DIV_TOKEN() )
                 {
-                    value = builder.create<silly::DivOp>( loc, ty, value, rhs ).getResult();
+                    value = createBinaryArith( loc, silly::ArithBinOpKind::Div, ty, value, rhs );
+                }
+                else if ( op->MOD_TOKEN() )
+                {
+                    value = createBinaryArith( loc, silly::ArithBinOpKind::Mod, ty, value, rhs );
                 }
                 else
                 {
@@ -2075,7 +2093,7 @@ namespace silly
                 // NOT x: (x == 0)
                 mlir::Value zero =
                     builder.create<mlir::arith::ConstantIntOp>( loc, 0, value.getType().getIntOrFloatBitWidth() );
-                value = builder.create<silly::EqualOp>( loc, tyI1, value, zero ).getResult();
+                value = createBinaryCmp( loc, silly::CmpBinOpKind::Equal, value, zero );
             }
             else
             {

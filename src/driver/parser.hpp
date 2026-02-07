@@ -186,6 +186,13 @@ namespace silly
         ///
         ////////////////////////////////////////////////////////////////////////
 
+        // FIXME: audit doxygen again.
+        inline mlir::Value createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty,
+                                              mlir::Value lhs, mlir::Value rhs );
+
+        inline mlir::Value createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs,
+                                            mlir::Value rhs );
+
         /// Emit a user-friendly error message in GCC/Clang style
         ///
         /// errorCount is incremented as a side effect.
