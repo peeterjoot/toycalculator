@@ -2107,6 +2107,13 @@ namespace silly
                         loc, lState, op, lhs, rhs, rewriter, resultType );
                 }
 
+                case silly::ArithBinOpKind::Mod:
+                {
+                    return binaryArithOpLoweringHelper<mlir::LLVM::SRemOp, mlir::LLVM::FRemOp, false>(
+                        loc, lState, op, lhs, rhs, rewriter, resultType );
+                }
+
+                // mlir::LLVM::FAddOp is a dummy operation below, knowing that it will not ever be used:
                 case silly::ArithBinOpKind::And:
                 {
                     return binaryArithOpLoweringHelper<mlir::LLVM::AndOp, mlir::LLVM::FAddOp, false>(
@@ -2119,15 +2126,8 @@ namespace silly
                         loc, lState, op, lhs, rhs, rewriter, resultType );
                 }
 
-                case silly::ArithBinOpKind::Mod:
-                {
-                    assert( 0 && "NYI" );
-                    break;
-                }
-
                 case silly::ArithBinOpKind::Xor:
                 {
-                    // mlir::LLVM::FAddOp is a dummy operation here, knowing that it will not ever be used:
                     return binaryArithOpLoweringHelper<mlir::LLVM::XOrOp, mlir::LLVM::FAddOp, false>(
                         loc, lState, op, lhs, rhs, rewriter, resultType );
                 }

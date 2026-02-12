@@ -1,0 +1,3 @@
+// Very simplest binop<mod> test:
+PRINT 6 % 3;
+PRINT 7 % 3;
