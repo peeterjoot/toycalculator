@@ -1644,14 +1644,10 @@ namespace silly
     inline mlir::Value ParseListener::createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what,
                                                        mlir::Value lhs, mlir::Value rhs )
     {
-        assert( 0 && "NYI" );
-        return nullptr;
-#if 0
         return builder
             .create<silly::CmpBinOp>(
-                loc, silly::CmpBinOpKindAttr::get( this->ctx, what ), lhs, rhs )
+                loc, tyI1, silly::CmpBinOpKindAttr::get( this->ctx, what ), lhs, rhs )
             .getResult();
-#endif
     }
 
     mlir::Value ParseListener::parseOr( antlr4::ParserRuleContext *ctx, mlir::Type ty )
