@@ -23,7 +23,10 @@
 #include "SillyDialect.hpp"
 #include "parser.hpp"
 
+/// Implicit function declaration for the body of a silly language program.
 #define ENTRY_SYMBOL_NAME "main"
+
+/// --debug- class for the parser
 #define DEBUG_TYPE "silly-parser"
 
 namespace silly
@@ -97,6 +100,7 @@ namespace silly
         errorCount++;
     }
 
+    /// A string representation of an mlir::Type
     inline std::string mlirTypeToString( mlir::Type t )
     {
         std::string s;
@@ -1125,8 +1129,6 @@ namespace silly
 
     void ParseListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx )
     {
-        // Restore EXACTLY where we were before creating the scf.if
-        // This places new ops right AFTER the scf.if
         builder.setInsertionPointAfter( insertionPointStack.back() );
         insertionPointStack.pop_back();
     }

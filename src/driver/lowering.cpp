@@ -35,10 +35,8 @@
 #include "lowering.hpp"
 #include "loweringContext.hpp"
 
+/// --debug- type for lowering
 #define DEBUG_TYPE "silly-lowering"
-
-// for llvm.ident and DICompileUnitAttr
-#define COMPILER_NAME "silly"
 
 /// For llvm.ident
 #define COMPILER_VERSION " V8"
@@ -47,6 +45,7 @@ namespace silly
 {
     silly::ScopeOp getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp );
 
+    /// Set and restore an insertion point using a RAII model.
     class ModuleInsertionPointGuard
     {
         mlir::OpBuilder& builder;
@@ -65,6 +64,9 @@ namespace silly
         }
     };
 
+    /// Assuming that a Location is actually a FileLineColLoc, cast it and return it as so.
+    ///
+    /// Will assert if this is not the case.
     mlir::FileLineColLoc getLocation( mlir::Location loc )
     {
         // Cast Location to FileLineColLoc
@@ -74,6 +76,7 @@ namespace silly
         return fileLineLoc;
     }
 
+    /// Find the mlir::func::FuncOp that contains the provided op.
     mlir::func::FuncOp getEnclosingFuncOp( mlir::Operation* op )
     {
         while ( op )
@@ -1249,6 +1252,7 @@ namespace silly
         rewriter.create<mlir::LLVM::MemsetOp>( loc, i8Ptr, fillVal, bytesVal, rewriter.getBoolAttr( false ) );
     }
 
+    /// Lower silly::DeclareOp
     class DeclareOpLowering : public mlir::ConversionPattern
     {
        private:
@@ -1406,6 +1410,7 @@ namespace silly
         }
     };
 
+    /// Lower silly::StringLiteralOp
     class StringLiteralOpLowering : public mlir::ConversionPattern
     {
        private:
@@ -1440,7 +1445,7 @@ namespace silly
         }
     };
 
-    // Lower AssignOp to llvm.store (after type conversions, if required)
+    /// Lower silly::AssignOp to llvm.store (after type conversions, if required)
     class AssignOpLowering : public mlir::ConversionPattern
     {
        private:
@@ -1489,6 +1494,7 @@ namespace silly
         }
     };
 
+    /// Lower silly::LoadOp
     class LoadOpLowering : public mlir::ConversionPattern
     {
        private:
@@ -1583,6 +1589,7 @@ namespace silly
         }
     };
 
+    /// Lower silly::CallOp
     class CallOpLowering : public mlir::ConversionPattern
     {
        private:
@@ -1627,6 +1634,7 @@ namespace silly
         }
     };
 
+    /// Lower silly::ScopeOp
     class ScopeOpLowering : public mlir::ConversionPattern
     {
        private:
@@ -1691,6 +1699,7 @@ namespace silly
         }
     };
 
+#if 0
     // Now unused (again)
     template <class SillOpType>
     class LowerByDeletion : public mlir::ConversionPattern
@@ -1712,7 +1721,9 @@ namespace silly
             return mlir::success();
         }
     };
+#endif
 
+    /// Lower silly::DebugName
     class DebugNameOpLowering : public mlir::ConversionPattern
     {
        private:
@@ -1749,7 +1760,7 @@ namespace silly
         }
     };
 
-    // Lower silly.print to a call to __silly_print.
+    /// Lower silly.print (silly::PrintOp) to a call to __silly_print.
     class PrintOpLowering : public mlir::ConversionPattern
     {
        private:
@@ -1820,6 +1831,7 @@ namespace silly
         }
     };
 
+    /// Lower silly::AbortOp
     class AbortOpLowering : public mlir::ConversionPattern
     {
        private:
@@ -1847,6 +1859,7 @@ namespace silly
         }
     };
 
+    /// Lower silly::GetOp
     class GetOpLowering : public mlir::ConversionPattern
     {
        private:
@@ -1880,7 +1893,7 @@ namespace silly
         }
     };
 
-    // Lower silly.negate to LLVM arithmetic.
+    /// Lower silly.negate (silly::NegOp) to LLVM arithmetic.
     class NegOpLowering : public mlir::ConversionPattern
     {
        private:
@@ -1942,6 +1955,7 @@ namespace silly
         }
     };
 
+    /// type conversions and rewriter creations for numeric binary ops.
     template <class llvmIOpType, class llvmFOpType, bool allowFloat>
     mlir::LogicalResult binaryOpLoweringHelper( mlir::Location loc, LoweringContext& lState, mlir::Operation* op,
                                                 mlir::ArrayRef<mlir::Value> operands,
@@ -2046,7 +2060,7 @@ namespace silly
         return mlir::success();
     }
 
-    // Lower silly.binary to LLVM arithmetic.
+    /// Lower silly.binary to LLVM arithmetic.
     template <class SillyBinaryOpType, class llvmIOpType, class llvmFOpType, bool allowFloat>
     class BinaryOpLowering : public mlir::ConversionPattern
     {
@@ -2075,6 +2089,7 @@ namespace silly
         }
     };
 
+    /// Lower silly::ArithBinOp
     class ArithBinOpLowering : public mlir::ConversionPattern
     {
         LoweringContext& lState;
@@ -2276,6 +2291,7 @@ namespace silly
     };
 #endif
 
+    /// Lower silly::CmpBinOp
     class CmpBinOpLowering : public mlir::ConversionPattern
     {
         LoweringContext& lState;
@@ -2392,6 +2408,10 @@ namespace silly
     };
 #endif
 
+    /// Orchestrate the lowering of the Silly dialect.
+    ///
+    /// When this is done, if successful, we will be left with LLVM mlir dialect Ops
+    /// and a couple standalone mlir dialect Ops (func.func, module, ...)
     class SillyToLLVMLoweringPass
         : public mlir::PassWrapper<SillyToLLVMLoweringPass, mlir::OperationPass<mlir::ModuleOp>>
     {
@@ -2515,19 +2535,19 @@ namespace silly
 
 namespace mlir
 {
-    // Parameterless version for TableGen
+    /// Silly dialect pass framework
     std::unique_ptr<Pass> createSillyToLLVMLoweringPass()
     {
         return createSillyToLLVMLoweringPass( nullptr );    // Default to no optimization
     }
 
-    // Parameterized version
+    /// Silly dialect pass framework
     std::unique_ptr<Pass> createSillyToLLVMLoweringPass( silly::DriverState* pst )
     {
         return std::make_unique<silly::SillyToLLVMLoweringPass>( pst );
     }
 
-    // Custom registration with bool parameter
+    /// Custom registration with bool parameter
     void registerSillyToLLVMLoweringPass( silly::DriverState* pst )
     {
         ::mlir::registerPass( [pst]() -> std::unique_ptr<::mlir::Pass>

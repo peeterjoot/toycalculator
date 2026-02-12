@@ -2,8 +2,6 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   This is the compiler driver for the silly compiler (originally "toy calculator").
 ///
-/// @description
-///
 /// This file orchestrates all the compiler actions:
 ///
 /// - command line options handling,
@@ -45,9 +43,10 @@
 #include "lowering.hpp"
 #include "parser.hpp"
 
+/// --debug- class for the driver
 #define DEBUG_TYPE "silly-driver"
-#define DRIVER_NAME "silly"
 
+/// Allowed optimization levels
 enum class OptLevel : int
 {
     O0,
@@ -56,6 +55,7 @@ enum class OptLevel : int
     O3
 };
 
+/// The numeric return codes for the silly driver
 enum class ReturnCodes : int
 {
     success,
@@ -69,6 +69,7 @@ enum class ReturnCodes : int
     verifyError,
 };
 
+/// Supported source code file extensions.
 enum class InputType
 {
     Silly,    // .silly or other source
@@ -182,13 +183,14 @@ static mlir::ModuleOp runParserAndBuilder( silly::ParseListener& listener, silly
     return listener.getModule();
 }
 
-void makeOutputDirectory( const std::string& filename, llvm::SmallString<128>& dirWithStem )
+/// Create the directory named in --output-directory
+static void makeOutputDirectory( const std::string& filename, llvm::SmallString<128>& dirWithStem )
 {
     llvm::StringRef dirname = llvm::sys::path::parent_path( filename );
     llvm::StringRef stem = llvm::sys::path::stem( filename );
     if ( stem.empty() )
     {
-        llvm::errs() << std::format( DRIVER_NAME ": error: Invalid filename '{}', empty stem\n", filename );
+        llvm::errs() << std::format( COMPILER_NAME ": error: Invalid filename '{}', empty stem\n", filename );
         std::exit( (int)ReturnCodes::filenameParseError );
     }
 
@@ -199,7 +201,7 @@ void makeOutputDirectory( const std::string& filename, llvm::SmallString<128>& d
         if ( EC )
         {
             std::string dir = outDir;
-            llvm::errs() << std::format( DRIVER_NAME ": error: Failed to create output directory '{}': {}\n", dir,
+            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to create output directory '{}': {}\n", dir,
                                          EC.message() );
             std::exit( (int)ReturnCodes::directoryError );
         }
@@ -235,7 +237,7 @@ static void serializeModuleMLIR( mlir::ModuleOp mod, mlir::OpPrintingFlags flags
             llvm::raw_fd_ostream out( path.str(), EC, llvm::sys::fs::OF_Text );
             if ( EC )
             {
-                llvm::errs() << std::format( DRIVER_NAME ": error: Cannot open file {}: {}\n", std::string( path ),
+                llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}: {}\n", std::string( path ),
                                              EC.message() );
                 std::exit( (int)ReturnCodes::openError );
             }
@@ -260,7 +262,7 @@ static void writeLL( std::unique_ptr<llvm::Module>& llvmModule, const llvm::Smal
         {
             // FIXME: probably want llvm::formatv here and elsewhere to avoid the std::string casting hack (assuming
             // it knows how to deal with StringRef)
-            llvm::errs() << std::format( DRIVER_NAME ": error: Failed to open file '{}': {}\n", std::string( path ),
+            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open file '{}': {}\n", std::string( path ),
                                          EC.message() );
             std::exit( (int)ReturnCodes::openError );
         }
@@ -296,7 +298,7 @@ static void invokeLinker( const char* argv0, const llvm::SmallString<128>& exePa
     {
         std::error_code EC = linkerPath.getError();
 
-        llvm::errs() << std::format( DRIVER_NAME ": error: Error finding path for linker '{}': {}\n", linker,
+        llvm::errs() << std::format( COMPILER_NAME ": error: Error finding path for linker '{}': {}\n", linker,
                                      EC.message() );
         std::exit( (int)ReturnCodes::filenameParseError );
     }
@@ -340,7 +342,7 @@ static void invokeLinker( const char* argv0, const llvm::SmallString<128>& exePa
             showLinkCommand( linkerPath.get(), linkerArgs );
         }
 
-        llvm::errs() << std::format( DRIVER_NAME ": error: Linker failed with exit code: {}, rc = {}\n", errMsg,
+        llvm::errs() << std::format( COMPILER_NAME ": error: Linker failed with exit code: {}, rc = {}\n", errMsg,
                                      result );
         std::exit( (int)ReturnCodes::linkError );
     }
@@ -358,7 +360,7 @@ static void assembleAndLink( const llvm::SmallString<128>& dirWithStem, const ch
     const llvm::Target* target = llvm::TargetRegistry::lookupTarget( targetTriple, error );
     if ( !target )
     {
-        llvm::errs() << std::format( DRIVER_NAME ": error: Failed to find target: {}\n", error );
+        llvm::errs() << std::format( COMPILER_NAME ": error: Failed to find target: {}\n", error );
         std::exit( (int)ReturnCodes::loweringError );
     }
 
@@ -367,7 +369,7 @@ static void assembleAndLink( const llvm::SmallString<128>& dirWithStem, const ch
         target->createTargetMachine( targetTriple, "generic", "", llvm::TargetOptions(), std::nullopt ) );
     if ( !targetMachine )
     {
-        llvm::errs() << std::format( DRIVER_NAME ": error: Failed to create target machine\n" );
+        llvm::errs() << std::format( COMPILER_NAME ": error: Failed to create target machine\n" );
         std::exit( (int)ReturnCodes::loweringError );
     }
 
@@ -411,7 +413,7 @@ static void assembleAndLink( const llvm::SmallString<128>& dirWithStem, const ch
     llvm::raw_fd_ostream dest( outputFilename.str(), EC, llvm::sys::fs::OF_None );
     if ( EC )
     {
-        llvm::errs() << std::format( DRIVER_NAME ": error: Failed to open output file '{}': {}\n",
+        llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open output file '{}': {}\n",
                                      std::string( outputFilename ), EC.message() );
         std::exit( (int)ReturnCodes::openError );
     }
@@ -420,7 +422,7 @@ static void assembleAndLink( const llvm::SmallString<128>& dirWithStem, const ch
     llvm::legacy::PassManager codegenPM;
     if ( targetMachine->addPassesToEmitFile( codegenPM, dest, nullptr, llvm::CodeGenFileType::ObjectFile ) )
     {
-        llvm::errs() << std::format( DRIVER_NAME ": error: TargetMachine can't emit an object file\n" );
+        llvm::errs() << std::format( COMPILER_NAME ": error: TargetMachine can't emit an object file\n" );
         std::exit( (int)ReturnCodes::loweringError );
     }
 
@@ -473,7 +475,7 @@ static void lowerAssembleAndLinkModule( mlir::ModuleOp mod, const llvm::SmallStr
     {
         llvm::errs() << "IR after stage I lowering failure:\n";
         mod->dump();
-        llvm::errs() << DRIVER_NAME ": error: Stage I LLVM lowering failed\n";
+        llvm::errs() << COMPILER_NAME ": error: Stage I LLVM lowering failed\n";
         std::exit( (int)ReturnCodes::loweringError );
     }
 
@@ -489,7 +491,7 @@ static void lowerAssembleAndLinkModule( mlir::ModuleOp mod, const llvm::SmallStr
     {
         llvm::errs() << "IR after stage II lowering failure:\n";
         mod->dump();
-        llvm::errs() << DRIVER_NAME ": error: Stage II LLVM lowering failed\n";
+        llvm::errs() << COMPILER_NAME ": error: Stage II LLVM lowering failed\n";
         std::exit( (int)ReturnCodes::loweringError );
     }
 
@@ -507,7 +509,7 @@ static void lowerAssembleAndLinkModule( mlir::ModuleOp mod, const llvm::SmallStr
 
     if ( !llvmModule )
     {
-        llvm::errs() << DRIVER_NAME ": error: Failed to translate to LLVM IR\n";
+        llvm::errs() << COMPILER_NAME ": error: Failed to translate to LLVM IR\n";
         std::exit( (int)ReturnCodes::loweringError );
     }
 
@@ -517,7 +519,7 @@ static void lowerAssembleAndLinkModule( mlir::ModuleOp mod, const llvm::SmallStr
         // Verify the module to ensure debug info is valid
         if ( llvm::verifyModule( *llvmModule, &llvm::errs() ) )
         {
-            llvm::errs() << DRIVER_NAME ": error: Invalid LLVM IR module\n";
+            llvm::errs() << COMPILER_NAME ": error: Invalid LLVM IR module\n";
             std::exit( (int)ReturnCodes::loweringError );
         }
 
@@ -539,7 +541,7 @@ static mlir::OwningOpRef<mlir::ModuleOp> parseMLIRFile( const std::string& filen
     auto fileOrErr = llvm::MemoryBuffer::getFile( filename );
     if ( std::error_code EC = fileOrErr.getError() )
     {
-        llvm::errs() << std::format( DRIVER_NAME ": error: Cannot open file '{}': {}\n", filename, EC.message() );
+        llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file '{}': {}\n", filename, EC.message() );
         std::exit( (int)ReturnCodes::openError );
     }
 
@@ -549,7 +551,7 @@ static mlir::OwningOpRef<mlir::ModuleOp> parseMLIRFile( const std::string& filen
     auto mod = mlir::parseSourceFile<mlir::ModuleOp>( sourceMgr, context );
     if ( !mod )
     {
-        llvm::errs() << std::format( DRIVER_NAME ": error: Failed to parse MLIR file '{}'\n", filename );
+        llvm::errs() << std::format( COMPILER_NAME ": error: Failed to parse MLIR file '{}'\n", filename );
         std::exit( (int)ReturnCodes::parseError );
     }
 
@@ -570,7 +572,7 @@ int main( int argc, char** argv )
     InputType ity = getInputType( st.filename );
     if ( ity == InputType::Unknown )
     {
-        llvm::errs() << std::format( DRIVER_NAME ": error: filename {} extension is neither .silly nor .mlir\n",
+        llvm::errs() << std::format( COMPILER_NAME ": error: filename {} extension is neither .silly nor .mlir\n",
                                      st.filename );
         std::exit( (int)ReturnCodes::badExtensionError );
     }
@@ -595,7 +597,7 @@ int main( int argc, char** argv )
         inputStream.open( st.filename );
         if ( !inputStream.is_open() )
         {
-            llvm::errs() << std::format( DRIVER_NAME ": error: Cannot open file {}\n", st.filename );
+            llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}\n", st.filename );
             std::exit( (int)ReturnCodes::openError );
         }
 
@@ -620,7 +622,7 @@ int main( int argc, char** argv )
 
     if ( mlir::failed( mlir::verify( mod ) ) )
     {
-        llvm::errs() << DRIVER_NAME ": error: MLIR failed verification\n";
+        llvm::errs() << COMPILER_NAME ": error: MLIR failed verification\n";
         mod->dump();
         std::exit( (int)ReturnCodes::verifyError );
     }

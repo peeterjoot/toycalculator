@@ -6,6 +6,9 @@
 #include <string>
 #include <cstdint>
 
+/// Name of the silly compiler driver, and used in llvm.ident and DICompileUnitAttr
+#define COMPILER_NAME "silly"
+
 namespace silly
 {
     /// State to pass from the driver to parser/builder/lowering
@@ -23,8 +26,12 @@ namespace silly
         /// Source file name passed to the driver.
         std::string filename;
 
+        /// Numeric --init-fill value if specified (zero otherwise.)
         uint8_t fillValue;
     };
+
+
+
 }    // namespace silly
 
 // vim: et ts=4 sw=4

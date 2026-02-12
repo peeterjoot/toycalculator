@@ -220,11 +220,13 @@ namespace silly
 
 #include "SillyDialectDefs.cpp.inc"
 
+/// Glue code for Silly dialect registration
 extern "C" void registerSillyDialect( mlir::DialectRegistry &registry )
 {
     registry.insert<silly::SillyDialect>();
 }
 
+/// Silly dialect plugin initialization
 extern "C" LLVM_ATTRIBUTE_WEAK ::mlir::DialectPluginLibraryInfo mlirGetDialectPluginInfo()
 {
     return { /*.apiVersion =*/MLIR_PLUGIN_API_VERSION,

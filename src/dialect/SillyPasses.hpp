@@ -14,6 +14,7 @@ namespace mlir
 {
     void registerSillyToLLVMLoweringPass( silly::DriverState* pst = nullptr );
 
+    /// Silly dialect pass framework
     inline void registerSillyPasses( silly::DriverState* pst = nullptr )
     {
         registerSillyToLLVMLoweringPass( pst );

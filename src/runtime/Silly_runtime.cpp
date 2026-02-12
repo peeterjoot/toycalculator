@@ -13,14 +13,21 @@
 
 extern "C"
 {
-    // * len+str is a __FILE__ like variable.  print a FATAL message to stderr and abort
-    void __silly_abort( size_t len, const char* str, int line )
+    /// This is the runtime that implements a silly language 'ABORT' statement.
+    ///
+    /// This prints a FATAL message to stderr and aborts.
+    ///
+    /// @param len [in] The length of str.
+    /// @param file [in] A __FILE__ like variable representing the filename containing the ABORT (not null terminated.)
+    /// @param line [in] The line number for the ABORT.
+    void __silly_abort( size_t len, const char* file, int line )
     {
         fflush( NULL );
-        fprintf( stderr, "%.*s:%d:FATAL ERROR: aborting\n", (int)len, str, line );
+        fprintf( stderr, "%.*s:%d:FATAL ERROR: aborting\n", (int)len, file, line );
         abort();
     }
 
+    /// This is the runtime implementation of a silly language 'PRINT' or 'ERROR' statement.
     void __silly_print( int num_args, const struct silly::PrintArg* args )
     {
         for ( int i = 0; i < num_args; ++i )
@@ -53,6 +60,7 @@ extern "C"
         }
     }
 
+    /// This is the runtime implementation of a silly GET statement for an INT8 variable.
     int8_t __silly_get_i8( void )
     {
         int8_t v;
@@ -66,6 +74,7 @@ extern "C"
         return v;
     }
 
+    /// This is the runtime implementation of a silly GET statement for a BOOL variable.
     int8_t __silly_get_i1( void )
     {
         int8_t v = __silly_get_i8();
@@ -78,6 +87,7 @@ extern "C"
         return v;
     }
 
+    /// This is the runtime implementation of a silly GET statement for an INT16 variable.
     int16_t __silly_get_i16( void )
     {
         int16_t v;
@@ -91,6 +101,7 @@ extern "C"
         return v;
     }
 
+    /// This is the runtime implementation of a silly GET statement for an INT32 variable.
     int32_t __silly_get_i32( void )
     {
         int32_t v;
@@ -104,6 +115,7 @@ extern "C"
         return v;
     }
 
+    /// This is the runtime implementation of a silly GET statement for an INT64 variable.
     int64_t __silly_get_i64( void )
     {
         int64_t v;
@@ -117,6 +129,7 @@ extern "C"
         return v;
     }
 
+    /// This is the runtime implementation of a silly GET statement for an FLOAT32 variable.
     float __silly_get_f32( void )
     {
         float v;
@@ -130,6 +143,7 @@ extern "C"
         return v;
     }
 
+    /// This is the runtime implementation of a silly GET statement for an FLOAT64 variable.
     double __silly_get_f64( void )
     {
         double v;
