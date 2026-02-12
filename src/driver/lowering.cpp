@@ -1957,12 +1957,10 @@ namespace silly
 
     /// type conversions and rewriter creations for numeric binary ops.
     template <class llvmIOpType, class llvmFOpType, bool allowFloat>
-    mlir::LogicalResult binaryOpLoweringHelper( mlir::Location loc, LoweringContext& lState, mlir::Operation* op,
-                                                mlir::ArrayRef<mlir::Value> operands,
-                                                mlir::ConversionPatternRewriter& rewriter, mlir::Type resultType )
+    mlir::LogicalResult binaryArithOpLoweringHelper( mlir::Location loc, LoweringContext& lState, mlir::Operation* op,
+                                                     mlir::Value lhs, mlir::Value rhs,
+                                                     mlir::ConversionPatternRewriter& rewriter, mlir::Type resultType )
     {
-        mlir::Value lhs = operands[0];
-        mlir::Value rhs = operands[1];
         if ( resultType.isIntOrIndex() )
         {
             unsigned rwidth = resultType.getIntOrFloatBitWidth();
@@ -2060,35 +2058,6 @@ namespace silly
         return mlir::success();
     }
 
-    /// Lower silly.binary to LLVM arithmetic.
-    template <class SillyBinaryOpType, class llvmIOpType, class llvmFOpType, bool allowFloat>
-    class BinaryOpLowering : public mlir::ConversionPattern
-    {
-       private:
-        LoweringContext& lState;
-
-       public:
-        BinaryOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( SillyBinaryOpType::getOperationName(), benefit, context ),
-              lState{ loweringState }
-        {
-        }
-
-        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
-                                             mlir::ConversionPatternRewriter& rewriter ) const override
-        {
-            SillyBinaryOpType binaryOp = cast<SillyBinaryOpType>( op );
-            mlir::Location loc = binaryOp.getLoc();
-
-            LLVM_DEBUG( llvm::dbgs() << "Lowering silly.binary: " << *op << '\n' );
-
-            mlir::Type resultType = binaryOp.getResult().getType();
-
-            return binaryOpLoweringHelper<llvmIOpType, llvmFOpType, allowFloat>( loc, lState, op, operands, rewriter,
-                                                                                 resultType );
-        }
-    };
-
     /// Lower silly::ArithBinOp
     class ArithBinOpLowering : public mlir::ConversionPattern
     {
@@ -2110,42 +2079,44 @@ namespace silly
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering silly.binary: " << *op << '\n' );
 
+            mlir::Value lhs = operands[0];
+            mlir::Value rhs = operands[1];
             mlir::Type resultType = binaryOp.getResult().getType();
 
             switch ( kind )
             {
                 case silly::ArithBinOpKind::Add:
                 {
-                    return binaryOpLoweringHelper<mlir::LLVM::AddOp, mlir::LLVM::FAddOp, true>(
-                        loc, lState, op, operands, rewriter, resultType );
+                    return binaryArithOpLoweringHelper<mlir::LLVM::AddOp, mlir::LLVM::FAddOp, true>(
+                        loc, lState, op, lhs, rhs, rewriter, resultType );
                 }
                 case silly::ArithBinOpKind::Sub:
                 {
-                    return binaryOpLoweringHelper<mlir::LLVM::SubOp, mlir::LLVM::FSubOp, true>(
-                        loc, lState, op, operands, rewriter, resultType );
+                    return binaryArithOpLoweringHelper<mlir::LLVM::SubOp, mlir::LLVM::FSubOp, true>(
+                        loc, lState, op, lhs, rhs, rewriter, resultType );
                 }
                 case silly::ArithBinOpKind::Mul:
                 {
-                    return binaryOpLoweringHelper<mlir::LLVM::MulOp, mlir::LLVM::FMulOp, true>(
-                        loc, lState, op, operands, rewriter, resultType );
+                    return binaryArithOpLoweringHelper<mlir::LLVM::MulOp, mlir::LLVM::FMulOp, true>(
+                        loc, lState, op, lhs, rhs, rewriter, resultType );
                 }
 
                 case silly::ArithBinOpKind::Div:
                 {
-                    return binaryOpLoweringHelper<mlir::LLVM::SDivOp, mlir::LLVM::FDivOp, true>(
-                        loc, lState, op, operands, rewriter, resultType );
+                    return binaryArithOpLoweringHelper<mlir::LLVM::SDivOp, mlir::LLVM::FDivOp, true>(
+                        loc, lState, op, lhs, rhs, rewriter, resultType );
                 }
 
                 case silly::ArithBinOpKind::And:
                 {
-                    return binaryOpLoweringHelper<mlir::LLVM::AndOp, mlir::LLVM::FAddOp, false>(
-                        loc, lState, op, operands, rewriter, resultType );
+                    return binaryArithOpLoweringHelper<mlir::LLVM::AndOp, mlir::LLVM::FAddOp, false>(
+                        loc, lState, op, lhs, rhs, rewriter, resultType );
                 }
 
                 case silly::ArithBinOpKind::Or:
                 {
-                    return binaryOpLoweringHelper<mlir::LLVM::OrOp, mlir::LLVM::FAddOp, false>(
-                        loc, lState, op, operands, rewriter, resultType );
+                    return binaryArithOpLoweringHelper<mlir::LLVM::OrOp, mlir::LLVM::FAddOp, false>(
+                        loc, lState, op, lhs, rhs, rewriter, resultType );
                 }
 
                 case silly::ArithBinOpKind::Mod:
@@ -2157,8 +2128,8 @@ namespace silly
                 case silly::ArithBinOpKind::Xor:
                 {
                     // mlir::LLVM::FAddOp is a dummy operation here, knowing that it will not ever be used:
-                    return binaryOpLoweringHelper<mlir::LLVM::XOrOp, mlir::LLVM::FAddOp, false>(
-                        loc, lState, op, operands, rewriter, resultType );
+                    return binaryArithOpLoweringHelper<mlir::LLVM::XOrOp, mlir::LLVM::FAddOp, false>(
+                        loc, lState, op, lhs, rhs, rewriter, resultType );
                 }
             }
 
@@ -2167,6 +2138,107 @@ namespace silly
             return mlir::failure();
         }
     };
+
+    template <class IOpType, class FOpType, mlir::LLVM::ICmpPredicate ICmpPredS, mlir::LLVM::ICmpPredicate ICmpPredU,
+              mlir::LLVM::FCmpPredicate FCmpPred>
+    mlir::LogicalResult binaryCompareOpLoweringHelper( mlir::Location loc, LoweringContext& lState, mlir::Operation* op,
+                                                       mlir::Value lhs, mlir::Value rhs,
+                                                       mlir::ConversionPatternRewriter& rewriter )
+    {
+        mlir::IntegerType lTyI = mlir::dyn_cast<mlir::IntegerType>( lhs.getType() );
+        mlir::IntegerType rTyI = mlir::dyn_cast<mlir::IntegerType>( rhs.getType() );
+        mlir::FloatType lTyF = mlir::dyn_cast<mlir::FloatType>( lhs.getType() );
+        mlir::FloatType rTyF = mlir::dyn_cast<mlir::FloatType>( rhs.getType() );
+
+        if ( lTyI && rTyI )
+        {
+            unsigned lwidth = lTyI.getWidth();
+            unsigned rwidth = rTyI.getWidth();
+            mlir::LLVM::ICmpPredicate pred = ICmpPredS;
+
+            if ( rwidth > lwidth )
+            {
+                if ( lwidth == 1 )
+                {
+                    lhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, rTyI, lhs );
+                }
+                else
+                {
+                    lhs = rewriter.create<mlir::LLVM::SExtOp>( loc, rTyI, lhs );
+                }
+            }
+            else if ( rwidth < lwidth )
+            {
+                if ( rwidth == 1 )
+                {
+                    rhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, lTyI, rhs );
+                }
+                else
+                {
+                    rhs = rewriter.create<mlir::LLVM::SExtOp>( loc, lTyI, rhs );
+                }
+            }
+            else if ( ( rwidth == lwidth ) && ( rwidth == 1 ) )
+            {
+                pred = ICmpPredU;
+            }
+
+            IOpType cmp = rewriter.create<IOpType>( loc, pred, lhs, rhs );
+            rewriter.replaceOp( op, cmp.getResult() );
+        }
+        else if ( lTyF && rTyF )
+        {
+            unsigned lwidth = lTyF.getWidth();
+            unsigned rwidth = rTyF.getWidth();
+
+            if ( lwidth < rwidth )
+            {
+                lhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, rTyF, lhs );
+            }
+            else if ( rwidth < lwidth )
+            {
+                rhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, lTyF, rhs );
+            }
+
+            FOpType cmp = rewriter.create<FOpType>( loc, FCmpPred, lhs, rhs );
+            rewriter.replaceOp( op, cmp.getResult() );
+        }
+        else
+        {
+            // convert integer type to float
+            if ( lTyI && rTyF )
+            {
+                if ( lTyI == lState.tyI1 )
+                {
+                    lhs = rewriter.create<mlir::arith::UIToFPOp>( loc, rTyF, lhs );
+                }
+                else
+                {
+                    lhs = rewriter.create<mlir::arith::SIToFPOp>( loc, rTyF, lhs );
+                }
+            }
+            else if ( rTyI && lTyF )
+            {
+                if ( rTyI == lState.tyI1 )
+                {
+                    rhs = rewriter.create<mlir::arith::UIToFPOp>( loc, lTyF, rhs );
+                }
+                else
+                {
+                    rhs = rewriter.create<mlir::arith::SIToFPOp>( loc, lTyF, rhs );
+                }
+            }
+            else
+            {
+                return rewriter.notifyMatchFailure( op, "Unsupported type combination" );
+            }
+
+            FOpType cmp = rewriter.create<FOpType>( loc, FCmpPred, lhs, rhs );
+            rewriter.replaceOp( op, cmp.getResult() );
+        }
+
+        return mlir::success();
+    }
 
 #if 0
     // Lower LessOp, ... (after type conversions, if required)
@@ -2183,111 +2255,6 @@ namespace silly
         {
         }
 
-        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
-                                             mlir::ConversionPatternRewriter& rewriter ) const override
-        {
-            SillyOp compareOp = cast<SillyOp>( op );
-            mlir::Location loc = compareOp.getLoc();
-
-            LLVM_DEBUG( llvm::dbgs() << "Lowering ComparisonOp: " << *op << '\n' );
-
-            mlir::Value lhs = compareOp.getLhs();
-            mlir::Value rhs = compareOp.getRhs();
-
-            mlir::IntegerType lTyI = mlir::dyn_cast<mlir::IntegerType>( lhs.getType() );
-            mlir::IntegerType rTyI = mlir::dyn_cast<mlir::IntegerType>( rhs.getType() );
-            mlir::FloatType lTyF = mlir::dyn_cast<mlir::FloatType>( lhs.getType() );
-            mlir::FloatType rTyF = mlir::dyn_cast<mlir::FloatType>( rhs.getType() );
-
-            if ( lTyI && rTyI )
-            {
-                unsigned lwidth = lTyI.getWidth();
-                unsigned rwidth = rTyI.getWidth();
-                mlir::LLVM::ICmpPredicate pred = ICmpPredS;
-
-                if ( rwidth > lwidth )
-                {
-                    if ( lwidth == 1 )
-                    {
-                        lhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, rTyI, lhs );
-                    }
-                    else
-                    {
-                        lhs = rewriter.create<mlir::LLVM::SExtOp>( loc, rTyI, lhs );
-                    }
-                }
-                else if ( rwidth < lwidth )
-                {
-                    if ( rwidth == 1 )
-                    {
-                        rhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, lTyI, rhs );
-                    }
-                    else
-                    {
-                        rhs = rewriter.create<mlir::LLVM::SExtOp>( loc, lTyI, rhs );
-                    }
-                }
-                else if ( ( rwidth == lwidth ) && ( rwidth == 1 ) )
-                {
-                    pred = ICmpPredU;
-                }
-
-                IOpType cmp = rewriter.create<IOpType>( loc, pred, lhs, rhs );
-                rewriter.replaceOp( op, cmp.getResult() );
-            }
-            else if ( lTyF && rTyF )
-            {
-                unsigned lwidth = lTyF.getWidth();
-                unsigned rwidth = rTyF.getWidth();
-
-                if ( lwidth < rwidth )
-                {
-                    lhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, rTyF, lhs );
-                }
-                else if ( rwidth < lwidth )
-                {
-                    rhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, lTyF, rhs );
-                }
-
-                FOpType cmp = rewriter.create<FOpType>( loc, FCmpPred, lhs, rhs );
-                rewriter.replaceOp( op, cmp.getResult() );
-            }
-            else
-            {
-                // convert integer type to float
-                if ( lTyI && rTyF )
-                {
-                    if ( lTyI == lState.tyI1 )
-                    {
-                        lhs = rewriter.create<mlir::arith::UIToFPOp>( loc, rTyF, lhs );
-                    }
-                    else
-                    {
-                        lhs = rewriter.create<mlir::arith::SIToFPOp>( loc, rTyF, lhs );
-                    }
-                }
-                else if ( rTyI && lTyF )
-                {
-                    if ( rTyI == lState.tyI1 )
-                    {
-                        rhs = rewriter.create<mlir::arith::UIToFPOp>( loc, lTyF, rhs );
-                    }
-                    else
-                    {
-                        rhs = rewriter.create<mlir::arith::SIToFPOp>( loc, lTyF, rhs );
-                    }
-                }
-                else
-                {
-                    return rewriter.notifyMatchFailure( op, "Unsupported type combination" );
-                }
-
-                FOpType cmp = rewriter.create<FOpType>( loc, FCmpPred, lhs, rhs );
-                rewriter.replaceOp( op, cmp.getResult() );
-            }
-
-            return mlir::success();
-        }
     };
 #endif
 
@@ -2320,23 +2287,23 @@ namespace silly
             {
                 case silly::CmpBinOpKind::Less:
                 {
-                    return binaryOpLoweringHelper<mlir::LLVM::AddOp, mlir::LLVM::FAddOp, true>(
+                    return binaryArithOpLoweringHelper<mlir::LLVM::AddOp, mlir::LLVM::FAddOp, true>(
                         loc, lState, op, operands, rewriter, resultType );
                 }
                 case silly::CmpBinOpKind::LessEq:
                 {
-                    return binaryOpLoweringHelper<mlir::LLVM::SubOp, mlir::LLVM::FSubOp, true>(
+                    return binaryArithOpLoweringHelper<mlir::LLVM::SubOp, mlir::LLVM::FSubOp, true>(
                         loc, lState, op, operands, rewriter, resultType );
                 }
                 case silly::CmpBinOpKind::Equal:
                 {
-                    return binaryOpLoweringHelper<mlir::LLVM::MulOp, mlir::LLVM::FMulOp, true>(
+                    return binaryArithOpLoweringHelper<mlir::LLVM::MulOp, mlir::LLVM::FMulOp, true>(
                         loc, lState, op, operands, rewriter, resultType );
                 }
 
                 case silly::CmpBinOpKind::NotEqual:
                 {
-                    return binaryOpLoweringHelper<mlir::LLVM::SDivOp, mlir::LLVM::FDivOp, true>(
+                    return binaryArithOpLoweringHelper<mlir::LLVM::SDivOp, mlir::LLVM::FDivOp, true>(
                         loc, lState, op, operands, rewriter, resultType );
                 }
 #if 0
