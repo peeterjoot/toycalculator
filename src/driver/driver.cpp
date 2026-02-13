@@ -284,7 +284,7 @@ static void showLinkCommand( const std::string& linker, llvm::SmallVector<llvm::
 }
 
 static void invokeLinker( const char* argv0, const llvm::SmallString<128>& exePath,
-                          const llvm::SmallString<128>& objectPath, void* mainSymbol )
+                          const llvm::SmallString<128>& objectPath, void* mainSymbol, silly::DriverState & st )
 {
     // Get the driver path
     std::string driver = llvm::sys::fs::getMainExecutable( argv0, mainSymbol );
@@ -326,6 +326,10 @@ static void invokeLinker( const char* argv0, const llvm::SmallString<128>& exePa
     linkerArgs.push_back( "-l" );
     linkerArgs.push_back( "silly_runtime" );
     linkerArgs.push_back( rpathOption );
+    if ( st.needsMathLib )
+    {
+        linkerArgs.push_back( "-lm" );
+    }
 
     if ( verboseLink == true )
     {
@@ -349,7 +353,7 @@ static void invokeLinker( const char* argv0, const llvm::SmallString<128>& exePa
 }
 
 static void assembleAndLink( const llvm::SmallString<128>& dirWithStem, const char* argv0, void* mainSymbol,
-                             std::unique_ptr<llvm::Module>& llvmModule )
+                             std::unique_ptr<llvm::Module>& llvmModule, silly::DriverState & st )
 {
     std::string targetTripleStr = llvm::sys::getProcessTriple();
     llvm::Triple targetTriple( targetTripleStr );
@@ -435,7 +439,7 @@ static void assembleAndLink( const llvm::SmallString<128>& dirWithStem, const ch
 
     if ( compileOnly == false )
     {
-        invokeLinker( argv0, dirWithStem, outputFilename, mainSymbol );
+        invokeLinker( argv0, dirWithStem, outputFilename, mainSymbol, st );
     }
 }
 
@@ -531,7 +535,7 @@ static void lowerAssembleAndLinkModule( mlir::ModuleOp mod, const llvm::SmallStr
 
         if ( emitObject )
         {
-            assembleAndLink( dirWithStem, argv0, mainSymbol, llvmModule );
+            assembleAndLink( dirWithStem, argv0, mainSymbol, llvmModule, st );
         }
     }
 }

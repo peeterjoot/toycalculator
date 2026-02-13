@@ -104,6 +104,9 @@
 - As function parameters: nested calls supported
 - In predicates and boolean expressions
 
+### Language elements
+- Modulo operator (%) added (grammar, parser, lowering)
+
 ## MLIR Infrastructure Changes
 
 ### Dialect Improvements
@@ -115,6 +118,21 @@
 - Example: `%0 = silly.declare {sym_name = "x"} : <i64>`
 - Example: `silly.assign %0 : <i64> = %c42_i64 : i64`
 - Custom type printer: `<i64>` instead of `<i64 []>` for scalars
+- Refactored binary arithmetic and comparision operators to use a single op for
+  each (silly::binop, silly::cmp).  Removed all of:
+  - silly::AddOp
+  - silly::SubOp
+  - silly::MulOp
+  - silly::DivOp
+  - silly::ModOp
+  - silly::LessOp
+  - silly::LessEqualOp
+  - silly::EqualOp
+  - silly::NotEqualOp
+  - silly::OrOp
+  - silly::AndOp
+  - silly::XorOp
+  (and their lowering classes.)
 
 **Debug Information**
 - New `silly.debug_name` operation for induction variables

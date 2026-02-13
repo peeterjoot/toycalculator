@@ -15,22 +15,22 @@ namespace silly
     struct DriverState
     {
         /// True if not OptLevel::O0
-        bool isOptimized;
+        bool isOptimized{};
 
         /// True if -g is passed.
-        bool wantDebug;
+        bool wantDebug{};
 
         /// True for color error messages (when output is a terminal.)
-        bool colorErrors;
+        bool colorErrors{};
 
         /// Source file name passed to the driver.
-        std::string filename;
+        std::string filename{};
 
         /// Numeric --init-fill value if specified (zero otherwise.)
-        uint8_t fillValue;
+        uint8_t fillValue{};
+
+        bool needsMathLib{};
     };
-
-
 
 }    // namespace silly
 

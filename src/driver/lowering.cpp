@@ -90,7 +90,7 @@ namespace silly
         return nullptr;
     }
 
-    LoweringContext::LoweringContext( mlir::ModuleOp& moduleOp, const silly::DriverState& ds )
+    LoweringContext::LoweringContext( mlir::ModuleOp& moduleOp, silly::DriverState& ds )
         : driverState{ ds }, mod{ moduleOp }, builder{ mod.getRegion() }, typeConverter{ builder.getContext() }
     {
         tyI1 = builder.getI1Type();
@@ -116,6 +116,11 @@ namespace silly
                                                         tyPtr     // ptr: const char* (only used for STRING)
                                                     },
                                                     /*isPacked=*/false );
+    }
+
+    inline void LoweringContext::markMathLibRequired()
+    {
+        driverState.needsMathLib = true;
     }
 
     inline mlir::LLVMTypeConverter& LoweringContext::getTypeConverter()
@@ -1959,7 +1964,8 @@ namespace silly
     template <class llvmIOpType, class llvmFOpType, bool allowFloat>
     mlir::LogicalResult binaryArithOpLoweringHelper( mlir::Location loc, LoweringContext& lState, mlir::Operation* op,
                                                      mlir::Value lhs, mlir::Value rhs,
-                                                     mlir::ConversionPatternRewriter& rewriter, mlir::Type resultType )
+                                                     mlir::ConversionPatternRewriter& rewriter, mlir::Type resultType,
+                                                     bool needsLibMathIfFloat )
     {
         if ( resultType.isIntOrIndex() )
         {
@@ -2047,6 +2053,12 @@ namespace silly
                     rhs = rewriter.create<mlir::LLVM::SIToFPOp>( loc, resultType, rhs );
                 }
             }
+
+            if ( needsLibMathIfFloat )
+            {
+                lState.markMathLibRequired();
+            }
+
             llvmFOpType result = rewriter.create<llvmFOpType>( loc, lhs, rhs );
             rewriter.replaceOp( op, result );
         }
@@ -2088,48 +2100,49 @@ namespace silly
                 case silly::ArithBinOpKind::Add:
                 {
                     return binaryArithOpLoweringHelper<mlir::LLVM::AddOp, mlir::LLVM::FAddOp, true>(
-                        loc, lState, op, lhs, rhs, rewriter, resultType );
+                        loc, lState, op, lhs, rhs, rewriter, resultType, false );
                 }
                 case silly::ArithBinOpKind::Sub:
                 {
                     return binaryArithOpLoweringHelper<mlir::LLVM::SubOp, mlir::LLVM::FSubOp, true>(
-                        loc, lState, op, lhs, rhs, rewriter, resultType );
+                        loc, lState, op, lhs, rhs, rewriter, resultType, false );
                 }
                 case silly::ArithBinOpKind::Mul:
                 {
                     return binaryArithOpLoweringHelper<mlir::LLVM::MulOp, mlir::LLVM::FMulOp, true>(
-                        loc, lState, op, lhs, rhs, rewriter, resultType );
+                        loc, lState, op, lhs, rhs, rewriter, resultType, false );
                 }
 
                 case silly::ArithBinOpKind::Div:
                 {
                     return binaryArithOpLoweringHelper<mlir::LLVM::SDivOp, mlir::LLVM::FDivOp, true>(
-                        loc, lState, op, lhs, rhs, rewriter, resultType );
+                        loc, lState, op, lhs, rhs, rewriter, resultType, false );
                 }
 
                 case silly::ArithBinOpKind::Mod:
                 {
-                    return binaryArithOpLoweringHelper<mlir::LLVM::SRemOp, mlir::LLVM::FRemOp, false>(
-                        loc, lState, op, lhs, rhs, rewriter, resultType );
+                    // LLVM_DEBUG( llvm::dbgs() << "Lowering mod: " << *op << ' ' << lhs << ' ' << rhs << '\n' );
+                    return binaryArithOpLoweringHelper<mlir::LLVM::SRemOp, mlir::LLVM::FRemOp, true>(
+                        loc, lState, op, lhs, rhs, rewriter, resultType, true );
                 }
 
                 // mlir::LLVM::FAddOp is a dummy operation below, knowing that it will not ever be used:
                 case silly::ArithBinOpKind::And:
                 {
                     return binaryArithOpLoweringHelper<mlir::LLVM::AndOp, mlir::LLVM::FAddOp, false>(
-                        loc, lState, op, lhs, rhs, rewriter, resultType );
+                        loc, lState, op, lhs, rhs, rewriter, resultType, false );
                 }
 
                 case silly::ArithBinOpKind::Or:
                 {
                     return binaryArithOpLoweringHelper<mlir::LLVM::OrOp, mlir::LLVM::FAddOp, false>(
-                        loc, lState, op, lhs, rhs, rewriter, resultType );
+                        loc, lState, op, lhs, rhs, rewriter, resultType, false );
                 }
 
                 case silly::ArithBinOpKind::Xor:
                 {
                     return binaryArithOpLoweringHelper<mlir::LLVM::XOrOp, mlir::LLVM::FAddOp, false>(
-                        loc, lState, op, lhs, rhs, rewriter, resultType );
+                        loc, lState, op, lhs, rhs, rewriter, resultType, false );
                 }
             }
 

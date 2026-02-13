@@ -64,7 +64,7 @@ namespace silly
         /// Constructs the lowering context.
         /// @param moduleOp The module being lowered.
         /// @param driverState Reference to driver configuration state.
-        LoweringContext( mlir::ModuleOp& moduleOp, const DriverState& driverState );
+        LoweringContext( mlir::ModuleOp& moduleOp, DriverState& driverState );
 
         /// Returns the preferred alignment for an element type according to the data layout.
         unsigned preferredTypeAlignment( mlir::Operation* op, mlir::Type elemType );
@@ -169,6 +169,9 @@ namespace silly
         /// Creates an f64 zero constant.
         inline mlir::LLVM::ConstantOp getF64zero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter );
 
+        /// mlir::LLVM::FRemOp lowers to fmod (at least on some targets), so -lm will be required at link time.
+        inline void markMathLibRequired();
+
        private:
         /// Returns the MLIR context.
         inline mlir::MLIRContext* getContext();
@@ -256,7 +259,7 @@ namespace silly
         mlir::func::FuncOp getFuncF64;
 
         /// Reference to driver configuration state.
-        const DriverState& driverState;
+        DriverState& driverState;
 
         /// The module being lowered.
         mlir::ModuleOp& mod;
