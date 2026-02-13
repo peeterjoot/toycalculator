@@ -37,15 +37,15 @@ ifElifElseStatement
   ;
 
 ifStatement
-  : IF_TOKEN BRACE_START_TOKEN expression BRACE_END_TOKEN LEFT_CURLY_BRACKET_TOKEN statement* RIGHT_CURLY_BRACKET_TOKEN
+  : IF_TOKEN BRACE_START_TOKEN expression BRACE_END_TOKEN scopedStatements
   ;
 
 elifStatement
-  : ELIF_TOKEN BRACE_START_TOKEN expression BRACE_END_TOKEN LEFT_CURLY_BRACKET_TOKEN statement* RIGHT_CURLY_BRACKET_TOKEN
+  : ELIF_TOKEN BRACE_START_TOKEN expression BRACE_END_TOKEN scopedStatements
   ;
 
 elseStatement
-  : ELSE_TOKEN LEFT_CURLY_BRACKET_TOKEN statement* RIGHT_CURLY_BRACKET_TOKEN
+  : ELSE_TOKEN scopedStatements
   ;
 
 // For now both return and parameters, can only be scalar types.
@@ -53,8 +53,7 @@ functionStatement
   : FUNCTION_TOKEN IDENTIFIER
     BRACE_START_TOKEN (variableTypeAndName (COMMA_TOKEN variableTypeAndName)*)? BRACE_END_TOKEN
     (COLON_TOKEN scalarType)?
-    LEFT_CURLY_BRACKET_TOKEN statement* returnStatement ENDOFSTATEMENT_TOKEN
-    RIGHT_CURLY_BRACKET_TOKEN
+    scopedStatements
   ;
 
 boolDeclareStatement
@@ -127,7 +126,7 @@ forStatement
             forStart COMMA_TOKEN forEnd (COMMA_TOKEN forStep)?
         BRACE_END_TOKEN
     BRACE_END_TOKEN
-    LEFT_CURLY_BRACKET_TOKEN statement* RIGHT_CURLY_BRACKET_TOKEN
+    scopedStatements
   ;
 
 intType
@@ -153,6 +152,10 @@ forRangeExpression
 // Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
 exitStatement
   : EXIT_TOKEN expression?
+  ;
+
+scopedStatements
+  : LEFT_CURLY_BRACKET_TOKEN statement* (returnStatement ENDOFSTATEMENT_TOKEN)? RIGHT_CURLY_BRACKET_TOKEN
   ;
 
 returnStatement

@@ -55,18 +55,14 @@ def Silly_VarType : TypeDef<Silly_Dialect, "var"> {
 def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
   let summary = "Declare an abstract variable location (scalar or array).";
   let description = [{
-    Declares a variable (scalar or array) or function parameter with a name and type.
-    For parameters, `param_number` indicates the parameter index.
+    Declares a variable (scalar or array) and it's type.
     The result is an abstract handle (!silly.var) to the variable's location, storage-agnostic.
     Initializers are provided as operands; for arrays, excess initializers are an error.
   }];
   let arguments = (ins
-    Variadic<AnyType>:$initializers,
-    OptionalAttr<I64Attr>:$param_number,
-    StrAttr:$sym_name
+    Variadic<AnyType>:$initializers
   );
   let results = (outs Silly_VarType:$var);
-  let traits = [Symbol];
 
   let hasVerifier = 1;
 }
@@ -99,7 +95,7 @@ def Silly_AssignOp : Op<Silly_Dialect, "assign"> {
   }];
 }
 
-def Silly_DebugName : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {
+def Silly_DebugNameOp : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {
   let summary = "Associates a source-level name with a value for debug information purposes.";
 
   let description = [{

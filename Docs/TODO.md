@@ -1,18 +1,36 @@
 ## TODO
 
-### running list of other issues and ideas, randomly ordered
+### running list of other issues and ideas, semi-randomly ordered
 ----------------------------------
+
+#### Testing
+
+* FOR, IF, ELSE, ELIF and nested IF* testing for the scopebug fix.
+
+#### Dialect
+
+* get rid of silly::ScopeOp -- no good reason for it anymore, as all the symbol table use is gone.
+
+#### Lowering
+
+* Attempted introducing a type convertor to DeclareOp and DebugNameOp lowering, but couldn't get it to work (i.e.
+  all of DebugNameOp, LoadOp, AssignOp reference the DeclareOp, but once lowered, want the DeclareOp SSA value to be
+  swapped out for the alloca SSA value).  Couldn't get that to work, and have reverted to an unordered_map (but now
+  keyed on the DeclareOp's Operation*, not a function-name::variable-name pair, as was the case for the symbol based
+  implementation.
+
+  Should followup on that idea later, but first finish the symbol name refactoring (which should include purging silly::ScopeOp).
+* Should be able to merge constructVariableDI+constructInductionVariableDI
+* Figure out why I have a dependency on the typeConvertor in DebugNameOp lowering (see for example: tests/endtoend/array/array_elem_as_arg.silly)
 
 #### Grammar
 
-* Introduce scope rule (for FOR, IF, ELSE, THEN) and even FUNCTION, so that exitScope callback
-  can remove variables from that scope from the current function lookup, and prevent scoped
-  declarations from "leaking" out.
 * Add MODULE, MAIN, INTERFACE statements.  MODULE .silly's should have only FUNCTION.  INTERFACE to have only prototypes.
 * Add FUNCTION declaration syntax (for use in external MODULE objects.)
 
 #### Driver
 
+* don't think that driver is removing outputs before trying to recreate, so if there is an error after success, it is not visible.
 * any driver error should delete any files opened (.o, .s, .ll, .mlir, ...) -- do I need callbacks, or is LLVM taking care of that?
 * consider OO structure for driver.cpp
 * tried to use mlir::OwningOpRef<mlir::ModuleOp> for ParseListener::getModule (and the mod op it contains), but
@@ -21,6 +39,7 @@
   a valgrind leak.  Revisit this separate from trying to add the .mlir read+parse.
 * add testing for: .o inputs to the driver; silly -c empty.silly ; silly empty.o
 * implement -o option for the exe name.
+* If user doesn't specify -c, then the created .o file should go to a /tmp/ or TMPDIR path allocated using mkstemps, and removed post link.
 
 #### diagnostics
 
