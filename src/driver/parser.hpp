@@ -34,6 +34,9 @@ namespace silly
     /// Formats location for error messages.
     inline std::string formatLocation( mlir::Location loc );
 
+    /// Figure out the bigger of two types for implicit cast-like purposes
+    mlir::Type biggestTypeOf( mlir::Type ty1, mlir::Type ty2 );
+
     /// Context for MLIR dialect registration.
     struct DialectCtx
     {
@@ -43,9 +46,6 @@ namespace silly
         /// Loads required dialects (Silly, Func, Arith, MemRef, LLVM, SCF).
         DialectCtx();
     };
-
-    /// antlr4::tree::TerminalNode is a long winded expression
-    using tNode = antlr4::tree::TerminalNode;
 
     /// Per-function state tracked during parsing.
     class PerFunctionState
@@ -75,13 +75,76 @@ namespace silly
             op = funcOp;
         }
 
+        /// Search the inductionVariables stack for the named variable.
+        ///
+        /// This variable is pushed in enterForStatement, and popped in exitForStatement.
+        inline mlir::Value searchForInduction( const std::string &varName );
+
+        /// Add the mlir::Value for a named FOR loop variable to inductionVariables stack.
+        inline void pushInductionVariable( const std::string &varName, mlir::Value i );
+
+        /// Remove the top-most name/value pair from the inductionVariables stack.
+        inline void popInductionVariable();
+
+        /// Return true if the variable is declared
+        bool isVariableDeclared( mlir::Location loc, const std::string &varName, bool &error, DriverState &ds,
+                                 const std::string &funcName );
+
+        bool haveInsertionPointStack();
+
+        void pushToInsertionPointStack( mlir::Operation *op );
+
+        void popFromInsertionPointStack( mlir::OpBuilder &builder );
+
        private:
         /// Associated func::FuncOp.
         mlir::Operation *op{};
+
+        /// FOR loop variable stack containing all such variables that are in scope.
+        std::vector<std::pair<std::string, mlir::Value>> inductionVariables;
+
+        /// Stack for scf.if/scf.for blocks.
+        std::vector<mlir::Operation *> insertionPointStack;
+    };
+
+    /// convenience types, so that get calls aren't needed all over the place
+    struct MlirTypeCache
+    {
+        void initialize( mlir::OpBuilder &builder, mlir::MLIRContext *ctx );
+
+        /// i1 type.
+        mlir::IntegerType i1;
+
+        /// (signed) i8 type.
+        mlir::IntegerType i8;
+
+        /// (signed) i16 type.
+        mlir::IntegerType i16;
+
+        /// (signed) i32 type.
+        mlir::IntegerType i32;
+
+        /// (signed) i64 type.
+        mlir::IntegerType i64;
+
+        /// f32 type.
+        mlir::FloatType f32;
+
+        /// f64 type.
+        mlir::FloatType f64;
+
+        /// LLVM pointer type.
+        mlir::LLVM::LLVMPointerType ptr;
+
+        /// LLVM void type.
+        mlir::LLVM::LLVMVoidType voidT;
     };
 
     /// Start and end locations associated with parser context.
     using LocPairs = std::pair<mlir::Location, mlir::Location>;
+
+    /// antlr4::tree::TerminalNode is a long winded expression
+    using tNode = antlr4::tree::TerminalNode;
 
     /// ANTLR listener that constructs MLIR for the Silly language.
     ///
@@ -94,7 +157,7 @@ namespace silly
         /// Constructor.
         /// @param ds Driver state, including the source filename for location information.
         /// @param context The context under which the mlir module is created.
-        ParseListener( const DriverState &ds, mlir::MLIRContext *context );
+        ParseListener( DriverState &ds, mlir::MLIRContext *context );
 
         /// Override to throw on syntax errors.
         void syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
@@ -173,7 +236,7 @@ namespace silly
 
        private:
         /// Source filename, ...
-        const DriverState &driverState;
+        DriverState &driverState;
 
         /// Context for all the loaded dialects.
         mlir::MLIRContext *ctx;
@@ -181,57 +244,20 @@ namespace silly
         /// MLIR builder.
         mlir::OpBuilder builder;
 
-        /// Current function name.
-        std::string currentFuncName;
-
-        /// Stack for scf.if/scf.for blocks.
-        std::vector<mlir::Operation *> insertionPointStack;
-
         /// Top-level module.
         mlir::ModuleOp mod;
 
-        /// Per-function state map.
-        std::unordered_map<std::string, std::unique_ptr<PerFunctionState>> functionStateMap;
-
-        /// FOR loop variable stack containing all such variables that are in scope.
-        ///
-        /// FIXME: why isn't this part of functionStateMap?
-        std::vector<std::pair<std::string, mlir::Value>> inductionVariables;
-
-        /// Syntax errors detected.
-        int errorCount{};
-
-        // convenience types, so that get calls aren't needed all over the place
-
-        /// i1 type.
-        mlir::IntegerType tyI1;
-
-        /// i8 type.
-        mlir::IntegerType tyI8;
-
-        /// i16 type.
-        mlir::IntegerType tyI16;
-
-        /// i32 type.
-        mlir::IntegerType tyI32;
-
-        /// i64 type.
-        mlir::IntegerType tyI64;
-
-        /// f32 type.
-        mlir::FloatType tyF32;
-
-        /// f64 type.
-        mlir::FloatType tyF64;
-
-        /// LLVM pointer type.
-        mlir::LLVM::LLVMPointerType tyPtr;
-
-        /// LLVM void type.
-        mlir::LLVM::LLVMVoidType tyVoid;
+        /// mlir::Type values that will be used repeatedly
+        MlirTypeCache typ;
 
         /// Saved insertion point for main.
-        mlir::OpBuilder::InsertPoint mainIP;
+        mlir::OpBuilder::InsertPoint mainIP{};
+
+        /// Current function name.
+        std::string currentFuncName;
+
+        /// Per-function state map.
+        std::unordered_map<std::string, std::unique_ptr<PerFunctionState>> functionStateMap;
 
         ////////////////////////////////////////////////////////////////////////
         ///
@@ -239,12 +265,15 @@ namespace silly
         ///
         ////////////////////////////////////////////////////////////////////////
 
+        /// Lookup in per-function state, whether a variable has been declared
+        bool isVariableDeclared( mlir::Location loc, const std::string &varName, bool &error );
+
         /// @brief check for inappropriate RETURN
         ///
         /// Grammar now allows for RETURN in IF/ELIF/ELSE/FOR blocks, (as well as FUNCTION)
         /// but that is not supported.  Check for that explicitly, and raise a user error,
         /// instead of just letting this fail mysteriously in lowering.
-        void checkForReturnInScope( SillyParser::ScopedStatementsContext* scope, const char * what );
+        void checkForReturnInScope( SillyParser::ScopedStatementsContext *scope, const char *what );
 
         /// Create a silly::ArithBinOp
         inline mlir::Value createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty,
@@ -253,12 +282,6 @@ namespace silly
         /// Create a silly::CmpBinOp
         inline mlir::Value createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs,
                                             mlir::Value rhs );
-
-        /// Emit a user-friendly error message in GCC/Clang style
-        ///
-        /// errorCount is incremented as a side effect.
-        void emitUserError( mlir::Location loc, const std::string &message, const std::string &funcName,
-                            const std::string &sourceFile, bool internal );
 
         /// Lookup and validate a declareStatement variable name, and process the declaration.
         void enterDeclareHelper( mlir::Location loc, tNode *identifier,
@@ -307,9 +330,6 @@ namespace silly
                                   SillyParser::ExpressionContext *assignmentExpression,
                                   const std::vector<SillyParser::ExpressionContext *> *expressions );
 
-        /// Return true if the variable is declared
-        bool isVariableDeclared( mlir::Location loc, const std::string &varName, bool &error );
-
         /// Construct a Value for a TRUE or FALSE boolean literal string
         inline mlir::Value parseBoolean( mlir::Location loc, const std::string &s );
 
@@ -327,17 +347,6 @@ namespace silly
         /// Map INT8_TOKEN, INT16_TOKEN, ... to a mlir::Type
         mlir::Type integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext *ctx );
 
-        /// Search the inductionVariables stack for the named variable.
-        ///
-        /// This variable is pushed in enterForStatement, and popped in exitForStatement.
-        inline mlir::Value searchForInduction( const std::string &varName );
-
-        /// Add the mlir::Value for a named FOR loop variable to inductionVariables stack.
-        inline void pushInductionVariable( const std::string &varName, mlir::Value i );
-
-        /// Remove the top-most name/value pair from the inductionVariables stack.
-        inline void popInductionVariable();
-
         /// Parses scalar type string to MLIR type.
         mlir::Type parseScalarType( const std::string &ty );
 
@@ -345,9 +354,6 @@ namespace silly
         ///
         /// This is adapted from AssignOpLowering, but uses arith dialect operations instead of LLVM dialect.
         mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType );
-
-        /// Figure out the bigger of two types for implicit cast-like purposes
-        static mlir::Type biggestTypeOf( mlir::Type ty1, mlir::Type ty2 );
 
         /// Casts index value to index type.
         mlir::Value indexTypeCast( mlir::Location loc, mlir::Value val );
@@ -365,6 +371,10 @@ namespace silly
 
         /// Find the current scf.if condition and set the insertion point to the else region for that if.
         void selectElseBlock( mlir::Location loc, const std::string &errorText );
+
+        /// Handle assignment processing, given the current var-name and index (if appropriate.)
+        void processAssignment( mlir::Location loc, SillyParser::ExpressionContext *exprContext,
+                                const std::string &currentVarName, mlir::Value currentIndexExpr );
 
         /// Handle parsing of an expression (the top-level entry point for expressions).
         /// This function serves as the main entry point for parsing any rvalue expression.
@@ -446,15 +456,11 @@ namespace silly
         /// @param ty type override
         /// @return The resulting Value
         mlir::Value parsePrimary( antlr4::ParserRuleContext *ctx, mlir::Type ty );
-
-        /// Handle assignment processing, given the current var-name and index (if appropriate.)
-        void processAssignment( mlir::Location loc, SillyParser::ExpressionContext *exprContext,
-                                const std::string &currentVarName, mlir::Value currentIndexExpr );
     };
 
     inline mlir::ModuleOp ParseListener::getModule()
     {
-        if ( errorCount )
+        if ( driverState.errorCount )
         {
             return nullptr;
         }

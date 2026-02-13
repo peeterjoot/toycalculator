@@ -16,7 +16,7 @@
 
 namespace silly
 {
-    struct DriverState;
+    class DriverState;
 
     /// Per-function lowering state
     struct PerFunctionState

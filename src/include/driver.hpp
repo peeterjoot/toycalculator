@@ -12,8 +12,9 @@
 namespace silly
 {
     /// State to pass from the driver to parser/builder/lowering
-    struct DriverState
+    class DriverState
     {
+        public:
         /// True if not OptLevel::O0
         bool isOptimized{};
 
@@ -31,8 +32,16 @@ namespace silly
 
         /// Signal that -lm will be required when the program is linked.
         bool needsMathLib{};
-    };
 
+        /// Syntax errors detected.
+        int errorCount{};
+
+        /// Emit a user-friendly error message in GCC/Clang style
+        ///
+        /// errorCount is incremented as a side effect.
+        void emitUserError( mlir::Location loc, const std::string &message, const std::string &funcName,
+                            bool internal );
+    };
 }    // namespace silly
 
 // vim: et ts=4 sw=4
