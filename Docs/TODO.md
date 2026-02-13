@@ -9,6 +9,21 @@
   can remove variables from that scope from the current function lookup, and prevent scoped
   declarations from "leaking" out. -- WIP: that scopedStatements has an optional RETURN.  This means extra checking
   is required to make sure it's only allowed at the last statement in a function, and nowhere else.
+
+  verify works.  error_bad_return_if.silly: get:
+
+  'silly.return' op must be the last operation in the parent block
+
+  ... but that's a lowering error and not user visible.  Fix that.
+
+  Fix that and add both of:
+
+  tests/endtoend/failure/ : error_bad_return_if.silly error_bad_return_for.silly
+
+  to the testsuite (update testit expected when ready)
+
+  -- This is probably a good check for a SEMA pass.
+
 * Add MODULE, MAIN, INTERFACE statements.  MODULE .silly's should have only FUNCTION.  INTERFACE to have only prototypes.
 * Add FUNCTION declaration syntax (for use in external MODULE objects.)
 
