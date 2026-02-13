@@ -72,8 +72,9 @@ enum class ReturnCodes : int
 /// Supported source code file extensions.
 enum class InputType
 {
-    Silly,    // .silly or other source
-    MLIR,     // .mlir
+    Silly,     // .silly or other source
+    MLIR,      // .mlir
+    OBJECT,    // .o
     Unknown
 };
 
@@ -115,7 +116,7 @@ static llvm::cl::opt<bool> emitLLVM( "emit-llvm", llvm::cl::desc( "Emit LLVM IR"
 static llvm::cl::opt<bool> noEmitObject( "no-emit-object", llvm::cl::desc( "Skip emit object file (.o)" ),
                                          llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
-// Noisy debugging output
+// Noisy debugging output (this is different than --debug which is intercepted by llvm itself)
 static llvm::cl::opt<bool> llvmDEBUG( "debug-llvm", llvm::cl::desc( "Include MLIR dump, and turn off multithreading" ),
                                       llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
@@ -144,6 +145,11 @@ static InputType getInputType( llvm::StringRef filename )
     if ( ext == ".silly" )
     {
         return InputType::Silly;
+    }
+
+    if ( ext == ".o" )
+    {
+        return InputType::OBJECT;
     }
 
     return InputType::Unknown;
@@ -284,7 +290,7 @@ static void showLinkCommand( const std::string& linker, llvm::SmallVector<llvm::
 }
 
 static void invokeLinker( const char* argv0, const llvm::SmallString<128>& exePath,
-                          const llvm::SmallString<128>& objectPath, void* mainSymbol, silly::DriverState & st )
+                          const llvm::SmallString<128>& objectPath, void* mainSymbol, silly::DriverState& st )
 {
     // Get the driver path
     std::string driver = llvm::sys::fs::getMainExecutable( argv0, mainSymbol );
@@ -353,7 +359,7 @@ static void invokeLinker( const char* argv0, const llvm::SmallString<128>& exePa
 }
 
 static void assembleAndLink( const llvm::SmallString<128>& dirWithStem, const char* argv0, void* mainSymbol,
-                             std::unique_ptr<llvm::Module>& llvmModule, silly::DriverState & st )
+                             std::unique_ptr<llvm::Module>& llvmModule, silly::DriverState& st )
 {
     std::string targetTripleStr = llvm::sys::getProcessTriple();
     llvm::Triple targetTriple( targetTripleStr );
@@ -576,7 +582,7 @@ int main( int argc, char** argv )
     InputType ity = getInputType( st.filename );
     if ( ity == InputType::Unknown )
     {
-        llvm::errs() << std::format( COMPILER_NAME ": error: filename {} extension is neither .silly nor .mlir\n",
+        llvm::errs() << std::format( COMPILER_NAME ": error: filename {} extension is none of .silly, .mlir, or .o\n",
                                      st.filename );
         std::exit( (int)ReturnCodes::badExtensionError );
     }
@@ -595,6 +601,10 @@ int main( int argc, char** argv )
     mlir::ModuleOp mod;
     mlir::OwningOpRef<mlir::ModuleOp> rmod;
 
+    llvm::SmallString<128> dirWithStem;
+
+    makeOutputDirectory( st.filename, dirWithStem );
+
     if ( ity == InputType::Silly )
     {
         std::ifstream inputStream;
@@ -612,19 +622,23 @@ int main( int argc, char** argv )
             std::exit( (int)ReturnCodes::parseError );
         }
     }
-    else
+    else if ( ity == InputType::MLIR )
     {
         rmod = parseMLIRFile( st.filename, &dialectLoader.context );
         mod = rmod.get();
     }
-
-    llvm::SmallString<128> dirWithStem;
-
-    makeOutputDirectory( st.filename, dirWithStem );
+    else    // .o
+    {
+        // dirWithStem is actually the name of the exe to link at this point and may or may
+        // not have a directory component (example: foo.o becomes foo)
+        llvm::SmallString<128> objectPath( st.filename.c_str() );
+        invokeLinker( argv[0], dirWithStem, objectPath, (void*)&main, st );
+        return (int)ReturnCodes::success;
+    }
 
     serializeModuleMLIR( mod, flags, dirWithStem );
 
-    if ( mlir::failed( mlir::verify( mod ) ) )
+    if ( llvmDEBUG && mlir::failed( mlir::verify( mod ) ) )
     {
         llvm::errs() << COMPILER_NAME ": error: MLIR failed verification\n";
         mod->dump();

@@ -411,6 +411,7 @@ tests/
 - Added support for ingesting silly-dialect MLIR sources (with either .mlir or .sir suffix).
 - Silly language sources must now have a .silly suffix.
 - Support for reading silly language sources from stdin has been removed.
+- Support for just linking has been added.  Example: `silly -c foo.silly ; silly foo.o` produces exe foo, like `silly foo.silly`.  This is prep for possible multiple file support.
 
 ### Build Scripts
 
