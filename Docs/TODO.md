@@ -7,7 +7,8 @@
 
 * Introduce scope rule (for FOR, IF, ELSE, THEN) and even FUNCTION, so that exitScope callback
   can remove variables from that scope from the current function lookup, and prevent scoped
-  declarations from "leaking" out.
+  declarations from "leaking" out. -- WIP: that scopedStatements has an optional RETURN.  This means extra checking
+  is required to make sure it's only allowed at the last statement in a function, and nowhere else.
 * Add MODULE, MAIN, INTERFACE statements.  MODULE .silly's should have only FUNCTION.  INTERFACE to have only prototypes.
 * Add FUNCTION declaration syntax (for use in external MODULE objects.)
 
