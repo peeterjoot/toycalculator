@@ -31,7 +31,7 @@ using namespace mlir;
 
 namespace silly
 {
-
+    /// MLIR initialization boilerplate for the silly dialect
     void SillyDialect::initialize()
     {
         // Register types
@@ -66,6 +66,7 @@ namespace silly
     }
 #endif
 
+    /// Verifier for silly::DeclareOp
     mlir::LogicalResult DeclareOp::verify()
     {
         // Symbol name must exist and be non-empty
@@ -127,6 +128,7 @@ namespace silly
         return mlir::success();
     }
 
+    /// Verifier for silly::ScopeOp
     LogicalResult ScopeOp::verify()
     {
         if ( !getBody().empty() )
@@ -157,6 +159,7 @@ namespace silly
         return mlir::success();
     }
 
+    /// Verifier for silly::ReturnOp
     LogicalResult ReturnOp::verify()
     {
         auto *parentBlock = getOperation()->getBlock();

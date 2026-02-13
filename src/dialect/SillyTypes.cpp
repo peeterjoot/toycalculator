@@ -13,6 +13,7 @@
 
 namespace silly
 {
+    /// Custom assembly printer for silly::varType
     void varType::print( ::mlir::AsmPrinter &printer ) const
     {
         llvm::raw_ostream &os = printer.getStream();
@@ -31,6 +32,7 @@ namespace silly
         os << ">";
     }
 
+    /// Custom assembly parser for silly::varType
     ::mlir::Type varType::parse( ::mlir::AsmParser &parser )
     {
         // '<'
