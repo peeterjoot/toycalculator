@@ -3,6 +3,14 @@
 ### running list of other issues and ideas, randomly ordered
 ----------------------------------
 
+#### Grammar
+
+* Introduce scope rule (for FOR, IF, ELSE, THEN) and even FUNCTION, so that exitScope callback
+  can remove variables from that scope from the current function lookup, and prevent scoped
+  declarations from "leaking" out.
+* Add MODULE, MAIN, INTERFACE statements.  MODULE .silly's should have only FUNCTION.  INTERFACE to have only prototypes.
+* Add FUNCTION declaration syntax (for use in external MODULE objects.)
+
 #### Driver
 
 * any driver error should delete any files opened (.o, .s, .ll, .mlir, ...) -- do I need callbacks, or is LLVM taking care of that?
