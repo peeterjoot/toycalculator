@@ -222,6 +222,14 @@ my %expected_compile_error_message =
     q(error_triple_nested_for_with_shadowing.silly:3:9: error: Induction variable i used by enclosing FOR), ],
   'error_undeclare' => [
     q(error_undeclare.silly:1:1: error: Attempt to assign to undeclared variable: x), ],
+  'error_bad_return_if' => [
+    q(error_bad_return_if.silly:3:5: error: RETURN is not currently allowed in a IF block), ],
+  'error_bad_return_for' => [
+    q(error_bad_return_for.silly:3:5: error: RETURN is not currently allowed in a FOR loop body), ],
+  'error_bad_return_elif' => [
+    q(error_bad_return_elif.silly:7:5: error: RETURN is not currently allowed in a ELIF block), ],
+  'error_bad_return_else' => [
+    q(error_bad_return_else.silly:7:5: error: RETURN is not currently allowed in a ELSE block), ],
 );
 
 if ( defined $just )

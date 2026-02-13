@@ -9,6 +9,10 @@
 set(FAILURE_TESTS
     error_arrayreturn
     error_array_too_many_init
+    error_bad_return_elif
+    error_bad_return_else
+    error_bad_return_for
+    error_bad_return_if
     error_chained_comparison2
     error_chained_equality
     error_expressions4c
@@ -19,11 +23,11 @@ set(FAILURE_TESTS
     error_init_list1
     error_init_list2
     error_invalid_binary
-    error_keyword_declare2
     error_keyword_declare
+    error_keyword_declare2
     error_multiple_in_func
-    error_nested_ivar_conflict
     error_nested
+    error_nested_ivar_conflict
     error_notfloat
     error_redeclare
     error_return_expr_no_return_type

@@ -239,6 +239,13 @@ namespace silly
         ///
         ////////////////////////////////////////////////////////////////////////
 
+        /// @brief check for inappropriate RETURN
+        ///
+        /// Grammar now allows for RETURN in IF/ELIF/ELSE/FOR blocks, (as well as FUNCTION)
+        /// but that is not supported.  Check for that explicitly, and raise a user error,
+        /// instead of just letting this fail mysteriously in lowering.
+        void checkForReturnInScope( SillyParser::ScopedStatementsContext* scope, const char * what );
+
         /// Create a silly::ArithBinOp
         inline mlir::Value createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty,
                                               mlir::Value lhs, mlir::Value rhs );

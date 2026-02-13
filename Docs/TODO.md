@@ -5,30 +5,18 @@
 
 #### Grammar
 
-* Introduce scope rule (for FOR, IF, ELSE, THEN) and even FUNCTION, so that exitScope callback
-  can remove variables from that scope from the current function lookup, and prevent scoped
-  declarations from "leaking" out. -- WIP: that scopedStatements has an optional RETURN.  This means extra checking
-  is required to make sure it's only allowed at the last statement in a function, and nowhere else.
-
-  verify works.  error_bad_return_if.silly: get:
-
-  'silly.return' op must be the last operation in the parent block
-
-  ... but that's a lowering error and not user visible.  Fix that.
-
-  Fix that and add both of:
-
-  tests/endtoend/failure/ : error_bad_return_if.silly error_bad_return_for.silly
-
-  to the testsuite (update testit expected when ready)
-
-  -- This is probably a good check for a SEMA pass.
-
 * Add MODULE, MAIN, INTERFACE statements.  MODULE .silly's should have only FUNCTION.  INTERFACE to have only prototypes.
 * Add FUNCTION declaration syntax (for use in external MODULE objects.)
 
+#### Parser
+
+* Now that we've introduced a scopedStatements rule (for FOR, IF, ELSE, ELIF) and even FUNCTION, so that exitScope callback
+* can remove variables from that scope from the current function lookup, and prevent scoped
+* declarations from "leaking" out -- that work needs to be finished.
+
 #### Driver
 
+* don't think that driver is removing outputs before trying to recreate, so if there is an error after success, it is not visible.
 * any driver error should delete any files opened (.o, .s, .ll, .mlir, ...) -- do I need callbacks, or is LLVM taking care of that?
 * consider OO structure for driver.cpp
 * tried to use mlir::OwningOpRef<mlir::ModuleOp> for ParseListener::getModule (and the mod op it contains), but
@@ -37,6 +25,7 @@
   a valgrind leak.  Revisit this separate from trying to add the .mlir read+parse.
 * add testing for: .o inputs to the driver; silly -c empty.silly ; silly empty.o
 * implement -o option for the exe name.
+* If user doesn't specify -c, then the created .o file should go to a /tmp/ or TMPDIR path allocated using mkstemps, and removed post link.
 
 #### diagnostics
 

@@ -1052,6 +1052,18 @@ namespace silly
         }
     }
 
+    void ParseListener::checkForReturnInScope( SillyParser::ScopedStatementsContext* scope, const char * what )
+    {
+        assert( scope );
+
+        if ( SillyParser::ReturnStatementContext* ret = scope->returnStatement() )
+        {
+            mlir::Location rLoc = getStartLocation( ret );
+            emitUserError( rLoc, std::format( "RETURN is not currently allowed in a {}", what ), currentFuncName,
+                           driverState.filename, false );
+        }
+    }
+
     void ParseListener::createIf( mlir::Location loc, SillyParser::ExpressionContext *predicate, bool saveIP )
     {
         mlir::Value conditionPredicate = parseExpression( predicate, {} );
@@ -1078,6 +1090,8 @@ namespace silly
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
+
+        checkForReturnInScope( ctx->scopedStatements(), "IF block" );
 
         createIf( loc, ctx->expression(), true );
     }
@@ -1114,6 +1128,8 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
+        checkForReturnInScope( ctx->scopedStatements(), "ELSE block" );
+
         selectElseBlock( loc, ctx->getText() );
     }
 
@@ -1121,6 +1137,8 @@ namespace silly
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
+
+        checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
 
         selectElseBlock( loc, ctx->getText() );
 
@@ -1246,6 +1264,8 @@ namespace silly
             step = builder.create<mlir::arith::ConstantIntOp>( loc, 1, width );
             step = castOpIfRequired( loc, step, elemType );
         }
+
+        checkForReturnInScope( ctx->scopedStatements(), "FOR loop body" );
 
         mlir::scf::ForOp forOp = builder.create<mlir::scf::ForOp>( loc, start, end, step );
         insertionPointStack.push_back( forOp.getOperation() );
