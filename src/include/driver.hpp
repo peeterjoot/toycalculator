@@ -29,6 +29,7 @@ namespace silly
         /// Numeric --init-fill value if specified (zero otherwise.)
         uint8_t fillValue{};
 
+        /// Signal that -lm will be required when the program is linked.
         bool needsMathLib{};
     };
 

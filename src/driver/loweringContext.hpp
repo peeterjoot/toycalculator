@@ -63,8 +63,8 @@ namespace silly
 
         /// Constructs the lowering context.
         /// @param moduleOp The module being lowered.
-        /// @param driverState Reference to driver configuration state.
-        LoweringContext( mlir::ModuleOp& moduleOp, DriverState& driverState );
+        /// @param ds Reference to driver configuration state.
+        LoweringContext( mlir::ModuleOp& moduleOp, DriverState& ds );
 
         /// Returns the preferred alignment for an element type according to the data layout.
         unsigned preferredTypeAlignment( mlir::Operation* op, mlir::Type elemType );

@@ -48,20 +48,26 @@ namespace silly
     /// Set and restore an insertion point using a RAII model.
     class ModuleInsertionPointGuard
     {
-        mlir::OpBuilder& builder;
-        mlir::OpBuilder::InsertPoint oldIP;
-
        public:
+        /// Constructor, that sets the insertion point to the beginning of the module.
+        ///
+        /// Also saves the current insertion point.
         ModuleInsertionPointGuard( mlir::ModuleOp& mod, mlir::OpBuilder& opBuilder )
             : builder{ opBuilder }, oldIP{ builder.saveInsertionPoint() }
         {
             builder.setInsertionPointToStart( mod.getBody() );
         }
 
+        /// Destructor, that restores the original insertion point.
         ~ModuleInsertionPointGuard()
         {
             builder.restoreInsertionPoint( oldIP );
         }
+
+       private:
+        mlir::OpBuilder& builder; ///< cache the builder for IP restoration.
+
+        mlir::OpBuilder::InsertPoint oldIP; ///< the old IP
     };
 
     /// Assuming that a Location is actually a FileLineColLoc, cast it and return it as so.
@@ -1261,14 +1267,16 @@ namespace silly
     class DeclareOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState;
+        LoweringContext& lState; ///< lowering context (including DriverState)
 
        public:
+        /// Constructor boilerplate for DeclareOpLowering
         DeclareOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
             : mlir::ConversionPattern( silly::DeclareOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
+        /// Lowering workhorse for silly::DeclareOp
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -1419,9 +1427,10 @@ namespace silly
     class StringLiteralOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState;
+        LoweringContext& lState; ///< lowering context (including DriverState)
 
        public:
+        /// Constructor boilerplate for StringLiteralOpLowering
         StringLiteralOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context,
                                  mlir::PatternBenefit benefit )
             : mlir::ConversionPattern( silly::StringLiteralOp::getOperationName(), benefit, context ),
@@ -1429,6 +1438,7 @@ namespace silly
         {
         }
 
+        /// Lowering workhorse for silly::StringLiteralOp
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -1454,14 +1464,16 @@ namespace silly
     class AssignOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState;
+        LoweringContext& lState; ///< lowering context (including DriverState)
 
        public:
+        /// Constructor boilerplate for AssignOpLowering
         AssignOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
             : mlir::ConversionPattern( silly::AssignOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
+        /// Lowering workhorse for silly::AssignOp
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -1503,14 +1515,16 @@ namespace silly
     class LoadOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState;
+        LoweringContext& lState; ///< lowering context (including DriverState)
 
        public:
+        /// Constructor boilerplate for LoadOpLowering
         LoadOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
             : mlir::ConversionPattern( silly::LoadOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
+        /// Lowering workhorse for silly::LoadOp
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -1598,14 +1612,16 @@ namespace silly
     class CallOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState;
+        LoweringContext& lState; ///< lowering context (including DriverState)
 
        public:
+        /// Constructor boilerplate for CallOpLowering
         CallOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
             : mlir::ConversionPattern( silly::CallOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
+        /// Lowering workhorse for silly::CallOp
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -1643,14 +1659,16 @@ namespace silly
     class ScopeOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState;
+        LoweringContext& lState; ///< lowering context (including DriverState)
 
        public:
+        /// Constructor boilerplate for ScopeOpLowering
         ScopeOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
             : mlir::ConversionPattern( silly::ScopeOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
+        /// Lowering workhorse for silly::ScopeOp
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -1732,14 +1750,16 @@ namespace silly
     class DebugNameOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState;
+        LoweringContext& lState; ///< lowering context (including DriverState)
 
        public:
+        /// Constructor boilerplate for DebugNameOpLowering
         DebugNameOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
             : mlir::ConversionPattern( silly::DebugName::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
+        /// Lowering workhorse for silly::DebugName
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -1769,14 +1789,16 @@ namespace silly
     class PrintOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState;
+        LoweringContext& lState; ///< lowering context (including DriverState)
 
        public:
+        /// Constructor boilerplate for PrintOpLowering
         PrintOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
             : mlir::ConversionPattern( silly::PrintOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
+        /// Lowering workhorse for silly::PrintOp
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -1840,14 +1862,16 @@ namespace silly
     class AbortOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState;
+        LoweringContext& lState; ///< lowering context (including DriverState)
 
        public:
+        /// Constructor boilerplate for AbortOpLowering
         AbortOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
             : mlir::ConversionPattern( silly::AbortOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
+        /// Lowering workhorse for silly::AbortOp
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -1868,14 +1892,16 @@ namespace silly
     class GetOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState;
+        LoweringContext& lState; ///< lowering context (including DriverState)
 
        public:
+        /// Constructor boilerplate for GetOpLowering
         GetOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
             : mlir::ConversionPattern( silly::GetOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
+        /// Lowering workhorse for silly::GetOp
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -1902,14 +1928,16 @@ namespace silly
     class NegOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState;
+        LoweringContext& lState; ///< lowering context (including DriverState)
 
        public:
+        /// Constructor boilerplate for NegOpLowering
         NegOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
             : mlir::ConversionPattern( silly::NegOp::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
+        /// Lowering workhorse for silly::NegOp
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -2073,14 +2101,16 @@ namespace silly
     /// Lower silly::ArithBinOp
     class ArithBinOpLowering : public mlir::ConversionPattern
     {
-        LoweringContext& lState;
+        LoweringContext& lState; ///< lowering context (including DriverState)
 
        public:
+        /// Constructor boilerplate for ArithBinOpLowering
         ArithBinOpLowering( LoweringContext& state, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
             : ConversionPattern( silly::ArithBinOp::getOperationName(), benefit, context ), lState( state )
         {
         }
 
+        /// Lowering workhorse for silly::ArithBinOp
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -2152,6 +2182,7 @@ namespace silly
         }
     };
 
+    /// A helper function for silly::ArithBinOp
     template <class IOpType, class FOpType, mlir::LLVM::ICmpPredicate ICmpPredS, mlir::LLVM::ICmpPredicate ICmpPredU,
               mlir::LLVM::FCmpPredicate FCmpPred>
     mlir::LogicalResult binaryCompareOpLoweringHelper( mlir::Location loc, LoweringContext& lState, mlir::Operation* op,
@@ -2256,14 +2287,16 @@ namespace silly
     /// Lower silly::CmpBinOp
     class CmpBinOpLowering : public mlir::ConversionPattern
     {
-        LoweringContext& lState;
+        LoweringContext& lState; ///< lowering context (including DriverState)
 
        public:
+        /// Constructor boilerplate for CmpBinOpLowering
         CmpBinOpLowering( LoweringContext& state, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
             : ConversionPattern( silly::CmpBinOp::getOperationName(), benefit, context ), lState( state )
         {
         }
 
+        /// Lowering workhorse for silly::CmpBinOp
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -2326,15 +2359,18 @@ namespace silly
        public:
         MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID( SillyToLLVMLoweringPass )
 
+        /// lowering pass.  squirrel away the DriverState for later use.
         SillyToLLVMLoweringPass( silly::DriverState* pst ) : pDriverState{ pst }
         {
         }
 
+        /// load dependent dialects
         void getDependentDialects( mlir::DialectRegistry& registry ) const override
         {
             registry.insert<mlir::LLVM::LLVMDialect, mlir::arith::ArithDialect, mlir::scf::SCFDialect>();
         }
 
+        /// do the lowering
         void runOnOperation() override
         {
             mlir::ModuleOp mod = getOperation();
@@ -2436,7 +2472,7 @@ namespace silly
         }
 
        private:
-        silly::DriverState* pDriverState;
+        silly::DriverState* pDriverState; ///< stuff from the driver (is debug enabled, ...)  Also mark when -lm will be required.
     };
 
 }    // namespace silly
