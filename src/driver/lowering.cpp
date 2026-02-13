@@ -2253,24 +2253,6 @@ namespace silly
         return mlir::success();
     }
 
-#if 0
-    // Lower LessOp, ... (after type conversions, if required)
-    template <class SillyOp, class IOpType, class FOpType, mlir::LLVM::ICmpPredicate ICmpPredS,
-              mlir::LLVM::ICmpPredicate ICmpPredU, mlir::LLVM::FCmpPredicate FCmpPred>
-    class ComparisonOpLowering : public mlir::ConversionPattern
-    {
-       private:
-        LoweringContext& lState;
-
-       public:
-        ComparisonOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( SillyOp::getOperationName(), benefit, context ), lState{ loweringState }
-        {
-        }
-
-    };
-#endif
-
     /// Lower silly::CmpBinOp
     class CmpBinOpLowering : public mlir::ConversionPattern
     {
@@ -2285,8 +2267,6 @@ namespace silly
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            llvm_unreachable( "NYI" );
-#if 0
             silly::CmpBinOp binaryOp = cast<silly::CmpBinOp>( op );
             silly::CmpBinOpKind kind = binaryOp.getKind();
 
@@ -2294,99 +2274,47 @@ namespace silly
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering silly.cmp: " << *op << '\n' );
 
-            mlir::Type resultType = binaryOp.getResult().getType();
+            mlir::Value lhs = operands[0];
+            mlir::Value rhs = operands[1];
 
             switch ( kind )
             {
                 case silly::CmpBinOpKind::Less:
                 {
-                    return binaryArithOpLoweringHelper<mlir::LLVM::AddOp, mlir::LLVM::FAddOp, true>(
-                        loc, lState, op, operands, rewriter, resultType );
+                    return binaryCompareOpLoweringHelper<mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp,
+                                                         mlir::LLVM::ICmpPredicate::slt, mlir::LLVM::ICmpPredicate::ult,
+                                                         mlir::LLVM::FCmpPredicate::olt>( loc, lState, op, lhs, rhs,
+                                                                                          rewriter );
                 }
                 case silly::CmpBinOpKind::LessEq:
                 {
-                    return binaryArithOpLoweringHelper<mlir::LLVM::SubOp, mlir::LLVM::FSubOp, true>(
-                        loc, lState, op, operands, rewriter, resultType );
+                    return binaryCompareOpLoweringHelper<mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp,
+                                                         mlir::LLVM::ICmpPredicate::sle, mlir::LLVM::ICmpPredicate::ule,
+                                                         mlir::LLVM::FCmpPredicate::ole>( loc, lState, op, lhs, rhs,
+                                                                                          rewriter );
                 }
                 case silly::CmpBinOpKind::Equal:
                 {
-                    return binaryArithOpLoweringHelper<mlir::LLVM::MulOp, mlir::LLVM::FMulOp, true>(
-                        loc, lState, op, operands, rewriter, resultType );
+                    return binaryCompareOpLoweringHelper<mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp,
+                                                         mlir::LLVM::ICmpPredicate::eq, mlir::LLVM::ICmpPredicate::eq,
+                                                         mlir::LLVM::FCmpPredicate::oeq>( loc, lState, op, lhs, rhs,
+                                                                                          rewriter );
                 }
 
                 case silly::CmpBinOpKind::NotEqual:
                 {
-                    return binaryArithOpLoweringHelper<mlir::LLVM::SDivOp, mlir::LLVM::FDivOp, true>(
-                        loc, lState, op, operands, rewriter, resultType );
+                    return binaryCompareOpLoweringHelper<mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp,
+                                                         mlir::LLVM::ICmpPredicate::ne, mlir::LLVM::ICmpPredicate::ne,
+                                                         mlir::LLVM::FCmpPredicate::one>( loc, lState, op, lhs, rhs,
+                                                                                          rewriter );
                 }
-#if 0
-    using LessOpLowering =
-        ComparisonOpLowering<silly::LessOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, mlir::LLVM::ICmpPredicate::slt,
-                             mlir::LLVM::ICmpPredicate::ult, mlir::LLVM::FCmpPredicate::olt>;
-
-    using LessEqualOpLowering =
-        ComparisonOpLowering<silly::LessEqualOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, mlir::LLVM::ICmpPredicate::sle,
-                             mlir::LLVM::ICmpPredicate::ule, mlir::LLVM::FCmpPredicate::ole>;
-
-    using EqualOpLowering =
-        ComparisonOpLowering<silly::EqualOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, mlir::LLVM::ICmpPredicate::eq,
-                             mlir::LLVM::ICmpPredicate::eq, mlir::LLVM::FCmpPredicate::oeq>;
-
-    using NotEqualOpLowering =
-        ComparisonOpLowering<silly::NotEqualOp, mlir::LLVM::ICmpOp, mlir::LLVM::FCmpOp, mlir::LLVM::ICmpPredicate::ne,
-                             mlir::LLVM::ICmpPredicate::ne, mlir::LLVM::FCmpPredicate::one>;
-#endif
-                default:
-                    llvm_unreachable( "NYI" );
             }
 
             llvm_unreachable( "unknown arith binop kind" );
-#endif
 
             return mlir::failure();
         }
     };
-
-#if 0
-    // Lower arith.constant to LLVM constant.  Why is this always 64-bit sizes -- is this dead code?
-    class ConstantOpLowering : public mlir::ConversionPattern
-    {
-       private:
-        LoweringContext& lState;
-
-       public:
-        ConstantOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( mlir::arith::ConstantOp::getOperationName(), benefit, context ),
-              lState{ loweringState }
-        {
-        }
-
-        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
-                                             mlir::ConversionPatternRewriter& rewriter ) const override
-        {
-            mlir::arith::ConstantOp constantOp = cast<mlir::arith::ConstantOp>( op );
-            mlir::Location loc = constantOp.getLoc();
-            mlir::TypedAttr valueAttr = constantOp.getValue();
-
-            LLVM_DEBUG( llvm::dbgs() << "Lowering arith.constant: " << *op << '\n' );
-
-            if ( mlir::FloatAttr fAttr = dyn_cast<mlir::FloatAttr>( valueAttr ) )
-            {
-                mlir::LLVM::ConstantOp value = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.tyF64, fAttr );
-                rewriter.replaceOp( op, value );
-                return mlir::success();
-            }
-            else if ( mlir::IntegerAttr intAttr = dyn_cast<mlir::IntegerAttr>( valueAttr ) )
-            {
-                mlir::LLVM::ConstantOp value = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.tyI64, intAttr );
-                rewriter.replaceOp( op, value );
-                return mlir::success();
-            }
-
-            return mlir::failure();
-        }
-    };
-#endif
 
     /// Orchestrate the lowering of the Silly dialect.
     ///
