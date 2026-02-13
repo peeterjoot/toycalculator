@@ -54,7 +54,6 @@ functionStatement
     BRACE_START_TOKEN (variableTypeAndName (COMMA_TOKEN variableTypeAndName)*)? BRACE_END_TOKEN
     (COLON_TOKEN scalarType)?
     scopedStatements
-    RIGHT_CURLY_BRACKET_TOKEN
   ;
 
 boolDeclareStatement
@@ -130,10 +129,6 @@ forStatement
     scopedStatements
   ;
 
-scopedStatements
-  : LEFT_CURLY_BRACKET_TOKEN statement* returnStatement? RIGHT_CURLY_BRACKET_TOKEN
-  ;
-
 intType
   : INT8_TOKEN | INT16_TOKEN | INT32_TOKEN | INT64_TOKEN
   ;
@@ -157,6 +152,10 @@ forRangeExpression
 // Implicit or explicit exit from a program (e.g., 'EXIT;' ('EXIT 0;'), 'EXIT 3;', 'EXIT x;')
 exitStatement
   : EXIT_TOKEN expression?
+  ;
+
+scopedStatements
+  : LEFT_CURLY_BRACKET_TOKEN statement* (returnStatement ENDOFSTATEMENT_TOKEN)? RIGHT_CURLY_BRACKET_TOKEN
   ;
 
 returnStatement
