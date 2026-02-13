@@ -19,6 +19,7 @@ set(EXPRESSIONS_TESTS
     expressions_in_if
     mod
     mod2
+    modint
     mult
     neg
     test

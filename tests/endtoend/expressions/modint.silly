@@ -1,0 +1,54 @@
+// === INTEGER MODULO TESTS ===
+
+// INT8
+INT8 a8_pos = 17;
+INT8 a8_neg = -17;
+INT8 b8_pos = 5;
+
+PRINT "17 % 5         = ", a8_pos % b8_pos;          // 2
+PRINT "-17 % 5        = ", a8_neg % b8_pos;          // -2
+PRINT "17 % -5        = ", a8_pos % (-5);            // 2
+PRINT "-17 % -5       = ", a8_neg % (-5);            // -2
+
+INT8 z8;
+z8 = 17 % 5;
+PRINT "17 % 5         = ", z8;                       // 2
+
+z8 = -17 % 5;
+PRINT "-17 % 5        = ", z8;                       // -2
+
+z8 = 0 % 7;
+PRINT "0 % 7          = ", z8;                       // 0
+
+// INT16
+INT16 a16 = 10001;
+INT16 b16 = 7;
+PRINT "10001 % 7      = ", a16 % b16;                // 4
+PRINT "-10001 % 7     = ", (-10001) % b16;           // -4
+
+// INT32
+INT32 a32 = 123456789;
+INT32 b32 = 10000;
+PRINT "123456789 % 10000 = ", a32 % b32;             // 6789
+PRINT "-123456789 % 10000 = ", (-123456789) % b32;   // -6789
+
+INT32 z32 = 0 % 42;
+PRINT "0 % 42         = ", z32;                      // 0
+
+// INT64 — big numbers
+INT64 big = 9223372036854775807;                     // INT64_MAX
+PRINT "INT64_MAX       = ", big;
+PRINT "INT64_MAX % 1000000007 = ", big % 1000000007;
+
+INT64 neg_big = -9223372036854775807;
+PRINT "-INT64_MAX      = ", neg_big;
+PRINT "-INT64_MAX % 1000000007 = ", neg_big % 1000000007;
+
+//INT64 true_min = -9223372036854775808;               // INT64_MIN
+//PRINT "INT64_MIN       = ", true_min;
+//PRINT "INT64_MIN % 1000000007 = ", true_min % 1000000007;
+
+// Zero dividend - various divisors
+PRINT "0 % 7          = ", 0 % 7;                    // 0
+PRINT "0 % -3         = ", 0 % (-3);                 // 0
+PRINT "0 % 1          = ", 0 % 1;                    // 0

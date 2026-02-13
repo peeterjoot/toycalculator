@@ -1,6 +1,6 @@
 # Changelog: V8 Release (WIP)
 
-(These notes are up to and including 50f5037cf83bfbfa29bb1ca55cd826a9af3ebe07)
+(These notes are up to and including b7402f83eea70fcf951218c341e0dc77ea4c6c01)
 
 ## Major Features
 

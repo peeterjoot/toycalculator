@@ -20,7 +20,7 @@
 * implement gcc like limit on the number of errors.
 
 #### misc
-* generate tests for % operator (integer and float variants.)
+* tests/endtoend/expressions/modfloat.silly broken with mix of float32/float64's
 * Have an effective lexical scope for loop variables, but am emitting DI for them at a function scope.  This will probably do something weird if a loop variable is used in multiple loops.
 * Grammar allows for function declared in a function, now prohibited (`error_nested.silly`).  This wouldn't be too hard to fix, see notes in parser.cpp (enterFunction), however, scoping rules for function lookup would have to be decided.
 * Forward declarations for functions?
