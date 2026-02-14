@@ -86,6 +86,12 @@ namespace silly
         /// Remove the top-most name/value pair from the inductionVariables stack.
         inline void popInductionVariable();
 
+        /// Search the parameters for the named variable.
+        inline mlir::Value searchForParameter( const std::string &varName );
+
+        /// Add the mlir::Value for a parameter variable to the parameter list.
+        inline void pushParameterVariable( const std::string &varName, mlir::Value i );
+
         /// Return true if the variable is declared
         bool isVariableDeclared( mlir::Location loc, const std::string &varName, bool &error, DriverState &ds,
                                  const std::string &funcName );
@@ -100,11 +106,18 @@ namespace silly
         /// Associated func::FuncOp.
         mlir::Operation *op{};
 
+        using ValueList = std::vector<std::pair<std::string, mlir::Value>>;
+
         /// FOR loop variable stack containing all such variables that are in scope.
-        std::vector<std::pair<std::string, mlir::Value>> inductionVariables;
+        ValueList inductionVariables;
+
+        /// Parameter name/value pairs.
+        ValueList parameters;
 
         /// Stack for scf.if/scf.for blocks.
         std::vector<mlir::Operation *> insertionPointStack;
+
+        inline mlir::Value searchFor( const std::string &varName, const ValueList &list ) const;
     };
 
     /// convenience types, so that get calls aren't needed all over the place

@@ -143,11 +143,11 @@ namespace silly
     //--------------------------------------------------------------------------
     // PerFunctionState members
 
-    inline mlir::Value PerFunctionState::searchForInduction( const std::string &varName )
+    inline mlir::Value PerFunctionState::searchFor( const std::string &varName, const ValueList & list ) const
     {
         mlir::Value r{};
 
-        for ( auto &p : inductionVariables )
+        for ( auto &p : list )
         {
             if ( p.first == varName )
             {
@@ -159,6 +159,11 @@ namespace silly
         return r;
     }
 
+    inline mlir::Value PerFunctionState::searchForInduction( const std::string &varName )
+    {
+        return searchFor( varName, inductionVariables );
+    }
+
     inline void PerFunctionState::pushInductionVariable( const std::string &varName, mlir::Value i )
     {
         inductionVariables.emplace_back( varName, i );
@@ -167,6 +172,16 @@ namespace silly
     inline void PerFunctionState::popInductionVariable()
     {
         inductionVariables.pop_back();
+    }
+
+    inline mlir::Value PerFunctionState::searchForParameter( const std::string &varName )
+    {
+        return searchFor( varName, parameters );
+    }
+
+    inline void PerFunctionState::pushParameterVariable( const std::string &varName, mlir::Value i )
+    {
+        parameters.emplace_back( varName, i );
     }
 
     bool PerFunctionState::isVariableDeclared( mlir::Location loc, const std::string &varName, bool &error,
@@ -708,24 +723,14 @@ namespace silly
 
         for ( size_t i = 0; i < funcOp.getNumArguments() && i < paramNames.size(); ++i )
         {
-            mlir::Type argType = funcOp.getArgument( i ).getType();
             LLVM_DEBUG( {
                 llvm::errs() << std::format( "function {}: parameter{}:\n", funcName, i );
                 funcOp.getArgument( i ).dump();
             } );
 
-            mlir::StringAttr symNameAttr = builder.getStringAttr( paramNames[i] );
-
-            mlir::DenseI64ArrayAttr shapeAttr = builder.getDenseI64ArrayAttr( {} );
-
-            silly::varType varType = builder.getType<silly::varType>( argType, shapeAttr );
-
-            std::vector<mlir::Value> initializers;
-
-            silly::DeclareOp dcl = builder.create<silly::DeclareOp>( startLoc, varType, initializers,
-                                                                     builder.getI64IntegerAttr( i ), symNameAttr );
-
-            f.lastDeclareOp = dcl.getOperation();
+            mlir::Value param = funcOp.getArgument( i );
+            builder.create<silly::DebugName>( startLoc, param, paramNames[i] );
+            f.pushParameterVariable( paramNames[i], param );
         }
 
         currentFuncName = funcName;
@@ -2242,10 +2247,15 @@ namespace silly
             std::string varName = variableNode->getText();
 
             PerFunctionState &f = funcState( currentFuncName );
-            mlir::Value p = f.searchForInduction( varName );
-            if ( p )
+            mlir::Value iVar = f.searchForInduction( varName );
+            mlir::Value pVar = f.searchForParameter( varName );
+            if ( iVar )
             {
-                value = p;
+                value = iVar;
+            }
+            else if ( pVar )
+            {
+                value = pVar;
             }
             else
             {
