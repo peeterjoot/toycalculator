@@ -196,8 +196,13 @@ namespace silly
             return false;
         }
 
+#if 0
         mlir::Operation *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
         return ( symbolOp != nullptr );
+#else
+        assert( 0 && "NYI");
+        return false;
+#endif
     }
 
     //--------------------------------------------------------------------------
@@ -487,6 +492,7 @@ namespace silly
             return;
         }
 
+#if 0
         mlir::Operation *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
         if ( symbolOp )
         {
@@ -494,6 +500,9 @@ namespace silly
             driverState.emitUserError( loc, std::format( "Variable {} already declared", varName ), currentFuncName );
             return;
         }
+#else
+        assert( 0 && "NYI");
+#endif
 
         if ( f.lastDeclareOp )
         {
@@ -571,8 +580,6 @@ namespace silly
             }
         }
 
-        mlir::StringAttr symNameAttr = builder.getStringAttr( varName );
-
         mlir::DenseI64ArrayAttr shapeAttr;
         if ( arraySize )
         {
@@ -585,9 +592,11 @@ namespace silly
 
         silly::varType varType = builder.getType<silly::varType>( ty, shapeAttr );
 
-        silly::DeclareOp dcl = builder.create<silly::DeclareOp>( loc, varType, initializers, symNameAttr );
+        silly::DeclareOp dcl = builder.create<silly::DeclareOp>( loc, varType, initializers );
 
         f.lastDeclareOp = dcl.getOperation();
+
+        builder.create<silly::DebugName>( loc, dcl.getResult(), varName );
 
         builder.restoreInsertionPoint( savedIP );
 
@@ -653,6 +662,7 @@ namespace silly
         //     scopeOp->dump();
         // } );
 
+#if 0
         mlir::Operation *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
         if ( !symbolOp )
         {
@@ -665,6 +675,10 @@ namespace silly
         assert( declareOp );    // not sure I could trigger NULL declareOp with user code.
 
         return declareOp;
+#else
+        assert( 0 && "NYI");
+        return nullptr;
+#endif
     }
 
     mlir::Type ParseListener::parseScalarType( const std::string &ty )

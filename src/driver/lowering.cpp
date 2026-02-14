@@ -863,6 +863,8 @@ namespace silly
         }
         else if ( inputType == tyPtr )
         {
+            assert(0 && "NYI");
+#if 0
             kind = PrintKind::STRING;
 
             int64_t numElems = 0;
@@ -901,6 +903,7 @@ namespace silly
             valuePayload =
                 rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( numElems ) );
             strPtr = ptr;
+#endif
         }
         else
         {
@@ -1280,6 +1283,7 @@ namespace silly
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
+#if 0
             silly::DeclareOp declareOp = cast<silly::DeclareOp>( op );
             mlir::Location loc = declareOp.getLoc();
 
@@ -1389,6 +1393,10 @@ namespace silly
 
             rewriter.eraseOp( op );
             return mlir::success();
+#else
+            assert(0 && "NYI");
+            return mlir::failure();
+#endif
         }
     };
 
@@ -1446,6 +1454,7 @@ namespace silly
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
+#if 0
             silly::AssignOp assignOp = cast<silly::AssignOp>( op );
             mlir::Location loc = assignOp.getLoc();
 
@@ -1477,6 +1486,11 @@ namespace silly
 
             rewriter.eraseOp( op );
             return mlir::success();
+#else
+            assert( 0 && "NYI") ;
+
+            return mlir::failure();
+#endif
         }
     };
 
@@ -1497,6 +1511,7 @@ namespace silly
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
+#if 0
             silly::LoadOp loadOp = cast<silly::LoadOp>( op );
             mlir::Location loc = loadOp.getLoc();
 
@@ -1574,6 +1589,10 @@ namespace silly
             rewriter.replaceOp( op, load );
 
             return mlir::success();
+#else
+            assert(0 && "NYI");
+            return mlir::failure();
+#endif
         }
     };
 

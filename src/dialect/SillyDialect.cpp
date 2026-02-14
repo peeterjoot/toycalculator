@@ -69,13 +69,6 @@ namespace silly
     /// Verifier for silly::DeclareOp
     mlir::LogicalResult DeclareOp::verify()
     {
-        // Symbol name must exist and be non-empty
-        if ( getSymName().empty() )
-        {
-            // coverage: bad_declare_empty_sym_name.mlir
-            return emitOpError( "requires a non-empty 'sym_name' attribute of type StringAttr." );
-        }
-
         // Result type must be !silly.var<...>
         auto varType = mlir::dyn_cast<silly::varType>( getVar().getType() );
         if ( !varType )
