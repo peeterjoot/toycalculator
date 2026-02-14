@@ -40,7 +40,13 @@ namespace silly
         ///
         /// errorCount is incremented as a side effect.
         void emitUserError( mlir::Location loc, const std::string &message, const std::string &funcName,
-                            bool internal );
+                            bool internal = false );
+
+        /// Emit an internal error message, including the location in the compiler source where the error occured.
+        ///
+        /// errorCount is incremented as a side effect.
+        void emitInternalError( mlir::Location loc, const char *compilerfile, unsigned compilerline, const char *compilerfunc,
+                                const std::string &message, const std::string &programFuncName );
     };
 }    // namespace silly
 
