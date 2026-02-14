@@ -1154,6 +1154,7 @@ namespace silly
 
         if ( saveIP )
         {
+            PerFunctionState &f = funcState( currentFuncName );
             f.pushToInsertionPointStack( ifOp.getOperation() );
         }
 
@@ -1239,6 +1240,7 @@ namespace silly
 
     void ParseListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx )
     {
+        PerFunctionState &f = funcState( currentFuncName );
         f.popFromInsertionPointStack( builder );
     }
 
@@ -1287,6 +1289,7 @@ namespace silly
             return;
         }
 
+        PerFunctionState &f = funcState( currentFuncName );
         mlir::Value p = f.searchForInduction( varName );
         if ( p )
         {
@@ -1378,6 +1381,7 @@ namespace silly
     void ParseListener::exitForStatement( SillyParser::ForStatementContext *ctx )
     {
         assert( ctx );
+        PerFunctionState &f = funcState( currentFuncName );
         if ( f.haveInsertionPointStack() )
         {
             f.popFromInsertionPointStack( builder );
@@ -2292,6 +2296,7 @@ namespace silly
             assert( variableNode );
             std::string varName = variableNode->getText();
 
+            PerFunctionState &f = funcState( currentFuncName );
             mlir::Value p = f.searchForInduction( varName );
             if ( p )
             {
