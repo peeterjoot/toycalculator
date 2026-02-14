@@ -1282,7 +1282,6 @@ namespace silly
         {
             silly::DeclareOp declareOp = cast<silly::DeclareOp>( op );
             mlir::Location loc = declareOp.getLoc();
-            mlir::IntegerAttr paramNumberAttr = declareOp.getParamNumberAttr();
 
             //   silly.declare "x" : i32
             LLVM_DEBUG( llvm::dbgs() << "Lowering silly.declare: " << declareOp << '\n' );
@@ -1293,120 +1292,75 @@ namespace silly
             silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
             mlir::Type elemType = varTy.getElementType();
 
-            if ( paramNumberAttr )
+            if ( !elemType.isIntOrFloat() )
             {
-                int64_t paramIndex = paramNumberAttr.getInt();
-                mlir::func::FuncOp funcOp = op->getParentOfType<mlir::func::FuncOp>();
-                if ( paramIndex >= funcOp.getNumArguments() )
+                return rewriter.notifyMatchFailure( declareOp, "declare type must be integer or float" );
+            }
+
+            unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
+            unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
+
+            // FIXME: could pack array creation for i1 types (elemType.isInteger( 1 )).  For now, just use a
+            // separate byte for each.
+            unsigned alignment = lState.preferredTypeAlignment( op, elemType );
+
+            mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
+            llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
+
+            mlir::Value sizeVal;
+            mlir::Value bytesVal;
+            int64_t arraySize = 1;
+            if ( !shape.empty() )
+            {
+                arraySize = shape[0];
+
+                if ( ( arraySize <= 0 ) || ( shape.size() != 1 ) )
                 {
-                    return rewriter.notifyMatchFailure( op, "Parameter index out of bounds" );
+                    return rewriter.notifyMatchFailure(
+                        op, llvm::formatv( "expected non-zero arraySize ({0}), and one varType dimension ({1})",
+                                           arraySize, shape.size() ) );
                 }
-                mlir::Value value = funcOp.getArgument( paramIndex );
-                std::string funcName = funcOp.getSymName().str();
 
-                unsigned alignment = lState.preferredTypeAlignment( funcOp, elemType );
-
-                // Allocate stack space for the parameter
-                mlir::Value one = lState.getI64one( loc, rewriter );
-                mlir::LLVM::AllocaOp allocaOp =
-                    rewriter.create<mlir::LLVM::AllocaOp>( loc, lState.tyPtr, elemType, one, alignment );
-                allocaOp->setAttr( "bindc_name", rewriter.getStringAttr( varName + ".addr" ) );
-
-                // Store the parameter value in the allocated memory
-                rewriter.create<mlir::LLVM::StoreOp>( loc, value, allocaOp );
-
-                lState.constructParameterDI( getLocation( loc ), rewriter, varName.str(), allocaOp, elemType,
-                                             paramIndex, funcName );
-
-                lState.createLocalSymbolReference( allocaOp, varName.str() );
+                sizeVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.tyI64,
+                                                                   rewriter.getI64IntegerAttr( arraySize ) );
+                bytesVal = rewriter.create<mlir::LLVM::ConstantOp>(
+                    loc, lState.tyI64, rewriter.getI64IntegerAttr( arraySize * elemSizeInBytes ) );
             }
             else
             {
-                if ( !elemType.isIntOrFloat() )
-                {
-                    return rewriter.notifyMatchFailure( declareOp, "declare type must be integer or float" );
-                }
+                sizeVal = lState.getI64one( loc, rewriter );
+                bytesVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.tyI64,
+                                                                    rewriter.getI64IntegerAttr( elemSizeInBytes ) );
+            }
 
-                unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
-                unsigned elemSizeInBytes = ( elemSizeInBits + 7 ) / 8;
+            mlir::LLVM::AllocaOp allocaOp =
+                rewriter.create<mlir::LLVM::AllocaOp>( loc, lState.tyPtr, elemType, sizeVal, alignment );
 
-                // FIXME: could pack array creation for i1 types (elemType.isInteger( 1 )).  For now, just use a
-                // separate byte for each.
+            if ( mlir::failed( lState.constructVariableDI( getLocation( loc ), rewriter, op, varName, elemType,
+                                                           elemSizeInBits, allocaOp, arraySize ) ) )
+            {
+                return mlir::failure();
+            }
+
+            auto init = declareOp.getInitializers();
+            if ( init.size() )
+            {
+                mlir::Type elemType = allocaOp.getElemType();
                 unsigned alignment = lState.preferredTypeAlignment( op, elemType );
 
-                mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
-                llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
-
-                mlir::Value sizeVal;
-                mlir::Value bytesVal;
-                int64_t arraySize = 1;
                 if ( !shape.empty() )
                 {
-                    arraySize = shape[0];
-
-                    if ( ( arraySize <= 0 ) || ( shape.size() != 1 ) )
+                    for ( size_t i = 0; i < init.size(); ++i )
                     {
-                        return rewriter.notifyMatchFailure(
-                            op, llvm::formatv( "expected non-zero arraySize ({0}), and one varType dimension ({1})",
-                                               arraySize, shape.size() ) );
-                    }
+                        mlir::Value iVal64 = rewriter.create<mlir::LLVM::ConstantOp>(
+                            loc, lState.tyI64, rewriter.getI64IntegerAttr( static_cast<int64_t>( i ) ) );
 
-                    sizeVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.tyI64,
-                                                                       rewriter.getI64IntegerAttr( arraySize ) );
-                    bytesVal = rewriter.create<mlir::LLVM::ConstantOp>(
-                        loc, lState.tyI64, rewriter.getI64IntegerAttr( arraySize * elemSizeInBytes ) );
-                }
-                else
-                {
-                    sizeVal = lState.getI64one( loc, rewriter );
-                    bytesVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.tyI64,
-                                                                        rewriter.getI64IntegerAttr( elemSizeInBytes ) );
-                }
+                        mlir::IndexType indexTy = rewriter.getIndexType();
+                        mlir::Value idxIndex = rewriter.create<mlir::arith::IndexCastOp>( loc, indexTy, iVal64 );
 
-                mlir::LLVM::AllocaOp allocaOp =
-                    rewriter.create<mlir::LLVM::AllocaOp>( loc, lState.tyPtr, elemType, sizeVal, alignment );
-
-                if ( mlir::failed( lState.constructVariableDI( getLocation( loc ), rewriter, op, varName, elemType,
-                                                               elemSizeInBits, allocaOp, arraySize ) ) )
-                {
-                    return mlir::failure();
-                }
-
-                auto init = declareOp.getInitializers();
-                if ( init.size() )
-                {
-                    mlir::Type elemType = allocaOp.getElemType();
-                    unsigned alignment = lState.preferredTypeAlignment( op, elemType );
-
-                    if ( !shape.empty() )
-                    {
-                        for ( size_t i = 0; i < init.size(); ++i )
-                        {
-                            mlir::Value iVal64 = rewriter.create<mlir::LLVM::ConstantOp>(
-                                loc, lState.tyI64, rewriter.getI64IntegerAttr( static_cast<int64_t>( i ) ) );
-
-                            mlir::IndexType indexTy = rewriter.getIndexType();
-                            mlir::Value idxIndex = rewriter.create<mlir::arith::IndexCastOp>( loc, indexTy, iVal64 );
-
-                            if ( mlir::failed( lState.generateAssignment(
-                                     loc, rewriter, op, init[i], elemType, allocaOp, alignment,
-                                     mlir::cast<mlir::TypedValue<mlir::IndexType>>( idxIndex ) ) ) )
-                            {
-                                return mlir::failure();
-                            }
-                        }
-                    }
-                    else
-                    {
-                        if ( init.size() != 1 )
-                        {
-                            return rewriter.notifyMatchFailure(
-                                declareOp, llvm::formatv( "scalar initializer count: {0} is not one.", init.size() ) );
-                        }
-
-                        if ( mlir::failed( lState.generateAssignment( loc, rewriter, op, init[0], elemType, allocaOp,
-                                                                      alignment,
-                                                                      mlir::TypedValue<mlir::IndexType>{} ) ) )
+                        if ( mlir::failed( lState.generateAssignment(
+                                 loc, rewriter, op, init[i], elemType, allocaOp, alignment,
+                                 mlir::cast<mlir::TypedValue<mlir::IndexType>>( idxIndex ) ) ) )
                         {
                             return mlir::failure();
                         }
@@ -1414,8 +1368,23 @@ namespace silly
                 }
                 else
                 {
-                    lState.insertFill( loc, rewriter, allocaOp, bytesVal );
+                    if ( init.size() != 1 )
+                    {
+                        return rewriter.notifyMatchFailure(
+                            declareOp, llvm::formatv( "scalar initializer count: {0} is not one.", init.size() ) );
+                    }
+
+                    if ( mlir::failed( lState.generateAssignment( loc, rewriter, op, init[0], elemType, allocaOp,
+                                                                  alignment,
+                                                                  mlir::TypedValue<mlir::IndexType>{} ) ) )
+                    {
+                        return mlir::failure();
+                    }
                 }
+            }
+            else
+            {
+                lState.insertFill( loc, rewriter, allocaOp, bytesVal );
             }
 
             rewriter.eraseOp( op );

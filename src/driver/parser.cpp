@@ -585,8 +585,7 @@ namespace silly
 
         silly::varType varType = builder.getType<silly::varType>( ty, shapeAttr );
 
-        silly::DeclareOp dcl = builder.create<silly::DeclareOp>( loc, varType, initializers,
-                                                                 /*param_number=*/nullptr, symNameAttr );
+        silly::DeclareOp dcl = builder.create<silly::DeclareOp>( loc, varType, initializers, symNameAttr );
 
         f.lastDeclareOp = dcl.getOperation();
 
