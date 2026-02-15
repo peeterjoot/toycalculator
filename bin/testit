@@ -446,13 +446,34 @@ sub check_decl_order
     die "MLIR file not found: $mlir_file" unless (-f $mlir_file);
     open my $fh, '<', $mlir_file or die "Cannot open $mlir_file: $!\n";
 
-    my @found;
+    my %ssa_to_name;      # Maps SSA value (e.g., "%0") to variable name
+    my @declare_order;    # Order in which declares appear
+
     while (my $line = <$fh>) {
-        if ($line =~ /sym_name\s*=\s*"([^"]+)"/) {
-            push @found, $1;
+        # Match declare: %0 = "silly.declare"() : () -> !silly.var<i32>
+        if ($line =~ /^\s*(%\d+)\s*=\s*"silly\.declare"/) {
+            my $ssa_val = $1;
+            push @declare_order, $ssa_val;
+        }
+        # Match debug_name: "silly.debug_name"(%0) <{name = "a"}>
+        elsif ($line =~ /"silly\.debug_name"\((%\d+)\)\s*<\{name\s*=\s*"([^"]+)"\}>/) {
+            my $ssa_val = $1;
+            my $var_name = $2;
+            $ssa_to_name{$ssa_val} = $var_name;
         }
     }
     close $fh;
+
+    # Build the ordered list of variable names based on declare order
+    my @found;
+    for my $ssa_val (@declare_order) {
+        if (exists $ssa_to_name{$ssa_val}) {
+            push @found, $ssa_to_name{$ssa_val};
+        } else {
+            complain("Declaration $ssa_val has no corresponding debug_name in $mlir_file");
+            return;
+        }
+    }
 
     my @expected = split /,/, $expected_str;
 
