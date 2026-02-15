@@ -3,6 +3,17 @@
 ### running list of other issues and ideas, semi-randomly ordered
 ----------------------------------
 
+#### Parser
+
+* Now that we've introduced a scopedStatements rule (for FOR, IF, ELSE, ELIF) and even FUNCTION, so that exitScope callback
+* can remove variables from that scope from the current function lookup, and prevent scoped
+  declarations from "leaking" out -- that work needs to be finished.
+* Merge searchFor into searchForInduction.
+
+#### Dialect
+
+* get rid of silly::ScopeOp -- no good reason for it anymore, as all the symbol table use is gone.
+
 #### Lowering
 
 * Attempted introducing a type convertor to DeclareOp and DebugNameOp lowering, but couldn't get it to work (i.e.
@@ -19,13 +30,6 @@
 
 * Add MODULE, MAIN, INTERFACE statements.  MODULE .silly's should have only FUNCTION.  INTERFACE to have only prototypes.
 * Add FUNCTION declaration syntax (for use in external MODULE objects.)
-
-#### Parser
-
-* Now that we've introduced a scopedStatements rule (for FOR, IF, ELSE, ELIF) and even FUNCTION, so that exitScope callback
-* can remove variables from that scope from the current function lookup, and prevent scoped
-  declarations from "leaking" out -- that work needs to be finished.
-* Merge searchFor into searchForInduction.
 
 #### Driver
 
