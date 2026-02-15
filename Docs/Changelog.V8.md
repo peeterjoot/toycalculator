@@ -1,4 +1,4 @@
-# Changelog: V8 Release
+# Changelog: V8 Release (Feb 15, 2026)
 
 ## Major Features
 
