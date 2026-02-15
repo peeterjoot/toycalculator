@@ -860,8 +860,12 @@ namespace silly
             {
                 mlir::Value var = loadOp.getVar();
                 assert( var );
-                mlir::LLVM::AllocaOp allocaOp = var.getDefiningOp<mlir::LLVM::AllocaOp>();
+
+                std::string funcName = lookupFuncNameForOp( op );
+                silly::DeclareOp declareOp = var.getDefiningOp<silly::DeclareOp>();
+                mlir::LLVM::AllocaOp allocaOp = getAlloca( funcName, declareOp.getOperation() );
                 assert( allocaOp );
+
                 if ( allocaOp.getElemType() != tyI8 )
                 {
                     return rewriter.notifyMatchFailure( op, "expected i8 alloca type." );
