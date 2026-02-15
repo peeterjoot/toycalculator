@@ -515,33 +515,6 @@ namespace silly
         return funcOp.getSymName().str();
     }
 
-    mlir::LLVM::AllocaOp LoweringContext::lookupLocalSymbolReference( mlir::Operation* op, const std::string& varName )
-    {
-        mlir::func::FuncOp funcOp = getEnclosingFuncOp( op );
-
-        LLVM_DEBUG( {
-            llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
-            funcOp->dump();
-        } );
-
-        std::string funcName = funcOp->getName().getStringRef().str();
-
-        std::string funcNameAndVarName = funcName + "::" + varName;
-
-        mlir::Operation* alloca = symbolToAlloca[funcNameAndVarName];
-        return mlir::dyn_cast<mlir::LLVM::AllocaOp>( alloca );
-    }
-
-    void LoweringContext::createLocalSymbolReference( mlir::LLVM::AllocaOp allocaOp, const std::string& varName )
-    {
-        mlir::func::FuncOp funcOp = getEnclosingFuncOp( allocaOp );
-        std::string funcName = funcOp->getName().getStringRef().str();
-
-        std::string funcNameAndVarName = funcName + "::" + varName;
-
-        symbolToAlloca[funcNameAndVarName] = allocaOp;
-    }
-
     mlir::LogicalResult LoweringContext::infoForVariableDI( mlir::FileLineColLoc loc,
                                                             mlir::ConversionPatternRewriter& rewriter,
                                                             mlir::Operation* op, llvm::StringRef varName,
@@ -736,8 +709,6 @@ namespace silly
             builder.create<mlir::LLVM::DbgDeclareOp>( loc, allocaOp, diVar );
         }
 
-        createLocalSymbolReference( allocaOp, varName.str() );
-
         return mlir::success();
     }
 
@@ -863,8 +834,6 @@ namespace silly
         }
         else if ( inputType == tyPtr )
         {
-            assert(0 && "NYI");
-#if 0
             kind = PrintKind::STRING;
 
             int64_t numElems = 0;
@@ -874,9 +843,7 @@ namespace silly
             {
                 mlir::Value var = loadOp.getVar();
                 assert( var );
-                silly::DeclareOp declareOp = var.getDefiningOp<silly::DeclareOp>();
-                mlir::StringRef varName = declareOp.getName();
-                mlir::LLVM::AllocaOp allocaOp = lookupLocalSymbolReference( loadOp, varName.str() );
+                mlir::LLVM::AllocaOp allocaOp = var.getDefiningOp<mlir::LLVM::AllocaOp>();
                 if ( allocaOp.getElemType() != tyI8 )
                 {
                     return rewriter.notifyMatchFailure( op, "expected i8 alloca type." );
@@ -903,7 +870,6 @@ namespace silly
             valuePayload =
                 rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( numElems ) );
             strPtr = ptr;
-#endif
         }
         else
         {
@@ -1283,7 +1249,6 @@ namespace silly
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-#if 0
             silly::DeclareOp declareOp = cast<silly::DeclareOp>( op );
             mlir::Location loc = declareOp.getLoc();
 
@@ -1292,7 +1257,6 @@ namespace silly
 
             rewriter.setInsertionPoint( op );
 
-            mlir::StringRef varName = declareOp.getName();
             silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
             mlir::Type elemType = varTy.getElementType();
 
@@ -1340,12 +1304,6 @@ namespace silly
             mlir::LLVM::AllocaOp allocaOp =
                 rewriter.create<mlir::LLVM::AllocaOp>( loc, lState.tyPtr, elemType, sizeVal, alignment );
 
-            if ( mlir::failed( lState.constructVariableDI( getLocation( loc ), rewriter, op, varName, elemType,
-                                                           elemSizeInBits, allocaOp, arraySize ) ) )
-            {
-                return mlir::failure();
-            }
-
             auto init = declareOp.getInitializers();
             if ( init.size() )
             {
@@ -1391,12 +1349,10 @@ namespace silly
                 lState.insertFill( loc, rewriter, allocaOp, bytesVal );
             }
 
+            //rewriter.replaceOp(op, allocaOp.getResult());
             rewriter.eraseOp( op );
+
             return mlir::success();
-#else
-            assert(0 && "NYI");
-            return mlir::failure();
-#endif
         }
     };
 
@@ -1454,7 +1410,6 @@ namespace silly
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-#if 0
             silly::AssignOp assignOp = cast<silly::AssignOp>( op );
             mlir::Location loc = assignOp.getLoc();
 
@@ -1463,18 +1418,11 @@ namespace silly
 
             mlir::Value var = assignOp.getVar();
             assert( var );
-            silly::DeclareOp declareOp = var.getDefiningOp<silly::DeclareOp>();
-
-            // Get string (e.g., "x")
-            mlir::StringRef varName = declareOp.getName();
-            LLVM_DEBUG( { llvm::dbgs() << "AssignOp variable name: " << varName << "\n"; } );
-
-            mlir::LLVM::AllocaOp allocaOp = lState.lookupLocalSymbolReference( assignOp, varName.str() );
+            mlir::LLVM::AllocaOp allocaOp = var.getDefiningOp<mlir::LLVM::AllocaOp>();
 
             mlir::Value value = assignOp.getValue();
-            LLVM_DEBUG( llvm::dbgs() << "varName: " << varName << '\n' );
 
-            silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
+            silly::varType varTy = mlir::cast<silly::varType>( var.getType() );
             mlir::Type elemType = varTy.getElementType();
             unsigned alignment = lState.preferredTypeAlignment( op, elemType );
 
@@ -1486,11 +1434,6 @@ namespace silly
 
             rewriter.eraseOp( op );
             return mlir::success();
-#else
-            assert( 0 && "NYI") ;
-
-            return mlir::failure();
-#endif
         }
     };
 
@@ -1511,7 +1454,6 @@ namespace silly
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-#if 0
             silly::LoadOp loadOp = cast<silly::LoadOp>( op );
             mlir::Location loc = loadOp.getLoc();
 
@@ -1520,12 +1462,8 @@ namespace silly
 
             mlir::Value var = loadOp.getVar();
             assert( var );
-            silly::DeclareOp declareOp = var.getDefiningOp<silly::DeclareOp>();
-            mlir::StringRef varName = declareOp.getName();
-            mlir::LLVM::AllocaOp allocaOp = lState.lookupLocalSymbolReference( loadOp, varName.str() );
+            mlir::LLVM::AllocaOp allocaOp = var.getDefiningOp<mlir::LLVM::AllocaOp>();
             mlir::TypedValue<mlir::IndexType> optIndex = loadOp.getIndex();
-
-            LLVM_DEBUG( llvm::dbgs() << "varName: " << varName << '\n' );
 
             mlir::Type elemType = allocaOp.getElemType();
             mlir::Value load;
@@ -1589,10 +1527,6 @@ namespace silly
             rewriter.replaceOp( op, load );
 
             return mlir::success();
-#else
-            assert(0 && "NYI");
-            return mlir::failure();
-#endif
         }
     };
 

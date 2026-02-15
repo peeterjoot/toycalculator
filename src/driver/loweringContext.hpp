@@ -19,7 +19,7 @@ namespace silly
     class DriverState;
 
     /// Per-function lowering state
-    struct PerFunctionState
+    struct PerFunctionLoweringState
     {
         mlir::LLVM::DISubprogramAttr subProgramDI; ///< Dwarf DI for that function, used to emit variable DI in lowering
 
@@ -68,9 +68,6 @@ namespace silly
 
         /// Returns the preferred alignment for an element type according to the data layout.
         unsigned preferredTypeAlignment( mlir::Operation* op, mlir::Type elemType );
-
-        /// Looks up the AllocaOp associated with a local variable name in the current function.
-        mlir::LLVM::AllocaOp lookupLocalSymbolReference( mlir::Operation* op, const std::string& varName );
 
         /// Emits debug information for a local variable or array.
         mlir::LogicalResult constructVariableDI( mlir::FileLineColLoc loc, mlir::ConversionPatternRewriter& rewriter,
@@ -143,9 +140,6 @@ namespace silly
         /// Emits debug metadata for a function if debugging is enabled.
         /// @retval true if error
         bool createPerFuncState( mlir::func::FuncOp funcOp );
-
-        /// Associates an AllocaOp with a local variable name in the current function.
-        void createLocalSymbolReference( mlir::LLVM::AllocaOp allocaOp, const std::string& varName );
 
         /// Looks up an existing global for a string literal.
         mlir::LLVM::GlobalOp lookupGlobalOp( mlir::StringAttr& stringLit );
@@ -223,7 +217,7 @@ namespace silly
         mlir::LLVM::DIFileAttr fileAttr;
 
         /// Map from function name to its DISubprogram attribute.
-        std::unordered_map<std::string, PerFunctionState> funcState;
+        std::unordered_map<std::string, PerFunctionLoweringState> funcState;
 
         /// Type for mapping from string literal content to its GlobalOp.
         using StringLit2GlobalOp = std::unordered_map<std::string, mlir::LLVM::GlobalOp>;
