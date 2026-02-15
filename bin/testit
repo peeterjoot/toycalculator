@@ -308,7 +308,9 @@ sub runone
         $source = "$stem.silly";
     }
 
-    my $cmd = qq(mkdir -p $outdir ; ${driverpath}/silly --output-directory $outdir $source $thisflags --emit-llvm --emit-mlir > ${outdir}/$stem.compile.out 2>&1);
+    system("mkdir -p $outdir ; rm -f ${outdir}/${stem}.compile.out ${outdir}/${stem}.ll ${outdir}/${stem}.mlir ${outdir}/${stem}.o ${outdir}/${stem}.out ${outdir}/${stem}.s ${outdir}/${stem}.stderr.out ${outdir}/${stem}.dd");
+
+    my $cmd = qq(${driverpath}/silly --output-directory $outdir $source $thisflags --emit-llvm --emit-mlir > ${outdir}/$stem.compile.out 2>&1);
     my $crc = verbose_system( $cmd );
     system("cat ${outdir}/$stem.compile.out");
     if ( defined $expected_compile_error_message{$stem})
