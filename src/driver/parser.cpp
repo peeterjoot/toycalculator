@@ -594,7 +594,7 @@ namespace silly
 
         f.setLastDeclared( dcl.getOperation() );
 
-        builder.create<silly::DebugName>( loc, dcl.getResult(), varName );
+        builder.create<silly::DebugNameOp>( loc, dcl.getResult(), varName );
 
         builder.restoreInsertionPoint( savedIP );
 
@@ -721,7 +721,7 @@ namespace silly
             } );
 
             mlir::Value param = funcOp.getArgument( i );
-            builder.create<silly::DebugName>( startLoc, param, paramNames[i] );
+            builder.create<silly::DebugNameOp>( startLoc, param, paramNames[i] );
             f.recordParameterValue( paramNames[i], param );
         }
 
@@ -1339,7 +1339,7 @@ namespace silly
         f.pushInductionVariable( varName, inductionVar );
 
         mlir::Location varLoc = getTerminalLocation( ctx->IDENTIFIER() );
-        builder.create<silly::DebugName>( varLoc, inductionVar, varName );
+        builder.create<silly::DebugNameOp>( varLoc, inductionVar, varName );
     }
 
     void ParseListener::exitForStatement( SillyParser::ForStatementContext *ctx )

@@ -3,6 +3,17 @@
 ### running list of other issues and ideas, randomly ordered
 ----------------------------------
 
+#### Lowering
+
+* Attempted introducing a type convertor to DeclareOp and DebugNameOp lowering, but couldn't get it to work (i.e.
+  all of DebugNameOp, LoadOp, AssignOp reference the DeclareOp, but once lowered, want the DeclareOp SSA value to be
+  swapped out for the alloca SSA value).  Couldn't get that to work, and have reverted to an unordered_map (but now
+  keyed on the DeclareOp's Operation*, not a function-name::variable-name pair, as was the case for the symbol based
+  implementation.
+
+  Should followup on that idea later, but first finish the symbol name refactoring (which should include purging silly::ScopeOp).
+* Should be able to merge constructVariableDI+constructInductionVariableDI
+
 #### Grammar
 
 * Add MODULE, MAIN, INTERFACE statements.  MODULE .silly's should have only FUNCTION.  INTERFACE to have only prototypes.
@@ -12,7 +23,7 @@
 
 * Now that we've introduced a scopedStatements rule (for FOR, IF, ELSE, ELIF) and even FUNCTION, so that exitScope callback
 * can remove variables from that scope from the current function lookup, and prevent scoped
-* declarations from "leaking" out -- that work needs to be finished.
+  declarations from "leaking" out -- that work needs to be finished.
 
 #### Driver
 

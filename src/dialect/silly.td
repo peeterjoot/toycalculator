@@ -95,7 +95,7 @@ def Silly_AssignOp : Op<Silly_Dialect, "assign"> {
   }];
 }
 
-def Silly_DebugName : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {
+def Silly_DebugNameOp : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {
   let summary = "Associates a source-level name with a value for debug information purposes.";
 
   let description = [{

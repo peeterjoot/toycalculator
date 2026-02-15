@@ -511,7 +511,7 @@ namespace silly
         return funcState[funcName].printArgs;
     }
 
-    mlir::LLVM::AllocaOp LoweringContext::getAlloca( const std::string& funcName, mlir::Operation * dclOp )
+    mlir::LLVM::AllocaOp LoweringContext::getAlloca( const std::string& funcName, mlir::Operation* dclOp )
     {
         mlir::Operation* aOp = funcState[funcName].declareToAlloca[dclOp];
         mlir::LLVM::AllocaOp allocOp = mlir::cast<mlir::LLVM::AllocaOp>( aOp );
@@ -519,7 +519,7 @@ namespace silly
         return allocOp;
     }
 
-    void LoweringContext::setAlloca( const std::string& funcName, mlir::Operation * dclOp, mlir::Operation * aOp )
+    void LoweringContext::setAlloca( const std::string& funcName, mlir::Operation* dclOp, mlir::Operation* aOp )
     {
         funcState[funcName].declareToAlloca[dclOp] = aOp;
     }
@@ -1254,7 +1254,7 @@ namespace silly
     class DeclareOpLowering : public mlir::OpConversionPattern<silly::DeclareOp>
     {
        private:
-        LoweringContext& lState; ///< lowering context (including DriverState)
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
         /// Constructor boilerplate for DeclareOpLowering
@@ -1368,7 +1368,8 @@ namespace silly
             std::string funcName = lookupFuncNameForOp( declareOp );
             lState.setAlloca( funcName, declareOp.getOperation(), allocaOp.getOperation() );
 
-            //rewriter.replaceOp( declareOp, allocaOp.getResult() ); // this failed.  typeconverter didn't work as hoped.
+            // rewriter.replaceOp( declareOp, allocaOp.getResult() ); // this failed.  typeconverter didn't work as
+            // hoped.
             rewriter.eraseOp( declareOp );
 
             return mlir::success();
@@ -1694,42 +1695,73 @@ namespace silly
     };
 #endif
 
-    /// Lower silly::DebugName
-    class DebugNameLowering : public mlir::OpConversionPattern<silly::DebugName>
+    /// Lower silly::DebugNameOp
+    class DebugNameOpLowering : public mlir::OpConversionPattern<silly::DebugNameOp>
     {
        private:
-        LoweringContext& lState; ///< lowering context (including DriverState)
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
-        /// Constructor boilerplate for DebugNameLowering
-        DebugNameLowering( mlir::TypeConverter& typeConverter, mlir::MLIRContext* context,
-                           LoweringContext& loweringState, mlir::PatternBenefit benefit )
-            : mlir::OpConversionPattern<silly::DebugName>( typeConverter, context, benefit ), lState{ loweringState }
+        /// Constructor boilerplate for DebugNameOpLowering
+        DebugNameOpLowering( mlir::TypeConverter& typeConverter, mlir::MLIRContext* context,
+                             LoweringContext& loweringState, mlir::PatternBenefit benefit )
+            : mlir::OpConversionPattern<silly::DebugNameOp>( typeConverter, context, benefit ), lState{ loweringState }
         {
         }
 
-        /// Lowering workhorse for silly::DebugName
-        mlir::LogicalResult matchAndRewrite( silly::DebugName debugNameOp, OpAdaptor adaptor,
+        /// Lowering workhorse for silly::DebugNameOp
+        mlir::LogicalResult matchAndRewrite( silly::DebugNameOp debugNameOp, OpAdaptor adaptor,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            mlir::Value dclValue = debugNameOp.getValue();
-            std::string varName = debugNameOp.getName().str();
-            mlir::StringAttr nameAttr = debugNameOp.getNameAttr();
+            mlir::Value value = debugNameOp.getValue();
             mlir::Location loc = debugNameOp.getLoc();
             mlir::FileLineColLoc fileLoc = getLocation( loc );
-
             std::string funcName = lookupFuncNameForOp( debugNameOp );
-            mlir::Operation* dclOp = dclValue.getDefiningOp();
-            mlir::LLVM::AllocaOp allocOp = lState.getAlloca( funcName, dclOp );
-            silly::varType varTy = mlir::cast<silly::varType>( dclValue.getType() );
-            mlir::Type elemType = varTy.getElementType();
-            unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
-            // LLVM_DEBUG( llvm::dbgs() << "DebugNameLowering: elemType: " << elemType << '\n' );
 
-            if ( mlir::failed( lState.constructInductionVariableDI( fileLoc, rewriter, debugNameOp, allocOp.getResult(), varName, nameAttr,
-                                                                    elemType, elemSizeInBits, funcName ) ) )
+            if ( silly::DeclareOp declareOp = value.getDefiningOp<silly::DeclareOp>() )
             {
-                return mlir::failure();
+                std::string varName = debugNameOp.getName().str();
+                mlir::LLVM::AllocaOp allocaOp = lState.getAlloca( funcName, declareOp.getOperation() );
+                silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
+                mlir::Type elemType = varTy.getElementType();
+                LLVM_DEBUG( llvm::dbgs() << "DebugNameOpLowering: elemType: " << elemType << '\n' );
+
+                if ( !elemType.isIntOrFloat() )
+                {
+                    return rewriter.notifyMatchFailure( declareOp, "declare type must be integer or float" );
+                }
+
+                unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
+
+                mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
+                llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
+
+                int64_t arraySize = 1;
+                if ( !shape.empty() )
+                {
+                    arraySize = shape[0];
+                }
+
+                if ( mlir::failed( lState.constructVariableDI( fileLoc, rewriter, declareOp, varName, elemType,
+                                                               elemSizeInBits, allocaOp, arraySize ) ) )
+                {
+                    return mlir::failure();
+                }
+            }
+            else
+            {
+                std::string varName = debugNameOp.getName().str();
+                mlir::StringAttr nameAttr = debugNameOp.getNameAttr();
+
+                mlir::Type elemType = value.getType();
+                unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
+
+                if ( mlir::failed( lState.constructInductionVariableDI( fileLoc, rewriter, debugNameOp, value, varName,
+                                                                        nameAttr, elemType, elemSizeInBits,
+                                                                        funcName ) ) )
+                {
+                    return mlir::failure();
+                }
             }
 
             rewriter.eraseOp( debugNameOp );
@@ -2362,7 +2394,7 @@ namespace silly
                 target.addLegalDialect<mlir::arith::ArithDialect, mlir::LLVM::LLVMDialect, silly::SillyDialect,
                                        mlir::scf::SCFDialect>();
                 target.addIllegalOp<silly::AssignOp, silly::DeclareOp, silly::LoadOp, silly::NegOp, silly::PrintOp,
-                                    silly::GetOp, silly::StringLiteralOp, silly::AbortOp, silly::DebugName,
+                                    silly::GetOp, silly::StringLiteralOp, silly::AbortOp, silly::DebugNameOp,
                                     silly::ArithBinOp, silly::CmpBinOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
                                   silly::ScopeOp, silly::YieldOp, silly::ReturnOp, silly::CallOp, mlir::func::CallOp,
@@ -2370,10 +2402,11 @@ namespace silly
 
                 mlir::RewritePatternSet patterns( &getContext() );
                 patterns.add<AssignOpLowering, LoadOpLowering, NegOpLowering, PrintOpLowering, AbortOpLowering,
-                             GetOpLowering, StringLiteralOpLowering, ArithBinOpLowering,
-                             CmpBinOpLowering>( lState, &getContext(), 1 );
+                             GetOpLowering, StringLiteralOpLowering, ArithBinOpLowering, CmpBinOpLowering>(
+                    lState, &getContext(), 1 );
 
-                patterns.add<DeclareOpLowering, DebugNameLowering>( lState.getTypeConverter(), &getContext(), lState, 1 );
+                patterns.add<DeclareOpLowering, DebugNameOpLowering>( lState.getTypeConverter(), &getContext(), lState,
+                                                                      1 );
 
                 if ( failed( applyFullConversion( mod, target, std::move( patterns ) ) ) )
                 {
