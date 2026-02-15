@@ -2,5 +2,5 @@
 
 module {
   // CHECK: error: use of undeclared SSA value name
-  %0 = "silly.declare"(%c1_i64) <{sym_name = "anInitializedScalar"}> : (i64) -> !silly.var<i64>
+  %0 = "silly.declare"(%c1_i64) : (i64) -> !silly.var<i64>
 }

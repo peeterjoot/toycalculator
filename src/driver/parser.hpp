@@ -51,11 +51,8 @@ namespace silly
     class PerFunctionState
     {
        public:
-        /// The last silly::DeclareOp created for the current function.
-        ///
-        /// The next declaration in the function will be placed after this, and
-        /// this point updated accordingly.
-        mlir::Operation *lastDeclareOp{};
+        /// Default constructor
+        PerFunctionState();
 
         /// Getter for op, just to hide the casting
         mlir::func::FuncOp getFuncOp()
@@ -104,9 +101,25 @@ namespace silly
 
         void popFromInsertionPointStack( mlir::OpBuilder &builder );
 
+        mlir::Operation *getLastDeclared()
+        {
+            return lastDeclareOp;
+        }
+
+        void setLastDeclared( mlir::Operation *op )
+        {
+            lastDeclareOp = op;
+        }
+
        private:
+        /// The last silly::DeclareOp created for the current function.
+        ///
+        /// The next declaration in the function will be placed after this, and
+        /// this point updated accordingly.
+        mlir::Operation *lastDeclareOp;
+
         /// Associated func::FuncOp.
-        mlir::Operation *op{};
+        mlir::Operation *op;
 
         using ValueList = std::vector<std::pair<std::string, mlir::Value>>;
         using ValueMap = std::unordered_map<std::string, mlir::Value>;

@@ -142,8 +142,12 @@ namespace silly
 
     //--------------------------------------------------------------------------
     // PerFunctionState members
+    PerFunctionState::PerFunctionState()
+        : lastDeclareOp{}, op{}, inductionVariables{}, parameters{}, variables{}, insertionPointStack{}
+    {
+    }
 
-    inline mlir::Value PerFunctionState::searchFor( const std::string &varName, const ValueList & list ) const
+    inline mlir::Value PerFunctionState::searchFor( const std::string &varName, const ValueList &list ) const
     {
         mlir::Value r{};
 
@@ -177,23 +181,23 @@ namespace silly
     inline mlir::Value PerFunctionState::searchForParameter( const std::string &varName )
     {
         auto it = parameters.find( varName );
-        return (it != parameters.end()) ? it->second : nullptr;
+        return ( it != parameters.end() ) ? it->second : nullptr;
     }
 
     inline mlir::Value PerFunctionState::searchForVariable( const std::string &varName )
     {
         auto it = variables.find( varName );
-        return (it != variables.end()) ? it->second : nullptr;
+        return ( it != variables.end() ) ? it->second : nullptr;
     }
 
     inline void PerFunctionState::recordParameterValue( const std::string &varName, mlir::Value i )
     {
-        parameters[ varName ] = i;
+        parameters[varName] = i;
     }
 
     inline void PerFunctionState::recordVariableValue( const std::string &varName, mlir::Value i )
     {
-        variables[ varName ] = i;
+        variables[varName] = i;
     }
 
     //--------------------------------------------------------------------------
@@ -270,7 +274,6 @@ namespace silly
             }
         }
     }
-
     //--------------------------------------------------------------------------
     // ParseListener members
     //
@@ -278,7 +281,10 @@ namespace silly
         : driverState{ ds },
           ctx{ context },
           builder( ctx ),
-          mod( mlir::ModuleOp::create( getStartLocation( nullptr ) ) )
+          mod( mlir::ModuleOp::create( getStartLocation( nullptr ) ) ),
+          mainIP{},
+          currentFuncName{},
+          functionStateMap{}
     {
         builder.setInsertionPointToStart( mod.getBody() );
         typ.initialize( builder, ctx );
@@ -291,7 +297,9 @@ namespace silly
             functionStateMap[funcName] = std::make_unique<PerFunctionState>();
         }
 
-        return *functionStateMap[funcName];
+        auto &p = functionStateMap[funcName];
+
+        return *p;
     }
 
     inline mlir::Value ParseListener::parseBoolean( mlir::Location loc, const std::string &s )
@@ -308,7 +316,8 @@ namespace silly
         else
         {
             driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                           std::format( "boolean value neither TRUE nor FALSE: {}", s ), currentFuncName );
+                                           std::format( "boolean value neither TRUE nor FALSE: {}", s ),
+                                           currentFuncName );
             return mlir::Value{};
         }
 
@@ -482,9 +491,9 @@ namespace silly
             return;
         }
 
-        if ( f.lastDeclareOp )
+        if ( mlir::Operation *op = f.getLastDeclared() )
         {
-            builder.setInsertionPointAfter( f.lastDeclareOp );
+            builder.setInsertionPointAfter( op );
         }
         else
         {
@@ -583,7 +592,7 @@ namespace silly
         silly::DeclareOp dcl = builder.create<silly::DeclareOp>( loc, varType, initializers );
         f.recordVariableValue( varName, dcl.getResult() );
 
-        f.lastDeclareOp = dcl.getOperation();
+        f.setLastDeclared( dcl.getOperation() );
 
         builder.create<silly::DebugName>( loc, dcl.getResult(), varName );
 
@@ -1607,9 +1616,8 @@ namespace silly
         if ( !declared )
         {
             // coverage: error_undeclare.silly
-            driverState.emitUserError( loc,
-                                       std::format( "Attempt to assign to undeclared variable: {}\n", currentVarName ),
-                                       currentFuncName );
+            driverState.emitUserError(
+                loc, std::format( "Attempt to assign to undeclared variable: {}\n", currentVarName ), currentFuncName );
             return;
         }
 
