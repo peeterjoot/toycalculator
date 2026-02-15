@@ -65,9 +65,9 @@ namespace silly
         }
 
        private:
-        mlir::OpBuilder& builder; ///< cache the builder for IP restoration.
+        mlir::OpBuilder& builder;    ///< cache the builder for IP restoration.
 
-        mlir::OpBuilder::InsertPoint oldIP; ///< the old IP
+        mlir::OpBuilder::InsertPoint oldIP;    ///< the old IP
     };
 
     /// Assuming that a Location is actually a FileLineColLoc, cast it and return it as so.
@@ -99,6 +99,10 @@ namespace silly
     LoweringContext::LoweringContext( mlir::ModuleOp& moduleOp, silly::DriverState& ds )
         : driverState{ ds }, mod{ moduleOp }, builder{ mod.getRegion() }, typeConverter{ builder.getContext() }
     {
+        // Configure the type converter to handle silly::VarType -> !llvm.ptr
+        typeConverter.addConversion( []( silly::varType type ) -> mlir::Type
+                                     { return mlir::LLVM::LLVMPointerType::get( type.getContext() ); } );
+
         tyI1 = builder.getI1Type();
         tyI8 = builder.getI8Type();
         tyI16 = builder.getI16Type();
@@ -1234,29 +1238,27 @@ namespace silly
     }
 
     /// Lower silly::DeclareOp
-    class DeclareOpLowering : public mlir::ConversionPattern
+    class DeclareOpLowering : public mlir::OpConversionPattern<silly::DeclareOp>
     {
        private:
-        LoweringContext& lState; ///< lowering context (including DriverState)
+        LoweringContext& lState;
 
        public:
-        /// Constructor boilerplate for DeclareOpLowering
-        DeclareOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( silly::DeclareOp::getOperationName(), benefit, context ), lState{ loweringState }
+        // Updated constructor: type converter first, then context, then lState, then benefit
+        DeclareOpLowering( mlir::TypeConverter& typeConverter, mlir::MLIRContext* context,
+                           LoweringContext& loweringState, mlir::PatternBenefit benefit )
+            : mlir::OpConversionPattern<silly::DeclareOp>( typeConverter, context, benefit ), lState{ loweringState }
         {
         }
 
-        /// Lowering workhorse for silly::DeclareOp
-        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
+        mlir::LogicalResult matchAndRewrite( silly::DeclareOp declareOp, OpAdaptor adaptor,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
-            silly::DeclareOp declareOp = cast<silly::DeclareOp>( op );
             mlir::Location loc = declareOp.getLoc();
 
-            //   silly.declare "x" : i32
             LLVM_DEBUG( llvm::dbgs() << "Lowering silly.declare: " << declareOp << '\n' );
 
-            rewriter.setInsertionPoint( op );
+            rewriter.setInsertionPoint( declareOp );
 
             silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
             mlir::Type elemType = varTy.getElementType();
@@ -1271,7 +1273,7 @@ namespace silly
 
             // FIXME: could pack array creation for i1 types (elemType.isInteger( 1 )).  For now, just use a
             // separate byte for each.
-            unsigned alignment = lState.preferredTypeAlignment( op, elemType );
+            unsigned alignment = lState.preferredTypeAlignment( declareOp, elemType );
 
             mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
             llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
@@ -1286,8 +1288,8 @@ namespace silly
                 if ( ( arraySize <= 0 ) || ( shape.size() != 1 ) )
                 {
                     return rewriter.notifyMatchFailure(
-                        op, llvm::formatv( "expected non-zero arraySize ({0}), and one varType dimension ({1})",
-                                           arraySize, shape.size() ) );
+                        declareOp, llvm::formatv( "expected non-zero arraySize ({0}), and one varType dimension ({1})",
+                                                  arraySize, shape.size() ) );
                 }
 
                 sizeVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.tyI64,
@@ -1309,7 +1311,7 @@ namespace silly
             if ( init.size() )
             {
                 mlir::Type elemType = allocaOp.getElemType();
-                unsigned alignment = lState.preferredTypeAlignment( op, elemType );
+                unsigned alignment = lState.preferredTypeAlignment( declareOp, elemType );
 
                 if ( !shape.empty() )
                 {
@@ -1322,7 +1324,7 @@ namespace silly
                         mlir::Value idxIndex = rewriter.create<mlir::arith::IndexCastOp>( loc, indexTy, iVal64 );
 
                         if ( mlir::failed( lState.generateAssignment(
-                                 loc, rewriter, op, init[i], elemType, allocaOp, alignment,
+                                 loc, rewriter, declareOp, init[i], elemType, allocaOp, alignment,
                                  mlir::cast<mlir::TypedValue<mlir::IndexType>>( idxIndex ) ) ) )
                         {
                             return mlir::failure();
@@ -1337,9 +1339,8 @@ namespace silly
                             declareOp, llvm::formatv( "scalar initializer count: {0} is not one.", init.size() ) );
                     }
 
-                    if ( mlir::failed( lState.generateAssignment( loc, rewriter, op, init[0], elemType, allocaOp,
-                                                                  alignment,
-                                                                  mlir::TypedValue<mlir::IndexType>{} ) ) )
+                    if ( mlir::failed( lState.generateAssignment( loc, rewriter, declareOp, init[0], elemType, allocaOp,
+                                                                  alignment, mlir::TypedValue<mlir::IndexType>{} ) ) )
                     {
                         return mlir::failure();
                     }
@@ -1350,8 +1351,10 @@ namespace silly
                 lState.insertFill( loc, rewriter, allocaOp, bytesVal );
             }
 
-            //rewriter.replaceOp(op, allocaOp.getResult());
-            rewriter.eraseOp( op );
+            // This will now work because the type converter knows how to convert
+            // !silly.var<T> -> !llvm.ptr
+            rewriter.replaceOp( declareOp, allocaOp.getResult() );
+            // rewriter.eraseOp( op );
 
             return mlir::success();
         }
@@ -1361,7 +1364,7 @@ namespace silly
     class StringLiteralOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState; ///< lowering context (including DriverState)
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
         /// Constructor boilerplate for StringLiteralOpLowering
@@ -1398,7 +1401,7 @@ namespace silly
     class AssignOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState; ///< lowering context (including DriverState)
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
         /// Constructor boilerplate for AssignOpLowering
@@ -1420,6 +1423,11 @@ namespace silly
             mlir::Value var = assignOp.getVar();
             assert( var );
             mlir::LLVM::AllocaOp allocaOp = var.getDefiningOp<mlir::LLVM::AllocaOp>();
+            LLVM_DEBUG( {
+                llvm::dbgs() << "AssignOp.  module state::\n";
+                mlir::ModuleOp mod = op->getParentOfType<mlir::ModuleOp>();
+                mod->dump();
+            } );
             assert( allocaOp );
 
             mlir::Value value = assignOp.getValue();
@@ -1443,7 +1451,7 @@ namespace silly
     class LoadOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState; ///< lowering context (including DriverState)
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
         /// Constructor boilerplate for LoadOpLowering
@@ -1537,7 +1545,7 @@ namespace silly
     class CallOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState; ///< lowering context (including DriverState)
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
         /// Constructor boilerplate for CallOpLowering
@@ -1584,7 +1592,7 @@ namespace silly
     class ScopeOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState; ///< lowering context (including DriverState)
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
         /// Constructor boilerplate for ScopeOpLowering
@@ -1675,7 +1683,7 @@ namespace silly
     class DebugNameOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState; ///< lowering context (including DriverState)
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
         /// Constructor boilerplate for DebugNameOpLowering
@@ -1690,6 +1698,9 @@ namespace silly
         {
             silly::DebugName debugNameOp = cast<silly::DebugName>( op );
             mlir::Value value = debugNameOp.getValue();
+            // fixme(); // Want the alloca here, not the declareOp, or a type converter that lets the declareOp
+            // replacment to work
+            //  so that this is now an Alloca reference.
             std::string varName = debugNameOp.getName().str();
             mlir::StringAttr nameAttr = debugNameOp.getNameAttr();
             mlir::Location loc = debugNameOp.getLoc();
@@ -1699,6 +1710,7 @@ namespace silly
             silly::varType varTy = mlir::cast<silly::varType>( value.getType() );
             mlir::Type elemType = varTy.getElementType();
             unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
+            // LLVM_DEBUG( llvm::dbgs() << "DebugNameOpLowering: elemType: " << elemType << '\n' );
 
             if ( mlir::failed( lState.constructInductionVariableDI( fileLoc, rewriter, op, value, varName, nameAttr,
                                                                     elemType, elemSizeInBits, funcName ) ) )
@@ -1715,7 +1727,7 @@ namespace silly
     class PrintOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState; ///< lowering context (including DriverState)
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
         /// Constructor boilerplate for PrintOpLowering
@@ -1788,7 +1800,7 @@ namespace silly
     class AbortOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState; ///< lowering context (including DriverState)
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
         /// Constructor boilerplate for AbortOpLowering
@@ -1818,7 +1830,7 @@ namespace silly
     class GetOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState; ///< lowering context (including DriverState)
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
         /// Constructor boilerplate for GetOpLowering
@@ -1854,7 +1866,7 @@ namespace silly
     class NegOpLowering : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState; ///< lowering context (including DriverState)
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
         /// Constructor boilerplate for NegOpLowering
@@ -2027,7 +2039,7 @@ namespace silly
     /// Lower silly::ArithBinOp
     class ArithBinOpLowering : public mlir::ConversionPattern
     {
-        LoweringContext& lState; ///< lowering context (including DriverState)
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
         /// Constructor boilerplate for ArithBinOpLowering
@@ -2213,7 +2225,7 @@ namespace silly
     /// Lower silly::CmpBinOp
     class CmpBinOpLowering : public mlir::ConversionPattern
     {
-        LoweringContext& lState; ///< lowering context (including DriverState)
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
         /// Constructor boilerplate for CmpBinOpLowering
@@ -2343,9 +2355,11 @@ namespace silly
                                   mlir::scf::IfOp, mlir::scf::ForOp, mlir::scf::YieldOp>();
 
                 mlir::RewritePatternSet patterns( &getContext() );
-                patterns.add<AssignOpLowering, /*DEAD? ConstantOpLowering,*/ DeclareOpLowering, LoadOpLowering,
-                             NegOpLowering, PrintOpLowering, AbortOpLowering, GetOpLowering, StringLiteralOpLowering,
-                             DebugNameOpLowering, ArithBinOpLowering, CmpBinOpLowering>( lState, &getContext(), 1 );
+                patterns.add<AssignOpLowering, LoadOpLowering, NegOpLowering, PrintOpLowering, AbortOpLowering,
+                             GetOpLowering, StringLiteralOpLowering, DebugNameOpLowering, ArithBinOpLowering,
+                             CmpBinOpLowering>( lState, &getContext(), 1 );
+
+                patterns.add<DeclareOpLowering>( lState.getTypeConverter(), &getContext(), lState, 1 );
 
                 if ( failed( applyFullConversion( mod, target, std::move( patterns ) ) ) )
                 {
@@ -2398,7 +2412,8 @@ namespace silly
         }
 
        private:
-        silly::DriverState* pDriverState; ///< stuff from the driver (is debug enabled, ...)  Also mark when -lm will be required.
+        silly::DriverState*
+            pDriverState;    ///< stuff from the driver (is debug enabled, ...)  Also mark when -lm will be required.
     };
 
 }    // namespace silly
