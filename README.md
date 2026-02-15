@@ -837,7 +837,8 @@ Single-line comments begin with `//` and extend to the end of the line.
 
 # Changelogs
 
-* [V8](Docs/Changelog.md) This is the current working version, not yet tagged.
+* [V9](Docs/Changelog.md) This is the current working version, not yet tagged.
+* [V8](Docs/Changelog.V8.md) (Feb 15, 2026)
 * [V7](Docs/Changelog.V7.md) (Jan 4, 2025)
 * [V6](Docs/Changelog.V6.md) (Dec 28, 2025)
 * [V5](Docs/Changelog.V5.md) (Dec 22, 2025)
