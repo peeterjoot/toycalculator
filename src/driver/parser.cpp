@@ -181,7 +181,7 @@ namespace silly
 
     inline mlir::Value PerFunctionState::searchForVariable( const std::string &varName )
     {
-        for ( auto & vars : variables )
+        for ( auto &vars : variables )
         {
             auto it = vars.find( varName );
 
@@ -201,12 +201,25 @@ namespace silly
 
     inline void PerFunctionState::recordVariableValue( const std::string &varName, mlir::Value i )
     {
-        if (variables.size() == 0)
+        if ( variables.size() == 0 )
         {
-            variables.push_back({});
+            variables.push_back( {} );
         }
 
         variables.back()[varName] = i;
+    }
+
+    inline void PerFunctionState::startScope()
+    {
+        variables.push_back( {} );
+    }
+
+    inline void PerFunctionState::endScope()
+    {
+        if ( variables.size() )
+        {
+            variables.pop_back();
+        }
     }
 
     //--------------------------------------------------------------------------
@@ -750,6 +763,19 @@ namespace silly
 
         std::vector<std::string> paramNames;
         createScope( locs.first, locs.second, funcOp, ENTRY_SYMBOL_NAME, paramNames );
+    }
+
+
+    void ParseListener::enterScopedStatements( SillyParser::ScopedStatementsContext *ctx )
+    {
+        PerFunctionState &f = funcState( currentFuncName );
+        f.startScope();
+    }
+
+    void ParseListener::exitScopedStatements( SillyParser::ScopedStatementsContext *ctx )
+    {
+        PerFunctionState &f = funcState( currentFuncName );
+        f.endScope();
     }
 
     void ParseListener::processReturnLike( mlir::Location loc, SillyParser::ExpressionContext *expression )

@@ -31,6 +31,7 @@ set(FAILURE_TESTS
     error_notfloat
     error_redeclare
     error_return_expr_no_return_type
+    error_scopebug
     error_shadow_induction
     error_stringreturn
     error_triple_nested_for_with_shadowing

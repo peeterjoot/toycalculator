@@ -118,6 +118,12 @@ namespace silly
             lastDeclareOp = op;
         }
 
+        /// New variables will be visible only for this scope and later
+        inline void startScope( );
+
+        /// Any variables that had been declared in the current scope will no longer be visible.
+        inline void endScope( );
+
        private:
         /// The last silly::DeclareOp created for the current function.
         ///
@@ -209,6 +215,12 @@ namespace silly
 
         /// Antlr4 exit hook for the start rule.
         void exitStartRule( SillyParser::StartRuleContext *ctx ) override;
+
+        /// Antlr4 entry hook for the scopedStatements rule.
+        void enterScopedStatements(SillyParser::ScopedStatementsContext *ctx) override;
+
+        /// Antlr4 exit hook for the scopedStatements rule.
+        void exitScopedStatements(SillyParser::ScopedStatementsContext *ctx) override;
 
         /// Antlr4 enter hook for an IF statement
         void enterIfStatement( SillyParser::IfStatementContext *ctx ) override;

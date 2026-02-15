@@ -15,7 +15,6 @@ set(FUNCTION_TESTS
     call_in_predicate
     call_with_param_referenced
     nested_calls
-    scopebug
     factorial2
     factorial
     minmax

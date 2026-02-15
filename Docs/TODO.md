@@ -3,12 +3,9 @@
 ### running list of other issues and ideas, semi-randomly ordered
 ----------------------------------
 
-#### Parser
+#### Testing
 
-* Now that we've introduced a scopedStatements rule (for FOR, IF, ELSE, ELIF) and even FUNCTION, so that exitScope callback
-* can remove variables from that scope from the current function lookup, and prevent scoped
-  declarations from "leaking" out -- that work needs to be finished.
-* Merge searchFor into searchForInduction.
+* FOR, IF, ELSE, ELIF and nested IF* testing for the scopebug fix.
 
 #### Dialect
 

@@ -255,23 +255,6 @@ It is currently mandatory.
 * See the [TODO](Docs/TODO.md) for a long list of nice-to-have features that I haven't gotten around to yet, and may never.
 * `GET` into a `BOOL` value will abort if the input value is not 0 or 1.
 This is inconsistent with assignment to a `BOOL` variable, which will truncate without raising a runtime error.
-* Variables declared in `FOR` or `IF` conditions persist past the block that declared them, as if they were declared in the enclosing scope of the function.
-For example, these are equivalent:
-```silly
-FUNCTION foo() {
-    INT32 x = 1;
-    PRINT x;
-    RETURN;
-};
-
-FUNCTION foo() {
-    IF (TRUE) {
-        INT32 x = 1;
-    };
-    PRINT x;  // x is still accessible here
-    RETURN;
-};
-```
 * The storage requirement of `BOOL` is currently one byte per element, even for arrays.
 Array `BOOL` values may use a packed bitmask representation in the future.
 
