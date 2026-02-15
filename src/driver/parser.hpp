@@ -95,17 +95,24 @@ namespace silly
         /// Add the mlir::Value for a variable variable to the variable list.
         inline void recordVariableValue( const std::string &varName, mlir::Value i );
 
+        /// Is there an insertion point stack yet for this function?
         bool haveInsertionPointStack();
 
+        /// Add to the insertion point stack for this function.
         void pushToInsertionPointStack( mlir::Operation *op );
 
+        /// Remove last insertion point from the stack for this function.
         void popFromInsertionPointStack( mlir::OpBuilder &builder );
 
+        /// Location of the last declaration for this function
+        ///
+        /// Declarations will all be inserted back to back before the function body statements.
         mlir::Operation *getLastDeclared()
         {
             return lastDeclareOp;
         }
 
+        /// Set this operation (a declaration) as the last one for this function.
         void setLastDeclared( mlir::Operation *op )
         {
             lastDeclareOp = op;
@@ -121,7 +128,10 @@ namespace silly
         /// Associated func::FuncOp.
         mlir::Operation *op;
 
+        /// Induction variable name to Value mapping type
         using ValueList = std::vector<std::pair<std::string, mlir::Value>>;
+
+        /// Variable and parameter name to Value mapping type
         using ValueMap = std::unordered_map<std::string, mlir::Value>;
 
         /// FOR loop variable stack containing all such variables that are in scope.
@@ -129,17 +139,21 @@ namespace silly
 
         /// Parameter name/value pairs.
         ValueMap parameters;
+
+        /// Variable name/value pairs.
         ValueMap variables;
 
         /// Stack for scf.if/scf.for blocks.
         std::vector<mlir::Operation *> insertionPointStack;
 
+        /// A now useless generic ValueList search function.  should be merged into searchForInduction
         inline mlir::Value searchFor( const std::string &varName, const ValueList &list ) const;
     };
 
     /// convenience types, so that get calls aren't needed all over the place
     struct MlirTypeCache
     {
+        /// Initialize all the cached types.
         void initialize( mlir::OpBuilder &builder, mlir::MLIRContext *ctx );
 
         /// i1 type.
