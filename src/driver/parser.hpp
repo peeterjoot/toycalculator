@@ -86,15 +86,17 @@ namespace silly
         /// Remove the top-most name/value pair from the inductionVariables stack.
         inline void popInductionVariable();
 
-        /// Search the parameters for the named variable.
+        /// Search parameters for the named variable.
         inline mlir::Value searchForParameter( const std::string &varName );
 
-        /// Add the mlir::Value for a parameter variable to the parameter list.
-        inline void pushParameterVariable( const std::string &varName, mlir::Value i );
+        /// Search variables for the named variable.
+        inline mlir::Value searchForVariable( const std::string &varName );
 
-        /// Return true if the variable is declared
-        bool isVariableDeclared( mlir::Location loc, const std::string &varName, bool &error, DriverState &ds,
-                                 const std::string &funcName );
+        /// Add the mlir::Value for a parameter variable to the parameter list.
+        inline void recordParameterValue( const std::string &varName, mlir::Value i );
+
+        /// Add the mlir::Value for a variable variable to the variable list.
+        inline void recordVariableValue( const std::string &varName, mlir::Value i );
 
         bool haveInsertionPointStack();
 
@@ -107,12 +109,14 @@ namespace silly
         mlir::Operation *op{};
 
         using ValueList = std::vector<std::pair<std::string, mlir::Value>>;
+        using ValueMap = std::unordered_map<std::string, mlir::Value>;
 
         /// FOR loop variable stack containing all such variables that are in scope.
         ValueList inductionVariables;
 
         /// Parameter name/value pairs.
-        ValueList parameters;
+        ValueMap parameters;
+        ValueMap variables;
 
         /// Stack for scf.if/scf.for blocks.
         std::vector<mlir::Operation *> insertionPointStack;
@@ -279,7 +283,7 @@ namespace silly
         ////////////////////////////////////////////////////////////////////////
 
         /// Lookup in per-function state, whether a variable has been declared
-        bool isVariableDeclared( mlir::Location loc, const std::string &varName, bool &error );
+        bool isVariableDeclared( const std::string &varName );
 
         /// @brief check for inappropriate RETURN
         ///

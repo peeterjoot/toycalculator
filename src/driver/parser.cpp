@@ -176,33 +176,24 @@ namespace silly
 
     inline mlir::Value PerFunctionState::searchForParameter( const std::string &varName )
     {
-        return searchFor( varName, parameters );
+        auto it = parameters.find( varName );
+        return (it != parameters.end()) ? it->second : nullptr;
     }
 
-    inline void PerFunctionState::pushParameterVariable( const std::string &varName, mlir::Value i )
+    inline mlir::Value PerFunctionState::searchForVariable( const std::string &varName )
     {
-        parameters.emplace_back( varName, i );
+        auto it = variables.find( varName );
+        return (it != variables.end()) ? it->second : nullptr;
     }
 
-    bool PerFunctionState::isVariableDeclared( mlir::Location loc, const std::string &varName, bool &error,
-                                               DriverState &ds, const std::string &funcName )
+    inline void PerFunctionState::recordParameterValue( const std::string &varName, mlir::Value i )
     {
-        // Get the single scope
-        silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, getFuncOp() );
-        if ( !scopeOp )
-        {
-            ds.emitInternalError( loc, __FILE__, __LINE__, __func__, "Unable to find Enclosing ScopeOp", funcName );
-            error = true;
-            return false;
-        }
+        parameters[ varName ] = i;
+    }
 
-#if 0
-        mlir::Operation *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
-        return ( symbolOp != nullptr );
-#else
-        assert( 0 && "NYI");
-        return false;
-#endif
+    inline void PerFunctionState::recordVariableValue( const std::string &varName, mlir::Value i )
+    {
+        variables[ varName ] = i;
     }
 
     //--------------------------------------------------------------------------
@@ -429,12 +420,13 @@ namespace silly
         return getTokenLocation( token );
     }
 
-    bool ParseListener::isVariableDeclared( mlir::Location loc, const std::string &varName, bool &error )
+    bool ParseListener::isVariableDeclared( const std::string &varName )
     {
         // Get the single scope
         PerFunctionState &f = funcState( currentFuncName );
 
-        return f.isVariableDeclared( loc, varName, error, driverState, currentFuncName );
+        mlir::Value v = f.searchForVariable( varName );
+        return ( v != nullptr ) ? true : false;
     }
 
     inline mlir::Value ParseListener::parseExpression( SillyParser::ExpressionContext *ctx, mlir::Type ty )
@@ -482,27 +474,13 @@ namespace silly
 
         PerFunctionState &f = funcState( currentFuncName );
 
-        mlir::func::FuncOp funcOp = f.getFuncOp();
-
-        silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
-        if ( !scopeOp )
-        {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "Unable to find Enclosing ScopeOp",
-                                           currentFuncName );
-            return;
-        }
-
-#if 0
-        mlir::Operation *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
-        if ( symbolOp )
+        mlir::Value v = f.searchForVariable( varName );
+        if ( v )
         {
             // coverage: error_redeclare.silly
             driverState.emitUserError( loc, std::format( "Variable {} already declared", varName ), currentFuncName );
             return;
         }
-#else
-        assert( 0 && "NYI");
-#endif
 
         if ( f.lastDeclareOp )
         {
@@ -510,6 +488,16 @@ namespace silly
         }
         else
         {
+            mlir::func::FuncOp funcOp = f.getFuncOp();
+
+            silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
+            if ( !scopeOp )
+            {
+                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "Unable to find Enclosing ScopeOp",
+                                               currentFuncName );
+                return;
+            }
+
             // Scope has one block
             mlir::Block *scopeBlock = &scopeOp.getBody().front();
 
@@ -647,38 +635,19 @@ namespace silly
     {
         silly::DeclareOp declareOp{};
         PerFunctionState &f = funcState( currentFuncName );
-        mlir::func::FuncOp funcOp = f.getFuncOp();
 
-        silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
-        if ( !scopeOp )
-        {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "Unable to find Enclosing ScopeOp",
-                                           currentFuncName );
-            return declareOp;
-        }
-
-        // LLVM_DEBUG( {
-        //     llvm::errs() << std::format( "Lookup symbol {} in parent function:\n", varName );
-        //     scopeOp->dump();
-        // } );
-
-#if 0
-        mlir::Operation *symbolOp = mlir::SymbolTable::lookupSymbolIn( scopeOp, varName );
-        if ( !symbolOp )
+        mlir::Value var = f.searchForVariable( varName );
+        if ( !var )
         {
             // coverage: error_induction_var_in_step.silly
             driverState.emitUserError( loc, std::format( "Undeclared variable {}", varName ), currentFuncName );
             return declareOp;
         }
 
-        declareOp = mlir::dyn_cast<silly::DeclareOp>( symbolOp );
+        declareOp = var.getDefiningOp<silly::DeclareOp>();
         assert( declareOp );    // not sure I could trigger NULL declareOp with user code.
 
         return declareOp;
-#else
-        assert( 0 && "NYI");
-        return nullptr;
-#endif
     }
 
     mlir::Type ParseListener::parseScalarType( const std::string &ty )
@@ -743,7 +712,7 @@ namespace silly
 
             mlir::Value param = funcOp.getArgument( i );
             builder.create<silly::DebugName>( startLoc, param, paramNames[i] );
-            f.pushParameterVariable( paramNames[i], param );
+            f.recordParameterValue( paramNames[i], param );
         }
 
         currentFuncName = funcName;
@@ -1269,20 +1238,13 @@ namespace silly
         mlir::Value end;
         mlir::Value step;
 
-        bool error{};
-        bool declared = isVariableDeclared( loc, varName, error );
+        bool declared = isVariableDeclared( varName );
         if ( declared )
         {
             // coverage: error_shadow_induction.silly
             driverState.emitUserError( loc,
                                        std::format( "Induction variable {} clashes with declared variable\n", varName ),
                                        currentFuncName );
-            return;
-        }
-        if ( error )
-        {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "isVariableDeclared check failed",
-                                           currentFuncName );
             return;
         }
 
@@ -1640,21 +1602,13 @@ namespace silly
         SillyParser::IndexExpressionContext *indexExpr = lhs->indexExpression();
         mlir::Value currentIndexExpr = mlir::Value{};
 
-        bool error{};
-        bool declared = isVariableDeclared( loc, currentVarName, error );
+        bool declared = isVariableDeclared( currentVarName );
         if ( !declared )
         {
             // coverage: error_undeclare.silly
             driverState.emitUserError( loc,
                                        std::format( "Attempt to assign to undeclared variable: {}\n", currentVarName ),
                                        currentFuncName );
-            return;
-        }
-
-        if ( error )
-        {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "isVariableDeclared failed",
-                                           currentFuncName );
             return;
         }
 
