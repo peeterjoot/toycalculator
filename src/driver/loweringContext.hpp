@@ -21,9 +21,16 @@ namespace silly
     /// Per-function lowering state
     struct PerFunctionLoweringState
     {
-        mlir::LLVM::DISubprogramAttr subProgramDI; ///< Dwarf DI for that function, used to emit variable DI in lowering
+        /// Dwarf DI for that function, used to emit variable DI in lowering
+        mlir::LLVM::DISubprogramAttr subProgramDI;
 
-        mlir::LLVM::AllocaOp printArgs; ///< The alloca op for PRINT arguments.  This is sized big enough to hold the biggest number of arguments used for any PRINT statement in the function (all PRINT calls use this storage for their variable argument list.)
+        /// The alloca op for PRINT arguments.
+        ///
+        /// This is sized big enough to hold the biggest number of arguments used for any PRINT statement in the function (all PRINT calls use this storage for their variable argument list.)
+        mlir::LLVM::AllocaOp printArgs;
+
+        /// Map from DeclareOp to AllocaOp for local variables.
+        std::unordered_map<mlir::Operation*, mlir::Operation*> declareToAlloca;
     };
 
     /// Context object holding state and helper functions used during lowering
@@ -105,6 +112,12 @@ namespace silly
 
         /// Return the PRINT args allocation for this function, big enough for the biggest PRINT list in the function.
         mlir::LLVM::AllocaOp getPrintArgs( const std::string& funcName );
+
+        /// Retrieve the allocation associated with a DeclareOp
+        mlir::LLVM::AllocaOp getAlloca( const std::string& funcName, mlir::Operation * dclOp );
+
+        /// Cache the allocation associated with a DeclareOp
+        void setAlloca( const std::string& funcName, mlir::Operation * dclOp, mlir::Operation * aOp );
 
         /// Helper function to generate MLIR for a silly language assignment statement (`foo = bar;`)
         mlir::LogicalResult generateAssignment( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
@@ -216,7 +229,7 @@ namespace silly
         /// Debug file attribute (used when debugging is enabled).
         mlir::LLVM::DIFileAttr fileAttr;
 
-        /// Map from function name to its DISubprogram attribute.
+        /// Map from function name to its DISubprogram attribute (and other stuff)
         std::unordered_map<std::string, PerFunctionLoweringState> funcState;
 
         /// Type for mapping from string literal content to its GlobalOp.
@@ -263,9 +276,6 @@ namespace silly
 
         /// Type converter for the lowering pass.
         mlir::LLVMTypeConverter typeConverter;
-
-        /// Map from "funcName::varName" to AllocaOp for local variables.
-        std::unordered_map<std::string, mlir::Operation*> symbolToAlloca;
 
         /// Debug compile unit attribute.
         mlir::LLVM::DICompileUnitAttr compileUnitAttr;
