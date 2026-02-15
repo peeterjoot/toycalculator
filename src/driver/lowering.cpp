@@ -1438,7 +1438,12 @@ namespace silly
 
             mlir::Value var = assignOp.getVar();
             assert( var );
-            mlir::LLVM::AllocaOp allocaOp = var.getDefiningOp<mlir::LLVM::AllocaOp>();
+
+            std::string funcName = lookupFuncNameForOp( op );
+
+            silly::DeclareOp declareOp = var.getDefiningOp<silly::DeclareOp>();
+            mlir::LLVM::AllocaOp allocaOp = lState.getAlloca( funcName, declareOp.getOperation() );
+
             LLVM_DEBUG( {
                 llvm::dbgs() << "AssignOp.  module state::\n";
                 mlir::ModuleOp mod = op->getParentOfType<mlir::ModuleOp>();
