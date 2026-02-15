@@ -99,9 +99,11 @@ namespace silly
     LoweringContext::LoweringContext( mlir::ModuleOp& moduleOp, silly::DriverState& ds )
         : driverState{ ds }, mod{ moduleOp }, builder{ mod.getRegion() }, typeConverter{ builder.getContext() }
     {
+#if 0 // tried to use this in DeclareOp and DebugNameOp lowering, but failed.
         // Configure the type converter to handle silly::VarType -> !llvm.ptr
         typeConverter.addConversion( []( silly::varType type ) -> mlir::Type
                                      { return mlir::LLVM::LLVMPointerType::get( type.getContext() ); } );
+#endif
 
         tyI1 = builder.getI1Type();
         tyI8 = builder.getI8Type();
