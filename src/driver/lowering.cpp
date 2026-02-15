@@ -844,6 +844,7 @@ namespace silly
                 mlir::Value var = loadOp.getVar();
                 assert( var );
                 mlir::LLVM::AllocaOp allocaOp = var.getDefiningOp<mlir::LLVM::AllocaOp>();
+                assert( allocaOp );
                 if ( allocaOp.getElemType() != tyI8 )
                 {
                     return rewriter.notifyMatchFailure( op, "expected i8 alloca type." );
@@ -1419,6 +1420,7 @@ namespace silly
             mlir::Value var = assignOp.getVar();
             assert( var );
             mlir::LLVM::AllocaOp allocaOp = var.getDefiningOp<mlir::LLVM::AllocaOp>();
+            assert( allocaOp );
 
             mlir::Value value = assignOp.getValue();
 
@@ -1463,6 +1465,7 @@ namespace silly
             mlir::Value var = loadOp.getVar();
             assert( var );
             mlir::LLVM::AllocaOp allocaOp = var.getDefiningOp<mlir::LLVM::AllocaOp>();
+            assert( allocaOp );
             mlir::TypedValue<mlir::IndexType> optIndex = loadOp.getIndex();
 
             mlir::Type elemType = allocaOp.getElemType();
@@ -1693,7 +1696,8 @@ namespace silly
             mlir::FileLineColLoc fileLoc = getLocation( loc );
 
             std::string funcName = lookupFuncNameForOp( op );
-            mlir::Type elemType = value.getType();
+            silly::varType varTy = mlir::cast<silly::varType>( value.getType() );
+            mlir::Type elemType = varTy.getElementType();
             unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
 
             if ( mlir::failed( lState.constructInductionVariableDI( fileLoc, rewriter, op, value, varName, nameAttr,
