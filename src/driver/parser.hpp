@@ -141,13 +141,10 @@ namespace silly
         ValueMap parameters;
 
         /// Variable name/value pairs.
-        ValueMap variables;
+        std::vector<ValueMap> variables;
 
         /// Stack for scf.if/scf.for blocks.
         std::vector<mlir::Operation *> insertionPointStack;
-
-        /// A now useless generic ValueList search function.  should be merged into searchForInduction
-        inline mlir::Value searchFor( const std::string &varName, const ValueList &list ) const;
     };
 
     /// convenience types, so that get calls aren't needed all over the place

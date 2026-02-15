@@ -147,11 +147,11 @@ namespace silly
     {
     }
 
-    inline mlir::Value PerFunctionState::searchFor( const std::string &varName, const ValueList &list ) const
+    inline mlir::Value PerFunctionState::searchForInduction( const std::string &varName )
     {
         mlir::Value r{};
 
-        for ( auto &p : list )
+        for ( auto &p : inductionVariables )
         {
             if ( p.first == varName )
             {
@@ -161,11 +161,6 @@ namespace silly
         }
 
         return r;
-    }
-
-    inline mlir::Value PerFunctionState::searchForInduction( const std::string &varName )
-    {
-        return searchFor( varName, inductionVariables );
     }
 
     inline void PerFunctionState::pushInductionVariable( const std::string &varName, mlir::Value i )
@@ -186,8 +181,17 @@ namespace silly
 
     inline mlir::Value PerFunctionState::searchForVariable( const std::string &varName )
     {
-        auto it = variables.find( varName );
-        return ( it != variables.end() ) ? it->second : nullptr;
+        for ( auto & vars : variables )
+        {
+            auto it = vars.find( varName );
+
+            if ( it != vars.end() )
+            {
+                return it->second;
+            }
+        }
+
+        return nullptr;
     }
 
     inline void PerFunctionState::recordParameterValue( const std::string &varName, mlir::Value i )
@@ -197,7 +201,12 @@ namespace silly
 
     inline void PerFunctionState::recordVariableValue( const std::string &varName, mlir::Value i )
     {
-        variables[varName] = i;
+        if (variables.size() == 0)
+        {
+            variables.push_back({});
+        }
+
+        variables.back()[varName] = i;
     }
 
     //--------------------------------------------------------------------------
