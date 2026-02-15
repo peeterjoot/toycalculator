@@ -801,7 +801,7 @@ namespace silly
 
         createSillyAbortPrototype();
         const char* name = "__silly_abort";
-        rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, name, mlir::ValueRange{ sizeConst, input, lineConst } );
+        rewriter.create<mlir::func::CallOp>( loc, mlir::TypeRange{}, name, mlir::ValueRange{ sizeConst, input, lineConst } );
     }
 
     // Returns the filled PrintArg struct value for one argument
@@ -999,9 +999,9 @@ namespace silly
             return rewriter.notifyMatchFailure( op, "Unsupported type." );
         }
 
-        silly::CallOp callOp =
-            rewriter.create<silly::CallOp>( loc, mlir::TypeRange{ inputType }, name, mlir::ValueRange{} );
-        mlir::Value result = *callOp.getResult().begin();
+        mlir::func::CallOp callOp =
+            rewriter.create<mlir::func::CallOp>( loc, mlir::TypeRange{ inputType }, name, mlir::ValueRange{} );
+        mlir::Value result = callOp.getResult(0);
 
         if ( isBool )
         {
@@ -1568,53 +1568,6 @@ namespace silly
         }
     };
 
-    /// Lower silly::CallOp
-    class CallOpLowering : public mlir::ConversionPattern
-    {
-       private:
-        LoweringContext& lState;    ///< lowering context (including DriverState)
-
-       public:
-        /// Constructor boilerplate for CallOpLowering
-        CallOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( silly::CallOp::getOperationName(), benefit, context ), lState{ loweringState }
-        {
-        }
-
-        /// Lowering workhorse for silly::CallOp
-        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
-                                             mlir::ConversionPatternRewriter& rewriter ) const override
-        {
-            silly::CallOp callOp = cast<silly::CallOp>( op );
-            mlir::Location loc = callOp.getLoc();
-
-            // Get the callee symbol reference (stored as "callee" attribute)
-            mlir::FlatSymbolRefAttr calleeAttr = callOp->getAttrOfType<mlir::FlatSymbolRefAttr>( "callee" );
-            if ( !calleeAttr )
-                return mlir::failure();
-
-            // Get result types (empty for void, one type for scalar return)
-            mlir::TypeRange resultTypes = callOp.getResultTypes();
-
-            mlir::func::CallOp mlirCall =
-                rewriter.create<mlir::func::CallOp>( loc, resultTypes, calleeAttr, callOp.getOperands() );
-
-            // Replace uses correctly
-            if ( !resultTypes.empty() )
-            {
-                // Non-void: replace the single result
-                rewriter.replaceOp( op, mlirCall.getResults() );
-            }
-            else
-            {
-                // Void: erase the op (no result to replace)
-                rewriter.eraseOp( op );
-            }
-
-            return mlir::success();
-        }
-    };
-
 #if 0
     // Now unused (again)
     template <class SillOpType>
@@ -1778,8 +1731,8 @@ namespace silly
             mlir::LLVM::ConstantOp numArgsConst =
                 rewriter.create<mlir::LLVM::ConstantOp>( argLoc, lState.tyI32, rewriter.getI32IntegerAttr( numArgs ) );
 
-            rewriter.create<silly::CallOp>( loc, mlir::TypeRange{}, "__silly_print",
-                                            mlir::ValueRange{ numArgsConst, arrayAlloca } );
+            rewriter.create<mlir::func::CallOp>( loc, mlir::TypeRange{}, "__silly_print",
+                                                 mlir::ValueRange{ numArgsConst, arrayAlloca } );
 
             rewriter.eraseOp( op );
             return mlir::success();
@@ -2332,17 +2285,17 @@ namespace silly
                 mod->dump();
             } );
 
-            // First phase: Lower silly operations except YieldOp
+            // No longer two phase lowering... just one:
             {
                 mlir::ConversionTarget target( getContext() );
-                target.addLegalDialect<mlir::arith::ArithDialect, mlir::LLVM::LLVMDialect, silly::SillyDialect,
-                                       mlir::scf::SCFDialect>();
+                target.addLegalDialect<mlir::LLVM::LLVMDialect>();
                 target.addIllegalOp<silly::AssignOp, silly::DeclareOp, silly::LoadOp, silly::NegOp, silly::PrintOp,
                                     silly::GetOp, silly::StringLiteralOp, silly::AbortOp, silly::DebugNameOp,
                                     silly::ArithBinOp, silly::CmpBinOp>();
-                target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
-                                  silly::CallOp, mlir::func::CallOp,
-                                  mlir::scf::IfOp, mlir::scf::ForOp, mlir::scf::YieldOp>();
+                target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
+
+                target.addIllegalDialect<mlir::scf::SCFDialect>();
+                target.addIllegalDialect<mlir::cf::ControlFlowDialect>();    // forces lowering
 
                 mlir::RewritePatternSet patterns( &getContext() );
                 patterns.add<AssignOpLowering, LoadOpLowering, NegOpLowering, PrintOpLowering, AbortOpLowering,
@@ -2351,31 +2304,6 @@ namespace silly
 
                 patterns.add<DeclareOpLowering, DebugNameOpLowering>( lState.getTypeConverter(), &getContext(), lState,
                                                                       1 );
-
-                if ( failed( applyFullConversion( mod, target, std::move( patterns ) ) ) )
-                {
-                    LLVM_DEBUG( llvm::dbgs() << "Silly Lowering: First phase failed\n" );
-                    signalPassFailure();
-                    return;
-                }
-
-                LLVM_DEBUG( {
-                    llvm::dbgs() << "After first phase (silly ops lowered):\n";
-                    mod->dump();
-                } );
-            }
-
-            // Second phase: can probably now be merged into phase I.
-            {
-                mlir::ConversionTarget target( getContext() );
-                target.addLegalDialect<mlir::LLVM::LLVMDialect>();
-                target.addIllegalOp<silly::CallOp>();
-                target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
-                target.addIllegalDialect<mlir::scf::SCFDialect>();
-                target.addIllegalDialect<mlir::cf::ControlFlowDialect>();    // forces lowering
-
-                mlir::RewritePatternSet patterns( &getContext() );
-                patterns.add<CallOpLowering>( lState, &getContext(), 1 );
 
                 // SCF -> CF
                 mlir::populateSCFToControlFlowConversionPatterns( patterns );
@@ -2387,10 +2315,15 @@ namespace silly
 
                 if ( failed( applyFullConversion( mod, target, std::move( patterns ) ) ) )
                 {
-                    LLVM_DEBUG( llvm::dbgs() << "Silly Lowering: Second phase failed\n" );
+                    LLVM_DEBUG( llvm::dbgs() << "Silly Lowering failed\n" );
                     signalPassFailure();
                     return;
                 }
+
+                LLVM_DEBUG( {
+                    llvm::dbgs() << "After silly ops lowered:\n";
+                    mod->dump();
+                } );
             }
 
             LLVM_DEBUG( {

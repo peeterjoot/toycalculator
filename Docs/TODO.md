@@ -28,6 +28,7 @@
 
 * Add MODULE, MAIN, INTERFACE statements.  MODULE .silly's should have only FUNCTION.  INTERFACE to have only prototypes.
 * Add FUNCTION declaration syntax (for use in external MODULE objects.)
+* Now that func.return is used -- does func lowering take care of early return automatically?  Would have to lift restriction in the grammar if that is the case.
 
 #### Driver
 

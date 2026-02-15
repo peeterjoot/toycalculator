@@ -11,7 +11,7 @@
 #include <mlir/Dialect/LLVMIR/LLVMTypes.h>               // LLVMPointerType, ...
 #include <mlir/IR/Location.h>                            // FileLineColLoc
 
-#include "SillyDialect.hpp"    // silly::CallOp, ...
+#include "SillyDialect.hpp"
 #include "printflags.hpp"
 
 namespace silly
@@ -98,7 +98,7 @@ namespace silly
                                                 mlir::Operation* op, mlir::Value input, PrintFlags flags,
                                                 mlir::Value& output );
 
-        /// A silly::CallOp generator for the __silly_abort runtime function.
+        /// A CallOp generator for the __silly_abort runtime function.
         void createAbortCall( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter );
 
         /// Creates a call to the appropriate Silly get runtime function.

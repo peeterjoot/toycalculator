@@ -128,24 +128,6 @@ def Silly_LoadOp : Op<Silly_Dialect, "load"> {
     "$var `:` type($var) (`[` $index^ `]`)? `:` type($result) attr-dict";
 }
 
-def Silly_CallOp : Op<Silly_Dialect, "call"> {
-  let summary = "A call operation in the Silly dialect to invoke runtime functions.";
-  let description = [{
-    The `silly.call` operation represents a call to a runtime function, such as `__silly_print_string`.
-    It is used as an intermediate operation during lowering from `silly.print` to `func.call`.
-    The operation takes a callee name as a `FlatSymbolRefAttr` and a variadic list of operands.
-  }];
-
-  let arguments = (ins
-    FlatSymbolRefAttr:$callee,
-    Variadic<AnyType>:$operands
-  );
-
-  let results = (outs Variadic<AnyType>:$result);
-
-  //let assemblyFormat = "$callee `(` type($operands) $operands `)` attr-dict";
-}
-
 def Silly_StringLiteralOp : Op<Silly_Dialect, "string_literal"> {
   let summary = "String literal operation";
   let arguments = (ins StrAttr:$value);

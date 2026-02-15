@@ -367,7 +367,7 @@ namespace silly
         void createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp func,
                           const std::string &funcName, const std::vector<std::string> &paramNames );
 
-        /// Emits a silly::CallOp for a function call.
+        /// Emits a CallOp for a function call.
         mlir::Value handleCall( SillyParser::CallExpressionContext *ctx );
 
         /// builder logic for print arguments (shared between PRINT and ERROR.)

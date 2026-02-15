@@ -961,7 +961,7 @@ namespace silly
 
         mlir::TypeRange resultTypes = funcType.getResults();
 
-        silly::CallOp callOp = builder.create<silly::CallOp>( loc, resultTypes, funcName, parameters );
+        mlir::func::CallOp callOp = builder.create<mlir::func::CallOp>( loc, resultTypes, funcName, parameters );
 
         // Return the first result (or null for void calls)
         if ( !resultTypes.empty() )
