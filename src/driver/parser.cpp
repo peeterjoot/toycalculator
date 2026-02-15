@@ -242,20 +242,6 @@ namespace silly
         return "";
     }
 
-    silly::ScopeOp getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp )
-    {
-        // Single ScopeOp per function – iterate once to find it
-        for ( mlir::Operation &op : funcOp.getBody().front() )
-        {
-            if ( silly::ScopeOp scopeOp = dyn_cast<silly::ScopeOp>( &op ) )
-            {
-                return scopeOp;
-            }
-        }
-
-        return nullptr;
-    }
-
     mlir::Type biggestTypeOf( mlir::Type ty1, mlir::Type ty2 )
     {
         if ( ty1 == ty2 )
@@ -521,20 +507,19 @@ namespace silly
         {
             mlir::func::FuncOp funcOp = f.getFuncOp();
 
-            silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
-            if ( !scopeOp )
+            mlir::Region &funcRegion = funcOp.getBody();
+            if (funcRegion.empty())
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "Unable to find Enclosing ScopeOp",
-                                               currentFuncName );
+                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
+                                               "Function has empty body", currentFuncName );
                 return;
             }
 
-            // Scope has one block
-            mlir::Block *scopeBlock = &scopeOp.getBody().front();
+            mlir::Block *entryBlock = &funcRegion.front();
 
-            // Insert declarations at the beginning of the scope block
+            // Insert declarations at the beginning of the entry block
             // (all DeclareOps should appear before any scf.if/scf.for)
-            builder.setInsertionPointToStart( scopeBlock );
+            builder.setInsertionPointToStart( entryBlock );
         }
 
         std::vector<mlir::Value> initializers;
@@ -725,14 +710,6 @@ namespace silly
         mlir::Block &block = *funcOp.addEntryBlock();
         builder.setInsertionPointToStart( &block );
 
-        // initially with empty operands and results
-        silly::ScopeOp scopeOp = builder.create<silly::ScopeOp>( startLoc, mlir::TypeRange{}, mlir::ValueRange{} );
-        builder.create<silly::YieldOp>( endLoc );
-
-        mlir::Block &scopeBlock = scopeOp.getBody().emplaceBlock();
-
-        builder.setInsertionPointToStart( &scopeBlock );
-
         PerFunctionState &f = funcState( funcName );
 
         for ( size_t i = 0; i < funcOp.getNumArguments() && i < paramNames.size(); ++i )
@@ -825,14 +802,14 @@ namespace silly
             value = builder.create<mlir::arith::ConstantIntOp>( loc, 0, 32 );
         }
 
-        // Create new ReturnOp with user specified value:
+        // Create ReturnOp with user specified value:
         if ( value )
         {
-            builder.create<silly::ReturnOp>( loc, mlir::ValueRange{ value } );
+            builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{ value } );
         }
         else
         {
-            builder.create<silly::ReturnOp>( loc, mlir::ValueRange{} );
+            builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{} );
         }
     }
 

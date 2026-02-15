@@ -28,9 +28,6 @@
 
 namespace silly
 {
-    /// Finds enclosing silly::ScopeOp.
-    silly::ScopeOp getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp );
-
     /// Formats location for error messages.
     inline std::string formatLocation( mlir::Location loc );
 

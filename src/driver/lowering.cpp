@@ -43,8 +43,6 @@
 
 namespace silly
 {
-    silly::ScopeOp getEnclosingScopeOp( mlir::Location loc, mlir::func::FuncOp funcOp );
-
     /// Set and restore an insertion point using a RAII model.
     class ModuleInsertionPointGuard
     {
@@ -488,15 +486,15 @@ namespace silly
 
             mlir::Location loc = builder.getUnknownLoc();
 
-            silly::ScopeOp scopeOp = getEnclosingScopeOp( loc, funcOp );
-            if ( !scopeOp )
+            mlir::Region &funcRegion = funcOp.getBody();
+
+            mlir::Block *entryBlock = &funcRegion.front();
+            if ( !entryBlock )
             {
                 return true;
             }
 
-            mlir::Block* scopeBlock = &scopeOp.getBody().front();
-
-            builder.setInsertionPointToStart( scopeBlock );
+            builder.setInsertionPointToStart( entryBlock );
 
             funcState[funcName].printArgs = builder.create<mlir::LLVM::AllocaOp>(
                 loc, tyPtr, printArgStructTy,
@@ -1617,73 +1615,6 @@ namespace silly
         }
     };
 
-    /// Lower silly::ScopeOp
-    class ScopeOpLowering : public mlir::ConversionPattern
-    {
-       private:
-        LoweringContext& lState;    ///< lowering context (including DriverState)
-
-       public:
-        /// Constructor boilerplate for ScopeOpLowering
-        ScopeOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( silly::ScopeOp::getOperationName(), benefit, context ), lState{ loweringState }
-        {
-        }
-
-        /// Lowering workhorse for silly::ScopeOp
-        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
-                                             mlir::ConversionPatternRewriter& rewriter ) const override
-        {
-            silly::ScopeOp scopeOp = cast<silly::ScopeOp>( op );
-            mlir::Region* funcRegion = scopeOp->getParentRegion();
-            if ( !funcRegion || !isa<mlir::func::FuncOp>( scopeOp->getParentOp() ) )
-            {
-                return rewriter.notifyMatchFailure( op, "ScopeOp must be nested in a func::FuncOp" );
-            }
-
-            mlir::Block* entryBlock = &*funcRegion->begin();
-            mlir::Operation* funcTerminator = entryBlock->getTerminator();
-
-            // Verify that the terminator is a YieldOp
-            if ( !isa<silly::YieldOp>( funcTerminator ) )
-            {
-                return rewriter.notifyMatchFailure( op, "Expected func::FuncOp terminator to be silly::YieldOp" );
-            }
-
-            // Erase the YieldOp first to ensure only one terminator will exist
-            rewriter.eraseOp( funcTerminator );
-
-            // If ScopeOp has a non-empty body, process its operations
-            if ( !scopeOp.getBody().empty() )
-            {
-                mlir::Block& scopeBlock = scopeOp.getBody().front();
-
-                // Set insertion point at the end of the func entry block
-                rewriter.setInsertionPointToEnd( entryBlock );
-
-                // Process operations in the scope block
-                for ( mlir::Operation& op : llvm::make_early_inc_range( scopeBlock ) )
-                {
-                    if ( isa<silly::ReturnOp>( op ) )
-                    {
-                        // Replace silly::ReturnOp with func::ReturnOp
-                        rewriter.create<mlir::func::ReturnOp>( op.getLoc(), op.getOperands() );
-                        rewriter.eraseOp( &op );
-                    }
-                    else
-                    {
-                        // Move other operations to the entry block
-                        rewriter.moveOpBefore( &op, entryBlock, entryBlock->end() );
-                    }
-                }
-            }
-
-            // Erase the original ScopeOp
-            rewriter.eraseOp( op );
-            return mlir::success();
-        }
-    };
-
 #if 0
     // Now unused (again)
     template <class SillOpType>
@@ -2401,7 +2332,7 @@ namespace silly
                 mod->dump();
             } );
 
-            // First phase: Lower silly operations except ScopeOp and YieldOp
+            // First phase: Lower silly operations except YieldOp
             {
                 mlir::ConversionTarget target( getContext() );
                 target.addLegalDialect<mlir::arith::ArithDialect, mlir::LLVM::LLVMDialect, silly::SillyDialect,
@@ -2410,7 +2341,7 @@ namespace silly
                                     silly::GetOp, silly::StringLiteralOp, silly::AbortOp, silly::DebugNameOp,
                                     silly::ArithBinOp, silly::CmpBinOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp,
-                                  silly::ScopeOp, silly::YieldOp, silly::ReturnOp, silly::CallOp, mlir::func::CallOp,
+                                  silly::CallOp, mlir::func::CallOp,
                                   mlir::scf::IfOp, mlir::scf::ForOp, mlir::scf::YieldOp>();
 
                 mlir::RewritePatternSet patterns( &getContext() );
@@ -2434,17 +2365,17 @@ namespace silly
                 } );
             }
 
-            // Second phase: Inline ScopeOp and erase YieldOp
+            // Second phase: can probably now be merged into phase I.
             {
                 mlir::ConversionTarget target( getContext() );
                 target.addLegalDialect<mlir::LLVM::LLVMDialect>();
-                target.addIllegalOp<silly::ScopeOp, silly::YieldOp, silly::ReturnOp, silly::CallOp>();
+                target.addIllegalOp<silly::CallOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
                 target.addIllegalDialect<mlir::scf::SCFDialect>();
                 target.addIllegalDialect<mlir::cf::ControlFlowDialect>();    // forces lowering
 
                 mlir::RewritePatternSet patterns( &getContext() );
-                patterns.add<CallOpLowering, ScopeOpLowering>( lState, &getContext(), 1 );
+                patterns.add<CallOpLowering>( lState, &getContext(), 1 );
 
                 // SCF -> CF
                 mlir::populateSCFToControlFlowConversionPatterns( patterns );

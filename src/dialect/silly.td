@@ -128,29 +128,6 @@ def Silly_LoadOp : Op<Silly_Dialect, "load"> {
     "$var `:` type($var) (`[` $index^ `]`)? `:` type($result) attr-dict";
 }
 
-def Silly_YieldOp : Op<Silly_Dialect, "yield"> {
-  let summary = "Terminator for silly.scope blocks";
-  let description = [{
-    A no-op terminator operation for `silly.scope` blocks to satisfy MLIR's block
-    termination requirement. It carries no semantic meaning and is removed during
-    lowering.
-  }];
-  let arguments = (ins);
-  let results = (outs);
-  let traits = [Terminator];
-}
-
-def Silly_ScopeOp : Op<Silly_Dialect, "scope"> {
-  let summary = "A scoping construct for local variables in the Silly dialect";
-  let description = "A scope operation that defines a region with a symbol table for local variables, nested within a function.";
-  let arguments = (ins Variadic<AnyType>:$operands);
-  let results = (outs Variadic<AnyType>:$results);
-  let regions = (region AnyRegion:$body);
-  let traits = [SymbolTable, AutomaticAllocationScope, OpAsmOpInterface];
-
-  let hasVerifier = 1;
-}
-
 def Silly_CallOp : Op<Silly_Dialect, "call"> {
   let summary = "A call operation in the Silly dialect to invoke runtime functions.";
   let description = [{
@@ -167,19 +144,6 @@ def Silly_CallOp : Op<Silly_Dialect, "call"> {
   let results = (outs Variadic<AnyType>:$result);
 
   //let assemblyFormat = "$callee `(` type($operands) $operands `)` attr-dict";
-}
-
-def Silly_ReturnOp : Op<Silly_Dialect, "return"> {
-  let summary = "Return operation for silly.scope blocks";
-  let description = [{
-    A return operation within a `silly.scope` that returns a value to the parent function.
-    It is lowered to a `func.return` during `ScopeOp` lowering.
-  }];
-  let arguments = (ins Variadic<AnyType>:$operands);
-  let results = (outs);
-  let traits = [Terminator];
-
-  let hasVerifier = 1;
 }
 
 def Silly_StringLiteralOp : Op<Silly_Dialect, "string_literal"> {

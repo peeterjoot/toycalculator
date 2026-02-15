@@ -11,6 +11,7 @@
 - Removed `sym_name` attribute from `silly::DeclareOp`, eliminating symbol table-based variable lookup
 - Transitioned to SSA-based variable handling using operation pointer mapping
 - Variables now use SSA values directly, improving MLIR compliance and optimization potential
+- Removed all of: ScopeOp, ReturnOp, YieldOp.
 
 ### Parameter Handling Improvements
 - **BREAKING CHANGE**: Function parameters now handled as pure SSA values without intermediate storage

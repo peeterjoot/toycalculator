@@ -7,10 +7,6 @@
 
 * FOR, IF, ELSE, ELIF and nested IF* testing for the scopebug fix.
 
-#### Dialect
-
-* get rid of silly::ScopeOp -- no good reason for it anymore, as all the symbol table use is gone.
-
 #### Lowering
 
 * Attempted introducing a type convertor to DeclareOp and DebugNameOp lowering, but couldn't get it to work (i.e.
@@ -22,6 +18,11 @@
   Should followup on that idea later, but first finish the symbol name refactoring (which should include purging silly::ScopeOp).
 * Should be able to merge constructVariableDI+constructInductionVariableDI
 * Figure out why I have a dependency on the typeConvertor in DebugNameOp lowering (see for example: tests/endtoend/array/array_elem_as_arg.silly)
+* Am generating an alloca for PRINT, even if there is no PRINT:
+```
+    %0 = llvm.mlir.constant(0 : i64) : i64
+    %1 = llvm.alloca %0 x !llvm.struct<(i32, i32, i64, ptr)> : (i64) -> !llvm.ptr
+```
 
 #### Grammar
 
