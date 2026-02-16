@@ -11,7 +11,7 @@
 #include <format>
 
 #include "DriverState.hpp"
-#include "InsertionPointGuard.hpp"
+#include "ModuleInsertionPointGuard.hpp"
 #include "LoweringContext.hpp"
 #include "helper.hpp"
 
@@ -313,7 +313,7 @@ namespace silly
 
         if ( maxPrintArgs )
         {
-            InsertionPointGuard ip( builder );
+            mlir::OpBuilder::InsertionGuard guard(builder);
 
             mlir::Location loc = builder.getUnknownLoc();
 
