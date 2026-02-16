@@ -59,6 +59,7 @@
   - `LoweringContext::getAlloca(funcName, declareOp)` - retrieve `AllocaOp` for a `DeclareOp`
   - `LoweringContext::setAlloca(funcName, declareOp, allocaOp)` - register mapping
 - **Removed** `lookupLocalSymbolReference()` and `createLocalSymbolReference()`
+- Stop generating an alloca for PRINT, if there is no PRINT in the function.
 
 ## Grammar & Parser Changes
 

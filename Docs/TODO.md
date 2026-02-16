@@ -17,11 +17,6 @@
 
   Should followup on that idea later, but first finish the symbol name refactoring (which should include purging silly::ScopeOp).
 * Should be able to merge constructVariableDI+constructInductionVariableDI
-* Am generating an alloca for PRINT, even if there is no PRINT:
-```
-    %0 = llvm.mlir.constant(0 : i64) : i64
-    %1 = llvm.alloca %0 x !llvm.struct<(i32, i32, i64, ptr)> : (i64) -> !llvm.ptr
-```
 
 #### Grammar
 

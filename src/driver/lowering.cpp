@@ -480,6 +480,7 @@ namespace silly
                 } );
         }
 
+        if ( maxPrintArgs )
         {
             mlir::OpBuilder::InsertPoint savedIP = builder.saveInsertionPoint();
 
