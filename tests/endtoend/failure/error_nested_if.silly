@@ -1,0 +1,72 @@
+FOR (INT32 level : (-1, 5))
+{
+    PRINT "level var = ", level;
+    INT32 x{42};
+    PRINT x; // okay
+
+    IF (level > 0)
+    {
+        INT32 y{32};
+        PRINT y; // okay
+
+        PRINT "Level 1";
+        IF (level > 1)
+        {
+            INT32 z{22};
+            PRINT z; // okay
+            PRINT "Level 2";
+            IF (level > 2)
+            {
+                INT32 w{11};
+                PRINT w;
+                PRINT "Level 3";
+                IF (level > 3)
+                {
+                    INT32 xx{11};
+                    PRINT xx; // okay
+                    PRINT "Level 4 - deepest";
+                }
+                ELIF ( x EQ 42 )
+                {
+                    INT32 zz{11};
+                    PRINT zz; // okay
+                    PRINT "Level 4 not reached";
+                }
+                ELSE
+                {
+                    INT32 yy{11};
+                    PRINT yy; // okay
+                    PRINT "Level 4 not reached";
+                };
+                PRINT xx; // error
+                PRINT yy; // error
+                PRINT zz; // error
+            };
+            PRINT z; // okay
+            PRINT xx; // error
+            PRINT yy; // error
+            PRINT zz; // error
+        };
+
+        PRINT x; // okay
+        PRINT y; // okay
+        PRINT z; // error
+        PRINT xx; // error
+        PRINT yy; // error
+        PRINT zz; // error
+    };
+
+    PRINT x; // okay
+    PRINT y; // error
+    PRINT z; // error
+    PRINT xx; // error
+    PRINT yy; // error
+    PRINT zz; // error
+};
+
+PRINT x; // error
+PRINT y; // error
+PRINT z; // error
+PRINT xx; // error
+PRINT yy; // error
+PRINT zz; // error

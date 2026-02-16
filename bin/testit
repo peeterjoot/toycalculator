@@ -173,6 +173,33 @@ my %tests = map { $_ => 1 } (qw(
 #'error_invalid_unary' => q(line 3:4 token recognition error at:),
 my %expected_compile_error_message =
 (
+  'error_nested_if' => [
+    q(error_nested_if.silly:41:23: error: Undeclared variable xx),
+    q(error_nested_if.silly:42:23: error: Undeclared variable yy),
+    q(error_nested_if.silly:43:23: error: Undeclared variable zz),
+    q(error_nested_if.silly:46:19: error: Undeclared variable xx),
+    q(error_nested_if.silly:47:19: error: Undeclared variable yy),
+    q(error_nested_if.silly:48:19: error: Undeclared variable zz),
+    q(error_nested_if.silly:53:15: error: Undeclared variable z),
+    q(error_nested_if.silly:54:15: error: Undeclared variable xx),
+    q(error_nested_if.silly:55:15: error: Undeclared variable yy),
+    q(error_nested_if.silly:56:15: error: Undeclared variable zz),
+    q(error_nested_if.silly:60:11: error: Undeclared variable y),
+    q(error_nested_if.silly:61:11: error: Undeclared variable z),
+    q(error_nested_if.silly:62:11: error: Undeclared variable xx),
+    q(error_nested_if.silly:63:11: error: Undeclared variable yy),
+    q(error_nested_if.silly:64:11: error: Undeclared variable zz),
+    q(error_nested_if.silly:67:7: error: Undeclared variable x),
+    q(error_nested_if.silly:68:7: error: Undeclared variable y),
+    q(error_nested_if.silly:69:7: error: Undeclared variable z),
+    q(error_nested_if.silly:70:7: error: Undeclared variable xx),
+    q(error_nested_if.silly:71:7: error: Undeclared variable yy),
+    q(error_nested_if.silly:72:7: error: Undeclared variable zz),
+  ],
+  'error_for1' => [
+    q(error_for1.silly:5:11: error: Undeclared variable j), ],
+  'error_for2' => [
+    q(error_for2.silly:6:7: error: Undeclared variable j), ],
   'error_scopebug' => [
     q(error_scopebug.silly:9:11: error: Undeclared variable x), ],
   'error_arrayreturn' => [

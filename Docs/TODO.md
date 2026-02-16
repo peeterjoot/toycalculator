@@ -3,9 +3,6 @@
 ### running list of other issues and ideas, semi-randomly ordered
 ----------------------------------
 
-#### Testing
-
-* FOR, IF, ELSE, ELIF and nested IF* testing for the scopebug fix.
 
 #### Lowering
 

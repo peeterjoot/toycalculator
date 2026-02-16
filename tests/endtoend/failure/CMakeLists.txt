@@ -18,6 +18,8 @@ set(FAILURE_TESTS
     error_expressions4c
     error_expressions4d
     error_expressions4e
+    error_for1
+    error_for2
     error_get_string
     error_induction_var_in_step
     error_init_list1
@@ -27,6 +29,7 @@ set(FAILURE_TESTS
     error_keyword_declare2
     error_multiple_in_func
     error_nested
+    error_nested_if
     error_nested_ivar_conflict
     error_notfloat
     error_redeclare
