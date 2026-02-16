@@ -15,8 +15,7 @@
   keyed on the DeclareOp's Operation*, not a function-name::variable-name pair, as was the case for the symbol based
   implementation.
 
-  Should followup on that idea later, but first finish the symbol name refactoring (which should include purging silly::ScopeOp).
-* Should be able to merge constructVariableDI+constructInductionVariableDI
+  Followup on that idea -- it makes more sense to use existing infrastructure.
 
 #### Grammar
 

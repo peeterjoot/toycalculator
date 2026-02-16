@@ -26,7 +26,8 @@ namespace silly
 
         /// The alloca op for PRINT arguments.
         ///
-        /// This is sized big enough to hold the biggest number of arguments used for any PRINT statement in the function (all PRINT calls use this storage for their variable argument list.)
+        /// This is sized big enough to hold the biggest number of arguments used for any PRINT statement in the
+        /// function (all PRINT calls use this storage for their variable argument list.)
         mlir::LLVM::AllocaOp printArgs;
 
         /// Map from DeclareOp to AllocaOp for local variables.
@@ -76,18 +77,10 @@ namespace silly
         /// Returns the preferred alignment for an element type according to the data layout.
         unsigned preferredTypeAlignment( mlir::Operation* op, mlir::Type elemType );
 
-        /// Emits debug information for a local variable or array.
+        /// Emits debug information for a local variable (scalar or array), or a parameter, or a FOR induction variable.
         mlir::LogicalResult constructVariableDI( mlir::FileLineColLoc loc, mlir::ConversionPatternRewriter& rewriter,
                                                  mlir::Operation* op, llvm::StringRef varName, mlir::Type& elemType,
-                                                 unsigned elemSizeInBits, mlir::LLVM::AllocaOp& allocaOp,
-                                                 int64_t arraySize );
-
-        /// FOR loop variables are effectively scoped for just the FOR.  This emits the DI for them.
-        mlir::LogicalResult constructInductionVariableDI( mlir::FileLineColLoc fileLoc,
-                                                          mlir::ConversionPatternRewriter& rewriter,
-                                                          mlir::Operation* op, mlir::Value value, std::string varName,
-                                                          mlir::StringAttr nameAttr, mlir::Type elemType,
-                                                          unsigned elemSizeInBits, std::string funcName );
+                                                 unsigned elemSizeInBits, mlir::Value value, int64_t arraySize );
 
         /// Looks up or creates a global constant for a string literal.
         mlir::LLVM::GlobalOp lookupOrInsertGlobalOp( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
@@ -114,10 +107,10 @@ namespace silly
         mlir::LLVM::AllocaOp getPrintArgs( const std::string& funcName );
 
         /// Retrieve the allocation associated with a DeclareOp
-        mlir::LLVM::AllocaOp getAlloca( const std::string& funcName, mlir::Operation * dclOp );
+        mlir::LLVM::AllocaOp getAlloca( const std::string& funcName, mlir::Operation* dclOp );
 
         /// Cache the allocation associated with a DeclareOp
-        void setAlloca( const std::string& funcName, mlir::Operation * dclOp, mlir::Operation * aOp );
+        void setAlloca( const std::string& funcName, mlir::Operation* dclOp, mlir::Operation* aOp );
 
         /// Helper function to generate MLIR for a silly language assignment statement (`foo = bar;`)
         mlir::LogicalResult generateAssignment( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,

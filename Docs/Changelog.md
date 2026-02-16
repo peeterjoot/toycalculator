@@ -60,6 +60,7 @@
   - `LoweringContext::setAlloca(funcName, declareOp, allocaOp)` - register mapping
 - **Removed** `lookupLocalSymbolReference()` and `createLocalSymbolReference()`
 - Stop generating an alloca for PRINT, if there is no PRINT in the function.
+- Merge constructVariableDI + constructInductionVariableDI.
 
 ## Grammar & Parser Changes
 
