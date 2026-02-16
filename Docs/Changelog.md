@@ -49,6 +49,7 @@
 - Added `MlirTypeCache` helper class to organize MLIR type references
 - Moved `emitUserError` and `errorCount` to `DriverState` for broader accessibility
 - Implemented scope-aware variable management with `enterScope`/`exitScope` callbacks
+- Split out things from parser.cpp into: DialectContext.cpp DialectContext.hpp DriverState.cpp MlirTypeCache.cpp MlirTypeCache.hpp, also renaming parser.* to ParseListener.*
 
 ### Lowering Infrastructure Changes
 - Renamed `loweringContext.hpp::PerFunctionState` to `PerFunctionLoweringState` (conflict resolution)
