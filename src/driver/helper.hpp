@@ -20,4 +20,13 @@ namespace silly
 
     /// Looks up the enclosing function name for an operation.
     std::string lookupFuncNameForOp( mlir::Operation* op );
+
+    /// Formats location for error messages.
+    std::string formatLocation( mlir::Location loc );
+
+    /// Figure out the bigger of two types for implicit cast-like purposes
+    mlir::Type biggestTypeOf( mlir::Type ty1, mlir::Type ty2 );
+
+    /// While mlir::Type is streamable in << output, here's a little shim for use in string based dumps.
+    std::string mlirTypeToString( mlir::Type t );
 }

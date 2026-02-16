@@ -3,8 +3,13 @@
 /// @brief   State to pass between driver and lowering pass.
 #pragma once
 
+#include <mlir/IR/Location.h>
+
 #include <string>
 #include <cstdint>
+
+/// Implicit function declaration for the body of a silly language program.
+#define ENTRY_SYMBOL_NAME "main"
 
 /// Name of the silly compiler driver, and used in llvm.ident and DICompileUnitAttr
 #define COMPILER_NAME "silly"

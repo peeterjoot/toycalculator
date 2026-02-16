@@ -42,6 +42,7 @@
 #include "DriverState.hpp"
 #include "createSillyToLLVMLoweringPass.hpp"
 #include "parser.hpp"
+#include "DialectContext.hpp"
 
 /// --debug- class for the driver
 #define DEBUG_TYPE "silly-driver"
@@ -588,7 +589,7 @@ int main( int argc, char** argv )
     }
 
     // once this goes out of scope, the module is toast and can't be referenced further.
-    silly::DialectCtx dialectLoader;
+    silly::DialectContext dialectLoader;
 
     mlir::OpPrintingFlags flags;
     if ( debugInfo )

@@ -25,31 +25,16 @@
 #include "SillyDialect.hpp"
 #include "DriverState.hpp"
 #include "PrintFlags.hpp"
+#include "MlirTypeCache.hpp"
 
 namespace silly
 {
-    /// Formats location for error messages.
-    inline std::string formatLocation( mlir::Location loc );
-
-    /// Figure out the bigger of two types for implicit cast-like purposes
-    mlir::Type biggestTypeOf( mlir::Type ty1, mlir::Type ty2 );
-
-    /// Context for MLIR dialect registration.
-    struct DialectCtx
-    {
-        /// MLIR context with loaded dialects.
-        mlir::MLIRContext context;
-
-        /// Loads required dialects (Silly, Func, Arith, MemRef, LLVM, SCF).
-        DialectCtx();
-    };
-
     /// Per-function state tracked during parsing.
-    class PerFunctionState
+    class ParserPerFunctionState
     {
        public:
         /// Default constructor
-        PerFunctionState();
+        ParserPerFunctionState();
 
         /// Getter for op, just to hide the casting
         mlir::func::FuncOp getFuncOp()
@@ -148,40 +133,6 @@ namespace silly
 
         /// Stack for scf.if/scf.for blocks.
         std::vector<mlir::Operation *> insertionPointStack;
-    };
-
-    /// convenience types, so that get calls aren't needed all over the place
-    struct MlirTypeCache
-    {
-        /// Initialize all the cached types.
-        void initialize( mlir::OpBuilder &builder, mlir::MLIRContext *ctx );
-
-        /// i1 type.
-        mlir::IntegerType i1;
-
-        /// (signed) i8 type.
-        mlir::IntegerType i8;
-
-        /// (signed) i16 type.
-        mlir::IntegerType i16;
-
-        /// (signed) i32 type.
-        mlir::IntegerType i32;
-
-        /// (signed) i64 type.
-        mlir::IntegerType i64;
-
-        /// f32 type.
-        mlir::FloatType f32;
-
-        /// f64 type.
-        mlir::FloatType f64;
-
-        /// LLVM pointer type.
-        mlir::LLVM::LLVMPointerType ptr;
-
-        /// LLVM void type.
-        mlir::LLVM::LLVMVoidType voidT;
     };
 
     /// Start and end locations associated with parser context.
@@ -307,7 +258,7 @@ namespace silly
         std::string currentFuncName;
 
         /// Per-function state map.
-        std::unordered_map<std::string, std::unique_ptr<PerFunctionState>> functionStateMap;
+        std::unordered_map<std::string, std::unique_ptr<ParserPerFunctionState>> functionStateMap;
 
         ////////////////////////////////////////////////////////////////////////
         ///
@@ -392,7 +343,7 @@ namespace silly
         /// Returns a reference to the functionStateMap entry for funcName.
         ///
         /// Create that functionStateMap entry for funcName if it doesn't exist.
-        inline PerFunctionState &funcState( const std::string &funcName );
+        inline ParserPerFunctionState &funcState( const std::string &funcName );
 
         /// Map INT8_TOKEN, INT16_TOKEN, ... to a mlir::Type
         mlir::Type integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext *ctx );

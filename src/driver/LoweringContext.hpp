@@ -13,6 +13,7 @@
 
 #include "PrintFlags.hpp"
 #include "SillyDialect.hpp"
+#include "MlirTypeCache.hpp"
 
 namespace silly
 {
@@ -39,32 +40,8 @@ namespace silly
     class LoweringContext
     {
        public:
-        /// LLVM i1 type (cached for convenience).
-        mlir::IntegerType tyI1;
-
-        /// LLVM i8 type (cached for convenience).
-        mlir::IntegerType tyI8;
-
-        /// LLVM i16 type (cached for convenience).
-        mlir::IntegerType tyI16;
-
-        /// LLVM i32 type (cached for convenience).
-        mlir::IntegerType tyI32;
-
-        /// LLVM i64 type (cached for convenience).
-        mlir::IntegerType tyI64;
-
-        /// LLVM f32 type (cached for convenience).
-        mlir::FloatType tyF32;
-
-        /// LLVM f64 type (cached for convenience).
-        mlir::FloatType tyF64;
-
-        /// LLVM opaque pointer type (cached for convenience).
-        mlir::LLVM::LLVMPointerType tyPtr;
-
-        /// LLVM void type (cached for convenience).
-        mlir::LLVM::LLVMVoidType tyVoid;
+        /// Some common mlir::Type values.
+        MlirTypeCache typ; 
 
         /// LLVM type for PRINT builtin arguments (cached for convenience).
         mlir::Type printArgStructTy;
@@ -301,19 +278,19 @@ namespace silly
     inline mlir::LLVM::ConstantOp LoweringContext::getI64one( mlir::Location loc,
                                                               mlir::ConversionPatternRewriter& rewriter )
     {
-        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( 1 ) );
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i64, rewriter.getI64IntegerAttr( 1 ) );
     }
 
     inline mlir::LLVM::ConstantOp LoweringContext::getF32zero( mlir::Location loc,
                                                                mlir::ConversionPatternRewriter& rewriter )
     {
-        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyF32, rewriter.getF32FloatAttr( 0 ) );
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.f32, rewriter.getF32FloatAttr( 0 ) );
     }
 
     inline mlir::LLVM::ConstantOp LoweringContext::getF64zero( mlir::Location loc,
                                                                mlir::ConversionPatternRewriter& rewriter )
     {
-        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyF64, rewriter.getF64FloatAttr( 0 ) );
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.f64, rewriter.getF64FloatAttr( 0 ) );
     }
 
     inline mlir::MLIRContext* LoweringContext::getContext()
@@ -323,31 +300,31 @@ namespace silly
 
     inline bool LoweringContext::isTypeFloat( mlir::Type ty ) const
     {
-        return ( ( ty == tyF32 ) || ( ty == tyF64 ) );
+        return ( ( ty == typ.f32 ) || ( ty == typ.f64 ) );
     }
 
     inline mlir::LLVM::ConstantOp LoweringContext::getI8zero( mlir::Location loc,
                                                               mlir::ConversionPatternRewriter& rewriter )
     {
-        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI8, rewriter.getI8IntegerAttr( 0 ) );
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i8, rewriter.getI8IntegerAttr( 0 ) );
     }
 
     inline mlir::LLVM::ConstantOp LoweringContext::getI16zero( mlir::Location loc,
                                                                mlir::ConversionPatternRewriter& rewriter )
     {
-        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI16, rewriter.getI16IntegerAttr( 0 ) );
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i16, rewriter.getI16IntegerAttr( 0 ) );
     }
 
     inline mlir::LLVM::ConstantOp LoweringContext::getI32zero( mlir::Location loc,
                                                                mlir::ConversionPatternRewriter& rewriter )
     {
-        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI32, rewriter.getI32IntegerAttr( 0 ) );
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i32, rewriter.getI32IntegerAttr( 0 ) );
     }
 
     inline mlir::LLVM::ConstantOp LoweringContext::getI64zero( mlir::Location loc,
                                                                mlir::ConversionPatternRewriter& rewriter )
     {
-        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( 0 ) );
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i64, rewriter.getI64IntegerAttr( 0 ) );
     }
 
     /// Returns a zero constant for the given integer width (i8, i16, i32, i64).

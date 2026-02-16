@@ -26,32 +26,21 @@ namespace silly
     LoweringContext::LoweringContext( mlir::ModuleOp& moduleOp, silly::DriverState& ds )
         : driverState{ ds }, mod{ moduleOp }, builder{ mod.getRegion() }, typeConverter{ builder.getContext() }
     {
+        mlir::MLIRContext* context = builder.getContext();
+        typ.initialize( builder, context );
+
 #if 0    // tried to use this in DeclareOp and DebugNameOp lowering, but it didn't work.  Revisit this later.
         typeConverter.addConversion( []( silly::varType type ) -> mlir::Type
                                      { return mlir::LLVM::LLVMPointerType::get( type.getContext() ); } );
 #endif
 
-        tyI1 = builder.getI1Type();
-        tyI8 = builder.getI8Type();
-        tyI16 = builder.getI16Type();
-        tyI32 = builder.getI32Type();
-        tyI64 = builder.getI64Type();
-
-        tyF32 = builder.getF32Type();
-        tyF64 = builder.getF64Type();
-
-        mlir::MLIRContext* context = builder.getContext();
-        tyPtr = mlir::LLVM::LLVMPointerType::get( context );
-
-        tyVoid = mlir::LLVM::LLVMVoidType::get( context );
-
         printArgStructTy =
             mlir::LLVM::LLVMStructType::getLiteral( context,
                                                     {
-                                                        tyI32,    // kind: PrintKind (i32)
-                                                        tyI32,    // flags: PrintFlags (i32)
-                                                        tyI64,    // i, or string length, or bitcast double
-                                                        tyPtr     // ptr: const char* (only used for STRING)
+                                                        typ.i32,    // kind: PrintKind (i32)
+                                                        typ.i32,    // flags: PrintFlags (i32)
+                                                        typ.i64,    // i, or string length, or bitcast double
+                                                        typ.ptr     // ptr: const char* (only used for STRING)
                                                     },
                                                     /*isPacked=*/false );
     }
@@ -72,7 +61,7 @@ namespace silly
         {
             ModuleInsertionPointGuard ip( mod, builder );
 
-            mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), { tyI32, tyPtr }, {} );
+            mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), { typ.i32, typ.ptr }, {} );
 
             printFunc = builder.create<mlir::func::FuncOp>( mod.getLoc(), "__silly_print", funcType );
             printFunc.setVisibility( mlir::SymbolTable::Visibility::Private );
@@ -85,7 +74,7 @@ namespace silly
         {
             ModuleInsertionPointGuard ip( mod, builder );
 
-            mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), { tyI64, tyPtr, tyI32 }, {} );
+            mlir::FunctionType funcType = mlir::FunctionType::get( builder.getContext(), { typ.i64, typ.ptr, typ.i32 }, {} );
             printFuncAbort = builder.create<mlir::func::FuncOp>( mod.getLoc(), "__silly_abort", funcType );
             printFuncAbort.setVisibility( mlir::SymbolTable::Visibility::Private );
         }
@@ -110,37 +99,37 @@ namespace silly
     inline void LoweringContext::createSillyGetI1Prototype()
     {
         // returns int8_t, but checks input to verify 0/1 value.
-        createSillyGetPrototype( getFuncI1, tyI8, "__silly_get_i1" );
+        createSillyGetPrototype( getFuncI1, typ.i8, "__silly_get_i1" );
     }
 
     inline void LoweringContext::createSillyGetI8Prototype()
     {
-        createSillyGetPrototype( getFuncI8, tyI8, "__silly_get_i8" );
+        createSillyGetPrototype( getFuncI8, typ.i8, "__silly_get_i8" );
     }
 
     inline void LoweringContext::createSillyGetI16Prototype()
     {
-        createSillyGetPrototype( getFuncI16, tyI16, "__silly_get_i16" );
+        createSillyGetPrototype( getFuncI16, typ.i16, "__silly_get_i16" );
     }
 
     inline void LoweringContext::createSillyGetI32Prototype()
     {
-        createSillyGetPrototype( getFuncI32, tyI32, "__silly_get_i32" );
+        createSillyGetPrototype( getFuncI32, typ.i32, "__silly_get_i32" );
     }
 
     inline void LoweringContext::createSillyGetI64Prototype()
     {
-        createSillyGetPrototype( getFuncI64, tyI64, "__silly_get_i64" );
+        createSillyGetPrototype( getFuncI64, typ.i64, "__silly_get_i64" );
     }
 
     inline void LoweringContext::createSillyGetF32Prototype()
     {
-        createSillyGetPrototype( getFuncF32, tyF32, "__silly_get_f32" );
+        createSillyGetPrototype( getFuncF32, typ.f32, "__silly_get_f32" );
     }
 
     inline void LoweringContext::createSillyGetF64Prototype()
     {
-        createSillyGetPrototype( getFuncF64, tyF64, "__silly_get_f64" );
+        createSillyGetPrototype( getFuncF64, typ.f64, "__silly_get_f64" );
     }
 
     void LoweringContext::createDICompileUnit()
@@ -330,8 +319,8 @@ namespace silly
             builder.setInsertionPointToStart( entryBlock );
 
             funcState[funcName].printArgs = builder.create<mlir::LLVM::AllocaOp>(
-                loc, tyPtr, printArgStructTy,
-                builder.create<mlir::LLVM::ConstantOp>( loc, tyI64, builder.getI64IntegerAttr( maxPrintArgs ) ) );
+                loc, typ.ptr, printArgStructTy,
+                builder.create<mlir::LLVM::ConstantOp>( loc, typ.i64, builder.getI64IntegerAttr( maxPrintArgs ) ) );
         }
 
         return false;
@@ -485,8 +474,8 @@ namespace silly
                     dwType );
 
                 // Create subrange for array (count = arraySize, lowerBound = 0)
-                mlir::IntegerAttr countAttr = mlir::IntegerAttr::get( tyI64, arraySize );
-                mlir::IntegerAttr lowerBoundAttr = mlir::IntegerAttr::get( tyI64, 0 );
+                mlir::IntegerAttr countAttr = mlir::IntegerAttr::get( typ.i64, arraySize );
+                mlir::IntegerAttr lowerBoundAttr = mlir::IntegerAttr::get( typ.i64, 0 );
                 mlir::LLVM::DISubrangeAttr subrange =
                     mlir::LLVM::DISubrangeAttr::get( context, countAttr, lowerBoundAttr,
                                                      /*upperBound=*/nullptr, /*stride=*/nullptr );
@@ -564,11 +553,11 @@ namespace silly
             mlir::OpBuilder::InsertPoint savedIP = rewriter.saveInsertionPoint();
             rewriter.setInsertionPointToStart( mod.getBody() );
 
-            mlir::LLVM::LLVMArrayType arrayType = mlir::LLVM::LLVMArrayType::get( tyI8, strLen );
+            mlir::LLVM::LLVMArrayType arrayType = mlir::LLVM::LLVMArrayType::get( typ.i8, strLen );
 
             mlir::SmallVector<char> stringData( stringLit.begin(), stringLit.end() );
             mlir::DenseElementsAttr denseAttr =
-                mlir::DenseElementsAttr::get( mlir::RankedTensorType::get( { static_cast<int64_t>( strLen ) }, tyI8 ),
+                mlir::DenseElementsAttr::get( mlir::RankedTensorType::get( { static_cast<int64_t>( strLen ) }, typ.i8 ),
                                               mlir::ArrayRef<char>( stringData ) );
 
             std::string globalName = "str_" + std::to_string( stringLiterals.size() );
@@ -593,7 +582,7 @@ namespace silly
         mlir::StringAttr strAttr = builder.getStringAttr( filename );
 
         mlir::LLVM::ConstantOp sizeConst =
-            rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( filename.size() ) );
+            rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i64, rewriter.getI64IntegerAttr( filename.size() ) );
 
         std::string strValue = strAttr.getValue().str();
         size_t strLen = strValue.size();
@@ -602,7 +591,7 @@ namespace silly
         mlir::Value input = rewriter.create<mlir::LLVM::AddressOfOp>( loc, globalOp );
 
         mlir::LLVM::ConstantOp lineConst =
-            rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI32, rewriter.getI32IntegerAttr( fileLoc.getLine() ) );
+            rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i32, rewriter.getI32IntegerAttr( fileLoc.getLine() ) );
 
         createSillyAbortPrototype();
         const char* name = "__silly_abort";
@@ -630,11 +619,11 @@ namespace silly
             kind = PrintKind::I64;
             if ( intTy.getWidth() == 1 )
             {
-                valuePayload = rewriter.create<mlir::LLVM::ZExtOp>( loc, tyI64, input );
+                valuePayload = rewriter.create<mlir::LLVM::ZExtOp>( loc, typ.i64, input );
             }
             else if ( intTy.getWidth() < 64 )
             {
-                valuePayload = rewriter.create<mlir::LLVM::SExtOp>( loc, tyI64, input );
+                valuePayload = rewriter.create<mlir::LLVM::SExtOp>( loc, typ.i64, input );
             }
             else
             {
@@ -644,18 +633,18 @@ namespace silly
         else if ( mlir::FloatType floatTy = mlir::dyn_cast<mlir::FloatType>( inputType ) )
         {
             kind = PrintKind::F64;
-            if ( inputType == tyF32 )
+            if ( inputType == typ.f32 )
             {
-                valuePayload = rewriter.create<mlir::LLVM::FPExtOp>( loc, tyF64, input );
+                valuePayload = rewriter.create<mlir::LLVM::FPExtOp>( loc, typ.f64, input );
             }
             else
             {
                 valuePayload = input;
             }
 
-            valuePayload = rewriter.create<mlir::LLVM::BitcastOp>( loc, tyI64, valuePayload );
+            valuePayload = rewriter.create<mlir::LLVM::BitcastOp>( loc, typ.i64, valuePayload );
         }
-        else if ( inputType == tyPtr )
+        else if ( inputType == typ.ptr )
         {
             kind = PrintKind::STRING;
 
@@ -672,7 +661,7 @@ namespace silly
                 mlir::LLVM::AllocaOp allocaOp = getAlloca( funcName, declareOp.getOperation() );
                 assert( allocaOp );
 
-                if ( allocaOp.getElemType() != tyI8 )
+                if ( allocaOp.getElemType() != typ.i8 )
                 {
                     return rewriter.notifyMatchFailure( op, "expected i8 alloca type." );
                 }
@@ -696,7 +685,7 @@ namespace silly
             }
 
             valuePayload =
-                rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( numElems ) );
+                rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i64, rewriter.getI64IntegerAttr( numElems ) );
             strPtr = ptr;
         }
         else
@@ -706,12 +695,12 @@ namespace silly
 
         // Insert kind (index 0)
         mlir::LLVM::ConstantOp kindVal = rewriter.create<mlir::LLVM::ConstantOp>(
-            loc, tyI32, rewriter.getI32IntegerAttr( static_cast<uint32_t>( kind ) ) );
+            loc, typ.i32, rewriter.getI32IntegerAttr( static_cast<uint32_t>( kind ) ) );
         structVal = rewriter.create<mlir::LLVM::InsertValueOp>( loc, printArgStructTy, structVal, kindVal, 0 );
 
         // Insert flags (index 1)
         mlir::LLVM::ConstantOp flagsVal = rewriter.create<mlir::LLVM::ConstantOp>(
-            loc, tyI32, rewriter.getI32IntegerAttr( static_cast<uint32_t>( flags ) ) );
+            loc, typ.i32, rewriter.getI32IntegerAttr( static_cast<uint32_t>( flags ) ) );
         structVal = rewriter.create<mlir::LLVM::InsertValueOp>( loc, printArgStructTy, structVal, flagsVal, 1 );
 
         // Insert "union" payload (index 2: i or d or length)
@@ -724,7 +713,7 @@ namespace silly
         }
         else
         {
-            mlir::Value nullPtr = rewriter.create<mlir::LLVM::ZeroOp>( loc, tyPtr );
+            mlir::Value nullPtr = rewriter.create<mlir::LLVM::ZeroOp>( loc, typ.ptr );
 
             structVal = rewriter.create<mlir::LLVM::InsertValueOp>( loc, printArgStructTy, structVal, nullPtr, 3 );
         }
@@ -749,7 +738,7 @@ namespace silly
                 {
                     name = "__silly_get_i1";
                     createSillyGetI1Prototype();
-                    inputType = tyI8;
+                    inputType = typ.i8;
                     isBool = true;
                     break;
                 }
@@ -785,12 +774,12 @@ namespace silly
         }
         else if ( mlir::FloatType inputf = mlir::dyn_cast<mlir::FloatType>( inputType ) )
         {
-            if ( inputType == tyF32 )
+            if ( inputType == typ.f32 )
             {
                 name = "__silly_get_f32";
                 createSillyGetF32Prototype();
             }
-            else if ( inputType == tyF64 )
+            else if ( inputType == typ.f64 )
             {
                 name = "__silly_get_f64";
                 createSillyGetF64Prototype();
@@ -811,7 +800,7 @@ namespace silly
 
         if ( isBool )
         {
-            result = rewriter.create<mlir::LLVM::TruncOp>( loc, tyI1, result );
+            result = rewriter.create<mlir::LLVM::TruncOp>( loc, typ.i1, result );
         }
 
         output = result;
@@ -847,24 +836,24 @@ namespace silly
     mlir::Value LoweringContext::castToElemType( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
                                                  mlir::Value value, mlir::Type valType, mlir::Type elemType )
     {
-        if ( valType == tyF64 )
+        if ( valType == typ.f64 )
         {
             if ( mlir::isa<mlir::IntegerType>( elemType ) )
             {
                 value = rewriter.create<mlir::LLVM::FPToSIOp>( loc, elemType, value );
             }
-            else if ( elemType == tyF32 )
+            else if ( elemType == typ.f32 )
             {
                 value = rewriter.create<mlir::LLVM::FPTruncOp>( loc, elemType, value );
             }
         }
-        else if ( valType == tyF32 )
+        else if ( valType == typ.f32 )
         {
             if ( mlir::isa<mlir::IntegerType>( elemType ) )
             {
                 value = rewriter.create<mlir::LLVM::FPToSIOp>( loc, elemType, value );
             }
-            else if ( elemType == tyF64 )
+            else if ( elemType == typ.f64 )
             {
                 value = rewriter.create<mlir::LLVM::FPExtOp>( loc, elemType, value );
             }
@@ -935,7 +924,7 @@ namespace silly
         }
         else if ( silly::StringLiteralOp stringLitOp = value.getDefiningOp<silly::StringLiteralOp>() )
         {
-            if ( elemType != tyI8 )
+            if ( elemType != typ.i8 )
             {
                 return rewriter.notifyMatchFailure(
                     op, llvm::formatv( "string assignment requires i8 array.  have: {0}", elemType ) );
@@ -956,7 +945,7 @@ namespace silly
 
             int copySize = std::min( (int)numElems, (int)literalStrLen );
             mlir::LLVM::ConstantOp sizeConst =
-                rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( copySize ) );
+                rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i64, rewriter.getI64IntegerAttr( copySize ) );
 
             rewriter.create<mlir::LLVM::MemcpyOp>( loc, destPtr, globalPtr, sizeConst, rewriter.getBoolAttr( false ) );
 
@@ -965,13 +954,13 @@ namespace silly
             {
                 // Compute the offset: destPtr + literalStrLen
                 mlir::LLVM::ConstantOp offsetConst =
-                    rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( literalStrLen ) );
+                    rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i64, rewriter.getI64IntegerAttr( literalStrLen ) );
                 mlir::LLVM::GEPOp destPtrOffset = rewriter.create<mlir::LLVM::GEPOp>(
                     loc, destPtr.getType(), elemType, destPtr, mlir::ValueRange{ offsetConst } );
 
                 // Compute the number of bytes to zero: numElems - literalStrLen
                 mlir::LLVM::ConstantOp remainingSize = rewriter.create<mlir::LLVM::ConstantOp>(
-                    loc, tyI64, rewriter.getI64IntegerAttr( numElems - literalStrLen ) );
+                    loc, typ.i64, rewriter.getI64IntegerAttr( numElems - literalStrLen ) );
 
                 // Set remaining bytes to zero
                 rewriter.create<mlir::LLVM::MemsetOp>( loc, destPtrOffset, getI8zero( loc, rewriter ), remainingSize,
@@ -1010,7 +999,7 @@ namespace silly
             }
 
             // Cast index to i64 for LLVM dialect GEP indexing
-            mlir::Value idxI64 = rewriter.create<mlir::arith::IndexCastOp>( loc, tyI64, indexVal );
+            mlir::Value idxI64 = rewriter.create<mlir::arith::IndexCastOp>( loc, typ.i64, indexVal );
 
             mlir::Type elemPtrTy = destBasePtr.getType();
 
@@ -1022,7 +1011,7 @@ namespace silly
             // Nice to have (untested): Runtime bounds check -- make this a compile option?
             // if (numElems > 0) {
             //     mlir::Value sizeVal = rewriter.create<mlir::LLVM::ConstantOp>(
-            //         loc, tyI64, rewriter.getI64IntegerAttr(numElems));
+            //         loc, typ.i64, rewriter.getI64IntegerAttr(numElems));
             //     mlir::Value inBounds = rewriter.create<mlir::LLVM::ICmpOp>(
             //         loc, mlir::LLVM::ICmpPredicate::ult, idxI64, sizeVal);
             //
@@ -1052,10 +1041,10 @@ namespace silly
                                            // numbers in gdb don't bounce around.  The re-ordering that I now do in the
                                            // DeclareOp builder is messing things up.
 
-        mlir::Value i8Ptr = rewriter.create<mlir::LLVM::BitcastOp>( loc, tyPtr, allocaOp );
+        mlir::Value i8Ptr = rewriter.create<mlir::LLVM::BitcastOp>( loc, typ.ptr, allocaOp );
 
         mlir::Value fillVal =
-            rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI8, rewriter.getI8IntegerAttr( driverState.fillValue ) );
+            rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i8, rewriter.getI8IntegerAttr( driverState.fillValue ) );
 
         rewriter.create<mlir::LLVM::MemsetOp>( loc, i8Ptr, fillVal, bytesVal, rewriter.getBoolAttr( false ) );
     }

@@ -96,20 +96,20 @@ namespace silly
                                                   arraySize, shape.size() ) );
                 }
 
-                sizeVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.tyI64,
+                sizeVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.typ.i64,
                                                                    rewriter.getI64IntegerAttr( arraySize ) );
                 bytesVal = rewriter.create<mlir::LLVM::ConstantOp>(
-                    loc, lState.tyI64, rewriter.getI64IntegerAttr( arraySize * elemSizeInBytes ) );
+                    loc, lState.typ.i64, rewriter.getI64IntegerAttr( arraySize * elemSizeInBytes ) );
             }
             else
             {
                 sizeVal = lState.getI64one( loc, rewriter );
-                bytesVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.tyI64,
+                bytesVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.typ.i64,
                                                                     rewriter.getI64IntegerAttr( elemSizeInBytes ) );
             }
 
             mlir::LLVM::AllocaOp allocaOp =
-                rewriter.create<mlir::LLVM::AllocaOp>( loc, lState.tyPtr, elemType, sizeVal, alignment );
+                rewriter.create<mlir::LLVM::AllocaOp>( loc, lState.typ.ptr, elemType, sizeVal, alignment );
 
             auto init = declareOp.getInitializers();
             if ( init.size() )
@@ -122,7 +122,7 @@ namespace silly
                     for ( size_t i = 0; i < init.size(); ++i )
                     {
                         mlir::Value iVal64 = rewriter.create<mlir::LLVM::ConstantOp>(
-                            loc, lState.tyI64, rewriter.getI64IntegerAttr( static_cast<int64_t>( i ) ) );
+                            loc, lState.typ.i64, rewriter.getI64IntegerAttr( static_cast<int64_t>( i ) ) );
 
                         mlir::IndexType indexTy = rewriter.getIndexType();
                         mlir::Value idxIndex = rewriter.create<mlir::arith::IndexCastOp>( loc, indexTy, iVal64 );
@@ -292,7 +292,7 @@ namespace silly
             mlir::Type elemType = allocaOp.getElemType();
             mlir::Value load;
 
-            if ( loadOp.getResult().getType() == lState.tyPtr )
+            if ( loadOp.getResult().getType() == lState.typ.ptr )
             {
                 load = allocaOp.getResult();
             }
@@ -328,7 +328,7 @@ namespace silly
                     }
 
                     // Cast index to i64 for LLVM GEP
-                    mlir::Value idxI64 = rewriter.create<mlir::arith::IndexCastOp>( loc, lState.tyI64, indexVal );
+                    mlir::Value idxI64 = rewriter.create<mlir::arith::IndexCastOp>( loc, lState.typ.i64, indexVal );
 
                     // GEP to element
                     mlir::Value elemPtr =
@@ -505,16 +505,16 @@ namespace silly
                 }
 
                 mlir::LLVM::ConstantOp indexVal =
-                    rewriter.create<mlir::LLVM::ConstantOp>( argLoc, lState.tyI64, rewriter.getI64IntegerAttr( i ) );
+                    rewriter.create<mlir::LLVM::ConstantOp>( argLoc, lState.typ.i64, rewriter.getI64IntegerAttr( i ) );
                 mlir::LLVM::GEPOp slotPtr = rewriter.create<mlir::LLVM::GEPOp>(
-                    argLoc, lState.tyPtr, lState.printArgStructTy, arrayAlloca, mlir::ValueRange{ indexVal } );
+                    argLoc, lState.typ.ptr, lState.printArgStructTy, arrayAlloca, mlir::ValueRange{ indexVal } );
 
                 rewriter.create<mlir::LLVM::StoreOp>( argLoc, argStruct, slotPtr );
             }
 
             // Final call
             mlir::LLVM::ConstantOp numArgsConst =
-                rewriter.create<mlir::LLVM::ConstantOp>( argLoc, lState.tyI32, rewriter.getI32IntegerAttr( numArgs ) );
+                rewriter.create<mlir::LLVM::ConstantOp>( argLoc, lState.typ.i32, rewriter.getI32IntegerAttr( numArgs ) );
 
             rewriter.create<mlir::func::CallOp>( loc, mlir::TypeRange{}, "__silly_print",
                                                  mlir::ValueRange{ numArgsConst, arrayAlloca } );
@@ -626,11 +626,11 @@ namespace silly
             else if ( mlir::FloatType resultf = mlir::dyn_cast<mlir::FloatType>( result.getType() ) )
             {
                 mlir::LLVM::ConstantOp zero;
-                if ( resultf == lState.tyF32 )
+                if ( resultf == lState.typ.f32 )
                 {
                     zero = lState.getF32zero( loc, rewriter );
                 }
-                else if ( resultf == lState.tyF64 )
+                else if ( resultf == lState.typ.f64 )
                 {
                     zero = lState.getF64zero( loc, rewriter );
                 }
@@ -918,7 +918,7 @@ namespace silly
             // convert integer type to float
             if ( lTyI && rTyF )
             {
-                if ( lTyI == lState.tyI1 )
+                if ( lTyI == lState.typ.i1 )
                 {
                     lhs = rewriter.create<mlir::arith::UIToFPOp>( loc, rTyF, lhs );
                 }
@@ -929,7 +929,7 @@ namespace silly
             }
             else if ( rTyI && lTyF )
             {
-                if ( rTyI == lState.tyI1 )
+                if ( rTyI == lState.typ.i1 )
                 {
                     rhs = rewriter.create<mlir::arith::UIToFPOp>( loc, lTyF, rhs );
                 }

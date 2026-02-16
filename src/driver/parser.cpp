@@ -22,9 +22,7 @@
 
 #include "SillyDialect.hpp"
 #include "parser.hpp"
-
-/// Implicit function declaration for the body of a silly language program.
-#define ENTRY_SYMBOL_NAME "main"
+#include "helper.hpp"
 
 /// --debug- class for the parser
 #define DEBUG_TYPE "silly-parser"
@@ -32,122 +30,13 @@
 namespace silly
 {
     //--------------------------------------------------------------------------
-    // DialectCtx members
-    DialectCtx::DialectCtx()
-    {
-        context.getOrLoadDialect<silly::SillyDialect>();
-        context.getOrLoadDialect<mlir::func::FuncDialect>();
-        context.getOrLoadDialect<mlir::arith::ArithDialect>();
-        context.getOrLoadDialect<mlir::memref::MemRefDialect>();
-        context.getOrLoadDialect<mlir::LLVM::LLVMDialect>();
-        context.getOrLoadDialect<mlir::scf::SCFDialect>();
-    }
-
-    //--------------------------------------------------------------------------
-    // DriverState members
-
-    void DriverState::emitInternalError( mlir::Location loc, const char *compilerfile, unsigned compilerline,
-                                         const char *compilerfunc, const std::string &message,
-                                         const std::string &programFuncName )
-    {
-        emitUserError( loc, std::format( "{}:{}:{}: {}", compilerfile, compilerline, compilerfunc, message ),
-                       programFuncName, true );
-    }
-
-    void DriverState::emitUserError( mlir::Location loc, const std::string &message, const std::string &funcName,
-                                     bool internal )
-    {
-        bool inColor = isatty( fileno( stderr ) ) && colorErrors;
-        const char *RED = inColor ? "\033[1;31m" : "";
-        const char *CYAN = inColor ? "\033[0;36m" : "";
-        const char *RESET = inColor ? "\033[0m" : "";
-
-        if ( internal && errorCount )
-        {
-            errorCount++;
-            return;
-        }
-
-        static std::string lastFunc{};
-        auto fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc );
-        if ( !fileLoc )
-        {
-            llvm::errs() << std::format( "{}{}error: {}{}\n", RED, internal ? "internal " : "", RESET, message );
-        }
-
-        std::string filename = fileLoc.getFilename().str();
-        unsigned line = fileLoc.getLine();
-        unsigned col = fileLoc.getColumn();
-
-        if ( ( funcName != "" ) && ( funcName != ENTRY_SYMBOL_NAME ) && ( funcName != lastFunc ) )
-        {
-            llvm::errs() << std::format( "{}: In function ‘{}’:\n", filename, funcName );
-        }
-        lastFunc = funcName;
-
-        // Print: filename:line:col: error: message
-        llvm::errs() << std::format( "{}{}:{}:{}: {}{}error: {}{}\n", CYAN, filename, line, col, RED,
-                                     internal ? "internal " : "", RESET, message );
-
-        // Try to read and display the source line
-        if ( !filename.empty() || !filename.empty() )
-        {
-            std::string path = filename.empty() ? filename : filename;
-
-            if ( std::ifstream file{ path } )
-            {
-                std::string currentLine;
-                unsigned currentLineNum = 0;
-
-                while ( std::getline( file, currentLine ) )
-                {
-                    currentLineNum++;
-                    if ( currentLineNum == line )
-                    {
-                        /* Example output:
-                            5 | FOR(INT32 i:(0,2)){PRINT i;}
-                              |     ^
-                         */
-                        // `{:>{}}` - the `^` character, right-aligned to `col` width
-                        llvm::errs() << std::format(
-                            "{0:5} | {1}\n"
-                            "      | {2:>{3}}\n",
-                            line, currentLine, "^", col );
-                        break;
-                    }
-                }
-            }
-        }
-
-        errorCount++;
-    }
-
-    //--------------------------------------------------------------------------
-    // MlirTypeCache members
-
-    void MlirTypeCache::initialize( mlir::OpBuilder &builder, mlir::MLIRContext *ctx )
-    {
-        i1 = builder.getI1Type();
-        i8 = builder.getI8Type();
-        i16 = builder.getI16Type();
-        i32 = builder.getI32Type();
-        i64 = builder.getI64Type();
-
-        f32 = builder.getF32Type();
-        f64 = builder.getF64Type();
-
-        voidT = mlir::LLVM::LLVMVoidType::get( ctx );
-        ptr = mlir::LLVM::LLVMPointerType::get( ctx );
-    }
-
-    //--------------------------------------------------------------------------
-    // PerFunctionState members
-    PerFunctionState::PerFunctionState()
+    // ParserPerFunctionState members
+    ParserPerFunctionState::ParserPerFunctionState()
         : lastDeclareOp{}, op{}, inductionVariables{}, parameters{}, variables{}, insertionPointStack{}
     {
     }
 
-    inline mlir::Value PerFunctionState::searchForInduction( const std::string &varName )
+    inline mlir::Value ParserPerFunctionState::searchForInduction( const std::string &varName )
     {
         mlir::Value r{};
 
@@ -163,23 +52,23 @@ namespace silly
         return r;
     }
 
-    inline void PerFunctionState::pushInductionVariable( const std::string &varName, mlir::Value i )
+    inline void ParserPerFunctionState::pushInductionVariable( const std::string &varName, mlir::Value i )
     {
         inductionVariables.emplace_back( varName, i );
     }
 
-    inline void PerFunctionState::popInductionVariable()
+    inline void ParserPerFunctionState::popInductionVariable()
     {
         inductionVariables.pop_back();
     }
 
-    inline mlir::Value PerFunctionState::searchForParameter( const std::string &varName )
+    inline mlir::Value ParserPerFunctionState::searchForParameter( const std::string &varName )
     {
         auto it = parameters.find( varName );
         return ( it != parameters.end() ) ? it->second : nullptr;
     }
 
-    inline mlir::Value PerFunctionState::searchForVariable( const std::string &varName )
+    inline mlir::Value ParserPerFunctionState::searchForVariable( const std::string &varName )
     {
         for ( auto &vars : variables )
         {
@@ -194,12 +83,12 @@ namespace silly
         return nullptr;
     }
 
-    inline void PerFunctionState::recordParameterValue( const std::string &varName, mlir::Value i )
+    inline void ParserPerFunctionState::recordParameterValue( const std::string &varName, mlir::Value i )
     {
         parameters[varName] = i;
     }
 
-    inline void PerFunctionState::recordVariableValue( const std::string &varName, mlir::Value i )
+    inline void ParserPerFunctionState::recordVariableValue( const std::string &varName, mlir::Value i )
     {
         if ( variables.size() == 0 )
         {
@@ -209,77 +98,16 @@ namespace silly
         variables.back()[varName] = i;
     }
 
-    inline void PerFunctionState::startScope()
+    inline void ParserPerFunctionState::startScope()
     {
         variables.push_back( {} );
     }
 
-    inline void PerFunctionState::endScope()
+    inline void ParserPerFunctionState::endScope()
     {
         if ( variables.size() )
         {
             variables.pop_back();
-        }
-    }
-
-    //--------------------------------------------------------------------------
-    // non-member function helpers
-
-    /// A string representation of an mlir::Type
-    inline std::string mlirTypeToString( mlir::Type t )
-    {
-        std::string s;
-        llvm::raw_string_ostream( s ) << t;
-        return s;
-    }
-
-    inline std::string formatLocation( mlir::Location loc )
-    {
-        if ( mlir::FileLineColLoc fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc ) )
-        {
-            return std::format( "{}:{}:{}: ", fileLoc.getFilename().str(), fileLoc.getLine(), fileLoc.getColumn() );
-        }
-        return "";
-    }
-
-    mlir::Type biggestTypeOf( mlir::Type ty1, mlir::Type ty2 )
-    {
-        if ( ty1 == ty2 )
-        {
-            return ty1;
-        }
-        else if ( ty1.isF64() )
-        {
-            return ty1;
-        }
-        else if ( ty2.isF64() )
-        {
-            return ty2;
-        }
-        else if ( ty1.isF32() )
-        {
-            return ty1;
-        }
-        else if ( ty2.isF32() )
-        {
-            return ty2;
-        }
-        else
-        {
-            mlir::IntegerType ity1 = mlir::cast<mlir::IntegerType>( ty1 );
-            mlir::IntegerType ity2 = mlir::cast<mlir::IntegerType>( ty2 );
-
-            unsigned w1 = ity1.getWidth();
-            unsigned w2 = ity2.getWidth();
-
-            if ( w1 > w2 )
-            {
-                return ty1;
-            }
-            else
-            {
-                return ty2;
-            }
         }
     }
 
@@ -299,11 +127,11 @@ namespace silly
         typ.initialize( builder, ctx );
     }
 
-    inline PerFunctionState &ParseListener::funcState( const std::string &funcName )
+    inline ParserPerFunctionState &ParseListener::funcState( const std::string &funcName )
     {
         if ( !functionStateMap.contains( funcName ) )
         {
-            functionStateMap[funcName] = std::make_unique<PerFunctionState>();
+            functionStateMap[funcName] = std::make_unique<ParserPerFunctionState>();
         }
 
         auto &p = functionStateMap[funcName];
@@ -441,7 +269,7 @@ namespace silly
     bool ParseListener::isVariableDeclared( const std::string &varName )
     {
         // Get the single scope
-        PerFunctionState &f = funcState( currentFuncName );
+        ParserPerFunctionState &f = funcState( currentFuncName );
 
         mlir::Value v = f.searchForVariable( varName );
         return ( v != nullptr ) ? true : false;
@@ -490,7 +318,7 @@ namespace silly
 
         mlir::OpBuilder::InsertPoint savedIP = builder.saveInsertionPoint();
 
-        PerFunctionState &f = funcState( currentFuncName );
+        ParserPerFunctionState &f = funcState( currentFuncName );
 
         mlir::Value v = f.searchForVariable( varName );
         if ( v )
@@ -652,7 +480,7 @@ namespace silly
     silly::DeclareOp ParseListener::lookupDeclareForVar( mlir::Location loc, const std::string &varName )
     {
         silly::DeclareOp declareOp{};
-        PerFunctionState &f = funcState( currentFuncName );
+        ParserPerFunctionState &f = funcState( currentFuncName );
 
         mlir::Value var = f.searchForVariable( varName );
         if ( !var )
@@ -711,7 +539,7 @@ namespace silly
         mlir::Block &block = *funcOp.addEntryBlock();
         builder.setInsertionPointToStart( &block );
 
-        PerFunctionState &f = funcState( funcName );
+        ParserPerFunctionState &f = funcState( funcName );
 
         for ( size_t i = 0; i < funcOp.getNumArguments() && i < paramNames.size(); ++i )
         {
@@ -746,13 +574,13 @@ namespace silly
 
     void ParseListener::enterScopedStatements( SillyParser::ScopedStatementsContext *ctx )
     {
-        PerFunctionState &f = funcState( currentFuncName );
+        ParserPerFunctionState &f = funcState( currentFuncName );
         f.startScope();
     }
 
     void ParseListener::exitScopedStatements( SillyParser::ScopedStatementsContext *ctx )
     {
-        PerFunctionState &f = funcState( currentFuncName );
+        ParserPerFunctionState &f = funcState( currentFuncName );
         f.endScope();
     }
 
@@ -767,7 +595,7 @@ namespace silly
         }
         else
         {
-            PerFunctionState &f = funcState( currentFuncName );
+            ParserPerFunctionState &f = funcState( currentFuncName );
             mlir::func::FuncOp funcOp = f.getFuncOp();
             llvm::ArrayRef<mlir::Type> returnTypeArray = funcOp.getFunctionType().getResults();
 
@@ -917,7 +745,7 @@ namespace silly
         tNode *id = ctx->IDENTIFIER();
         assert( id );
         std::string funcName = id->getText();
-        PerFunctionState &f = funcState( funcName );
+        ParserPerFunctionState &f = funcState( funcName );
         mlir::func::FuncOp funcOp = f.getFuncOp();
         if ( !funcOp )
         {
@@ -1146,7 +974,7 @@ namespace silly
 
         if ( saveIP )
         {
-            PerFunctionState &f = funcState( currentFuncName );
+            ParserPerFunctionState &f = funcState( currentFuncName );
             f.pushToInsertionPointStack( ifOp.getOperation() );
         }
 
@@ -1212,25 +1040,25 @@ namespace silly
         createIf( loc, ctx->expression(), false );
     }
 
-    void PerFunctionState::pushToInsertionPointStack( mlir::Operation *op )
+    void ParserPerFunctionState::pushToInsertionPointStack( mlir::Operation *op )
     {
         insertionPointStack.push_back( op );
     }
 
-    void PerFunctionState::popFromInsertionPointStack( mlir::OpBuilder &builder )
+    void ParserPerFunctionState::popFromInsertionPointStack( mlir::OpBuilder &builder )
     {
         builder.setInsertionPointAfter( insertionPointStack.back() );
         insertionPointStack.pop_back();
     }
 
-    bool PerFunctionState::haveInsertionPointStack()
+    bool ParserPerFunctionState::haveInsertionPointStack()
     {
         return ( insertionPointStack.size() != 0 );
     }
 
     void ParseListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx )
     {
-        PerFunctionState &f = funcState( currentFuncName );
+        ParserPerFunctionState &f = funcState( currentFuncName );
         f.popFromInsertionPointStack( builder );
     }
 
@@ -1271,7 +1099,7 @@ namespace silly
             return;
         }
 
-        PerFunctionState &f = funcState( currentFuncName );
+        ParserPerFunctionState &f = funcState( currentFuncName );
         mlir::Value p = f.searchForInduction( varName );
         if ( p )
         {
@@ -1358,7 +1186,7 @@ namespace silly
     void ParseListener::exitForStatement( SillyParser::ForStatementContext *ctx )
     {
         assert( ctx );
-        PerFunctionState &f = funcState( currentFuncName );
+        ParserPerFunctionState &f = funcState( currentFuncName );
         if ( f.haveInsertionPointStack() )
         {
             f.popFromInsertionPointStack( builder );
@@ -2235,7 +2063,7 @@ namespace silly
             assert( variableNode );
             std::string varName = variableNode->getText();
 
-            PerFunctionState &f = funcState( currentFuncName );
+            ParserPerFunctionState &f = funcState( currentFuncName );
             mlir::Value iVar = f.searchForInduction( varName );
             mlir::Value pVar = f.searchForParameter( varName );
             if ( iVar )

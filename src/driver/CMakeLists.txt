@@ -19,6 +19,9 @@ add_executable(silly
   parser.cpp
   helper.cpp
   LoweringContext.cpp
+  DialectContext.cpp
+  DriverState.cpp
+  MlirTypeCache.cpp
   ${ANTLR_SOURCES}
 )
 
