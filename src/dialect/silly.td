@@ -147,9 +147,6 @@ def Silly_PrintOp : Op<Silly_Dialect, "print"> {
   let arguments = (ins I32:$flags, Variadic<AnyTypeOf<[AnyInteger, AnyFloat, LLVMPointerType]>>:$inputs);
 
   let results = (outs);
-
-  // My old custom print assembly format for a single value (also before the flags were introduced.)
-  //let assemblyFormat = "$input `:` type($input) attr-dict";
 }
 
 def Silly_GetOp : Op<Silly_Dialect, "get"> {
@@ -243,7 +240,6 @@ def Silly_NegOp : Op<Silly_Dialect, "negate"> {
   let summary = "Negation operation (e.g., -x)";
   let arguments = (ins Silly_IntOrFloat:$lhs);
   let results = (outs Silly_IntOrFloat:$result);
-  //let assemblyFormat = "`-` $lhs `:` type($lhs) attr-dict";
 }
 
 // vim: et ts=2 sw=2

@@ -1,5 +1,5 @@
 ///
-/// @file printflags.hpp
+/// @file PrintFlags.hpp
 /// @brief print related types and enums, shared between builder, lowering and runtime.
 /// @author  Peeter Joot <peeterjoot@pm.me>
 ///

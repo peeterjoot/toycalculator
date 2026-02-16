@@ -1,5 +1,5 @@
 ///
-/// @file    lowering.hpp
+/// @file    createSillyToLLVMLoweringPass.hpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Glue code for MLIR lowering to LLVM-IR.
 ///
@@ -7,7 +7,10 @@
 
 #include <mlir/Pass/Pass.h>
 
-#include "driver.hpp"
+namespace silly
+{
+    class DriverState;
+}
 
 namespace mlir
 {

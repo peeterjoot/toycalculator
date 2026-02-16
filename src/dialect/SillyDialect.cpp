@@ -50,22 +50,6 @@ namespace silly
         // llvm::errs() << "All registrations complete. Testing type print...\n";
     }
 
-#if 0
-    // not needed for now.  was work around for:
-    //
-    // << (() ? "static-string" : ty)
-    //
-    // which bombed due to type mismatch, not because Type isn't streamable
-    //
-    static llvm::SmallString<32> typeToString( mlir::Type type )
-    {
-        llvm::SmallString<32> buf;
-        llvm::raw_svector_ostream os( buf );
-        type.print( os );
-        return buf;
-    }
-#endif
-
     /// Verifier for silly::DeclareOp
     mlir::LogicalResult DeclareOp::verify()
     {

@@ -98,6 +98,9 @@
 - Removed `internal=true/false` boolean parameter from most error message calls
 - Cleaner separation between user errors and compiler bugs
 
+### Code structure
+- split out LoweringContext.[hc]pp, helper.[hc]pp, and InsertionPointGuard.hpp from lowering.cpp
+
 ## Testing & Quality
 
 ### Test Coverage Expansion

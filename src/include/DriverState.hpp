@@ -1,4 +1,4 @@
-/// @file    driver.hpp
+/// @file    DriverState.hpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   State to pass between driver and lowering pass.
 #pragma once

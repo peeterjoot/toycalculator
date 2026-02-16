@@ -39,8 +39,8 @@
 #include "SillyDialect.hpp"
 #include "SillyLexer.h"
 #include "SillyPasses.hpp"
-#include "driver.hpp"
-#include "lowering.hpp"
+#include "DriverState.hpp"
+#include "createSillyToLLVMLoweringPass.hpp"
 #include "parser.hpp"
 
 /// --debug- class for the driver

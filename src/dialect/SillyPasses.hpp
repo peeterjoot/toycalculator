@@ -7,8 +7,12 @@
 
 #include <mlir/Pass/Pass.h>
 
-#include "driver.hpp"
-#include "lowering.hpp"
+#include "createSillyToLLVMLoweringPass.hpp"
+
+namespace silly
+{
+    class DriverState;
+}
 
 namespace mlir
 {

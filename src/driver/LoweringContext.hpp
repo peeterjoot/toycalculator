@@ -1,5 +1,5 @@
 ///
-/// @file loweringContext.hpp
+/// @file LoweringContext.hpp
 /// @author Peeter Joot <peeterjoot@pm.me>
 /// @brief Helper class for lowering the MLIR silly dialect to the mlir LLVM dialect.
 ///
@@ -11,8 +11,8 @@
 #include <mlir/Dialect/LLVMIR/LLVMTypes.h>               // LLVMPointerType, ...
 #include <mlir/IR/Location.h>                            // FileLineColLoc
 
+#include "PrintFlags.hpp"
 #include "SillyDialect.hpp"
-#include "printflags.hpp"
 
 namespace silly
 {
@@ -170,7 +170,7 @@ namespace silly
         inline mlir::LLVM::ConstantOp getF64zero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter );
 
         /// mlir::LLVM::FRemOp lowers to fmod (at least on some targets), so -lm will be required at link time.
-        inline void markMathLibRequired();
+        void markMathLibRequired();
 
        private:
         /// Returns the MLIR context.
@@ -297,6 +297,99 @@ namespace silly
         /// Debug type for unknown/unsupported types.
         mlir::LLVM::DITypeAttr diUNKNOWN;
     };
+
+    inline mlir::LLVM::ConstantOp LoweringContext::getI64one( mlir::Location loc,
+                                                              mlir::ConversionPatternRewriter& rewriter )
+    {
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( 1 ) );
+    }
+
+    inline mlir::LLVM::ConstantOp LoweringContext::getF32zero( mlir::Location loc,
+                                                               mlir::ConversionPatternRewriter& rewriter )
+    {
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyF32, rewriter.getF32FloatAttr( 0 ) );
+    }
+
+    inline mlir::LLVM::ConstantOp LoweringContext::getF64zero( mlir::Location loc,
+                                                               mlir::ConversionPatternRewriter& rewriter )
+    {
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyF64, rewriter.getF64FloatAttr( 0 ) );
+    }
+
+    inline mlir::MLIRContext* LoweringContext::getContext()
+    {
+        return builder.getContext();
+    }
+
+    inline bool LoweringContext::isTypeFloat( mlir::Type ty ) const
+    {
+        return ( ( ty == tyF32 ) || ( ty == tyF64 ) );
+    }
+
+    inline mlir::LLVM::ConstantOp LoweringContext::getI8zero( mlir::Location loc,
+                                                              mlir::ConversionPatternRewriter& rewriter )
+    {
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI8, rewriter.getI8IntegerAttr( 0 ) );
+    }
+
+    inline mlir::LLVM::ConstantOp LoweringContext::getI16zero( mlir::Location loc,
+                                                               mlir::ConversionPatternRewriter& rewriter )
+    {
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI16, rewriter.getI16IntegerAttr( 0 ) );
+    }
+
+    inline mlir::LLVM::ConstantOp LoweringContext::getI32zero( mlir::Location loc,
+                                                               mlir::ConversionPatternRewriter& rewriter )
+    {
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI32, rewriter.getI32IntegerAttr( 0 ) );
+    }
+
+    inline mlir::LLVM::ConstantOp LoweringContext::getI64zero( mlir::Location loc,
+                                                               mlir::ConversionPatternRewriter& rewriter )
+    {
+        return rewriter.create<mlir::LLVM::ConstantOp>( loc, tyI64, rewriter.getI64IntegerAttr( 0 ) );
+    }
+
+    /// Returns a zero constant for the given integer width (i8, i16, i32, i64).
+    inline mlir::LogicalResult LoweringContext::getIzero( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
+                                                          mlir::Operation* op, unsigned width,
+                                                          mlir::LLVM::ConstantOp& output )
+    {
+        switch ( width )
+        {
+            case 8:
+            {
+                output = getI8zero( loc, rewriter );
+                break;
+            }
+            case 16:
+            {
+                output = getI16zero( loc, rewriter );
+                break;
+            }
+            case 32:
+            {
+                output = getI32zero( loc, rewriter );
+                break;
+            }
+            case 64:
+            {
+                output = getI64zero( loc, rewriter );
+                break;
+            }
+            default:
+            {
+                return rewriter.notifyMatchFailure( op, llvm::formatv( "Unexpected integer size: {0}", width ) );
+            }
+        }
+
+        return mlir::success();
+    }
+
+    inline mlir::LLVMTypeConverter& LoweringContext::getTypeConverter()
+    {
+        return typeConverter;
+    }
 }    // namespace silly
 
 // vim: et ts=4 sw=4

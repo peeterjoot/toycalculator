@@ -9,7 +9,7 @@
 #include <cstdlib>
 #include <cstring>
 
-#include "printflags.hpp"
+#include "PrintFlags.hpp"
 
 extern "C"
 {

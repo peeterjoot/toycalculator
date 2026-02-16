@@ -23,8 +23,8 @@
 
 #include "SillyBaseListener.h"
 #include "SillyDialect.hpp"
-#include "driver.hpp"
-#include "printflags.hpp"
+#include "DriverState.hpp"
+#include "PrintFlags.hpp"
 
 namespace silly
 {

@@ -3,16 +3,16 @@
 ### running list of other issues and ideas, semi-randomly ordered
 ----------------------------------
 
+#### misc
+* tests/endtoend/expressions/modfloat.silly broken with mix of float32/float64's
+* MlirTypeCache should be moved out of parser (have almost the same thing in LoweringContext.)
+* Move the standalone functions in parser.cpp to helper module.
+* Run include-what-you-use on lowering.cpp (now that LoweringContext.cpp has been split out.)
+
 #### Driver
 
 * don't think that driver is removing outputs before trying to recreate, so if there is an error after success, it is not visible.
 * any driver error should delete any files opened (.o, .s, .ll, .mlir, ...) -- do I need callbacks, or is LLVM taking care of that?
-* consider OO structure for driver.cpp
-* tried to use mlir::OwningOpRef<mlir::ModuleOp> for ParseListener::getModule (and the mod op it contains), but
-  couldn't get it to work and reverted all such experimentation.  This means that I leak the mlir::ModuleOp
-  and it only gets freed implicitly on return from main.  That's clumsy, and would probably show up as
-  a valgrind leak.  Revisit this separate from trying to add the .mlir read+parse.
-* add testing for: .o inputs to the driver; silly -c empty.silly ; silly empty.o
 * implement -o option for the exe name.
 * If user doesn't specify -c, then the created .o file should go to a /tmp/ or TMPDIR path allocated using mkstemps, and removed post link.
 
@@ -36,8 +36,16 @@
 * implement error numbers/classes.  give the option of also showing suppressed internal errors.
 * implement gcc like limit on the number of errors.
 
+#### Driver
+
+* add testing for: .o inputs to the driver; silly -c empty.silly ; silly empty.o
+* consider OO structure for driver.cpp
+* tried to use mlir::OwningOpRef<mlir::ModuleOp> for ParseListener::getModule (and the mod op it contains), but
+  couldn't get it to work and reverted all such experimentation.  This means that I leak the mlir::ModuleOp
+  and it only gets freed implicitly on return from main.  That's clumsy, and would probably show up as
+  a valgrind leak.  Revisit this separate from trying to add the .mlir read+parse.
+
 #### misc
-* tests/endtoend/expressions/modfloat.silly broken with mix of float32/float64's
 * Have an effective lexical scope for loop variables, but am emitting DI for them at a function scope.  This will probably do something weird if a loop variable is used in multiple loops.
 * Grammar allows for function declared in a function, now prohibited (`error_nested.silly`).  This wouldn't be too hard to fix, see notes in parser.cpp (enterFunction), however, scoping rules for function lookup would have to be decided.
 * Forward declarations for functions?
