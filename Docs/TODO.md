@@ -3,23 +3,6 @@
 ### running list of other issues and ideas, semi-randomly ordered
 ----------------------------------
 
-
-#### Lowering
-
-* Attempted introducing a type convertor to DeclareOp and DebugNameOp lowering, but couldn't get it to work (i.e.
-  all of DebugNameOp, LoadOp, AssignOp reference the DeclareOp, but once lowered, want the DeclareOp SSA value to be
-  swapped out for the alloca SSA value).  Couldn't get that to work, and have reverted to an unordered_map (but now
-  keyed on the DeclareOp's Operation*, not a function-name::variable-name pair, as was the case for the symbol based
-  implementation.
-
-  Followup on that idea -- it makes more sense to use existing infrastructure.
-
-#### Grammar
-
-* Add MODULE, MAIN, INTERFACE statements.  MODULE .silly's should have only FUNCTION.  INTERFACE to have only prototypes.
-* Add FUNCTION declaration syntax (for use in external MODULE objects.)
-* Now that func.return is used -- does func lowering take care of early return automatically?  Would have to lift restriction in the grammar if that is the case.
-
 #### Driver
 
 * don't think that driver is removing outputs before trying to recreate, so if there is an error after success, it is not visible.
@@ -32,6 +15,21 @@
 * add testing for: .o inputs to the driver; silly -c empty.silly ; silly empty.o
 * implement -o option for the exe name.
 * If user doesn't specify -c, then the created .o file should go to a /tmp/ or TMPDIR path allocated using mkstemps, and removed post link.
+
+#### Grammar
+
+* Add MODULE, MAIN, INTERFACE statements.  MODULE .silly's should have only FUNCTION.  INTERFACE to have only prototypes.
+* Add FUNCTION declaration syntax (for use in external MODULE objects.)
+
+#### Lowering
+
+* Attempted introducing a type convertor to DeclareOp and DebugNameOp lowering, but couldn't get it to work (i.e.
+  all of DebugNameOp, LoadOp, AssignOp reference the DeclareOp, but once lowered, want the DeclareOp SSA value to be
+  swapped out for the alloca SSA value).  Couldn't get that to work, and have reverted to an unordered_map (but now
+  keyed on the DeclareOp's Operation*, not a function-name::variable-name pair, as was the case for the symbol based
+  implementation.
+
+  Followup on that idea -- it makes more sense to use existing infrastructure.
 
 #### diagnostics
 
