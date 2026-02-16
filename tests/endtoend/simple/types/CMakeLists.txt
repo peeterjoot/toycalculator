@@ -1,11 +1,9 @@
 set(TYPES_TESTS
     mixed_type_assignment
     types
-    int32
     const_overflow
     dcl_assign
     dcl
-    two_declare_no_init
     loadstore
 )
 

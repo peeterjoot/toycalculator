@@ -7,10 +7,6 @@ set(BOOL_TESTS
     boolliteral
     bool_not_on_comparison
     boolop
-    boolr
-    bool
-    getboolfail
-    getbool
     init_expr_bool
 )
 

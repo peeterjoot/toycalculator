@@ -78,8 +78,7 @@ endif()
 #------------------------------------------------------------------------------
 enable_testing()
 
-add_subdirectory(tests/endtoend)
-add_subdirectory(tests/dialect)
+add_subdirectory(tests)
 add_subdirectory(src)
 
 #------------------------------------------------------------------------------

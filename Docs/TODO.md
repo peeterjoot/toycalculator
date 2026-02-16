@@ -7,7 +7,7 @@
 * tests/endtoend/expressions/modfloat.silly broken with mix of float32/float64's
 * MlirTypeCache should be moved out of parser (have almost the same thing in LoweringContext.)
 * Move the standalone functions in parser.cpp to helper module.
-* Run include-what-you-use on lowering.cpp (now that LoweringContext.cpp has been split out.)
+* Run include-what-you-use on lowering.cpp (now that LoweringContext.cpp has been split out.)  Will probably have to build it.
 
 #### Driver
 

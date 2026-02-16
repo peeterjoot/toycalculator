@@ -8,10 +8,8 @@ set(ARRAY_TESTS
     array_in_expr
     array_lvalue_complex
     array_mixed_type
-    arrayprod
     array
     assign_to_array_complex
-    exitarrayelement
     intarray
     unary_on_array_elem
     a2

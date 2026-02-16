@@ -145,7 +145,7 @@ if ( !defined $outdir )
 
 if ( $clean )
 {
-    system( qq(rm -rf $outdir) );
+    verbose_system( qq(rm -rf $outdir) );
 }
 
 my %testflags = (
@@ -337,11 +337,11 @@ sub runone
         $source = "$stem.silly";
     }
 
-    system("mkdir -p $outdir ; rm -f ${outdir}/${stem}.compile.out ${outdir}/${stem}.ll ${outdir}/${stem}.mlir ${outdir}/${stem}.o ${outdir}/${stem}.out ${outdir}/${stem}.s ${outdir}/${stem}.stderr.out ${outdir}/${stem}.dd");
+    verbose_system("mkdir -p $outdir ; rm -f ${outdir}/${stem}.compile.out ${outdir}/${stem}.ll ${outdir}/${stem}.mlir ${outdir}/${stem}.o ${outdir}/${stem}.out ${outdir}/${stem}.s ${outdir}/${stem}.stderr.out ${outdir}/${stem}.dd");
 
     my $cmd = qq(${driverpath}/silly --output-directory $outdir $source $thisflags --emit-llvm --emit-mlir > ${outdir}/$stem.compile.out 2>&1);
     my $crc = verbose_system( $cmd );
-    system("cat ${outdir}/$stem.compile.out");
+    verbose_system("cat ${outdir}/$stem.compile.out");
     if ( defined $expected_compile_error_message{$stem})
     {
         # check output for 'PLEASE submit a bug report' -- make that an error:

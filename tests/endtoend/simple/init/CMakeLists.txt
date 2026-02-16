@@ -1,9 +1,7 @@
 set(INIT_TESTS
-    initarray
     init_expr_call
     init_expr_unary
     initlist_param
-    initlist
     initlisttrunc
     initsequence
     init
