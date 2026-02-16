@@ -17,7 +17,6 @@
 
   Should followup on that idea later, but first finish the symbol name refactoring (which should include purging silly::ScopeOp).
 * Should be able to merge constructVariableDI+constructInductionVariableDI
-* Figure out why I have a dependency on the typeConvertor in DebugNameOp lowering (see for example: tests/endtoend/array/array_elem_as_arg.silly)
 * Am generating an alloca for PRINT, even if there is no PRINT:
 ```
     %0 = llvm.mlir.constant(0 : i64) : i64

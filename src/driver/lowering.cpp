@@ -97,8 +97,7 @@ namespace silly
     LoweringContext::LoweringContext( mlir::ModuleOp& moduleOp, silly::DriverState& ds )
         : driverState{ ds }, mod{ moduleOp }, builder{ mod.getRegion() }, typeConverter{ builder.getContext() }
     {
-#if 1 // tried to use this in DeclareOp and DebugNameOp lowering, but failed -- however, there is now an implicit dependency for this in DebugNameOp lowering (for at least parameters)
-        // Configure the type converter to handle silly::VarType -> !llvm.ptr
+#if 0    // tried to use this in DeclareOp and DebugNameOp lowering, but it didn't work.  Revisit this later.
         typeConverter.addConversion( []( silly::varType type ) -> mlir::Type
                                      { return mlir::LLVM::LLVMPointerType::get( type.getContext() ); } );
 #endif
@@ -486,9 +485,9 @@ namespace silly
 
             mlir::Location loc = builder.getUnknownLoc();
 
-            mlir::Region &funcRegion = funcOp.getBody();
+            mlir::Region& funcRegion = funcOp.getBody();
 
-            mlir::Block *entryBlock = &funcRegion.front();
+            mlir::Block* entryBlock = &funcRegion.front();
             if ( !entryBlock )
             {
                 return true;
@@ -801,7 +800,8 @@ namespace silly
 
         createSillyAbortPrototype();
         const char* name = "__silly_abort";
-        rewriter.create<mlir::func::CallOp>( loc, mlir::TypeRange{}, name, mlir::ValueRange{ sizeConst, input, lineConst } );
+        rewriter.create<mlir::func::CallOp>( loc, mlir::TypeRange{}, name,
+                                             mlir::ValueRange{ sizeConst, input, lineConst } );
     }
 
     // Returns the filled PrintArg struct value for one argument
@@ -1001,7 +1001,7 @@ namespace silly
 
         mlir::func::CallOp callOp =
             rewriter.create<mlir::func::CallOp>( loc, mlir::TypeRange{ inputType }, name, mlir::ValueRange{} );
-        mlir::Value result = callOp.getResult(0);
+        mlir::Value result = callOp.getResult( 0 );
 
         if ( isBool )
         {
@@ -1255,23 +1255,23 @@ namespace silly
     }
 
     /// Lower silly::DeclareOp
-    class DeclareOpLowering : public mlir::OpConversionPattern<silly::DeclareOp>
+    class DeclareOpLowering : public mlir::ConversionPattern
     {
        private:
         LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
         /// Constructor boilerplate for DeclareOpLowering
-        DeclareOpLowering( mlir::TypeConverter& typeConverter, mlir::MLIRContext* context,
-                           LoweringContext& loweringState, mlir::PatternBenefit benefit )
-            : mlir::OpConversionPattern<silly::DeclareOp>( typeConverter, context, benefit ), lState{ loweringState }
+        DeclareOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( silly::DeclareOp::getOperationName(), benefit, context ), lState( loweringState )
         {
         }
 
         /// Lowering workhorse for silly::DeclareOp
-        mlir::LogicalResult matchAndRewrite( silly::DeclareOp declareOp, OpAdaptor adaptor,
+        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
+            silly::DeclareOp declareOp = cast<silly::DeclareOp>( op );
             mlir::Location loc = declareOp.getLoc();
 
             LLVM_DEBUG( llvm::dbgs() << "Lowering silly.declare: " << declareOp << '\n' );
@@ -1593,23 +1593,24 @@ namespace silly
 #endif
 
     /// Lower silly::DebugNameOp
-    class DebugNameOpLowering : public mlir::OpConversionPattern<silly::DebugNameOp>
+    class DebugNameOpLowering : public mlir::ConversionPattern
     {
        private:
         LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
         /// Constructor boilerplate for DebugNameOpLowering
-        DebugNameOpLowering( mlir::TypeConverter& typeConverter, mlir::MLIRContext* context,
-                             LoweringContext& loweringState, mlir::PatternBenefit benefit )
-            : mlir::OpConversionPattern<silly::DebugNameOp>( typeConverter, context, benefit ), lState{ loweringState }
+        DebugNameOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( silly::DebugNameOp::getOperationName(), benefit, context ),
+              lState( loweringState )
         {
         }
 
         /// Lowering workhorse for silly::DebugNameOp
-        mlir::LogicalResult matchAndRewrite( silly::DebugNameOp debugNameOp, OpAdaptor adaptor,
+        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
+            silly::DebugNameOp debugNameOp = cast<silly::DebugNameOp>( op );
             mlir::Value value = debugNameOp.getValue();
             mlir::Location loc = debugNameOp.getLoc();
             mlir::FileLineColLoc fileLoc = getLocation( loc );
@@ -2299,11 +2300,8 @@ namespace silly
 
                 mlir::RewritePatternSet patterns( &getContext() );
                 patterns.add<AssignOpLowering, LoadOpLowering, NegOpLowering, PrintOpLowering, AbortOpLowering,
-                             GetOpLowering, StringLiteralOpLowering, ArithBinOpLowering, CmpBinOpLowering>(
-                    lState, &getContext(), 1 );
-
-                patterns.add<DeclareOpLowering, DebugNameOpLowering>( lState.getTypeConverter(), &getContext(), lState,
-                                                                      1 );
+                             GetOpLowering, StringLiteralOpLowering, ArithBinOpLowering, CmpBinOpLowering,
+                             DeclareOpLowering, DebugNameOpLowering>( lState, &getContext(), 1 );
 
                 // SCF -> CF
                 mlir::populateSCFToControlFlowConversionPatterns( patterns );
