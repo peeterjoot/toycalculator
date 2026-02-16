@@ -41,7 +41,7 @@
 #include "SillyPasses.hpp"
 #include "DriverState.hpp"
 #include "createSillyToLLVMLoweringPass.hpp"
-#include "parser.hpp"
+#include "ParseListener.hpp"
 #include "DialectContext.hpp"
 
 /// --debug- class for the driver

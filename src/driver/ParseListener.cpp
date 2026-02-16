@@ -1,5 +1,5 @@
 ///
-/// @file    parser.cpp
+/// @file    ParseListener.cpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   altlr4 parse tree listener and MLIR builder.
 ///
@@ -21,7 +21,7 @@
 #include <string>
 
 #include "SillyDialect.hpp"
-#include "parser.hpp"
+#include "ParseListener.hpp"
 #include "helper.hpp"
 
 /// --debug- class for the parser

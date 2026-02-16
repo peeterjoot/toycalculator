@@ -1,5 +1,5 @@
 ///
-/// @file parser.hpp
+/// @file ParseListener.hpp
 /// @author Peeter Joot <peeterjoot@pm.me>
 /// @brief Antlr4 based Listener and MLIR builder for the silly compiler.
 ///

@@ -16,7 +16,7 @@ add_executable(silly
   ${DRIVER_SOURCE_FILES}
   driver.cpp
   lowering.cpp
-  parser.cpp
+  ParseListener.cpp
   helper.cpp
   LoweringContext.cpp
   DialectContext.cpp

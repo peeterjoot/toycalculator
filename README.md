@@ -263,7 +263,7 @@ Array `BOOL` values may use a packed bitmask representation in the future.
 * The [ANTLR4 grammar](src/grammar/Silly.g4) for the silly language.
 * Tablegen definition for the [silly MLIR dialect](src/dialect/silly.td).  This is the compiler's internal view of all grammar elements.
 * The [Compiler driver](src/driver/driver.cpp).  This parses and handles command-line options, opens output files, and orchestrates all lower-level actions (parse tree walk + MLIR builder, lowering to LLVM IR, assembly printing, and linker invocation.)
-* The [ANTLR4 parse tree walker and MLIR builder](src/driver/parser.cpp).
+* The [ANTLR4 parse tree walker and MLIR builder](src/driver/ParseListener.cpp).
 * The [LLVM IR lowering classes](src/driver/lowering.cpp) used to transform silly dialect operators to LLVM-IR.
 * Sample programs in `tests/endtoend/` and a [test driver](bin/testit).  These serve as samples and test cases, and most of these are run as part of the ctest suite.
 * A [build script](bin/build) that runs both cmake and ninja, setting various options.
