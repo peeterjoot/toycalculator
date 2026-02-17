@@ -109,16 +109,20 @@ function(add_endtoend_run_tests CATEGORY)
 endfunction()
 
 function(add_endtoend_compile_tests)
-    set(TEST_FILES ${ARGN})
-
-    foreach(source_file IN LISTS TEST_FILES)
-        # Extract test name from filename (e.g., "for.silly" -> "for")
+    foreach(source_file IN LISTS ARGN)
         get_filename_component(test_name ${source_file} NAME_WE)
 
         set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
         set(SOURCE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${source_file}")
 
-        # Add custom command to compile the test
+        # Default flags
+        set(COMPILER_FLAGS -g --emit-llvm --emit-mlir)
+
+        # Allow per-test override via a variable named like COMPILER_FLAGS_${test_name}
+        if(DEFINED COMPILER_FLAGS_${test_name})
+            set(COMPILER_FLAGS ${COMPILER_FLAGS_${test_name}})
+        endif()
+
         add_custom_command(
             OUTPUT
                 "${OUT_DIR}/${test_name}"
@@ -127,8 +131,8 @@ function(add_endtoend_compile_tests)
             COMMAND
                 $<TARGET_FILE:silly>
                     --output-directory "${OUT_DIR}"
+                    ${COMPILER_FLAGS}
                     "${SOURCE_PATH}"
-                    -g --emit-llvm --emit-mlir
             DEPENDS silly "${SOURCE_PATH}"
             COMMENT "Compiling ${test_name}"
             VERBATIM

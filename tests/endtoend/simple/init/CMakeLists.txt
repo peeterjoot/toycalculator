@@ -1,7 +1,12 @@
+set(COMPILER_FLAGS_initlist     --init-fill 255)
+set(COMPILER_FLAGS_initarray    --init-fill 255)
+
 set(INIT_TESTS
+    initarray.silly
     init_expr_call.silly
     init_expr_unary.silly
     initlist_param.silly
+    initlist.silly
     initlisttrunc.silly
     initsequence.silly
     init.silly

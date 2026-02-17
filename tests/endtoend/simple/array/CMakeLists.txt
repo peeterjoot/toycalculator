@@ -1,4 +1,7 @@
+set(COMPILER_FLAGS_arrayprod    --init-fill 255)
+
 set(ARRAY_TESTS
+    a2.silly
     array_assign_and_use.silly
     array_dynamic_index.silly
     array_elem_as_arg.silly
@@ -8,11 +11,11 @@ set(ARRAY_TESTS
     array_in_expr.silly
     array_lvalue_complex.silly
     array_mixed_type.silly
+    arrayprod.silly
     array.silly
     assign_to_array_complex.silly
     intarray.silly
     unary_on_array_elem.silly
-    a2.silly
 )
 
 # Build the tests
