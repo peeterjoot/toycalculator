@@ -1,11 +1,15 @@
 set(STRING_TESTS
-    initstring
-    longstring
-    shortstring2
-    shortstring3
-    shortstring
-    stringlit
-    s2
+    initstring.silly
+    longstring.silly
+    shortstring2.silly
+    shortstring3.silly
+    shortstring.silly
+    stringlit.silly
+    s2.silly
 )
 
-add_endtoend_tests(EndToEnd.string ${STRING_TESTS})
+# Build the tests
+add_endtoend_compile_tests(${STRING_TESTS})
+
+# Run and validate the tests
+add_endtoend_run_tests("EndToEnd.simple.string" ${STRING_TESTS})

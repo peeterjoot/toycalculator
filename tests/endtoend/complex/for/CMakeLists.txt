@@ -5,4 +5,4 @@ set(COMPLEX_FOR_TESTS
     forcontinue2
 )
 
-add_endtoend_tests(EndToEnd.complex_for ${COMPLEX_FOR_TESTS})
+add_endtoend_tests("EndToEnd.complex.for" ${COMPLEX_FOR_TESTS})

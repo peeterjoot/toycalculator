@@ -1,12 +1,16 @@
 set(PRINT_TESTS
-    printboollit
-    printcont
-    printdi_nested
-    printdi
-    printexpr
-    printlit
-    print_multiple
-    printsome
+    printboollit.silly
+    printcont.silly
+    printdi_nested.silly
+    printdi.silly
+    printexpr.silly
+    printlit.silly
+    print_multiple.silly
+    printsome.silly
 )
 
-add_endtoend_tests(EndToEnd.print ${PRINT_TESTS})
+# Build the tests
+add_endtoend_compile_tests(${PRINT_TESTS})
+
+# Run and validate the tests
+add_endtoend_run_tests("EndToEnd.simple.print" ${PRINT_TESTS})

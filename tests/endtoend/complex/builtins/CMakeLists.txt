@@ -3,4 +3,4 @@ set(COMPLEX_BUILTINS_TESTS
     get
 )
 
-add_endtoend_tests(EndToEnd.complex_builtins ${COMPLEX_BUILTINS_TESTS})
+add_endtoend_tests("EndToEnd.complex.builtins" ${COMPLEX_BUILTINS_TESTS})

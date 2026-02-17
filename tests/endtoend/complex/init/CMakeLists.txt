@@ -3,4 +3,4 @@ set(COMPLEX_INIT_TESTS
     initlist
 )
 
-add_endtoend_tests(EndToEnd.complex_init ${COMPLEX_INIT_TESTS})
+add_endtoend_tests("EndToEnd.complex.init" ${COMPLEX_INIT_TESTS})

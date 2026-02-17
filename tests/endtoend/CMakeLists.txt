@@ -1,3 +1,6 @@
+# Create a top-level target for all endtoend tests
+add_custom_target(endtoend_tests ALL)
+
 # Define the helper function
 function(add_endtoend_tests TEST_CATEGORY)
     # Parse the test files from the remaining arguments
@@ -26,110 +29,108 @@ function(add_endtoend_tests TEST_CATEGORY)
     endforeach()
 endfunction()
 
-function(add_simple_endtoend_test TEST_NAME SOURCE_FILE)
-    set(OUT_DIR "${CMAKE_BINARY_DIR}/out/endtoend/${TEST_NAME}")
-    set(EXPECTED_STDOUT "${CMAKE_CURRENT_SOURCE_DIR}/expected/${TEST_NAME}.out")
-    set(EXPECTED_STDERR "${CMAKE_CURRENT_SOURCE_DIR}/expected/${TEST_NAME}.stderr.out")
+function(add_endtoend_run_tests CATEGORY)
+    # Get the test files from ARGN (after the CATEGORY parameter)
+    set(TEST_FILES ${ARGN})
 
-    # ───────────────────────────────────────────────
-    # Step 1: compile
-    # ───────────────────────────────────────────────
-    add_custom_command(
-        OUTPUT
-            "${OUT_DIR}/${TEST_NAME}"
-            "${OUT_DIR}/${TEST_NAME}.mlir"
-            "${OUT_DIR}/${TEST_NAME}.ll"
-            "${OUT_DIR}/${TEST_NAME}.compile.out"
-        COMMAND ${CMAKE_COMMAND} -E make_directory "${OUT_DIR}"
-        COMMAND
-            $<TARGET_FILE:silly>
-                --output-directory "${OUT_DIR}"
-                -g --emit-llvm --emit-mlir
-                "${SOURCE_FILE}"
-            > "${OUT_DIR}/${TEST_NAME}.compile.out" 2>&1
-        DEPENDS silly ${SOURCE_FILE}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        COMMENT "Compiling ${TEST_NAME}"
-    )
+    foreach(source_file IN LISTS TEST_FILES)
+        # Extract test name from filename (e.g., "for.silly" -> "for")
+        get_filename_component(test_name ${source_file} NAME_WE)
 
-    # ───────────────────────────────────────────────
-    # Step 2: run binary
-    # ───────────────────────────────────────────────
-    add_custom_command(
-        OUTPUT "${OUT_DIR}/${TEST_NAME}.out" "${OUT_DIR}/${TEST_NAME}.stderr.out"
-        COMMAND
-            "${OUT_DIR}/${TEST_NAME}"
-            > "${OUT_DIR}/${TEST_NAME}.out" 2> "${OUT_DIR}/${TEST_NAME}.stderr.out"
-        DEPENDS "${OUT_DIR}/${TEST_NAME}"
-        COMMENT "Running ${TEST_NAME}"
-    )
+        set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+        set(EXPECTED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/expected")
 
-    # ──────────────────────────────────────────────
-    # Step 3: compare outputs
-    # ───────────────────────────────────────────────
-    add_test(
-        NAME endtoend.${TEST_NAME}
-        COMMAND ${CMAKE_COMMAND} -E compare_files
-            --ignore-eol
-            "${EXPECTED_STDOUT}" "${OUT_DIR}/${TEST_NAME}.out"
-    )
-
-    if(EXISTS "${EXPECTED_STDERR}")
+        # ─────────────────────────────────────────────────────
+        # Test: Run the compiled binary and capture output
+        # ─────────────────────────────────────────────────────
         add_test(
-            NAME endtoend.${TEST_NAME}.stderr
+            NAME ${CATEGORY}.${test_name}
+            COMMAND ${CMAKE_COMMAND}
+                -DTEST_EXECUTABLE=${OUT_DIR}/${test_name}
+                -DOUT_DIR=${OUT_DIR}
+                -DTEST_NAME=${test_name}
+                -P ${CMAKE_SOURCE_DIR}/cmake/RunTest.cmake
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        )
+
+        set_tests_properties(${CATEGORY}.${test_name}
+            PROPERTIES
+                DEPENDS compile_${test_name}
+                LABELS "run;end-to-end;compiler-cycle;sample;${CATEGORY}"
+                TIMEOUT 60
+        )
+
+        # ─────────────────────────────────────────────────────
+        # Test: Compare stdout
+        # ─────────────────────────────────────────────────────
+        add_test(
+            NAME ${CATEGORY}.${test_name}.compare_stdout
             COMMAND ${CMAKE_COMMAND} -E compare_files
                 --ignore-eol
-                "${EXPECTED_STDERR}" "${OUT_DIR}/${TEST_NAME}.stderr.out"
+                ${EXPECTED_DIR}/${test_name}.out
+                ${OUT_DIR}/${test_name}.out
         )
-        set_tests_properties(endtoend.${TEST_NAME}.stderr
-            PROPERTIES DEPENDS endtoend.${TEST_NAME}
-        )
-    endif()
 
-    set_tests_properties(endtoend.${TEST_NAME}
-        PROPERTIES
-            LABELS "end-to-end;compiler-cycle;sample"
-            TIMEOUT 60
-            REQUIRED_FILES "${OUT_DIR}/${TEST_NAME}.out"
-            ENVIRONMENT "CTEST_OUTPUT_ON_FAILURE=1"
-    )
+        set_tests_properties(${CATEGORY}.${test_name}.compare_stdout
+            PROPERTIES
+                DEPENDS ${CATEGORY}.${test_name}
+                LABELS "compare;end-to-end;compiler-cycle;sample;${CATEGORY}"
+        )
+
+        # ─────────────────────────────────────────────────────
+        # Test: Compare stderr (if expected file exists)
+        # ─────────────────────────────────────────────────────
+        if(EXISTS "${EXPECTED_DIR}/${test_name}.stderr.out")
+            add_test(
+                NAME ${CATEGORY}.${test_name}.compare_stderr
+                COMMAND ${CMAKE_COMMAND} -E compare_files
+                    --ignore-eol
+                    ${EXPECTED_DIR}/${test_name}.stderr.out
+                    ${OUT_DIR}/${test_name}.stderr.out
+            )
+
+            set_tests_properties(${CATEGORY}.${test_name}.compare_stderr
+                PROPERTIES
+                    DEPENDS ${CATEGORY}.${test_name}
+                    LABELS "compare;end-to-end;compiler-cycle;sample;${CATEGORY}"
+            )
+        endif()
+    endforeach()
 endfunction()
 
-# ------------------------------------------------------------------------------
-# add_endtoend_tests_simple
-#
-# Convenience wrapper that calls add_simple_endtoend_test for each test name
-# in the provided list.
-#
-# Usage:
-#   add_endtoend_tests_simple(EndToEnd.for
-#       for_complex_body
-#       for
-#       for_simplest
-#       forward_ref_init
-#       negative_step_for
-#       nested_for
-#       zero_iter_for
-#       induction_not_used
-#   )
-#
-# Assumptions:
-#   - Source files are named <test_name>.silly in ${CMAKE_CURRENT_SOURCE_DIR}
-#   - Expected outputs are in expected/<test_name>.out (and optionally .stderr.out)
-#
-# ------------------------------------------------------------------------------
-function(add_endtoend_tests_simple CATEGORY)
-    set(TEST_NAMES ${ARGN})
+function(add_endtoend_compile_tests)
+    set(TEST_FILES ${ARGN})
 
-    foreach(test_name IN LISTS TEST_NAMES)
-        set(source_file "${test_name}.silly")
-        add_simple_endtoend_test("${test_name}" "${source_file}")
+    foreach(source_file IN LISTS TEST_FILES)
+        # Extract test name from filename (e.g., "for.silly" -> "for")
+        get_filename_component(test_name ${source_file} NAME_WE)
 
-        # Optional: tag the test with the category for easier filtering
-        set_tests_properties(endtoend.${test_name}
-            PROPERTIES
-                LABELS "end-to-end;compiler-cycle;sample;${CATEGORY}"
+        set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+        set(SOURCE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${source_file}")
+
+        # Add custom command to compile the test
+        add_custom_command(
+            OUTPUT
+                "${OUT_DIR}/${test_name}"
+                "${OUT_DIR}/${test_name}.mlir"
+                "${OUT_DIR}/${test_name}.ll"
+            COMMAND
+                $<TARGET_FILE:silly>
+                    --output-directory "${OUT_DIR}"
+                    "${SOURCE_PATH}"
+                    -g --emit-llvm --emit-mlir
+            DEPENDS silly "${SOURCE_PATH}"
+            COMMENT "Compiling ${test_name}"
+            VERBATIM
         )
+
+        # Create a target for this test so it gets built
+        add_custom_target(compile_${test_name}
+            DEPENDS "${OUT_DIR}/${test_name}"
+        )
+
+        # Add to the "all" target so it builds by default
+        add_dependencies(endtoend_tests compile_${test_name})
     endforeach()
 endfunction()
 

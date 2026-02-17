@@ -50,9 +50,9 @@ select STDERR ; $| = 1 ;
 select STDOUT ; $| = 1 ;
 
 my $myName = '' ;
-my $docscope = 1;
-my $doctags = 1;
-my $dodoxygen = 1;
+my $docscope = 0;
+my $doctags = 0;
+my $dodoxygen = 0;
 my $dobuild = 1;
 my $serial = 0;
 my $hack = 0;
@@ -75,7 +75,7 @@ GetOptions (
 my @prefix = <"/usr/local/llvm-*">;
 die "Could not find a unique LLVM directory under /usr/local/llvm-*" unless ( scalar(@prefix) eq 1 );
 my $prefix = $prefix[0];
-my $parallel = '';
+my $parallel = '-j 3';
 if ( $serial ) {
    $parallel = '-j 1';
 }

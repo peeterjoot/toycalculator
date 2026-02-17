@@ -1,28 +1,32 @@
 set(EXPRESSIONS_TESTS
-    0minus
-    addi
-    bin
-    chained_comparison_parens
-    conversions
-    converti
-    expressions1
-    expressions2
-    expressions3
-    expressions4
-    expressions4a
-    expressions4b
-    expressions5
-    expressions6
-    expressions_assignment
-    expressions_in_call
-    expressions_in_for
-    expressions_in_if
-    mod
-    mod2
-    modint
-    mult
-    neg
-    test
+    0minus.silly
+    addi.silly
+    bin.silly
+    chained_comparison_parens.silly
+    conversions.silly
+    converti.silly
+    expressions1.silly
+    expressions2.silly
+    expressions3.silly
+    expressions4a.silly
+    expressions4b.silly
+    expressions4.silly
+    expressions5.silly
+    expressions6.silly
+    expressions_assignment.silly
+    expressions_in_call.silly
+    expressions_in_for.silly
+    expressions_in_if.silly
+    mod2.silly
+    modint.silly
+    mod.silly
+    mult.silly
+    neg.silly
+    twobinary.silly
 )
 
-add_endtoend_tests(EndToEnd.expressions ${EXPRESSIONS_TESTS})
+# Build the tests
+add_endtoend_compile_tests(${EXPRESSIONS_TESTS})
+
+# Run and validate the tests
+add_endtoend_run_tests("EndToEnd.simple.expressions" ${EXPRESSIONS_TESTS})

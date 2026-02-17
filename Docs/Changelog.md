@@ -119,6 +119,7 @@
     ```
 - Removed `sym_name` references from all `tests/dialect/*` test cases
 - Enhanced test cleanup: deletes all output artifacts per test stem
+- All the simple tests converted to cmake+ctest, no longer using bin/testit.
 
 ### Bug Fixes
 - **CRITICAL**: Fixed variable scope leak allowing control flow block variables to persist beyond their intended lifetime

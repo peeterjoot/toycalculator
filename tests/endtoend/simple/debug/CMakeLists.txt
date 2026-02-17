@@ -1,6 +1,10 @@
 set(DEBUG_TESTS
-    foo
-    f
+    foo.silly
+    f.silly
 )
 
-add_endtoend_tests(EndToEnd.debug ${DEBUG_TESTS})
+# Build the tests
+add_endtoend_compile_tests(${DEBUG_TESTS})
+
+# Run and validate the tests
+add_endtoend_run_tests("EndToEnd.simple.debug" ${DEBUG_TESTS})

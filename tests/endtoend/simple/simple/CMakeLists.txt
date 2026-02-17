@@ -1,7 +1,11 @@
 set(SIMPLE_TESTS
-    simplest
-    simpleless
-    empty
+    simplest.silly
+    simpleless.silly
+    empty.silly
 )
 
-add_endtoend_tests(EndToEnd.simple ${SIMPLE_TESTS})
+# Build the tests
+add_endtoend_compile_tests(${SIMPLE_TESTS})
+
+# Run and validate the tests
+add_endtoend_run_tests("EndToEnd.simple.simple" ${SIMPLE_TESTS})

@@ -5,4 +5,4 @@ set(COMPLEX_BOOL_TESTS
     getbool
 )
 
-add_endtoend_tests(EndToEnd.complex_bool ${COMPLEX_BOOL_TESTS})
+add_endtoend_tests("EndToEnd.complex.bool" ${COMPLEX_BOOL_TESTS})

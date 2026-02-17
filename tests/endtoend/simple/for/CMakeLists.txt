@@ -1,12 +1,16 @@
 set(FOR_TESTS
-    for
-    for_complex_body
-    for_simplest
-    forward_ref_init
-    induction_not_used
-    negative_step_for
-    nested_for
-    zero_iter_for
+    for.silly
+    for_complex_body.silly
+    for_simplest.silly
+    forward_ref_init.silly
+    negative_step_for.silly
+    nested_for.silly
+    zero_iter_for.silly
+    induction_not_used.silly
 )
 
-add_endtoend_tests(EndToEnd.for ${FOR_TESTS})
+# Build the tests
+add_endtoend_compile_tests(${FOR_TESTS})
+
+# Run and validate the tests
+add_endtoend_run_tests("EndToEnd.simple.for" ${FOR_TESTS})
