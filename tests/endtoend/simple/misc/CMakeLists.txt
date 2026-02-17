@@ -7,4 +7,7 @@ set(MISC_TESTS
 add_endtoend_compile_tests(${MISC_TESTS})
 
 # Run and validate the tests
-add_endtoend_run_tests("EndToEnd.simple.misc" ${MISC_TESTS})
+add_endtoend_run_tests("EndToEnd.simple.misc"
+    EXPECTED_EXIT_CODE 0
+    TESTS ${MISC_TESTS}
+)

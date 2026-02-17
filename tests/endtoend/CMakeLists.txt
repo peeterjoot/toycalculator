@@ -30,11 +30,19 @@ function(add_endtoend_tests TEST_CATEGORY)
 endfunction()
 
 function(add_endtoend_run_tests CATEGORY)
-    # Get the test files from ARGN (after the CATEGORY parameter)
-    set(TEST_FILES ${ARGN})
+    cmake_parse_arguments(
+        ARG
+        "EXPECTED_ABORT"      # boolean flag
+        "EXPECTED_EXIT_CODE"  # single-value args
+        "TESTS"               # multi-value args
+        ${ARGN}
+    )
 
-    foreach(source_file IN LISTS TEST_FILES)
-        # Extract test name from filename (e.g., "for.silly" -> "for")
+    if(NOT DEFINED ARG_EXPECTED_EXIT_CODE)
+        set(ARG_EXPECTED_EXIT_CODE 0)
+    endif()
+
+    foreach(source_file IN LISTS ARG_TESTS)
         get_filename_component(test_name ${source_file} NAME_WE)
 
         set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
@@ -49,6 +57,8 @@ function(add_endtoend_run_tests CATEGORY)
                 -DTEST_EXECUTABLE=${OUT_DIR}/${test_name}
                 -DOUT_DIR=${OUT_DIR}
                 -DTEST_NAME=${test_name}
+                -DEXPECTED_EXIT_CODE=${ARG_EXPECTED_EXIT_CODE}
+                -DEXPECTED_ABORT=${ARG_EXPECTED_ABORT}
                 -P ${CMAKE_SOURCE_DIR}/cmake/RunTest.cmake
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )
@@ -62,7 +72,7 @@ function(add_endtoend_run_tests CATEGORY)
 
         # ─────────────────────────────────────────────────────
         # Test: Compare stdout
-        # ─────────────────────────────────────────────────────
+        # ────────────────────────────────────────────────────
         add_test(
             NAME ${CATEGORY}.${test_name}.compare_stdout
             COMMAND ${CMAKE_COMMAND} -E compare_files
@@ -165,15 +175,12 @@ function(add_endtoend_failure_tests CATEGORY)
     endforeach()
 endfunction()
 
-add_subdirectory(complex/array)
-add_subdirectory(complex/bool)
-add_subdirectory(complex/builtins)
-add_subdirectory(complex/for)
-add_subdirectory(complex/init)
-add_subdirectory(complex/types)
+add_subdirectory(dwarfdump)
 add_subdirectory(exit)
 add_subdirectory(failure)
 add_subdirectory(fatal)
+add_subdirectory(get)
+add_subdirectory(mlirparsetest)
 add_subdirectory(simple/array)
 add_subdirectory(simple/bool)
 add_subdirectory(simple/debug)

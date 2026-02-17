@@ -12,4 +12,7 @@ set(FOR_TESTS
 add_endtoend_compile_tests(${FOR_TESTS})
 
 # Run and validate the tests
-add_endtoend_run_tests("EndToEnd.simple.for" ${FOR_TESTS})
+add_endtoend_run_tests("EndToEnd.simple.for"
+    EXPECTED_EXIT_CODE 0
+    TESTS ${FOR_TESTS}
+)

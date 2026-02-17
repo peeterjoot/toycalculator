@@ -17,4 +17,7 @@ set(IFELIFELSE_TESTS
 add_endtoend_compile_tests(${IFELIFELSE_TESTS})
 
 # Run and validate the tests
-add_endtoend_run_tests("EndToEnd.simple.ifelifelse" ${IFELIFELSE_TESTS})
+add_endtoend_run_tests("EndToEnd.simple.ifelifelse"
+    EXPECTED_EXIT_CODE 0
+    TESTS ${IFELIFELSE_TESTS}
+)

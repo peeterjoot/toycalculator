@@ -1,6 +1,6 @@
 # - two_declare_no_init -- uses a perl function to check for declaration order in the generated mlir.
-set(COMPLEX_TYPES_TESTS
+set(MLIRPARSE_TESTS
     two_declare_no_init
 )
 
-add_endtoend_tests("EndToEnd.complex.types" ${COMPLEX_TYPES_TESTS})
+add_endtoend_tests("EndToEnd.mlirparsetest" ${MLIRPARSE_TESTS})

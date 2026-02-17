@@ -24,4 +24,7 @@ set(FUNCTION_TESTS
 add_endtoend_compile_tests(${FUNCTIONS_TESTS})
 
 # Run and validate the tests
-add_endtoend_run_tests("EndToEnd.simple.function" ${FUNCTIONS_TESTS})
+add_endtoend_run_tests("EndToEnd.simple.function"
+    EXPECTED_EXIT_CODE 0
+    TESTS ${FUNCTIONS_TESTS}
+)

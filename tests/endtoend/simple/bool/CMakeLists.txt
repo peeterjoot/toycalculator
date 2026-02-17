@@ -14,4 +14,7 @@ set(BOOL_TESTS
 add_endtoend_compile_tests(${BOOL_TESTS})
 
 # Run and validate the tests
-add_endtoend_run_tests("EndToEnd.simple.bool" ${BOOL_TESTS})
+add_endtoend_run_tests("EndToEnd.simple.bool"
+    EXPECTED_EXIT_CODE 0
+    TESTS ${BOOL_TESTS}
+)

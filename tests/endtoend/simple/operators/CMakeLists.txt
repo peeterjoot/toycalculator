@@ -18,4 +18,7 @@ set(OPERATORS_TESTS
 add_endtoend_compile_tests(${OPERATORS_TESTS})
 
 # Run and validate the tests
-add_endtoend_run_tests("EndToEnd.simple.operators" ${OPERATORS_TESTS})
+add_endtoend_run_tests("EndToEnd.simple.operators"
+    EXPECTED_EXIT_CODE 0
+    TESTS ${OPERATORS_TESTS}
+)

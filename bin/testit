@@ -169,15 +169,8 @@ if ( defined $just )
 }
 
 my %expectedRC = (
-   'bool' => 1,
-   'int32' => 1,
-   'boolr' => 1,
-   'exit3' => 3,
-   'exit42' => 42,
-   'exitx' => 3,
-   'exitarrayelement' => 42,
-   'fatal' => 134, # abort
-   'getboolfail' => '134', # abort
+    'fatal' => 134, # abort
+    'getboolfail' => '134', # abort
 );
 
 my %expectedInput = (

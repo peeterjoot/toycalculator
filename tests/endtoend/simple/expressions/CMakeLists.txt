@@ -29,4 +29,7 @@ set(EXPRESSIONS_TESTS
 add_endtoend_compile_tests(${EXPRESSIONS_TESTS})
 
 # Run and validate the tests
-add_endtoend_run_tests("EndToEnd.simple.expressions" ${EXPRESSIONS_TESTS})
+add_endtoend_run_tests("EndToEnd.simple.expressions"
+    EXPECTED_EXIT_CODE 0
+    TESTS ${EXPRESSIONS_TESTS}
+)

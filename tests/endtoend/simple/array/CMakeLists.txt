@@ -19,4 +19,7 @@ set(ARRAY_TESTS
 add_endtoend_compile_tests(${ARRAY_TESTS})
 
 # Run and validate the tests
-add_endtoend_run_tests("EndToEnd.simple.array" ${ARRAY_TESTS})
+add_endtoend_run_tests("EndToEnd.simple.array"
+    EXPECTED_EXIT_CODE 0
+    TESTS ${ARRAY_TESTS}
+)

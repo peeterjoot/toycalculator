@@ -5,11 +5,10 @@
 ## Build the tests
 #add_endtoend_compile_tests(${FATAL_TESTS})
 #
-# Fails because of an absolute path in the stderr -- revisit and see if I can mask that.
+## Fails because of an absolute path in the stderr -- revisit and see if I can mask that.
 #add_endtoend_run_tests("EndToEnd.fatal"
 #    EXPECTED_ABORT
-#    TESTS
-#        fatal.silly
+#    TESTS fatal.silly
 #)
 
 set(FATAL_TESTS

@@ -11,4 +11,7 @@ set(TYPES_TESTS
 add_endtoend_compile_tests(${TYPES_TESTS})
 
 # Run and validate the tests
-add_endtoend_run_tests("EndToEnd.simple.types" ${TYPES_TESTS})
+add_endtoend_run_tests("EndToEnd.simple.types"
+    EXPECTED_EXIT_CODE 0
+    TESTS ${TYPES_TESTS}
+)
