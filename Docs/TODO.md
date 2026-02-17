@@ -5,8 +5,6 @@
 
 #### misc
 * tests/endtoend/expressions/modfloat.silly broken with mix of float32/float64's
-* MlirTypeCache should be moved out of parser (have almost the same thing in LoweringContext.)
-* Move the standalone functions in parser.cpp to helper module.
 * Run include-what-you-use on lowering.cpp (now that LoweringContext.cpp has been split out.)  Will probably have to build it.
 
 #### Driver
@@ -180,7 +178,6 @@ tests/dialect/lit.cfg.py:15:    os.path.join(config.test_source_root, "..", ".."
 * Assignment like initialization syntax is not available for array variables.  That should trigger an error.
 * Maybe: Get rid of CALL and support calls in binary expressions: r = v * foo().
 * Expressions that aren't parsed properly (like `CALL factorial(v - 1)` used to) lead to mysterious seeming parse error: Should do better.
-* declaration scope is weird, persisting beyond the declaring block (see: scopebug.silly and the README)
 * NOT should be allowed for boolean expressions in IF/ELIF predicates.
 * no test case for CALL in booleanExpression
 * grammar allows for CALL to have CALL in the parameter list.  Not tested.
