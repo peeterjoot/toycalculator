@@ -162,104 +162,6 @@ my %decl_order_tests =
 # The test list is moved to tests/endtoend/CMakeLists.txt -- this is now just for --just
 my %tests = map { $_ => 1 } (qw(
 ));
-#error_nonconst_init -- want this to be a compile error, but it isn't yet.
-
-#error_zero_step_for -- infinite loops.  would be better to have runtime check for that and abort.
-#error_invalid_unary -- regression. was triggering on y undeclared, not on the parse error -- which doesn't actually drive a compile error!
-#error_intarray_bad_constaccess
-#error_array_oob_const -- dup?
-#error_decl_in_if -- probably want this to fail (like scopebug)
-#error_decl_in_elif_else -- probably also want this to fail too.
-#'error_invalid_unary' => q(line 3:4 token recognition error at:),
-my %expected_compile_error_message =
-(
-  'error_nested_if' => [
-    q(error_nested_if.silly:41:23: error: Undeclared variable xx),
-    q(error_nested_if.silly:42:23: error: Undeclared variable yy),
-    q(error_nested_if.silly:43:23: error: Undeclared variable zz),
-    q(error_nested_if.silly:46:19: error: Undeclared variable xx),
-    q(error_nested_if.silly:47:19: error: Undeclared variable yy),
-    q(error_nested_if.silly:48:19: error: Undeclared variable zz),
-    q(error_nested_if.silly:53:15: error: Undeclared variable z),
-    q(error_nested_if.silly:54:15: error: Undeclared variable xx),
-    q(error_nested_if.silly:55:15: error: Undeclared variable yy),
-    q(error_nested_if.silly:56:15: error: Undeclared variable zz),
-    q(error_nested_if.silly:60:11: error: Undeclared variable y),
-    q(error_nested_if.silly:61:11: error: Undeclared variable z),
-    q(error_nested_if.silly:62:11: error: Undeclared variable xx),
-    q(error_nested_if.silly:63:11: error: Undeclared variable yy),
-    q(error_nested_if.silly:64:11: error: Undeclared variable zz),
-    q(error_nested_if.silly:67:7: error: Undeclared variable x),
-    q(error_nested_if.silly:68:7: error: Undeclared variable y),
-    q(error_nested_if.silly:69:7: error: Undeclared variable z),
-    q(error_nested_if.silly:70:7: error: Undeclared variable xx),
-    q(error_nested_if.silly:71:7: error: Undeclared variable yy),
-    q(error_nested_if.silly:72:7: error: Undeclared variable zz),
-  ],
-  'error_for1' => [
-    q(error_for1.silly:5:11: error: Undeclared variable j), ],
-  'error_for2' => [
-    q(error_for2.silly:6:7: error: Undeclared variable j), ],
-  'error_scopebug' => [
-    q(error_scopebug.silly:9:11: error: Undeclared variable x), ],
-  'error_arrayreturn' => [
-    q(error_arrayreturn.silly:1:24: error: parse error: mismatched input '[' expecting '{'), ],
-  'error_array_too_many_init' => [
-    q(error_array_too_many_init.silly:1:1: error: For variable 'a', more initializers (4) specified than number of elements (3).), ],
-  'error_chained_comparison2' => [
-    q(error_chained_comparison2.silly:4:16: error: parse error: mismatched input '<' expecting ';'), ],
-  'error_chained_equality' => [
-    q(error_chained_equality.silly:2:17: error: parse error: mismatched input 'EQ' expecting ';'), ],
-  'error_expressions4c' => [
-    q(error_expressions4c.silly:1:13: error: parse error: mismatched input '<' expecting ';'), ],
-  'error_expressions4d' => [
-    q(error_expressions4d.silly:1:14: error: parse error: mismatched input 'EQ' expecting ';'), ],
-  'error_expressions4e' => [
-    q(error_expressions4e.silly:1:14: error: parse error: mismatched input 'NE' expecting ';'), ],
-  'error_get_string' => [
-    q(error_get_string.silly:2:1: error: Attempted GET to string literal or array?), ],
-  'error_induction_var_in_step' => [
-    q(error_induction_var_in_step.silly:1:23: error: Undeclared variable i), ],
-  'error_init_list1' => [
-    q(error_init_list1.silly:1:1: error: For variable 'w', more initializers (3) specified than number of elements (1).), ],
-  'error_init_list2' => [
-    q(error_init_list2.silly:1:1: error: For variable 'w', more initializers (3) specified than number of elements (2).), ],
-  'error_invalid_binary' => [
-    q(error_invalid_binary.silly:3:9: error: parse error: extraneous input 'z' expecting ';'), ],
-  'error_keyword_declare2' => [
-    q(error_keyword_declare2.silly:1:7: error: parse error: extraneous input 'INT32' expecting IDENTIFIER), ],
-  'error_keyword_declare' => [
-    q(error_keyword_declare.silly:1:7: error: parse error: mismatched input 'INT32' expecting IDENTIFIER), ],
-  'error_multiple_in_func' => [
-    q(error_multiple_in_func.silly:5:15: error: Undeclared variable x),
-    q(error_multiple_in_func.silly:6:15: error: Undeclared variable w), ],
-  'error_nested_ivar_conflict' => [
-    q(error_nested_ivar_conflict.silly:3:5: error: Induction variable i used by enclosing FOR), ],
-  'error_nested' => [
-    q(error_nested.silly:5:5: error: Nested functions are not currently supported.), ],
-  'error_notfloat' => [
-    q(error_notfloat.silly:1:7: error: NOT on non-integer type), ],
-  'error_redeclare' => [
-    q(error_redeclare.silly:2:1: error: Variable x already declared), ],
-  'error_return_expr_no_return_type' => [
-    q(error_return_expr_no_return_type.silly:3:5: error: return expression found '0', but no return type for function foo), ],
-  'error_shadow_induction' => [
-    q(error_shadow_induction.silly:4:1: error: Induction variable i clashes with declared variable), ],
-  'error_stringreturn' => [
-    q(error_stringreturn.silly:1:19: error: parse error: mismatched input 'STRING' expecting {'INT8', 'INT16', 'INT32', 'INT64', 'FLOAT32', 'FLOAT64', 'BOOL'}), ],
-  'error_triple_nested_for_with_shadowing' => [
-    q(error_triple_nested_for_with_shadowing.silly:3:9: error: Induction variable i used by enclosing FOR), ],
-  'error_undeclare' => [
-    q(error_undeclare.silly:1:1: error: Attempt to assign to undeclared variable: x), ],
-  'error_bad_return_if' => [
-    q(error_bad_return_if.silly:3:5: error: RETURN is not currently allowed in a IF block), ],
-  'error_bad_return_for' => [
-    q(error_bad_return_for.silly:3:5: error: RETURN is not currently allowed in a FOR loop body), ],
-  'error_bad_return_elif' => [
-    q(error_bad_return_elif.silly:7:5: error: RETURN is not currently allowed in a ELIF block), ],
-  'error_bad_return_else' => [
-    q(error_bad_return_else.silly:7:5: error: RETURN is not currently allowed in a ELSE block), ],
-);
 
 if ( defined $just )
 {
@@ -342,35 +244,6 @@ sub runone
     my $cmd = qq(${driverpath}/silly --output-directory $outdir $source $thisflags --emit-llvm --emit-mlir > ${outdir}/$stem.compile.out 2>&1);
     my $crc = verbose_system( $cmd );
     verbose_system("cat ${outdir}/$stem.compile.out");
-    if ( defined $expected_compile_error_message{$stem})
-    {
-        # check output for 'PLEASE submit a bug report' -- make that an error:
-        my $hasstack = `grep "PLEASE submit a bug report" ${outdir}/$stem.compile.out` ; chomp $hasstack;
-        if ( $hasstack ne '' )
-        {
-            print "TEST: $stem.silly failed, but with internal error\n";
-            return;
-        }
-
-        if ($crc)
-        {
-            print "TEST: $stem.silly failed as expected: rc = $crc\n";
-
-            my @expected = @{$expected_compile_error_message{$stem}};
-            foreach ( @expected )
-            {
-                check_expected_compile_error( $stem, $_, "${outdir}/$stem.compile.out" );
-            }
-
-            print "${stem}: TEST WAS SUCCESSFUL\n"; # for ctest rule
-        }
-        else
-        {
-            die "Expected failure running $stem.silly";
-        }
-
-        return;
-    }
 
     verbose_system( qq(objdump -dr --no-show-raw-insn ${outdir}/${stem}.o > ${outdir}/${stem}.s) );
 
@@ -523,34 +396,6 @@ sub check_decl_order
     }
 
     # print "OK: $mlir_file declarations in order: ", join(", ", @found), "\n";
-}
-
-sub check_expected_compile_error
-{
-    my ($stem, $expected, $outfile) = @_;
-
-    open my $fh, '<', $outfile
-        or die "Cannot open $outfile: $!";
-
-    local $/;
-    my $output = <$fh>;
-    close $fh;
-
-    if ( index($output, $expected) >= 0 )
-    {
-        print "Matched expected error message for $stem: found: '$expected'\n";
-        return;
-    }
-
-    complain(qq(
-Expected compile error not found for ${stem}.silly
-
-Expected substring:
-${expected}
-
-Actual output:
-${output}
-));
 }
 
 # vim: et ts=4 sw=4

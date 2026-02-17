@@ -265,7 +265,7 @@ Array `BOOL` values may use a packed bitmask representation in the future.
 * The [Compiler driver](src/driver/driver.cpp).  This parses and handles command-line options, opens output files, and orchestrates all lower-level actions (parse tree walk + MLIR builder, lowering to LLVM IR, assembly printing, and linker invocation.)
 * The [ANTLR4 parse tree walker and MLIR builder](src/driver/ParseListener.cpp).
 * The [LLVM IR lowering classes](src/driver/lowering.cpp) used to transform silly dialect operators to LLVM-IR.
-* Sample programs in `tests/endtoend/` and a [test driver](bin/testit).  These serve as samples and test cases.  The simple/ subset of those tests are built in cmake and run in ctest.  The complex/ subset of those tests (testing failures, dwarfdump, non-zero exits, input, ...) are not built in cmake, but are part of ctest (built and run with `testit`.)
+* Sample programs in `tests/endtoend/` and a [test driver](bin/testit).  These serve as samples and ctest based test cases.
 * A [build script](bin/build) that runs both cmake and ninja, setting various options.
 * A [mlir-opt wrapper](bin/silly-opt), that loads the silly dialect shared object
 * A set of silly dialect lit tests (`tests/dialect/`) that are used to unit test the dialect verify functions.

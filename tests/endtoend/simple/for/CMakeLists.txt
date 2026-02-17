@@ -1,7 +1,6 @@
 set(FOR_TESTS
     for.silly
     for_complex_body.silly
-    for_simplest.silly
     forward_ref_init.silly
     negative_step_for.silly
     nested_for.silly

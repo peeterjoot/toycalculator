@@ -134,11 +134,43 @@ function(add_endtoend_compile_tests)
     endforeach()
 endfunction()
 
+function(add_endtoend_failure_tests CATEGORY)
+    set(TEST_FILES ${ARGN})
+
+    foreach(source_file IN LISTS TEST_FILES)
+        # Extract test name from filename
+        get_filename_component(test_name ${source_file} NAME_WE)
+
+        set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+        set(EXPECTED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/expected")
+
+        # Test: Compile should FAIL
+        add_test(
+            NAME ${CATEGORY}.${test_name}
+            COMMAND ${CMAKE_COMMAND}
+                -DSILLY_COMPILER=$<TARGET_FILE:silly>
+                -DSOURCE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/${source_file}
+                -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+                -DOUT_DIR=${OUT_DIR}
+                -DTEST_NAME=${test_name}
+                -DEXPECTED_OUTPUT=${EXPECTED_DIR}/${test_name}.compile.out
+                -P ${CMAKE_SOURCE_DIR}/cmake/RunFailureTest.cmake
+        )
+
+        set_tests_properties(${CATEGORY}.${test_name}
+            PROPERTIES
+                LABELS "failure;end-to-end;compiler-cycle;${CATEGORY}"
+                TIMEOUT 30
+        )
+    endforeach()
+endfunction()
+
 add_subdirectory(complex/array)
 add_subdirectory(complex/bool)
 add_subdirectory(complex/builtins)
 add_subdirectory(complex/exit)
-add_subdirectory(complex/failure)
+add_subdirectory(failure)
+add_subdirectory(complex/for)
 add_subdirectory(complex/init)
 add_subdirectory(complex/types)
 add_subdirectory(simple/array)

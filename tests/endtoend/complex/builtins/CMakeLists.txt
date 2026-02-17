@@ -1,3 +1,8 @@
+# RC:
+# 'fatal' => 134, # abort
+#
+# INPUT:
+# 'get' => '6 7 1 2 3 4 5',
 set(COMPLEX_BUILTINS_TESTS
     fatal
     get
