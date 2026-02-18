@@ -33,7 +33,7 @@ function(add_endtoend_run_tests CATEGORY)
     cmake_parse_arguments(
         ARG
         "EXPECTED_ABORT"      # boolean flag
-        "EXPECTED_EXIT_CODE"  # single-value args
+        "EXPECTED_EXIT_CODE;INPUT_FILE"  # single-value args
         "TESTS"               # multi-value args
         ${ARGN}
     )
@@ -48,6 +48,13 @@ function(add_endtoend_run_tests CATEGORY)
         set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
         set(EXPECTED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/expected")
 
+        # Determine input file if specified
+        if(DEFINED ARG_INPUT_FILE)
+            set(INPUT_FILE_ARG "-DINPUT_FILE=${CMAKE_CURRENT_SOURCE_DIR}/${ARG_INPUT_FILE}")
+        else()
+            set(INPUT_FILE_ARG "")
+        endif()
+
         # ─────────────────────────────────────────────────────
         # Test: Run the compiled binary and capture output
         # ─────────────────────────────────────────────────────
@@ -59,6 +66,7 @@ function(add_endtoend_run_tests CATEGORY)
                 -DTEST_NAME=${test_name}
                 -DEXPECTED_EXIT_CODE=${ARG_EXPECTED_EXIT_CODE}
                 -DEXPECTED_ABORT=${ARG_EXPECTED_ABORT}
+                ${INPUT_FILE_ARG}
                 -P ${CMAKE_SOURCE_DIR}/cmake/RunTest.cmake
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
         )

@@ -14,7 +14,7 @@ testit [--help] --no-fatal [--just tcname] [--optimize] [--no-debug] [--clean] [
 
 =head1 DESCRIPTION
 
-This used to be the testsuite, but now just runs a single test.  The testsuite orchestration has been moved to ctest.
+This used to be the testsuite, but now just runs a single test.  The testsuite orchestration has been (mostly) moved to ctest.
 
 Options:
 
@@ -148,36 +148,16 @@ if ( $clean )
     verbose_system( qq(rm -rf $outdir) );
 }
 
-my %testflags = (
-    'arrayprod' => '--init-fill 255',
-    'initlist' => '--init-fill 255',
-    'initarray' => '--init-fill 255',
-);
-
 my %decl_order_tests =
 (
     'two_declare_no_init' => 'a,b',
 );
 
-# The test list is moved to tests/endtoend/CMakeLists.txt -- this is now just for --just
-my %tests = map { $_ => 1 } (qw(
-));
+my %tests = ();
 
-if ( defined $just )
-{
-    $tests{$just}++ unless ( defined $tests{$just} );
-}
+die if ( !defined $just ); # now required.
 
-my %expectedRC = (
-    'fatal' => 134, # abort
-    'getboolfail' => '134', # abort
-);
-
-my %expectedInput = (
-    'get' => '6 7 1 2 3 4 5',
-    'getbool' => '0 1',
-    'getboolfail' => '2',
-);
+$tests{$just}++ unless ( defined $tests{$just} );
 
 my @warnings = ();
 
@@ -216,11 +196,6 @@ sub runone
 
     my $thisflags = $flags;
 
-    if ( defined $testflags{$stem} )
-    {
-        #$thisflags .= " $testflags{$stem}";
-    }
-
     print "##########################################################################\n";
     my $source;
     if ( -e "$stem.sir" )
@@ -252,23 +227,13 @@ sub runone
         $exe = "./$exe";
     }
 
-    if ( defined $expectedInput{${stem}} ) {
-        $rc = verbose_system( qq(echo "$expectedInput{${stem}}" | ${exe} > ${outdir}/${stem}.out 2>${outdir}/${stem}.stderr.out) );
-    } else {
-        $rc = verbose_system( qq(${exe} > ${outdir}/${stem}.out 2>${outdir}/${stem}.stderr.out) );
-    }
+    $rc = verbose_system( qq(${exe} > ${outdir}/${stem}.out 2>${outdir}/${stem}.stderr.out) );
     verbose_system( qq(echo 'stdout:' ; cat ${outdir}/${stem}.out) );
     verbose_system( qq(echo 'stderr:' ; cat ${outdir}/${stem}.stderr.out) );
 
     print "${stem}: returned: $rc\n\n\n\n\n";
 
-    my $erc = $expectedRC{$stem};
-    if ( !defined $erc )
-    {
-        $erc = 0;
-    }
-
-    complain( "${stem}: expected $erc, and got $rc" ) if ( $rc ne $erc );
+    complain( "${stem}: expected 0, and got $rc" ) if ( $rc ne 0 );
 
     if ( -e "expected/${stem}.out" )
     {

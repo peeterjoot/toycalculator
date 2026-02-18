@@ -1,11 +1,22 @@
 # This script runs a test executable and captures stdout/stderr
 
-execute_process(
-    COMMAND ${TEST_EXECUTABLE}
-    OUTPUT_FILE ${OUT_DIR}/${TEST_NAME}.out
-    ERROR_FILE ${OUT_DIR}/${TEST_NAME}.stderr.out
-    RESULT_VARIABLE test_result
-)
+# Build the command - conditionally add input redirection
+if(DEFINED INPUT_FILE AND EXISTS ${INPUT_FILE})
+    execute_process(
+        COMMAND ${TEST_EXECUTABLE}
+        INPUT_FILE ${INPUT_FILE}
+        OUTPUT_FILE ${OUT_DIR}/${TEST_NAME}.out
+        ERROR_FILE ${OUT_DIR}/${TEST_NAME}.stderr.out
+        RESULT_VARIABLE test_result
+    )
+else()
+    execute_process(
+        COMMAND ${TEST_EXECUTABLE}
+        OUTPUT_FILE ${OUT_DIR}/${TEST_NAME}.out
+        ERROR_FILE ${OUT_DIR}/${TEST_NAME}.stderr.out
+        RESULT_VARIABLE test_result
+    )
+endif()
 
 if(EXPECTED_ABORT)
     if(NOT test_result STREQUAL "Subprocess aborted")
