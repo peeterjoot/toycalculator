@@ -23,6 +23,9 @@ namespace silly
         /// True if not OptLevel::O0
         bool isOptimized{};
 
+        /// True if ABORT should omit path (--no-abort-path)
+        bool abortOmitPath{};
+
         /// True if -g is passed.
         bool wantDebug{};
 
@@ -35,7 +38,7 @@ namespace silly
         /// Numeric --init-fill value if specified (zero otherwise.)
         uint8_t fillValue{};
 
-        /// Signal that -lm will be required when the program is linked.
+        /// Signal that -lm will be required when the program is linked (set by lowering)
         bool needsMathLib{};
 
         /// Syntax errors detected.

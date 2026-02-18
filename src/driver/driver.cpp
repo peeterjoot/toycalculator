@@ -117,6 +117,9 @@ static llvm::cl::opt<bool> emitLLVM( "emit-llvm", llvm::cl::desc( "Emit LLVM IR"
 static llvm::cl::opt<bool> noEmitObject( "no-emit-object", llvm::cl::desc( "Skip emit object file (.o)" ),
                                          llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
+static llvm::cl::opt<bool> noAbortPath( "no-abort-path", llvm::cl::desc( "Specify to omit include source path in ABORT" ),
+                                         llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+
 // Noisy debugging output (this is different than --debug which is intercepted by llvm itself)
 static llvm::cl::opt<bool> llvmDEBUG( "debug-llvm", llvm::cl::desc( "Include MLIR dump, and turn off multithreading" ),
                                       llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
@@ -578,6 +581,7 @@ int main( int argc, char** argv )
     st.fillValue = (uint8_t)initFillValue;
     st.wantDebug = debugInfo;
     st.colorErrors = !noColorErrors;
+    st.abortOmitPath = noAbortPath;
     st.filename = inputFilename;
 
     InputType ity = getInputType( st.filename );

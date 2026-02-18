@@ -7,6 +7,7 @@
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/Support/FormatVariadic.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
+#include <llvm/Support/Path.h>
 
 #include <format>
 
@@ -579,7 +580,16 @@ namespace silly
         mlir::FileLineColLoc fileLoc = locationToFLCLoc( loc );
 
         const std::string& filename = fileLoc.getFilename().str();
-        mlir::StringAttr strAttr = builder.getStringAttr( filename );
+        mlir::StringAttr strAttr;
+        if ( driverState.abortOmitPath )
+        {
+            llvm::StringRef name = llvm::sys::path::filename( filename );
+            strAttr = builder.getStringAttr( name );
+        }
+        else
+        {
+            strAttr = builder.getStringAttr( filename );
+        }
 
         mlir::LLVM::ConstantOp sizeConst =
             rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i64, rewriter.getI64IntegerAttr( filename.size() ) );
