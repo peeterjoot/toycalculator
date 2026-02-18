@@ -1,0 +1,161 @@
+#! /usr/bin/env perl
+
+#-----------------------------------------------------------------------------
+# POD Format Documentation.  Read "perldoc perlpod" for an example.
+# When done, check syntax with "podchecker".
+
+=head1 NAME
+
+dwarfcheck - A couple hardcoded dwarfdump checks
+
+=head1 SYNOPSIS
+
+dwarfcheck [--help] --stem foo --dump path
+
+=head1 DESCRIPTION
+
+Options:
+
+=over 4
+
+=item --stem name
+
+What to check
+
+=item --dump path
+
+Dwarfdump output.
+
+=back
+
+=head1 SUPPORTED PLATFORMS
+
+ Unix (Linux verified)
+
+=head1 SUPPORT
+
+ Send email to peeterjoot@pm.me
+
+=head1 AUTHORS
+
+ Peeter Joot
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+use strict ;
+use warnings ;
+use Getopt::Long ;
+use Pod::Usage ;
+
+# Suppress sourcing of users' .bashrc files in invoked shells
+delete $ENV{'ENV'} ;
+delete $ENV{'BASH_ENV'} ;
+
+# Set STDOUT and STDERR to unbuffered
+select STDERR ; $| = 1 ;
+select STDOUT ; $| = 1 ;
+
+my $myName = '' ;
+
+($myName = $0) =~ s@.*[/\\]@@ ;
+my $fatal = 1;
+my $stem;
+my $dumppath;
+
+#Getopt::Long::Configure( 'pass_through' ) ;
+GetOptions (
+   'help'               => sub { pod2usage(-verbose => 2) ; },
+   'stem=s'             => \$stem,
+   'dumppath=s'         => \$dumppath,
+) or pod2usage(-verbose => 0) ;
+
+# Validate/handle options, and everything else...
+
+my @warnings = ();
+
+runone( $stem, $dumppath );
+
+if ( scalar( @warnings ) )
+{
+    print "ERRORS:\n\n";
+
+    foreach ( @warnings )
+    {
+        warn $_;
+    }
+}
+
+exit 0;
+
+sub verbose_system
+{
+    my ($cmd) = @_;
+
+    print "# $cmd\n";
+    system( $cmd );
+
+    return $? >> 8;
+}
+
+sub runone
+{
+    my ($stem, $dumppath) = @_;
+
+    # DI testing HACK for one issue, now fixed:
+    if ( $stem eq 'f' )
+    {
+        # Could check a lot more, but start with this:
+        my $cmd = qq(cat ${dumppath} | grep -A3 DW_AT_linkage_name.*bar0 | tail -1);
+        my $line = `$cmd` ; chomp $line;
+
+        unless ( $line =~ /DW_AT_decl_line.*0x00000003/ )
+        {
+            complain( "ERROR: unexpected dwarfdump output for f.silly in '${dumppath}'.  Expected DW_AT_decl_line 0x00000003, found: '$line'" );
+        }
+    }
+    elsif ( $stem eq 'for_simplest' )
+    {
+        # Could check a lot more, but start with this:
+        my $cmd = qq(cat ${dumppath} | grep -A3 'DW_AT_name.*myLoopVar' | tail -1);
+        my $line = `$cmd` ; chomp $line;
+
+        unless ( $line =~ /DW_AT_decl_line.*0x00000003/ )
+        {
+            complain( "ERROR: unexpected dwarfdump output for for_simplest.silly (variable myLoopVar) in '${dumppath}'.  Expected DW_AT_decl_line 0x00000003, found: '$line'" );
+        }
+    }
+    elsif ( $stem eq 'foo' )
+    {
+        my $cmd = qq(cat ${dumppath} | grep -F '0x00000010  [   3, 6]' | head -1);
+        my $line = `$cmd` ; chomp $line;
+
+        unless ( $line =~ /^0x000000..  .   3, 6/ )
+        {
+            complain( "ERROR: unexpected dwarfdump output for foo.silly in '${dumppath}': $line" );
+        }
+    }
+    else
+    {
+        die "'${stem}' is unknown";
+    }
+
+    print "check ${stem} was successful\n";
+}
+
+sub complain
+{
+    my ($message) = @_;
+
+    if ( $fatal )
+    {
+        die $message;
+    }
+    else
+    {
+        push( @warnings, $message );
+    }
+}
+
+# vim: et ts=4 sw=4
