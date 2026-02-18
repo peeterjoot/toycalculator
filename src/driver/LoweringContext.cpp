@@ -591,11 +591,11 @@ namespace silly
             strAttr = builder.getStringAttr( filename );
         }
 
-        mlir::LLVM::ConstantOp sizeConst =
-            rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i64, rewriter.getI64IntegerAttr( filename.size() ) );
-
         std::string strValue = strAttr.getValue().str();
         size_t strLen = strValue.size();
+
+        mlir::LLVM::ConstantOp sizeConst =
+            rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i64, rewriter.getI64IntegerAttr( strLen ) );
 
         mlir::LLVM::GlobalOp globalOp = lookupOrInsertGlobalOp( loc, rewriter, strAttr, strLen );
         mlir::Value input = rewriter.create<mlir::LLVM::AddressOfOp>( loc, globalOp );
