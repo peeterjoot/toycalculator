@@ -30,6 +30,20 @@ set(ANTLR_OUTPUT_DIR "${CMAKE_BINARY_DIR}/src/grammar/SillyParser" CACHE INTERNA
 message(STATUS "ANTLR output directory: ${ANTLR_OUTPUT_DIR}")
 
 #------------------------------------------------------------------------------
+
+find_program(FILECHECK_EXECUTABLE
+    NAMES FileCheck
+    HINTS ${LLVM_PREFIX}/bin
+    DOC "Path to FileCheck"
+)
+
+if(FILECHECK_EXECUTABLE)
+    message(WARNING "FileCheck found: ${FILECHECK_EXECUTABLE}")
+else()
+    message(WARNING "FileCheck not found - DWARF tests will be skipped")
+endif()
+
+#------------------------------------------------------------------------------
 # global include options for all components
 
 message(STATUS "LLVM_INCLUDE_DIRS: ${LLVM_INCLUDE_DIRS}")
