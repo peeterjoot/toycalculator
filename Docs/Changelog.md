@@ -119,7 +119,7 @@
     ```
 - Removed `sym_name` references from all `tests/dialect/*` test cases
 - Enhanced test cleanup: deletes all output artifacts per test stem
-- All but two tests (dwarfdump+mlirparsetest) now converted to strict cmake+ctest, no longer using bin/testit.
+- All but the mlirparsetest is now converted to strict cmake+ctest, no longer using bin/testit.
 
 ### Bug Fixes
 - **CRITICAL**: Fixed variable scope leak allowing control flow block variables to persist beyond their intended lifetime

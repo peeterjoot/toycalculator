@@ -6,9 +6,8 @@
 #### misc
 * tests/endtoend/expressions/modfloat.silly broken with mix of float32/float64's
 * Run include-what-you-use on lowering.cpp (now that LoweringContext.cpp has been split out.)  Will probably have to build it.
-* Only two tests still using old ctest-add_endtoend_tests() w/ testit:
+* Only one test still using old ctest-add_endtoend_tests() w/ testit:
 
-    - dwarfdump/
     - mlirparsetest/
 
 #### Driver

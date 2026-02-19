@@ -1,0 +1,177 @@
+#! /usr/bin/env perl
+
+#-----------------------------------------------------------------------------
+# POD Format Documentation.  Read "perldoc perlpod" for an example.
+# When done, check syntax with "podchecker".
+
+=head1 NAME
+
+check_decl_order - A declaration order checker.
+
+=head1 SYNOPSIS
+
+check_decl_order [--help] --mlirpath /path --what ordering
+
+=head1 DESCRIPTION
+
+A declaration order test.
+
+Options:
+
+=over 4
+
+=item --mlirpath /thefile
+
+MLIR listing to check.
+
+=item --what a,b
+
+The ordering of interest.
+
+=back
+
+=head1 SUPPORTED PLATFORMS
+
+ Unix (Linux verified)
+
+=head1 SUPPORT
+
+ Send email to peeterjoot@pm.me
+
+=head1 AUTHORS
+
+ Peeter Joot
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+use strict ;
+use warnings ;
+use Getopt::Long ;
+use Pod::Usage ;
+
+# Suppress sourcing of users' .bashrc files in invoked shells
+delete $ENV{'ENV'} ;
+delete $ENV{'BASH_ENV'} ;
+
+# Set STDOUT and STDERR to unbuffered
+select STDERR ; $| = 1 ;
+select STDOUT ; $| = 1 ;
+
+my $myName = '' ;
+
+($myName = $0) =~ s@.*[/\\]@@ ;
+my $fatal = 1;
+my $mlirpath;
+my $what;
+
+#Getopt::Long::Configure( 'pass_through' ) ;
+GetOptions (
+   'help'               => sub { pod2usage(-verbose => 2) ; },
+   'what=s'             => \$what,
+   'mlirpath=s'         => \$mlirpath,
+) or pod2usage(-verbose => 0) ;
+
+# Validate/handle options, and everything else...
+
+my @warnings = ();
+
+check_decl_order( $mlirpath, $what );
+
+print "${mlirpath}: TEST WAS SUCCESSFUL\n"; # for ctest rule
+
+if ( scalar( @warnings ) )
+{
+    print "ERRORS:\n\n";
+
+    foreach ( @warnings )
+    {
+        warn $_;
+    }
+}
+
+exit 0;
+
+sub verbose_system
+{
+    my ($cmd) = @_;
+
+    print "# $cmd\n";
+    system( $cmd );
+
+    return $? >> 8;
+}
+
+sub complain
+{
+    my ($message) = @_;
+
+    if ( $fatal )
+    {
+        die $message;
+    }
+    else
+    {
+        push( @warnings, $message );
+    }
+}
+
+sub check_decl_order
+{
+    my ($mlir_file, $expected_str) = @_;
+
+    die "MLIR file not found: $mlir_file" unless (-f $mlir_file);
+    open my $fh, '<', $mlir_file or die "Cannot open $mlir_file: $!\n";
+
+    my %ssa_to_name;      # Maps SSA value (e.g., "%0") to variable name
+    my @declare_order;    # Order in which declares appear
+
+    while (my $line = <$fh>) {
+        # Match declare: %0 = "silly.declare"() : () -> !silly.var<i32>
+        if ($line =~ /^\s*(%\d+)\s*=\s*"silly\.declare"/) {
+            my $ssa_val = $1;
+            push @declare_order, $ssa_val;
+        }
+        # Match debug_name: "silly.debug_name"(%0) <{name = "a"}>
+        elsif ($line =~ /"silly\.debug_name"\((%\d+)\)\s*<\{name\s*=\s*"([^"]+)"\}>/) {
+            my $ssa_val = $1;
+            my $var_name = $2;
+            $ssa_to_name{$ssa_val} = $var_name;
+        }
+    }
+    close $fh;
+
+    # Build the ordered list of variable names based on declare order
+    my @found;
+    for my $ssa_val (@declare_order) {
+        if (exists $ssa_to_name{$ssa_val}) {
+            push @found, $ssa_to_name{$ssa_val};
+        } else {
+            complain("Declaration $ssa_val has no corresponding debug_name in $mlir_file");
+            return;
+        }
+    }
+
+    my @expected = split /,/, $expected_str;
+
+    if (@found != @expected) {
+        complain(sprintf("wrong number of declarations in %s (got %d, expected %d)\nFound: %s\nExpected: %s",
+                         $mlir_file, scalar(@found), scalar(@expected),
+                         join(", ", @found), join(", ", @expected)));
+        return;
+    }
+
+    for my $i (0 .. $#expected) {
+        if ($found[$i] ne $expected[$i]) {
+            complain(sprintf("declaration order mismatch in %s at position %d: expected '%s', got '%s'\nFull sequence: %s",
+                             $mlir_file, $i+1, $expected[$i], $found[$i],
+                             join(", ", @found)));
+            return;
+        }
+    }
+
+    # print "OK: $mlir_file declarations in order: ", join(", ", @found), "\n";
+}
+
+# vim: et ts=4 sw=4
