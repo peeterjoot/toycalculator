@@ -82,18 +82,11 @@ enum class InputType
 // Define a category for silly compiler options
 static llvm::cl::OptionCategory SillyCategory( "Silly Compiler Options" );
 
-// Command-line option for input file
+//--------------------------------
+// Options related to output files
 static llvm::cl::opt<std::string> inputFilename( llvm::cl::Positional, llvm::cl::desc( "<input file>" ),
                                                  llvm::cl::init( "-" ), llvm::cl::value_desc( "filename" ),
                                                  llvm::cl::cat( SillyCategory ), llvm::cl::NotHidden );
-
-static llvm::cl::opt<bool> debugInfo( "g",
-                                      llvm::cl::desc( "Enable location output in MLIR, and dwarf metadata "
-                                                      "creation in the lowered LLVM IR)" ),
-                                      llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
-
-static llvm::cl::opt<bool> verboseLink( "verbose-link", llvm::cl::desc( "Display the link command line on stderr" ),
-                                        llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<bool> compileOnly( "c", llvm::cl::desc( "Compile only and don't link." ), llvm::cl::init( false ),
                                         llvm::cl::cat( SillyCategory ) );
@@ -101,9 +94,6 @@ static llvm::cl::opt<bool> compileOnly( "c", llvm::cl::desc( "Compile only and d
 static llvm::cl::opt<std::string> outDir(
     "output-directory", llvm::cl::desc( "Output directory for generated files (e.g., .mlir, .ll, .o)" ),
     llvm::cl::value_desc( "directory" ), llvm::cl::init( "" ), llvm::cl::cat( SillyCategory ) );
-
-static llvm::cl::opt<bool> toStdout( "stdout", llvm::cl::desc( "LLVM and MLIR on stdout instead of to a file" ),
-                                     llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 // Add command-line option for MLIR emission
 static llvm::cl::opt<bool> emitMLIR( "emit-mlir", llvm::cl::desc( "Emit MLIR IR" ), llvm::cl::init( false ),
@@ -113,20 +103,11 @@ static llvm::cl::opt<bool> emitMLIR( "emit-mlir", llvm::cl::desc( "Emit MLIR IR"
 static llvm::cl::opt<bool> emitLLVM( "emit-llvm", llvm::cl::desc( "Emit LLVM IR" ), llvm::cl::init( false ),
                                      llvm::cl::cat( SillyCategory ) );
 
-// Add command-line option for object file emission
-static llvm::cl::opt<bool> noEmitObject( "no-emit-object", llvm::cl::desc( "Skip emit object file (.o)" ),
-                                         llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+static llvm::cl::opt<bool> toStdout( "stdout", llvm::cl::desc( "LLVM and MLIR on stdout instead of to a file" ),
+                                     llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
-static llvm::cl::opt<bool> noAbortPath( "no-abort-path", llvm::cl::desc( "Specify to omit include source path in ABORT" ),
-                                         llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
-
-// Noisy debugging output (this is different than --debug which is intercepted by llvm itself)
-static llvm::cl::opt<bool> llvmDEBUG( "debug-llvm", llvm::cl::desc( "Include MLIR dump, and turn off multithreading" ),
-                                      llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
-
-static llvm::cl::opt<bool> noColorErrors( "no-color-errors", llvm::cl::desc( "Disable color error messages" ),
-                                          llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
-
+//--------------------------------
+// Options that change code generation:
 static llvm::cl::opt<int> initFillValue( "init-fill", llvm::cl::desc( "Initializer fill value." ), llvm::cl::init( 0 ),
                                          llvm::cl::ValueRequired, llvm::cl::cat( SillyCategory ) );
 
@@ -137,6 +118,27 @@ static llvm::cl::opt<OptLevel> optLevel( "O", llvm::cl::desc( "Optimization leve
                                                            clEnumValN( OptLevel::O3, "3", "Aggressive optimization" ) ),
                                          llvm::cl::init( OptLevel::O0 ), llvm::cl::cat( SillyCategory ) );
 
+static llvm::cl::opt<bool> noAbortPath( "no-abort-path", llvm::cl::desc( "Specify to omit include source path in ABORT" ),
+                                         llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+
+static llvm::cl::opt<bool> debugInfo( "g",
+                                      llvm::cl::desc( "Enable location output in MLIR, and dwarf metadata "
+                                                      "creation in the lowered LLVM IR)" ),
+                                      llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+
+//--------------------------------
+// Diagnostic options:
+static llvm::cl::opt<bool> verboseLink( "verbose-link", llvm::cl::desc( "Display the link command line on stderr" ),
+                                        llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+
+// Noisy debugging output (this is different than --debug which is intercepted by llvm itself)
+static llvm::cl::opt<bool> llvmDEBUG( "debug-llvm", llvm::cl::desc( "Include MLIR dump, and turn off multithreading" ),
+                                      llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+
+static llvm::cl::opt<bool> noColorErrors( "no-color-errors", llvm::cl::desc( "Disable color error messages" ),
+                                          llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+
+//--------------------------------
 static InputType getInputType( llvm::StringRef filename )
 {
     llvm::StringRef ext = llvm::sys::path::extension( filename );
@@ -194,16 +196,12 @@ static mlir::ModuleOp runParserAndBuilder( silly::ParseListener& listener, silly
 }
 
 /// Create the directory named in --output-directory
-static void makeOutputDirectory( const std::string& filename, llvm::SmallString<128>& dirWithStem )
+///
+/// @param theDirectory [out] That output directory, or the directory part of the filename path (if specified), or an empty string.
+///
+static void makeOutputDirectory( const std::string& filename, llvm::SmallString<128>& theDirectory )
 {
     llvm::StringRef dirname = llvm::sys::path::parent_path( filename );
-    llvm::StringRef stem = llvm::sys::path::stem( filename );
-    if ( stem.empty() )
-    {
-        llvm::errs() << std::format( COMPILER_NAME ": error: Invalid filename '{}', empty stem\n", filename );
-        std::exit( (int)ReturnCodes::filenameParseError );
-    }
-
     // Create output directory if specified
     if ( !outDir.empty() )
     {
@@ -216,17 +214,11 @@ static void makeOutputDirectory( const std::string& filename, llvm::SmallString<
             std::exit( (int)ReturnCodes::directoryError );
         }
 
-        dirWithStem = outDir;
-        llvm::sys::path::append( dirWithStem, stem );
+        theDirectory = outDir;
     }
     else if ( dirname != "" )
     {
-        dirWithStem = dirname;
-        llvm::sys::path::append( dirWithStem, stem );
-    }
-    else
-    {
-        dirWithStem = stem;
+        theDirectory = dirname;
     }
 }
 
@@ -420,7 +412,7 @@ static void assembleAndLink( const llvm::SmallString<128>& dirWithStem, const ch
 
     MPM.run( *llvmModule, MAM );
 
-    // Emit object file
+    // Emit object file.  FIXME: we should use a temporary path if compileOnly was not set.
     llvm::SmallString<128> outputFilename( dirWithStem );
     outputFilename += ".o";
     std::error_code EC;
@@ -444,8 +436,6 @@ static void assembleAndLink( const llvm::SmallString<128>& dirWithStem, const ch
     dest.close();
 
     LLVM_DEBUG( { llvm::outs() << "Generated object file: " << outputFilename << '\n'; } );
-
-    writeLL( llvmModule, dirWithStem );
 
     if ( compileOnly == false )
     {
@@ -527,27 +517,20 @@ static void lowerAssembleAndLinkModule( mlir::ModuleOp mod, const llvm::SmallStr
         std::exit( (int)ReturnCodes::loweringError );
     }
 
-    bool emitObject = !noEmitObject;
-    if ( emitLLVM || emitObject )
+    // Verify the module to ensure debug info is valid
+    if ( llvm::verifyModule( *llvmModule, &llvm::errs() ) )
     {
-        // Verify the module to ensure debug info is valid
-        if ( llvm::verifyModule( *llvmModule, &llvm::errs() ) )
-        {
-            llvm::errs() << COMPILER_NAME ": error: Invalid LLVM IR module\n";
-            std::exit( (int)ReturnCodes::loweringError );
-        }
-
-        // Dump the pre-optimized LL if we aren't creating a .o
-        if ( emitLLVM && !emitObject )
-        {
-            writeLL( llvmModule, dirWithStem );
-        }
-
-        if ( emitObject )
-        {
-            assembleAndLink( dirWithStem, argv0, mainSymbol, llvmModule, st );
-        }
+        llvm::errs() << COMPILER_NAME ": error: Invalid LLVM IR module\n";
+        std::exit( (int)ReturnCodes::loweringError );
     }
+
+    // Dump the pre-optimized LL if we aren't creating a .o
+    if ( emitLLVM )
+    {
+        writeLL( llvmModule, dirWithStem );
+    }
+
+    assembleAndLink( dirWithStem, argv0, mainSymbol, llvmModule, st );
 }
 
 static mlir::OwningOpRef<mlir::ModuleOp> parseMLIRFile( const std::string& filename, mlir::MLIRContext* context )
@@ -609,6 +592,22 @@ int main( int argc, char** argv )
     llvm::SmallString<128> dirWithStem;
 
     makeOutputDirectory( st.filename, dirWithStem );
+
+    llvm::StringRef stem = llvm::sys::path::stem( st.filename ); // foo/bar.silly -> stem: is just bar, not foo/bar
+    if ( stem.empty() )
+    {
+        llvm::errs() << std::format( COMPILER_NAME ": error: Invalid filename '{}', empty stem\n", st.filename );
+        std::exit( (int)ReturnCodes::filenameParseError );
+    }
+
+    if ( dirWithStem.empty() )
+    {
+        dirWithStem = stem;
+    }
+    else
+    {
+        llvm::sys::path::append( dirWithStem, stem );
+    }
 
     if ( ity == InputType::Silly )
     {
