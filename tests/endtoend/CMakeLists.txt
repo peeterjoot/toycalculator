@@ -1,34 +1,6 @@
 # Create a top-level target for all endtoend tests
 add_custom_target(endtoend_tests ALL)
 
-# Define the helper function
-function(add_endtoend_tests TEST_CATEGORY)
-    # Parse the test files from the remaining arguments
-    set(TEST_FILES ${ARGN})
-
-    foreach(test_file IN LISTS TEST_FILES)
-        get_filename_component(test_name ${test_file} NAME_WE)
-
-        add_test(
-            NAME ${TEST_CATEGORY}.${test_name}
-            COMMAND ${CMAKE_SOURCE_DIR}/bin/testit
-                --driverpath ${CMAKE_BINARY_DIR}/bin
-                --just ${test_file}
-                --out ${CMAKE_BINARY_DIR}/out/${TEST_CATEGORY}/${test_name}
-                --clean
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        )
-
-        set_tests_properties(${TEST_CATEGORY}.${test_name}
-            PROPERTIES
-                LABELS "end-to-end;compiler-cycle;sample;${TEST_CATEGORY}"
-                TIMEOUT 60
-                PASS_REGULAR_EXPRESSION "TEST WAS SUCCESSFUL"
-                ENVIRONMENT "CTEST_OUTPUT_ON_FAILURE=1"
-        )
-    endforeach()
-endfunction()
-
 function(add_endtoend_run_tests CATEGORY)
     cmake_parse_arguments(
         ARG

@@ -14,7 +14,7 @@ testit [--help] --no-fatal [--just tcname] [--optimize] [--no-debug] [--clean] [
 
 =head1 DESCRIPTION
 
-This used to be the testsuite, but now just runs a single test.  The testsuite orchestration has been (mostly) moved to ctest.
+This used to be the testsuite, but now just for easy running a specific test manually.  The testsuite orchestration has been (mostly) moved to ctest.
 
 Options:
 
@@ -148,11 +148,6 @@ if ( $clean )
     verbose_system( qq(rm -rf $outdir) );
 }
 
-my %decl_order_tests =
-(
-    'two_declare_no_init' => 'a,b',
-);
-
 my %tests = ();
 
 die if ( !defined $just ); # now required.
@@ -252,11 +247,6 @@ sub runone
         complain( "ERROR: diff -wup expected/${stem}.stderr.out ${outdir}/${stem}.stderr.out: $crc\n") if ( $crc );
     }
 
-    if ( defined $decl_order_tests{$stem} )
-    {
-        check_decl_order( "${outdir}/${stem}.mlir", $decl_order_tests{$stem} );
-    }
-
     print "${stem}: TEST WAS SUCCESSFUL\n"; # for ctest rule
 }
 
@@ -272,63 +262,6 @@ sub complain
     {
         push( @warnings, $message );
     }
-}
-
-sub check_decl_order
-{
-    my ($mlir_file, $expected_str) = @_;
-
-    die "MLIR file not found: $mlir_file" unless (-f $mlir_file);
-    open my $fh, '<', $mlir_file or die "Cannot open $mlir_file: $!\n";
-
-    my %ssa_to_name;      # Maps SSA value (e.g., "%0") to variable name
-    my @declare_order;    # Order in which declares appear
-
-    while (my $line = <$fh>) {
-        # Match declare: %0 = "silly.declare"() : () -> !silly.var<i32>
-        if ($line =~ /^\s*(%\d+)\s*=\s*"silly\.declare"/) {
-            my $ssa_val = $1;
-            push @declare_order, $ssa_val;
-        }
-        # Match debug_name: "silly.debug_name"(%0) <{name = "a"}>
-        elsif ($line =~ /"silly\.debug_name"\((%\d+)\)\s*<\{name\s*=\s*"([^"]+)"\}>/) {
-            my $ssa_val = $1;
-            my $var_name = $2;
-            $ssa_to_name{$ssa_val} = $var_name;
-        }
-    }
-    close $fh;
-
-    # Build the ordered list of variable names based on declare order
-    my @found;
-    for my $ssa_val (@declare_order) {
-        if (exists $ssa_to_name{$ssa_val}) {
-            push @found, $ssa_to_name{$ssa_val};
-        } else {
-            complain("Declaration $ssa_val has no corresponding debug_name in $mlir_file");
-            return;
-        }
-    }
-
-    my @expected = split /,/, $expected_str;
-
-    if (@found != @expected) {
-        complain(sprintf("wrong number of declarations in %s (got %d, expected %d)\nFound: %s\nExpected: %s",
-                         $mlir_file, scalar(@found), scalar(@expected),
-                         join(", ", @found), join(", ", @expected)));
-        return;
-    }
-
-    for my $i (0 .. $#expected) {
-        if ($found[$i] ne $expected[$i]) {
-            complain(sprintf("declaration order mismatch in %s at position %d: expected '%s', got '%s'\nFull sequence: %s",
-                             $mlir_file, $i+1, $expected[$i], $found[$i],
-                             join(", ", @found)));
-            return;
-        }
-    }
-
-    # print "OK: $mlir_file declarations in order: ", join(", ", @found), "\n";
 }
 
 # vim: et ts=4 sw=4
