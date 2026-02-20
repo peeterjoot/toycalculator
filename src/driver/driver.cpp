@@ -584,7 +584,7 @@ int main( int argc, char** argv )
         flags.enableDebugInfo( true );
     }
 
-    silly::ParseListener listener( st, &dialectLoader.context );
+    silly::ParseListener listener( st, st.filename, &dialectLoader.context );
 
     mlir::ModuleOp mod;
     mlir::OwningOpRef<mlir::ModuleOp> rmod;

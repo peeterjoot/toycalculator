@@ -38,7 +38,7 @@ find_program(FILECHECK_EXECUTABLE
 )
 
 if(FILECHECK_EXECUTABLE)
-    message(WARNING "FileCheck found: ${FILECHECK_EXECUTABLE}")
+    message(STATUS "FileCheck found: ${FILECHECK_EXECUTABLE}")
 else()
     message(WARNING "FileCheck not found - DWARF tests will be skipped")
 endif()

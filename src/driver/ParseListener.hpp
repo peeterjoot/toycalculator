@@ -21,11 +21,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "DriverState.hpp"
+#include "MlirTypeCache.hpp"
+#include "PrintFlags.hpp"
 #include "SillyBaseListener.h"
 #include "SillyDialect.hpp"
-#include "DriverState.hpp"
-#include "PrintFlags.hpp"
-#include "MlirTypeCache.hpp"
 
 namespace silly
 {
@@ -101,10 +101,10 @@ namespace silly
         }
 
         /// New variables will be visible only for this scope and later
-        inline void startScope( );
+        inline void startScope();
 
         /// Any variables that had been declared in the current scope will no longer be visible.
-        inline void endScope( );
+        inline void endScope();
 
        private:
         /// The last silly::DeclareOp created for the current function.
@@ -150,9 +150,10 @@ namespace silly
     {
        public:
         /// Constructor.
-        /// @param ds Driver state, including the source filename for location information.
-        /// @param context The context under which the mlir module is created.
-        ParseListener( DriverState &ds, mlir::MLIRContext *context );
+        /// @param ds [in,out] Driver state (for emitUserError, emitInternalError)
+        /// @param filename [in] Source filename for this module (used to construct Location info)
+        /// @param context [in] The context under which the mlir module is created.
+        ParseListener( DriverState &ds, const std::string &filename, mlir::MLIRContext *context );
 
         /// Override to throw on syntax errors.
         void syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
@@ -165,10 +166,10 @@ namespace silly
         void exitStartRule( SillyParser::StartRuleContext *ctx ) override;
 
         /// Antlr4 entry hook for the scopedStatements rule.
-        void enterScopedStatements(SillyParser::ScopedStatementsContext *ctx) override;
+        void enterScopedStatements( SillyParser::ScopedStatementsContext *ctx ) override;
 
         /// Antlr4 exit hook for the scopedStatements rule.
-        void exitScopedStatements(SillyParser::ScopedStatementsContext *ctx) override;
+        void exitScopedStatements( SillyParser::ScopedStatementsContext *ctx ) override;
 
         /// Antlr4 enter hook for an IF statement
         void enterIfStatement( SillyParser::IfStatementContext *ctx ) override;
@@ -238,6 +239,8 @@ namespace silly
        private:
         /// Source filename, ...
         DriverState &driverState;
+
+        const std::string &sourceFile;
 
         /// Context for all the loaded dialects.
         mlir::MLIRContext *ctx;

@@ -114,8 +114,9 @@ namespace silly
     //--------------------------------------------------------------------------
     // ParseListener members
     //
-    ParseListener::ParseListener( DriverState &ds, mlir::MLIRContext *context )
+    ParseListener::ParseListener( DriverState & ds, const std::string &filename, mlir::MLIRContext *context )
         : driverState{ ds },
+          sourceFile{ filename },
           ctx{ context },
           builder( ctx ),
           mod( mlir::ModuleOp::create( getStartLocation( nullptr ) ) ),
@@ -228,9 +229,9 @@ namespace silly
         }
 
         mlir::FileLineColLoc startLoc =
-            mlir::FileLineColLoc::get( builder.getStringAttr( driverState.filename ), startLine, startCol + 1 );
+            mlir::FileLineColLoc::get( builder.getStringAttr( sourceFile ), startLine, startCol + 1 );
         mlir::FileLineColLoc endLoc =
-            mlir::FileLineColLoc::get( builder.getStringAttr( driverState.filename ), endLine, endCol + 1 );
+            mlir::FileLineColLoc::get( builder.getStringAttr( sourceFile ), endLine, endCol + 1 );
 
         return { startLoc, endLoc };
     }
@@ -255,7 +256,7 @@ namespace silly
         size_t line = token->getLine();
         size_t column = token->getCharPositionInLine() + 1;
 
-        return mlir::FileLineColLoc::get( builder.getStringAttr( driverState.filename ), line, column );
+        return mlir::FileLineColLoc::get( builder.getStringAttr( sourceFile ), line, column );
     }
 
     inline mlir::Location ParseListener::getTerminalLocation( antlr4::tree::TerminalNode *node )
@@ -472,7 +473,7 @@ namespace silly
             mlir::Location loc = builder.getUnknownLoc();
             driverState.emitInternalError(
                 loc, __FILE__, __LINE__, __func__,
-                std::format( "parse error in {}:{}:{}: {}", driverState.filename, line, charPositionInLine, msg ),
+                std::format( "parse error in {}:{}:{}: {}", sourceFile, line, charPositionInLine, msg ),
                 currentFuncName );
         }
     }
