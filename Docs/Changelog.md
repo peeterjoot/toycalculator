@@ -102,6 +102,12 @@
 ### Code structure
 - split out LoweringContext.[hc]pp, helper.[hc]pp, and InsertionPointGuard.hpp from lowering.cpp
 
+## Driver
+
+* Refactored driver.cpp,:introduce CompilationUnit to manage single-source compilation pipeline, and prep for multi-file and -o support.
+* Migrated error emission from DriverState → ParseListener
+* Centralized fatal exits
+
 ## Testing & Quality
 
 ### Test Coverage Expansion

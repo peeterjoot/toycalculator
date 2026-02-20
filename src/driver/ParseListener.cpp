@@ -20,9 +20,11 @@
 #include <fstream>
 #include <string>
 
-#include "SillyDialect.hpp"
+#include "DriverState.hpp"
 #include "ParseListener.hpp"
+#include "SillyDialect.hpp"
 #include "helper.hpp"
+#include "SillyLexer.h"
 
 /// --debug- class for the parser
 #define DEBUG_TYPE "silly-parser"
@@ -114,7 +116,7 @@ namespace silly
     //--------------------------------------------------------------------------
     // ParseListener members
     //
-    ParseListener::ParseListener( DriverState & ds, const std::string &filename, mlir::MLIRContext *context )
+    ParseListener::ParseListener( DriverState &ds, const std::string &filename, mlir::MLIRContext *context )
         : driverState{ ds },
           sourceFile{ filename },
           ctx{ context },
@@ -124,8 +126,116 @@ namespace silly
           currentFuncName{},
           functionStateMap{}
     {
-        builder.setInsertionPointToStart( mod.getBody() );
+        builder.setInsertionPointToStart( mod->getBody() );
         typ.initialize( builder, ctx );
+    }
+
+    mlir::OwningOpRef<mlir::ModuleOp> ParseListener::run( )
+    {
+        driverState.openFailed = false;
+
+        std::ifstream inputStream;
+        inputStream.open( sourceFile );
+        if ( !inputStream.is_open() )
+        {
+            driverState.openFailed = true;
+            return nullptr;
+        }
+
+        antlr4::ANTLRInputStream antlrInput( inputStream );
+        SillyLexer lexer( &antlrInput );
+        antlr4::CommonTokenStream tokens( &lexer );
+        SillyParser parser( &tokens );
+
+        // Remove default error listener and add ParseListener for errors
+        parser.removeErrorListeners();
+        parser.addErrorListener( this );
+
+        antlr4::tree::ParseTree* tree = parser.startRule();
+        antlr4::tree::ParseTreeWalker::DEFAULT.walk( this, tree );
+
+        if ( errorCount )
+        {
+            return nullptr;
+        }
+
+        return std::move(mod);
+    }
+
+    void ParseListener::emitInternalError( mlir::Location loc, const char *compilerfile, unsigned compilerline,
+                                           const char *compilerfunc, const std::string &message,
+                                           const std::string &programFuncName )
+    {
+        emitError( loc, std::format( "{}:{}:{}: {}", compilerfile, compilerline, compilerfunc, message ),
+                   programFuncName, true );
+    }
+
+    void ParseListener::emitError( mlir::Location loc, const std::string &message, const std::string &funcName,
+                                   bool internal )
+    {
+        bool inColor = isatty( fileno( stderr ) ) && driverState.colorErrors;
+        const char *RED = inColor ? "\033[1;31m" : "";
+        const char *CYAN = inColor ? "\033[0;36m" : "";
+        const char *RESET = inColor ? "\033[0m" : "";
+
+        if ( internal && errorCount )
+        {
+            errorCount++;
+            return;
+        }
+
+        static std::string lastFunc{};
+        auto fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc );
+        if ( !fileLoc )
+        {
+            llvm::errs() << std::format( "{}{}error: {}{}\n", RED, internal ? "internal " : "", RESET, message );
+        }
+
+        std::string sourcename = fileLoc.getFilename().str();
+        unsigned line = fileLoc.getLine();
+        unsigned col = fileLoc.getColumn();
+
+        if ( ( funcName != "" ) && ( funcName != ENTRY_SYMBOL_NAME ) && ( funcName != lastFunc ) )
+        {
+            llvm::errs() << std::format( "{}: In function ‘{}’:\n", sourcename, funcName );
+        }
+        lastFunc = funcName;
+
+        // Print: sourcename:line:col: error: message
+        llvm::errs() << std::format( "{}{}:{}:{}: {}{}error: {}{}\n", CYAN, sourcename, line, col, RED,
+                                     internal ? "internal " : "", RESET, message );
+
+        // Try to read and display the source line
+        if ( !sourcename.empty() )
+        {
+            std::string path = sourcename;
+
+            if ( std::ifstream file{ path } )
+            {
+                std::string currentLine;
+                unsigned currentLineNum = 0;
+
+                while ( std::getline( file, currentLine ) )
+                {
+                    currentLineNum++;
+                    if ( currentLineNum == line )
+                    {
+                        /* Example output:
+                            5 | FOR(INT32 i:(0,2)){PRINT i;}
+                              |     ^
+                         */
+                        // `{:>{}}` - the `^` character, right-aligned to `col` width
+                        llvm::errs() << std::format(
+                            "{0:5} | {1}\n"
+                            "      | {2:>{3}}\n",
+                            line, currentLine, "^", col );
+                        break;
+                    }
+                }
+            }
+        }
+
+        errorCount++;
     }
 
     inline ParserPerFunctionState &ParseListener::funcState( const std::string &funcName )
@@ -153,9 +263,8 @@ namespace silly
         }
         else
         {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                           std::format( "boolean value neither TRUE nor FALSE: {}", s ),
-                                           currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               std::format( "boolean value neither TRUE nor FALSE: {}", s ), currentFuncName );
             return mlir::Value{};
         }
 
@@ -195,9 +304,9 @@ namespace silly
 
         if ( ( input.size() < 2 ) || ( input.front() != '"' ) || ( input.back() != '"' ) )
         {
-            driverState.emitInternalError(
-                loc, __FILE__, __LINE__, __func__,
-                std::format( "String '{}' was not double quotes enclosed as expected.", input ), currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               std::format( "String '{}' was not double quotes enclosed as expected.", input ),
+                               currentFuncName );
             return stringLiteral;
         }
 
@@ -283,14 +392,14 @@ namespace silly
 
         if ( !ctx )
         {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "no ExpressionContext", currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "no ExpressionContext", currentFuncName );
             return value;
         }
 
         value = parseLowest( ctx, ty );
         if ( !value )
         {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseLowest failed", currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "parseLowest failed", currentFuncName );
             return value;
         }
 
@@ -325,7 +434,7 @@ namespace silly
         if ( v )
         {
             // coverage: error_redeclare.silly
-            driverState.emitUserError( loc, std::format( "Variable {} already declared", varName ), currentFuncName );
+            emitUserError( loc, std::format( "Variable {} already declared", varName ), currentFuncName );
             return;
         }
 
@@ -338,10 +447,9 @@ namespace silly
             mlir::func::FuncOp funcOp = f.getFuncOp();
 
             mlir::Region &funcRegion = funcOp.getBody();
-            if (funcRegion.empty())
+            if ( funcRegion.empty() )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                               "Function has empty body", currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "Function has empty body", currentFuncName );
                 return;
             }
 
@@ -363,8 +471,7 @@ namespace silly
                 mlir::Value init = parseExpression( e, ty );
                 if ( !init )
                 {
-                    driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed",
-                                                   currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
                     return;
                 }
 
@@ -390,8 +497,7 @@ namespace silly
                 }
                 else
                 {
-                    driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "unknown scalar type.",
-                                                   currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__, "unknown scalar type.", currentFuncName );
                     return;
                 }
             }
@@ -399,7 +505,7 @@ namespace silly
             if ( initializers.size() > numElements )
             {
                 // coverage: error_array_too_many_init.silly, error_init_list1.silly, error_init_list2.silly
-                driverState.emitUserError(
+                emitUserError(
                     loc,
                     std::format( "For variable '{}', more initializers ({}) specified than number of elements ({}).\n",
                                  varName, initializers.size(), numElements ),
@@ -448,9 +554,9 @@ namespace silly
         {
             mlir::Location loc = getStartLocation( ctx );
 
-            driverState.emitInternalError(
-                loc, __FILE__, __LINE__, __func__,
-                std::format( "unexpected ExpressionContext alternative: {}", ctx->getText() ), currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               std::format( "unexpected ExpressionContext alternative: {}", ctx->getText() ),
+                               currentFuncName );
             return mlir::Value{};
         }
 
@@ -466,15 +572,14 @@ namespace silly
         {
             mlir::Location loc = getTokenLocation( offendingSymbol );
 
-            driverState.emitUserError( loc, std::format( "parse error: {}", msg ), currentFuncName );
+            emitUserError( loc, std::format( "parse error: {}", msg ), currentFuncName );
         }
         else
         {
             mlir::Location loc = builder.getUnknownLoc();
-            driverState.emitInternalError(
-                loc, __FILE__, __LINE__, __func__,
-                std::format( "parse error in {}:{}:{}: {}", sourceFile, line, charPositionInLine, msg ),
-                currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               std::format( "parse error in {}:{}:{}: {}", sourceFile, line, charPositionInLine, msg ),
+                               currentFuncName );
         }
     }
 
@@ -487,7 +592,7 @@ namespace silly
         if ( !var )
         {
             // coverage: error_induction_var_in_step.silly
-            driverState.emitUserError( loc, std::format( "Undeclared variable {}", varName ), currentFuncName );
+            emitUserError( loc, std::format( "Undeclared variable {}", varName ), currentFuncName );
             return declareOp;
         }
 
@@ -611,19 +716,17 @@ namespace silly
             if ( !returnType )
             {
                 // coverage: error_return_expr_no_return_type.silly
-                driverState.emitUserError(
-                    loc,
-                    std::format( "return expression found '{}', but no return type for function {}",
-                                 expression->getText(), currentFuncName ),
-                    currentFuncName );
+                emitUserError( loc,
+                               std::format( "return expression found '{}', but no return type for function {}",
+                                            expression->getText(), currentFuncName ),
+                               currentFuncName );
                 return;
             }
 
             value = parseExpression( expression, returnType );
             if ( !value )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed",
-                                               currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
                 return;
             }
         }
@@ -680,14 +783,14 @@ namespace silly
             // To support this, exitFor would have to pop an insertion point and current-function-name,
             // and we'd have to push an insertion-point/function-name instead of just assuming that
             // we started in main and will return to there.
-            driverState.emitUserError( locs.first, std::format( "Nested functions are not currently supported." ),
-                                       currentFuncName );
+            emitUserError( locs.first, std::format( "Nested functions are not currently supported." ),
+                           currentFuncName );
             return;
         }
 
         mainIP = builder.saveInsertionPoint();
 
-        builder.setInsertionPointToStart( mod.getBody() );
+        builder.setInsertionPointToStart( mod->getBody() );
 
         assert( ctx->IDENTIFIER() );
         std::string funcName = ctx->IDENTIFIER()->getText();
@@ -704,7 +807,7 @@ namespace silly
             else
             {
                 mlir::Location loc = getStartLocation( ctx );
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "no returnType", currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "no returnType", currentFuncName );
                 return;
             }
         }
@@ -750,8 +853,8 @@ namespace silly
         mlir::func::FuncOp funcOp = f.getFuncOp();
         if ( !funcOp )
         {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                           std::format( "no FuncOp found for {}", funcName ), currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__, std::format( "no FuncOp found for {}", funcName ),
+                               currentFuncName );
             return ret;
         }
 
@@ -779,8 +882,7 @@ namespace silly
                 mlir::Value value = parseExpression( p, ty );
                 if ( !value )
                 {
-                    driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed",
-                                                   currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
                     return value;
                 }
 
@@ -816,8 +918,8 @@ namespace silly
     {
         if ( !identifier )
         {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                           "no identifier for declaration processing", currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "no identifier for declaration processing",
+                               currentFuncName );
             return;
         }
         std::string varName = identifier->getText();
@@ -830,7 +932,7 @@ namespace silly
             if ( declareAssignmentExpression )
             {
                 // TODO: no coverage.
-                driverState.emitUserError(
+                emitUserError(
                     loc,
                     std::format(
                         "Declaration cannot have both assignment expression and initialization-list expression." ),
@@ -879,8 +981,8 @@ namespace silly
         }
         else
         {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                           "Unsupported signed integer declaration size.", currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "Unsupported signed integer declaration size.",
+                               currentFuncName );
         }
 
         return ty;
@@ -914,8 +1016,8 @@ namespace silly
         else
         {
             mlir::Location loc = getStartLocation( ctx );
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                           "Unsupported floating point declaration size.", currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "Unsupported floating point declaration size.",
+                               currentFuncName );
             return;
         }
 
@@ -955,8 +1057,7 @@ namespace silly
         if ( SillyParser::ReturnStatementContext *ret = scope->returnStatement() )
         {
             mlir::Location rLoc = getStartLocation( ret );
-            driverState.emitUserError( rLoc, std::format( "RETURN is not currently allowed in a {}", what ),
-                                       currentFuncName );
+            emitUserError( rLoc, std::format( "RETURN is not currently allowed in a {}", what ), currentFuncName );
         }
     }
 
@@ -965,8 +1066,7 @@ namespace silly
         mlir::Value conditionPredicate = parseExpression( predicate, {} );
         if ( !conditionPredicate )
         {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed",
-                                           currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
             return;
         }
 
@@ -1007,9 +1107,8 @@ namespace silly
 
         if ( !ifOp )
         {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                           "Current insertion point must be inside an scf.if then region",
-                                           currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               "Current insertion point must be inside an scf.if then region", currentFuncName );
             return;
         }
 
@@ -1094,9 +1193,8 @@ namespace silly
         if ( declared )
         {
             // coverage: error_shadow_induction.silly
-            driverState.emitUserError( loc,
-                                       std::format( "Induction variable {} clashes with declared variable\n", varName ),
-                                       currentFuncName );
+            emitUserError( loc, std::format( "Induction variable {} clashes with declared variable\n", varName ),
+                           currentFuncName );
             return;
         }
 
@@ -1105,8 +1203,8 @@ namespace silly
         if ( p )
         {
             // coverage: error_triple_nested_for_with_shadowing.silly error_nested_ivar_conflict.silly
-            driverState.emitUserError( loc, std::format( "Induction variable {} used by enclosing FOR\n", varName ),
-                                       currentFuncName );
+            emitUserError( loc, std::format( "Induction variable {} used by enclosing FOR\n", varName ),
+                           currentFuncName );
             return;
         }
 
@@ -1118,16 +1216,14 @@ namespace silly
             start = parseExpression( pStart, elemType );
             if ( !start )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed",
-                                               currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
                 return;
             }
         }
         else
         {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                           std::format( "FOR loop: expected start index: {}", ctx->getText() ),
-                                           currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               std::format( "FOR loop: expected start index: {}", ctx->getText() ), currentFuncName );
             return;
         }
 
@@ -1136,16 +1232,14 @@ namespace silly
             end = parseExpression( pEnd, elemType );
             if ( !end )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed",
-                                               currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
                 return;
             }
         }
         else
         {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                           std::format( "FOR loop: expected end index: {}", ctx->getText() ),
-                                           currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               std::format( "FOR loop: expected end index: {}", ctx->getText() ), currentFuncName );
             return;
         }
 
@@ -1154,8 +1248,7 @@ namespace silly
             step = parseExpression( pStep, elemType );
             if ( !step )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed",
-                                               currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
                 return;
             }
         }
@@ -1196,8 +1289,7 @@ namespace silly
         else
         {
             mlir::Location loc = getStartLocation( ctx );
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "empty insertionPointStack",
-                                           currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "empty insertionPointStack", currentFuncName );
         }
     }
 
@@ -1210,8 +1302,7 @@ namespace silly
             mlir::Value v = parseExpression( parg, {} );
             if ( !v )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed",
-                                               currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
                 return;
             }
 
@@ -1279,8 +1370,7 @@ namespace silly
                 mlir::Value indexValue = parseExpression( indexExpr->expression(), {} );
                 if ( !indexValue )
                 {
-                    driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed",
-                                                   currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
                     return;
                 }
 
@@ -1290,8 +1380,7 @@ namespace silly
             else if ( !shape.empty() )
             {
                 // TODO: no coverage.
-                driverState.emitUserError( loc, std::format( "Attempted GET to string literal or array?" ),
-                                           currentFuncName );
+                emitUserError( loc, std::format( "Attempted GET to string literal or array?" ), currentFuncName );
                 return;
             }
             else
@@ -1306,9 +1395,8 @@ namespace silly
         }
         else
         {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                           std::format( "unexpected get context {}", ctx->getText() ),
-                                           currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               std::format( "unexpected get context {}", ctx->getText() ), currentFuncName );
         }
     }
 
@@ -1400,8 +1488,7 @@ namespace silly
         if ( !resultValue )
         {
             mlir::Location loc = getStartLocation( exprContext );
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "no resultValue for expression",
-                                           currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "no resultValue for expression", currentFuncName );
             return;
         }
 
@@ -1458,8 +1545,8 @@ namespace silly
         if ( !declared )
         {
             // coverage: error_undeclare.silly
-            driverState.emitUserError(
-                loc, std::format( "Attempt to assign to undeclared variable: {}\n", currentVarName ), currentFuncName );
+            emitUserError( loc, std::format( "Attempt to assign to undeclared variable: {}\n", currentVarName ),
+                           currentFuncName );
             return;
         }
 
@@ -1468,8 +1555,7 @@ namespace silly
             currentIndexExpr = parseExpression( indexExpr->expression(), {} );
             if ( !currentIndexExpr )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed",
-                                               currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
                 return;
             }
         }
@@ -1497,7 +1583,7 @@ namespace silly
         if ( !valTy.isSignlessInteger( 64 ) )
         {
             // If it's a non-i64 IntegerType, we could cast up to i64, and then cast that to index.
-            driverState.emitInternalError(
+            emitInternalError(
                 loc, __FILE__, __LINE__, __func__,
                 std::format( "NYI: indexTypeCast from type {} is not supported.", mlirTypeToString( valTy ) ),
                 currentFuncName );
@@ -1536,7 +1622,7 @@ namespace silly
             mlir::Value value = parseXor( orOperands[0], ty );
             if ( !value )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseXor failed", currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseXor failed", currentFuncName );
                 return value;
             }
 
@@ -1545,8 +1631,7 @@ namespace silly
                 mlir::Value rhs = parseXor( orOperands[i], ty );
                 if ( !rhs )
                 {
-                    driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseXor failed",
-                                                   currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__, "parseXor failed", currentFuncName );
                     return rhs;
                 }
 
@@ -1576,7 +1661,7 @@ namespace silly
             mlir::Value value = parseAnd( xorOperands[0], ty );
             if ( !value )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseAnd failed", currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseAnd failed", currentFuncName );
                 return value;
             }
 
@@ -1585,8 +1670,7 @@ namespace silly
                 mlir::Value rhs = parseAnd( xorOperands[i], ty );
                 if ( !rhs )
                 {
-                    driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseAnd failed",
-                                                   currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__, "parseAnd failed", currentFuncName );
                     return rhs;
                 }
 
@@ -1620,8 +1704,7 @@ namespace silly
             mlir::Value value = parseEquality( andOperands[0], ty );
             if ( !value )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseEquality failed",
-                                               currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseEquality failed", currentFuncName );
                 return value;
             }
 
@@ -1631,8 +1714,7 @@ namespace silly
                 mlir::Value rhs = parseEquality( andOperands[i], ty );
                 if ( !rhs )
                 {
-                    driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseEquality failed",
-                                                   currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__, "parseEquality failed", currentFuncName );
                     return rhs;
                 }
 
@@ -1665,8 +1747,7 @@ namespace silly
             value = parseComparison( operands[0], ty );
             if ( !value )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseComparison failed",
-                                               currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseComparison failed", currentFuncName );
                 return value;
             }
 
@@ -1677,8 +1758,7 @@ namespace silly
                 mlir::Value rhs = parseComparison( operands[1], ty );
                 if ( !rhs )
                 {
-                    driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseComparison failed",
-                                                   currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__, "parseComparison failed", currentFuncName );
                     return rhs;
                 }
 
@@ -1692,9 +1772,8 @@ namespace silly
                 }
                 else
                 {
-                    driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                                   std::format( "missing EQ or NE token: {}", ctx->getText() ),
-                                                   currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__,
+                                       std::format( "missing EQ or NE token: {}", ctx->getText() ), currentFuncName );
                     value = mlir::Value{};
                 }
             }
@@ -1726,8 +1805,7 @@ namespace silly
             value = parseAdditive( operands[0], ty );
             if ( !value )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseAdditive failed",
-                                               currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseAdditive failed", currentFuncName );
                 return value;
             }
 
@@ -1736,8 +1814,7 @@ namespace silly
                 mlir::Value rhs = parseAdditive( operands[1], ty );
                 if ( !rhs )
                 {
-                    driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseAdditive failed",
-                                                   currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__, "parseAdditive failed", currentFuncName );
                     return rhs;
                 }
 
@@ -1762,9 +1839,9 @@ namespace silly
                 }
                 else
                 {
-                    driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                                   std::format( "missing comparison operator: {}", ctx->getText() ),
-                                                   currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__,
+                                       std::format( "missing comparison operator: {}", ctx->getText() ),
+                                       currentFuncName );
                     value = mlir::Value{};
                 }
             }
@@ -1798,8 +1875,7 @@ namespace silly
             value = parseMultiplicative( operands[0], ty );
             if ( !value )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseMultiplicative failed",
-                                               currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseMultiplicative failed", currentFuncName );
                 return value;
             }
 
@@ -1809,8 +1885,8 @@ namespace silly
                 mlir::Value rhs = parseMultiplicative( operands[i], ty );
                 if ( !rhs )
                 {
-                    driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseMultiplicative failed",
-                                                   currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__, "parseMultiplicative failed",
+                                       currentFuncName );
                     return rhs;
                 }
 
@@ -1827,10 +1903,9 @@ namespace silly
                 }
                 else
                 {
-                    driverState.emitInternalError(
-                        loc, __FILE__, __LINE__, __func__,
-                        std::format( "missing + or - operator at index {}: {}", i - 1, ctx->getText() ),
-                        currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__,
+                                       std::format( "missing + or - operator at index {}: {}", i - 1, ctx->getText() ),
+                                       currentFuncName );
                     break;
                 }
             }
@@ -1863,8 +1938,7 @@ namespace silly
             value = parseUnary( operands[0], ty );
             if ( !value )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseUnary failed",
-                                               currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseUnary failed", currentFuncName );
                 return value;
             }
 
@@ -1874,8 +1948,7 @@ namespace silly
                 mlir::Value rhs = parseUnary( operands[i], ty );
                 if ( !rhs )
                 {
-                    driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseUnary failed",
-                                                   currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__, "parseUnary failed", currentFuncName );
                     return rhs;
                 }
 
@@ -1897,9 +1970,8 @@ namespace silly
                 }
                 else
                 {
-                    driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                                   std::format( "missing * or / operator at index {}", i - 1 ),
-                                                   currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__,
+                                       std::format( "missing * or / operator at index {}", i - 1 ), currentFuncName );
                     break;
                 }
             }
@@ -1927,8 +1999,7 @@ namespace silly
             value = parseUnary( unaryOpCtx->unaryExpression(), ty );
             if ( !value )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseUnary failed",
-                                               currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseUnary failed", currentFuncName );
                 return value;
             }
 
@@ -1948,7 +2019,7 @@ namespace silly
                 if ( !value.getType().isInteger() )
                 {
                     // coverage: error_notfloat.silly
-                    driverState.emitUserError( loc, std::format( "NOT on non-integer type\n" ), currentFuncName );
+                    emitUserError( loc, std::format( "NOT on non-integer type\n" ), currentFuncName );
                     return mlir::Value{};
                 }
 
@@ -1959,8 +2030,8 @@ namespace silly
             }
             else
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                               std::format( "unknown unary operator: {}", opText ), currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__,
+                                   std::format( "unknown unary operator: {}", opText ), currentFuncName );
                 return value;
             }
         }
@@ -1971,9 +2042,8 @@ namespace silly
         }
         else
         {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                           std::format( "unknown unary context: {}", ctx->getText() ),
-                                           currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               std::format( "unknown unary context: {}", ctx->getText() ), currentFuncName );
             return value;
         }
 
@@ -2048,9 +2118,9 @@ namespace silly
             }
             else
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                               std::format( "unknown literal type in primary: {}", ctx->getText() ),
-                                               currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__,
+                                   std::format( "unknown literal type in primary: {}", ctx->getText() ),
+                                   currentFuncName );
                 return value;
             }
         }
@@ -2080,9 +2150,9 @@ namespace silly
                 silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
                 if ( !declareOp )
                 {
-                    driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                                   std::format( "DeclareOp lookup for variable {} failed", varName ),
-                                                   currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__,
+                                       std::format( "DeclareOp lookup for variable {} failed", varName ),
+                                       currentFuncName );
                     return value;
                 }
 
@@ -2096,8 +2166,8 @@ namespace silly
                     value = parseExpression( indexExpr->expression(), {} );
                     if ( !value )
                     {
-                        driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed",
-                                                       currentFuncName );
+                        emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed",
+                                           currentFuncName );
                         return value;
                     }
 
@@ -2138,16 +2208,14 @@ namespace silly
             value = parseExpression( parenCtx->expression(), {} );
             if ( !value )
             {
-                driverState.emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed",
-                                               currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
                 return value;
             }
         }
         else
         {
-            driverState.emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                           std::format( "unknown primary expression: {}", ctx->getText() ),
-                                           currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               std::format( "unknown primary expression: {}", ctx->getText() ), currentFuncName );
             return value;
         }
 

@@ -32,35 +32,20 @@ namespace silly
         /// True for color error messages (when output is a terminal.)
         bool colorErrors{};
 
-        /// Source file name passed to the driver.
-        std::string filename{};
-
         /// Numeric --init-fill value if specified (zero otherwise.)
         uint8_t fillValue{};
 
         /// Signal that -lm will be required when the program is linked (set by lowering)
         bool needsMathLib{};
 
-        /// Syntax errors detected.
-        int errorCount{};
+        /// Signal that the source file could not be opened (set by parse-listener)
+        bool openFailed{};
 
-        /// Emit a user-friendly error message in GCC/Clang style
-        ///
-        /// errorCount is incremented as a side effect.
-        void emitUserError( mlir::Location loc, const std::string &message, const std::string &funcName )
-        {
-            emitError( loc, message, funcName, false );
-        }
+        /// Driver name
+        const char * argv0{};
 
-        /// Emit an internal error message, including the location in the compiler source where the error occured.
-        ///
-        /// errorCount is incremented as a side effect.
-        void emitInternalError( mlir::Location loc, const char *compilerfile, unsigned compilerline,
-                                const char *compilerfunc, const std::string &message,
-                                const std::string &programFuncName );
-
-       private:
-        void emitError( mlir::Location loc, const std::string &message, const std::string &funcName, bool internal );
+        /// &main for the driver
+        void * mainSymbol{};
     };
 }    // namespace silly
 

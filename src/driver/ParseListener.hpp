@@ -155,6 +155,15 @@ namespace silly
         /// @param context [in] The context under which the mlir module is created.
         ParseListener( DriverState &ds, const std::string &filename, mlir::MLIRContext *context );
 
+        /// Open the file stream, and walk the parse tree.
+        ///
+        /// Will set DriverState::openFailed for early pre-parse stream open error (with nullptr return.)
+        ///
+        /// If DriverState::openFailed is false, then a non-nullptr return means that no compilation errors occured, and
+        /// the MLIR builder was successful.  FIXME: need a sema pass.  That should happen after this builder return.
+        ///
+        mlir::OwningOpRef<mlir::ModuleOp> run();
+
         /// Override to throw on syntax errors.
         void syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
                           size_t charPositionInLine, const std::string &msg, std::exception_ptr e ) override;
@@ -233,9 +242,6 @@ namespace silly
         /// Antlr4 enter hook for an exitStatement rule.
         void enterExitStatement( SillyParser::ExitStatementContext *ctx ) override;
 
-        /// Returns the constructed ModuleOp or nullptr.
-        inline mlir::ModuleOp getModule();
-
        private:
         /// Source filename, ...
         DriverState &driverState;
@@ -249,7 +255,7 @@ namespace silly
         mlir::OpBuilder builder;
 
         /// Top-level module.
-        mlir::ModuleOp mod;
+        mlir::OwningOpRef<mlir::ModuleOp> mod;
 
         /// mlir::Type values that will be used repeatedly
         MlirTypeCache typ;
@@ -263,11 +269,36 @@ namespace silly
         /// Per-function state map.
         std::unordered_map<std::string, std::unique_ptr<ParserPerFunctionState>> functionStateMap;
 
+        /// Syntax errors detected.  Return a nullptr Module if this is non-zero.
+        int errorCount{};
+
         ////////////////////////////////////////////////////////////////////////
         ///
         /// Helper functions
         ///
         ////////////////////////////////////////////////////////////////////////
+
+        /// Emit a user-friendly error message in GCC/Clang style
+        ///
+        /// (calls emitError)
+        void emitUserError( mlir::Location loc, const std::string &message, const std::string &funcName )
+        {
+            emitError( loc, message, funcName, false );
+        }
+
+        /// Emit an internal error message, including the location in the compiler source where the error occured.
+        ///
+        /// (calls emitError)
+        void emitInternalError( mlir::Location loc, const char *compilerfile, unsigned compilerline,
+                                const char *compilerfunc, const std::string &message,
+                                const std::string &programFuncName );
+
+        /// Internal parse listener error message output.
+        ///
+        /// Show the file:line:col: error: message (colorized if desired.)
+        ///
+        /// errorCount is incremented as a side effect.
+        void emitError( mlir::Location loc, const std::string &message, const std::string &funcName, bool internal );
 
         /// Lookup in per-function state, whether a variable has been declared
         bool isVariableDeclared( const std::string &varName );
@@ -461,16 +492,6 @@ namespace silly
         /// @return The resulting Value
         mlir::Value parsePrimary( antlr4::ParserRuleContext *ctx, mlir::Type ty );
     };
-
-    inline mlir::ModuleOp ParseListener::getModule()
-    {
-        if ( driverState.errorCount )
-        {
-            return nullptr;
-        }
-
-        return mod;
-    }
 }    // namespace silly
 
 // vim: et ts=4 sw=4

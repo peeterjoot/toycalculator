@@ -5,10 +5,11 @@
 
 #### Driver
 
+* implement -o option for the exe name.
 * If user doesn't specify -c, then the created .o file should go to a /tmp/ or TMPDIR path allocated using mkstemps, and removed post link.
+* Reduce/eliminate use of raw ModuleOp — prefer passing OwningOpRef& or keep it local
 * don't think that driver is removing outputs before trying to recreate, so if there is an error after success, it is not visible.
 * any driver error should delete any files opened (.o, .s, .ll, .mlir, ...) -- do I need callbacks, or is LLVM taking care of that?
-* implement -o option for the exe name.
 * want llvm::formatv in various places instead of std::format (not just driver, but anywhere that we are doing errs() output)
 ```
     // FIXME: probably want llvm::formatv here and elsewhere to avoid the std::string casting hack (assuming
@@ -16,8 +17,6 @@
     llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open file '{}': {}\n", std::string( path ), EC.message() );
 ```
 * add testing for: .o inputs to the driver; silly -c empty.silly ; silly empty.o
-* consider OO structure for driver.cpp -- at the bare minimum, the chaining model based on the old monolith, just doesn't make sense.  Every helper function should
-  do one and only thing, not complex chains of things.
 * tried to use mlir::OwningOpRef<mlir::ModuleOp> for ParseListener::getModule (and the mod op it contains), but
   couldn't get it to work and reverted all such experimentation.  This means that I leak the mlir::ModuleOp
   and it only gets freed implicitly on return from main.  That's clumsy, and would probably show up as

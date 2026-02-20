@@ -20,7 +20,6 @@ add_executable(silly
   helper.cpp
   LoweringContext.cpp
   DialectContext.cpp
-  DriverState.cpp
   MlirTypeCache.cpp
   ${ANTLR_SOURCES}
 )
