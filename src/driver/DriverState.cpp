@@ -20,12 +20,12 @@ namespace silly
                                          const char *compilerfunc, const std::string &message,
                                          const std::string &programFuncName )
     {
-        emitUserError( loc, std::format( "{}:{}:{}: {}", compilerfile, compilerline, compilerfunc, message ),
-                       programFuncName, true );
+        emitError( loc, std::format( "{}:{}:{}: {}", compilerfile, compilerline, compilerfunc, message ),
+                   programFuncName, true );
     }
 
-    void DriverState::emitUserError( mlir::Location loc, const std::string &message, const std::string &funcName,
-                                     bool internal )
+    void DriverState::emitError( mlir::Location loc, const std::string &message, const std::string &funcName,
+                                 bool internal )
     {
         bool inColor = isatty( fileno( stderr ) ) && colorErrors;
         const char *RED = inColor ? "\033[1;31m" : "";
@@ -45,24 +45,24 @@ namespace silly
             llvm::errs() << std::format( "{}{}error: {}{}\n", RED, internal ? "internal " : "", RESET, message );
         }
 
-        std::string filename = fileLoc.getFilename().str();
+        std::string sourcename = fileLoc.getFilename().str();
         unsigned line = fileLoc.getLine();
         unsigned col = fileLoc.getColumn();
 
         if ( ( funcName != "" ) && ( funcName != ENTRY_SYMBOL_NAME ) && ( funcName != lastFunc ) )
         {
-            llvm::errs() << std::format( "{}: In function ‘{}’:\n", filename, funcName );
+            llvm::errs() << std::format( "{}: In function ‘{}’:\n", sourcename, funcName );
         }
         lastFunc = funcName;
 
-        // Print: filename:line:col: error: message
-        llvm::errs() << std::format( "{}{}:{}:{}: {}{}error: {}{}\n", CYAN, filename, line, col, RED,
+        // Print: sourcename:line:col: error: message
+        llvm::errs() << std::format( "{}{}:{}:{}: {}{}error: {}{}\n", CYAN, sourcename, line, col, RED,
                                      internal ? "internal " : "", RESET, message );
 
         // Try to read and display the source line
-        if ( !filename.empty() || !filename.empty() )
+        if ( !sourcename.empty() || !sourcename.empty() )
         {
-            std::string path = filename.empty() ? filename : filename;
+            std::string path = sourcename.empty() ? sourcename : sourcename;
 
             if ( std::ifstream file{ path } )
             {
