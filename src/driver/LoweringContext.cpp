@@ -133,7 +133,7 @@ namespace silly
         createSillyGetPrototype( getFuncF64, typ.f64, "__silly_get_f64" );
     }
 
-    void LoweringContext::createDICompileUnit()
+    void LoweringContext::createDICompileUnit( mlir::Location loc )
     {
         if ( driverState.wantDebug )
         {
@@ -172,8 +172,10 @@ namespace silly
                                                       builder.getStringAttr( "long" ), 64,
                                                       (unsigned)llvm::dwarf::DW_ATE_signed );
 
+            std::string filename = filenameFromLoc( loc );
+
             // Construct module level DI state:
-            fileAttr = mlir::LLVM::DIFileAttr::get( context, driverState.filename, "." );
+            fileAttr = mlir::LLVM::DIFileAttr::get( context, filename, "." );
             mlir::DistinctAttr distinctAttr = mlir::DistinctAttr::create( builder.getUnitAttr() );
             compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
                 context, distinctAttr, llvm::dwarf::DW_LANG_C, fileAttr, builder.getStringAttr( COMPILER_NAME ), false,

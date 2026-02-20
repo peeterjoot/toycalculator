@@ -54,6 +54,15 @@ namespace silly
         return "";
     }
 
+    std::string filenameFromLoc( mlir::Location loc )
+    {
+        if ( mlir::FileLineColLoc fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc ) )
+        {
+            return fileLoc.getFilename().str();
+        }
+        return "";
+    }
+
     mlir::Type biggestTypeOf( mlir::Type ty1, mlir::Type ty2 )
     {
         if ( ty1 == ty2 )

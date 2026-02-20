@@ -24,6 +24,9 @@ namespace silly
     /// Formats location for error messages.
     std::string formatLocation( mlir::Location loc );
 
+    /// Extract just the filename from a mlir::Location (assumed to be instance of FileLineColLoc)
+    std::string filenameFromLoc( mlir::Location loc );
+
     /// Figure out the bigger of two types for implicit cast-like purposes
     mlir::Type biggestTypeOf( mlir::Type ty1, mlir::Type ty2 );
 

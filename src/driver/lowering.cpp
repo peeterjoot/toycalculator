@@ -513,8 +513,8 @@ namespace silly
             }
 
             // Final call
-            mlir::LLVM::ConstantOp numArgsConst =
-                rewriter.create<mlir::LLVM::ConstantOp>( argLoc, lState.typ.i32, rewriter.getI32IntegerAttr( numArgs ) );
+            mlir::LLVM::ConstantOp numArgsConst = rewriter.create<mlir::LLVM::ConstantOp>(
+                argLoc, lState.typ.i32, rewriter.getI32IntegerAttr( numArgs ) );
 
             rewriter.create<mlir::func::CallOp>( loc, mlir::TypeRange{}, "__silly_print",
                                                  mlir::ValueRange{ numArgsConst, arrayAlloca } );
@@ -1046,7 +1046,8 @@ namespace silly
             } );
 
             LoweringContext lState( mod, *pDriverState );
-            lState.createDICompileUnit();
+
+            bool cuDone{};
 
             for ( mlir::func::FuncOp funcOp : mod.getBodyRegion().getOps<mlir::func::FuncOp>() )
             {
@@ -1054,6 +1055,15 @@ namespace silly
                     llvm::dbgs() << "Generating !DISubroutineType() for mlir::func::FuncOp: " << funcOp.getSymName()
                                  << "\n";
                 } );
+
+                if ( !cuDone )
+                {
+                    mlir::Location loc = funcOp.getLoc();
+
+                    lState.createDICompileUnit( loc );
+
+                    cuDone = true;
+                }
 
                 bool error = lState.createPerFuncState( funcOp );
                 if ( error )

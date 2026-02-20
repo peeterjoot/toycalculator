@@ -118,7 +118,7 @@ namespace silly
 
 
         /// Creates the DICompileUnit and basic debug types if debugging is enabled.
-        void createDICompileUnit();
+        void createDICompileUnit( mlir::Location loc );
 
         /// Emits debug metadata for a function if debugging is enabled.
         /// @retval true if error
