@@ -1,0 +1,13 @@
+MODULE;
+
+FUNCTION bar ( INT16 w )
+{
+    RETURN;
+};
+
+FUNCTION foo ( ) : INT32
+{
+    CALL bar( );
+
+    RETURN 42;
+};

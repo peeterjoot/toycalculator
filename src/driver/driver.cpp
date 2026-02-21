@@ -207,9 +207,9 @@ class CompilationUnit
 // Options related to output files
 //
 
-static llvm::cl::opt<std::string> inputFilename( llvm::cl::Positional, llvm::cl::desc( "<input file>" ),
-                                                 llvm::cl::init( "-" ), llvm::cl::value_desc( "filename" ),
-                                                 llvm::cl::cat( SillyCategory ), llvm::cl::NotHidden );
+static llvm::cl::list<std::string> inputFilenames( llvm::cl::Positional, llvm::cl::desc( "<input file(s)>" ),
+                                                   llvm::cl::OneOrMore, llvm::cl::value_desc( "filename" ),
+                                                   llvm::cl::cat( SillyCategory ), llvm::cl::NotHidden );
 
 static llvm::cl::opt<bool> compileOnly( "c", llvm::cl::desc( "Compile only and don't link." ), llvm::cl::init( false ),
                                         llvm::cl::cat( SillyCategory ) );
@@ -300,7 +300,7 @@ static void llvmInitialization( int argc, char** argv )
     llvm::cl::ParseCommandLineOptions( argc, argv, "Calculator compiler\n" );
 }
 
-static void showLinkCommand( const std::string& linker, llvm::SmallVector<llvm::StringRef, 16>& args )
+static void showLinkCommand( const std::string& linker, llvm::SmallVector<llvm::StringRef, 24>& args )
 {
     llvm::errs() << "# " << linker;
 
@@ -315,7 +315,7 @@ static void showLinkCommand( const std::string& linker, llvm::SmallVector<llvm::
 /// Invoke the system linker to create an executable.
 ///
 /// @param objectPath Path to the object file to link
-static void invokeLinker( const llvm::SmallString<128>& exePath, const llvm::SmallString<128>& objectPath,
+static void invokeLinker( const llvm::SmallString<128>& exePath, const std::vector<std::string>& objectPaths,
                           silly::DriverState& ds )
 {
     // Get the driver path
@@ -347,20 +347,29 @@ static void invokeLinker( const llvm::SmallString<128>& exePath, const llvm::Sma
     rpathOption.append( "/../../lib" );
 
     // Create args for ExecuteAndWait
-    llvm::SmallVector<llvm::StringRef, 16> linkerArgs;
-    linkerArgs.push_back( linkerPath.get() );
-    linkerArgs.push_back( "-g" );
-    linkerArgs.push_back( "-o" );
-    linkerArgs.push_back( exePath );
-    linkerArgs.push_back( objectPath );
-    linkerArgs.push_back( "-L" );
-    linkerArgs.push_back( libPath );
-    linkerArgs.push_back( "-l" );
-    linkerArgs.push_back( "silly_runtime" );
-    linkerArgs.push_back( rpathOption );
+    std::vector<std::string> linkerArgValues;
+    linkerArgValues.push_back( std::string( linkerPath.get() ) );
+    linkerArgValues.push_back( "-g" );
+    linkerArgValues.push_back( "-o" );
+    linkerArgValues.push_back( std::string( exePath ) );
+    for ( const auto& o : objectPaths )
+    {
+        linkerArgValues.push_back( o );
+    }
+    linkerArgValues.push_back( "-L" );
+    linkerArgValues.push_back( std::string( libPath ) );
+    linkerArgValues.push_back( "-l" );
+    linkerArgValues.push_back( "silly_runtime" );
+    linkerArgValues.push_back( std::string( rpathOption ) );
     if ( ds.needsMathLib )
     {
-        linkerArgs.push_back( "-lm" );
+        linkerArgValues.push_back( "-lm" );
+    }
+
+    llvm::SmallVector<llvm::StringRef, 24> linkerArgs;
+    for ( const auto& s : linkerArgValues )
+    {
+        linkerArgs.push_back( s );
     }
 
     if ( verboseLink == true )
@@ -774,98 +783,117 @@ int main( int argc, char** argv )
     ds.wantDebug = debugInfo;
     ds.colorErrors = !noColorErrors;
     ds.abortOmitPath = noAbortPath;
+    std::vector<std::string> objFiles;
+    std::vector<std::string> tmpToDelete;
 
-    CompilationUnit st( ds, inputFilename, &dialectLoader.context );
+    llvm::SmallString<128> exeName;
 
-    st.processSourceFile();
-
-    llvm::SmallString<128> objectFilename;
-    bool createdTemporary{};
-
-    if ( st.getInputType() == InputType::OBJECT )
+    for ( const auto& filename : inputFilenames )
     {
-        objectFilename = inputFilename;
-    }
-    else
-    {
-        st.mlirToLLVM();
+        CompilationUnit st( ds, filename, &dialectLoader.context );
 
-        st.runOptimizationPasses();
+        st.processSourceFile();
 
-        if ( !oName.empty() && compileOnly )
+        if ( exeName.empty() )    // first source.
         {
-            objectFilename = oName;
-        }
-        else if ( compileOnly )
-        {
-            st.constructObjectPath( objectFilename );
-        }
-        else
-        {
-            const llvm::SmallString<128>& outdir = st.getOutputDirectory();
-            llvm::SmallString<128> p;
-
-            if ( outdir.empty() )
+            if ( oName.empty() )
             {
-                llvm::SmallString<128> td;
-                llvm::sys::path::system_temp_directory( true, td );
-                p = td;
+                // This exe-path should be split out from CompilationUnit, as it may not match the input source file
+                // stem. The dirWithStem stuff is convoluted and confusing.
+                exeName = st.getDefaultExecutablePath();
             }
             else
             {
-                p = outdir;
+                exeName = oName;
             }
-
-            llvm::SmallString<128> o = llvm::sys::path::stem( inputFilename );
-            o += "-%%%%%%.o";
-            llvm::sys::path::append( p, o );
-
-            std::error_code EC;
-            EC = llvm::sys::fs::createUniqueFile( p, objectFilename );
-            if ( EC )
-            {
-                // FIXME: another place to use formatv
-                llvm::errs() << std::format( COMPILER_NAME
-                                             ": error: Failed to create temporary object file in path '{}': {}\n",
-                                             std::string(p), EC.message() );
-
-                fatalDriverError( ReturnCodes::tempCreationError );
-            }
-
-            if ( keepTemps )
-            {
-                // FIXME: another place to use formatv
-                llvm::errs() << std::format( COMPILER_NAME ": info: created temporary: {}\n",
-                                             std::string( objectFilename ) );
-            }
-
-            createdTemporary = true;
         }
 
+        llvm::SmallString<128> objectFilename;
+        bool createdTemporary{};
 
-        st.serializeObjectCode( objectFilename );
+        if ( st.getInputType() == InputType::OBJECT )
+        {
+            objectFilename = filename;
+        }
+        else
+        {
+            st.mlirToLLVM();
+
+            st.runOptimizationPasses();
+
+            if ( !oName.empty() && compileOnly )
+            {
+                objectFilename = oName;
+            }
+            else if ( compileOnly )
+            {
+                st.constructObjectPath( objectFilename );
+            }
+            else
+            {
+                const llvm::SmallString<128>& outdir = st.getOutputDirectory();
+                llvm::SmallString<128> p;
+
+                if ( outdir.empty() )
+                {
+                    llvm::SmallString<128> td;
+                    llvm::sys::path::system_temp_directory( true, td );
+                    p = td;
+                }
+                else
+                {
+                    p = outdir;
+                }
+
+                llvm::SmallString<128> o = llvm::sys::path::stem( filename );
+                o += "-%%%%%%.o";
+                llvm::sys::path::append( p, o );
+
+                std::error_code EC;
+                EC = llvm::sys::fs::createUniqueFile( p, objectFilename );
+                if ( EC )
+                {
+                    // FIXME: another place to use formatv
+                    llvm::errs() << std::format( COMPILER_NAME
+                                                 ": error: Failed to create temporary object file in path '{}': {}\n",
+                                                 std::string( p ), EC.message() );
+
+                    fatalDriverError( ReturnCodes::tempCreationError );
+                }
+
+                if ( keepTemps )
+                {
+                    // FIXME: another place to use formatv
+                    llvm::errs() << std::format( COMPILER_NAME ": info: created temporary: {}\n",
+                                                 std::string( objectFilename ) );
+                }
+
+                createdTemporary = true;
+            }
+
+
+            st.serializeObjectCode( objectFilename );
+
+            objFiles.push_back( std::string( objectFilename ) );
+
+            if ( createdTemporary )
+            {
+                tmpToDelete.push_back( std::string( objectFilename ) );
+            }
+        }
     }
 
     if ( compileOnly == false )
     {
-        llvm::SmallString<128> exeName;
-        if ( oName.empty() )
-        {
-            // This exe-path should be split out from CompilationUnit, as it may not match the input source file stem.
-            // The dirWithStem stuff is convoluted and confusing.
-            exeName = st.getDefaultExecutablePath();
-        }
-        else
-        {
-            exeName = oName;
-        }
-
-        invokeLinker( exeName, objectFilename, ds );
+        invokeLinker( exeName, objFiles, ds );
     }
 
-    if ( createdTemporary && !keepTemps )
+    if ( !keepTemps )
     {
-        llvm::sys::fs::remove( objectFilename );
+        for ( const auto& filename : tmpToDelete )
+        {
+            llvm::sys::fs::remove( filename );
+        }
     }
 
     return (int)ReturnCodes::success;

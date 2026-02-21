@@ -1,0 +1,15 @@
+// external2.silly
+MODULE;
+
+FUNCTION bar ( INT16 w )
+{
+    PRINT w;
+    RETURN;
+};
+
+FUNCTION foo ( ) : INT32
+{
+    CALL bar( 3 );
+
+    RETURN 42;
+};

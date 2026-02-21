@@ -73,6 +73,7 @@
   - Function bodies
 - Enables proper variable lifetime management through `exitScope` callbacks
 - FUNCTION prototypes have been implemented (example in README.)
+- A `MODULE` keyword has been implemented, as well as support for linking programs from multiple sources.  This could be used to implement silly libraries, or more complex programs.
 
 ### Parser Improvements
 - Organized `parser.cpp` functions by logical grouping for better maintainability

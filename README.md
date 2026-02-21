@@ -406,10 +406,31 @@ It is intended as a language-level reference rather than a grammar walkthrough.
 
 ## Program Structure
 
-A Silly program consists of zero or more **statements** and **comments**, optionally followed by an explicit `EXIT` statement.
+A Silly main program consists of zero or more **statements** and **comments**, optionally followed by an explicit `EXIT` statement.
 Each statement is terminated by a semicolon (`;`).
 
 Blocks use `{ ... }`, and expressions use parentheses `( ... )`.
+
+A Silly program may define supplementary functions in a different source from the Silly main source file.
+Such a source may only have comments, `FUNCTION` declarations, and `FUNCTION` definitions, and must use the `MODULE` keyword.
+For example:
+
+```
+MODULE;
+
+FUNCTION dcl1(...) ...;
+FUNCTION dcl2(...) ...;
+
+FUNCTION name1(...) ...
+{
+}
+
+FUNCTION name2(...) ...
+{
+}
+```
+
+When building a multiple source silly program, all but one source must use the `MODULE` keyword.
 
 ---
 

@@ -246,7 +246,7 @@ namespace silly
         size_t maxPrintArgs = 0;
         std::string funcName;
 
-        if ( funcOp.isExternal() )
+        if ( funcOp.isDeclaration() )
         {
             // Just a prototype... nothing to do.
             // Test coverage: function/proto1.silly

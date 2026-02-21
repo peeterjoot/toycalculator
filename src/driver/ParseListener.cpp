@@ -670,11 +670,18 @@ namespace silly
 
         LocPairs locs = getLocations( ctx );
 
-        mlir::FunctionType funcType = builder.getFunctionType( {}, typ.i32 );
-        mlir::func::FuncOp funcOp = builder.create<mlir::func::FuncOp>( locs.first, ENTRY_SYMBOL_NAME, funcType );
+        if ( ctx->MODULE_TOKEN() )
+        {
+            isModule = true;
+        }
+        else
+        {
+            mlir::FunctionType funcType = builder.getFunctionType( {}, typ.i32 );
+            mlir::func::FuncOp funcOp = builder.create<mlir::func::FuncOp>( locs.first, ENTRY_SYMBOL_NAME, funcType );
 
-        std::vector<std::string> paramNames;
-        createScope( locs.first, locs.second, funcOp, ENTRY_SYMBOL_NAME, paramNames );
+            std::vector<std::string> paramNames;
+            createScope( locs.first, locs.second, funcOp, ENTRY_SYMBOL_NAME, paramNames );
+        }
     }
 
 
@@ -751,11 +758,14 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
-        assert( currentFuncName == ENTRY_SYMBOL_NAME );
-
-        if ( !ctx->exitStatement() )
+        if ( !isModule )
         {
-            processReturnLike( loc, nullptr );
+            assert( currentFuncName == ENTRY_SYMBOL_NAME );
+
+            if ( !ctx->exitStatement() )
+            {
+                processReturnLike( loc, nullptr );
+            }
         }
 
 #if 0
@@ -795,7 +805,7 @@ namespace silly
 
         if ( funcOp )
         {
-            if ( !funcOp.isExternal() )
+            if ( !funcOp.isDeclaration() )
             {
                 // test coverage: error_function_redefine.silly
                 emitUserError( locs.first, std::format( "Attempt to define function {} more than once", funcName ),
@@ -847,8 +857,13 @@ namespace silly
             }
 
             std::vector<mlir::NamedAttribute> attrs;
-            attrs.push_back(
-                mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
+            // not sure exactly why I need private.  If I omit it (for extern functions), the lowering
+            // to LLVM-IR ends up the same.
+            //
+            // However, in simple/external/callext.silly that resulted in a verifier error,
+            // stating that public was not allowed.  For now, just use private always.
+            attrs.push_back( mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ),
+                                                   builder.getStringAttr( "private" ) ) );
 
             mlir::FunctionType funcType = builder.getFunctionType( paramTypes, returns );
             funcOp = builder.create<mlir::func::FuncOp>( locs.first, funcName, funcType, attrs );
@@ -909,7 +924,16 @@ namespace silly
             assert( params );
             size_t psz = params->parameterExpression().size();
             size_t fsz = funcType.getInputs().size();
-            assert( psz == fsz );
+            if ( psz != fsz )
+            {
+                // coverage: bad_call_num_params.silly
+                emitUserError(
+                    loc,
+                    std::format( "Mismatched number of arguments to call of function {}.  Passing: {}, required: {}.",
+                                 funcName, psz, fsz ),
+                    currentFuncName );
+                return ret;
+            }
 
             for ( SillyParser::ParameterExpressionContext *e : params->parameterExpression() )
             {

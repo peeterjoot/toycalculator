@@ -272,6 +272,11 @@ namespace silly
         /// Syntax errors detected.  Return a nullptr Module if this is non-zero.
         int errorCount{};
 
+        /// By default silly programs have a main ('MAIN;' at start is implied.)  If, instead
+        /// of MAIN (implicit or explicit), a 'MODULE;' is specified, that source may have
+        /// only FUNCTIONs.
+        bool isModule{};
+
         ////////////////////////////////////////////////////////////////////////
         ///
         /// Helper functions

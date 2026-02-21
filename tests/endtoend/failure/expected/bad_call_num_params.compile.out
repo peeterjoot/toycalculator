@@ -1,0 +1,4 @@
+bad_call_num_params.silly: In function ‘foo’:
+bad_call_num_params.silly:10:5: error: Mismatched number of arguments to call of function bar.  Passing: 0, required: 1.
+   10 |     CALL bar( );
+      |     ^

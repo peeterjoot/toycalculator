@@ -9,6 +9,7 @@
 #'error_invalid_unary' => q(line 3:4 token recognition error at:),
 
 set(FAILURE_TESTS
+    bad_call_num_params.silly
     error_arrayreturn.silly
     error_array_too_many_init.silly
     error_bad_return_elif.silly

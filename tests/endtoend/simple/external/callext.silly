@@ -1,0 +1,12 @@
+// callext.silly
+FUNCTION bar ( INT16 w );
+
+PRINT "In main";
+CALL bar( 3 );
+PRINT "Back in main";
+
+FUNCTION foo ( ) : INT32;
+
+INT32 rc = CALL foo();
+
+PRINT "Back in main again, rc = ", rc;
