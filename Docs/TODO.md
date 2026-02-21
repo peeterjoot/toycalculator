@@ -19,14 +19,24 @@
     // it knows how to deal with StringRef)
     llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open file '{}': {}\n", std::string( path ), EC.message() );
 ```
-* Add testing for: .o inputs to the driver; silly -c empty.silly ; silly empty.o -- see bin/manualtest_file_options.sh
-  and tests/endtoend/simple/external/build.sh
-* Reduce use of raw ModuleOp — prefer passing OwningOpRef& or keep it local
+* CompilationUnit: Reduce use of raw ModuleOp — prefer passing OwningOpRef& or keep it local
 * Fix up the ordering of the functions in driver.cpp -- it got chaotic in the refactor.
 
 #### misc
 * tests/endtoend/expressions/modfloat.silly broken with mix of float32/float64's
-* Run include-what-you-use on lowering.cpp (now that LoweringContext.cpp has been split out.)  Will probably have to build it.
+* Run include-what-you-use on lowering.cpp/driver.cpp/CompilationUnit.cpp (post refactoring cleanup.)  Will probably have to build it.
+
+#### build
+
+These ctest targets insist on rebuilding every time:
+```
+fedoravm:/home/peeter/toycalculator/build> nj
+[1/4] Compiling fatal
+[2/4] Compiling arrayprod
+[3/4] Compiling initlist
+[4/4] Compiling initarray
+```
+What is it doing?
 
 #### Grammar
 

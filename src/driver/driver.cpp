@@ -294,6 +294,8 @@ int main( int argc, char** argv )
         if ( st.getInputType() == silly::InputType::OBJECT )
         {
             objectFilename = filename;
+
+            objFiles.push_back( std::string( objectFilename ) );
         }
         else
         {

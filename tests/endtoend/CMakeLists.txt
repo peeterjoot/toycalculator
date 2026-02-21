@@ -162,6 +162,7 @@ endfunction()
 # haven't generateed expected outputs for this one -- am not sure I should:
 #add_subdirectory(sir)
 
+add_subdirectory(driver)
 add_subdirectory(debug)
 add_subdirectory(exit)
 add_subdirectory(failure)
