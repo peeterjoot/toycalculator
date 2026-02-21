@@ -1,0 +1,12 @@
+error_stringreturn.silly:1:19: error: parse error: mismatched input 'STRING' expecting {'INT8', 'INT16', 'INT32', 'INT64', 'FLOAT32', 'FLOAT64', 'BOOL'}
+    1 | FUNCTION foo( ) : STRING[4]
+      |                   ^
+error_stringreturn.silly:1:25: error: parse error: missing IDENTIFIER at '['
+    1 | FUNCTION foo( ) : STRING[4]
+      |                         ^
+error_stringreturn.silly:3:5: error: parse error: extraneous input 'RETURN' expecting STRING_PATTERN
+    3 |     RETURN "hi";
+      |     ^
+error_stringreturn.silly:3:16: error: parse error: extraneous input ';' expecting '}'
+    3 |     RETURN "hi";
+      |                ^

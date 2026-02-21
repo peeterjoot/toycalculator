@@ -1,0 +1,3 @@
+error_function_redeclare.silly:2:1: error: Attempt to declare function bar more than once
+    2 | FUNCTION bar ( INT16 w );
+      | ^

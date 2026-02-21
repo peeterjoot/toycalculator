@@ -1,0 +1,10 @@
+error_nested.silly: In function ‘foo’:
+error_nested.silly:5:5: error: Nested functions are not currently supported.
+    5 |     FUNCTION bar( INT32 v )
+      |     ^
+error_nested.silly:12:15: error: Undeclared variable x
+   12 |     INT32 y = x;
+      |               ^
+error_nested.silly:15:12: error: Undeclared variable r
+   15 |     RETURN r;
+      |            ^

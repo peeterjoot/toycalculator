@@ -1,0 +1,9 @@
+error_decl_in_elif_else.silly:20:7: error: Undeclared variable a
+   20 | PRINT a;
+      |       ^
+error_decl_in_elif_else.silly:21:7: error: Undeclared variable b
+   21 | PRINT b;
+      |       ^
+error_decl_in_elif_else.silly:22:7: error: Undeclared variable c
+   22 | PRINT c;
+      |       ^

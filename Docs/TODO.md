@@ -33,7 +33,7 @@
 #### Grammar
 
 * Add MODULE, MAIN, INTERFACE statements.  MODULE .silly's should have only FUNCTION.  INTERFACE to have only prototypes.
-* Add FUNCTION declaration syntax (for use in external MODULE objects.)
+* Add FUNCTION declaration syntax (for use in external MODULE objects.)  Have internal functions now (per CU), but external functions should omit the private attrs in the builder.
 
 #### Lowering
 

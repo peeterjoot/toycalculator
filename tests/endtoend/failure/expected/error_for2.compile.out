@@ -1,0 +1,3 @@
+error_for2.silly:6:7: error: Undeclared variable j
+    6 | PRINT j;
+      |       ^

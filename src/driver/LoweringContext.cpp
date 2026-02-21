@@ -246,6 +246,13 @@ namespace silly
         size_t maxPrintArgs = 0;
         std::string funcName;
 
+        if ( funcOp.isExternal() )
+        {
+            // Just a prototype... nothing to do.
+            // Test coverage: function/proto1.silly
+            return false;
+        }
+        else
         {
             ModuleInsertionPointGuard ip( mod, builder );
 

@@ -1,0 +1,4 @@
+error_array_too_many_init.silly:1:1: error: For variable 'a', more initializers (4) specified than number of elements (3).
+
+    1 | INT32 a[3] {1,2,3,4};     // too many initializers
+      | ^

@@ -1,0 +1,4 @@
+error_triple_nested_for_with_shadowing.silly:3:9: error: Induction variable i used by enclosing FOR
+
+    3 |         FOR (INT32 i: (0,2)) {  // expect death: shadows outer i
+      |         ^

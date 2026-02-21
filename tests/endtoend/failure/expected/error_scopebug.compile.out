@@ -1,0 +1,4 @@
+error_scopebug.silly: In function ‘foo’:
+error_scopebug.silly:9:11: error: Undeclared variable x
+    9 |     PRINT x;
+      |           ^

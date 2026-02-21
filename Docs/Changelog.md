@@ -72,6 +72,7 @@
   - `IF` / `ELIF` / `ELSE` branches
   - Function bodies
 - Enables proper variable lifetime management through `exitScope` callbacks
+- FUNCTION prototypes have been implemented (example in README.)
 
 ### Parser Improvements
 - Organized `parser.cpp` functions by logical grouping for better maintainability

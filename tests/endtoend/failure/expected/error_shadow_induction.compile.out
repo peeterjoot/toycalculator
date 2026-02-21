@@ -1,0 +1,4 @@
+error_shadow_induction.silly:4:1: error: Induction variable i clashes with declared variable
+
+    4 | FOR (INT32 i: (0, 3)) {  // shadows outer i
+      | ^

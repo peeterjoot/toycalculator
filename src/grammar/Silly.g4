@@ -53,7 +53,7 @@ functionStatement
   : FUNCTION_TOKEN IDENTIFIER
     BRACE_START_TOKEN (variableTypeAndName (COMMA_TOKEN variableTypeAndName)*)? BRACE_END_TOKEN
     (COLON_TOKEN scalarType)?
-    scopedStatements
+    scopedStatements?
   ;
 
 boolDeclareStatement

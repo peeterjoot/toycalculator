@@ -1,0 +1,4 @@
+error_notfloat.silly:1:7: error: NOT on non-integer type
+
+    1 | PRINT NOT 3.14;
+      |       ^

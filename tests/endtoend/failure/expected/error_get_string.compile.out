@@ -1,0 +1,3 @@
+error_get_string.silly:2:1: error: Attempted GET to string literal or array?
+    2 | GET y;
+      | ^

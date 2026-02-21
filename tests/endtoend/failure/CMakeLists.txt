@@ -22,17 +22,19 @@ set(FAILURE_TESTS
     error_expressions4e.silly
     error_for1.silly
     error_for2.silly
+    error_function_redeclare.silly
+    error_function_redefine.silly
     error_get_string.silly
     error_induction_var_in_step.silly
     error_init_list1.silly
     error_init_list2.silly
     error_invalid_binary.silly
-    error_keyword_declare.silly
     error_keyword_declare2.silly
+    error_keyword_declare.silly
     error_multiple_in_func.silly
-    error_nested.silly
     error_nested_if.silly
     error_nested_ivar_conflict.silly
+    error_nested.silly
     error_notfloat.silly
     error_redeclare.silly
     error_return_expr_no_return_type.silly

@@ -1,0 +1,7 @@
+error_multiple_in_func.silly: In function ‘moo’:
+error_multiple_in_func.silly:5:15: error: Undeclared variable x
+    5 |     INT32 y = x;
+      |               ^
+error_multiple_in_func.silly:6:15: error: Undeclared variable w
+    6 |     INT32 z = w;
+      |               ^

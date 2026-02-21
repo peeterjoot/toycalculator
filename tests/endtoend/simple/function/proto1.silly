@@ -1,0 +1,3 @@
+FUNCTION bar ( INT16 w );
+
+PRINT "In main";

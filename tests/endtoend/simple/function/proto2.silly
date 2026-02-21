@@ -1,0 +1,12 @@
+FUNCTION bar ( INT16 w );
+
+PRINT "In main";
+
+FUNCTION bar ( INT16 w )
+{
+    PRINT w;
+    RETURN;
+};
+
+CALL bar( 3 );
+PRINT "Back in main";

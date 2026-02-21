@@ -1,0 +1,3 @@
+error_bad_return_if.silly:3:5: error: RETURN is not currently allowed in a IF block
+    3 |     RETURN 0;
+      |     ^

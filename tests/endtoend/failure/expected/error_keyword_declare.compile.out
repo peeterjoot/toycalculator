@@ -1,0 +1,3 @@
+error_keyword_declare.silly:1:7: error: parse error: mismatched input 'INT32' expecting IDENTIFIER
+    1 | INT32 INT32;
+      |       ^

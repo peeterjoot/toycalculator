@@ -1,0 +1,3 @@
+error_chained_comparison2.silly:4:16: error: parse error: mismatched input '<' expecting ';'
+    4 | BOOL b = 1 < x < 10;   // should fail
+      |                ^

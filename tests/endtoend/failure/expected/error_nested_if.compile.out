@@ -1,0 +1,63 @@
+error_nested_if.silly:41:23: error: Undeclared variable xx
+   41 |                 PRINT xx; // error
+      |                       ^
+error_nested_if.silly:42:23: error: Undeclared variable yy
+   42 |                 PRINT yy; // error
+      |                       ^
+error_nested_if.silly:43:23: error: Undeclared variable zz
+   43 |                 PRINT zz; // error
+      |                       ^
+error_nested_if.silly:46:19: error: Undeclared variable xx
+   46 |             PRINT xx; // error
+      |                   ^
+error_nested_if.silly:47:19: error: Undeclared variable yy
+   47 |             PRINT yy; // error
+      |                   ^
+error_nested_if.silly:48:19: error: Undeclared variable zz
+   48 |             PRINT zz; // error
+      |                   ^
+error_nested_if.silly:53:15: error: Undeclared variable z
+   53 |         PRINT z; // error
+      |               ^
+error_nested_if.silly:54:15: error: Undeclared variable xx
+   54 |         PRINT xx; // error
+      |               ^
+error_nested_if.silly:55:15: error: Undeclared variable yy
+   55 |         PRINT yy; // error
+      |               ^
+error_nested_if.silly:56:15: error: Undeclared variable zz
+   56 |         PRINT zz; // error
+      |               ^
+error_nested_if.silly:60:11: error: Undeclared variable y
+   60 |     PRINT y; // error
+      |           ^
+error_nested_if.silly:61:11: error: Undeclared variable z
+   61 |     PRINT z; // error
+      |           ^
+error_nested_if.silly:62:11: error: Undeclared variable xx
+   62 |     PRINT xx; // error
+      |           ^
+error_nested_if.silly:63:11: error: Undeclared variable yy
+   63 |     PRINT yy; // error
+      |           ^
+error_nested_if.silly:64:11: error: Undeclared variable zz
+   64 |     PRINT zz; // error
+      |           ^
+error_nested_if.silly:67:7: error: Undeclared variable x
+   67 | PRINT x; // error
+      |       ^
+error_nested_if.silly:68:7: error: Undeclared variable y
+   68 | PRINT y; // error
+      |       ^
+error_nested_if.silly:69:7: error: Undeclared variable z
+   69 | PRINT z; // error
+      |       ^
+error_nested_if.silly:70:7: error: Undeclared variable xx
+   70 | PRINT xx; // error
+      |       ^
+error_nested_if.silly:71:7: error: Undeclared variable yy
+   71 | PRINT yy; // error
+      |       ^
+error_nested_if.silly:72:7: error: Undeclared variable zz
+   72 | PRINT zz; // error
+      |       ^

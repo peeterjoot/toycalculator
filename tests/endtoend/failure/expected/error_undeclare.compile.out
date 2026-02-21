@@ -1,0 +1,4 @@
+error_undeclare.silly:1:1: error: Attempt to assign to undeclared variable: x
+
+    1 | x = 3;
+      | ^

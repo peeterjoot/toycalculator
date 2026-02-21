@@ -247,7 +247,7 @@ Some ideas for improvements (as well as bug fixes) can be found in the [TODO](Do
 
 * Like scripted languages, there is an implicit `main` in this silly language.
 No user-defined `main` function is allowed.
-* Functions can be defined anywhere, but must be defined before use (no forward declarations).
+* Functions can be defined anywhere, but must be declared (i.e.: prototype) if called before the definition.
 * The `EXIT` statement, if specified, currently must be at the end of the program.
 `EXIT` without a numeric value is equivalent to `EXIT 0`, as is a program with no explicit `EXIT`.
 * The `RETURN` statement must be at the end of a function.
@@ -708,6 +708,20 @@ FUNCTION add(INT32 a, INT32 b) : INT32 {
 
 FUNCTION void(INT32 a, INT32 b) {
     PRINT a + b;
+    RETURN;
+};
+```
+
+Functions may be declared, and then defined later.  Example:
+
+```
+FUNCTION bar ( INT16 w );
+
+CALL bar( 3 );
+
+FUNCTION bar ( INT16 w )
+{
+    PRINT w;
     RETURN;
 };
 ```

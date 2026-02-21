@@ -1,0 +1,3 @@
+error_keyword_declare2.silly:1:7: error: parse error: extraneous input 'INT32' expecting IDENTIFIER
+    1 | INT32 INT32 x;
+      |       ^

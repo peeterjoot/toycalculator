@@ -1,0 +1,10 @@
+FUNCTION bar ( INT16 w )
+{
+    PRINT w;
+    RETURN;
+};
+
+FUNCTION bar ( INT16 w )
+{
+    RETURN;
+};

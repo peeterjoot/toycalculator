@@ -1,0 +1,4 @@
+error_return_expr_no_return_type.silly: In function ‘foo’:
+error_return_expr_no_return_type.silly:3:5: error: return expression found '0', but no return type for function foo
+    3 |     RETURN 0;
+      |     ^

@@ -1,0 +1,3 @@
+error_decl_in_if.silly:10:7: error: Undeclared variable secret
+   10 | PRINT secret;  // should fail to compile
+      |       ^

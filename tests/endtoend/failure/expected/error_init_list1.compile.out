@@ -1,0 +1,4 @@
+error_init_list1.silly:1:1: error: For variable 'w', more initializers (3) specified than number of elements (1).
+
+    1 | INT32 w {1,2,3};
+      | ^

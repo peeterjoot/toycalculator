@@ -23,8 +23,8 @@
 #include "DriverState.hpp"
 #include "ParseListener.hpp"
 #include "SillyDialect.hpp"
-#include "helper.hpp"
 #include "SillyLexer.h"
+#include "helper.hpp"
 
 /// --debug- class for the parser
 #define DEBUG_TYPE "silly-parser"
@@ -130,7 +130,7 @@ namespace silly
         typ.initialize( builder, ctx );
     }
 
-    mlir::OwningOpRef<mlir::ModuleOp> ParseListener::run( )
+    mlir::OwningOpRef<mlir::ModuleOp> ParseListener::run()
     {
         driverState.openFailed = false;
 
@@ -151,7 +151,7 @@ namespace silly
         parser.removeErrorListeners();
         parser.addErrorListener( this );
 
-        antlr4::tree::ParseTree* tree = parser.startRule();
+        antlr4::tree::ParseTree *tree = parser.startRule();
         antlr4::tree::ParseTreeWalker::DEFAULT.walk( this, tree );
 
         if ( errorCount )
@@ -159,7 +159,7 @@ namespace silly
             return nullptr;
         }
 
-        return std::move(mod);
+        return std::move( mod );
     }
 
     void ParseListener::emitInternalError( mlir::Location loc, const char *compilerfile, unsigned compilerline,
@@ -788,54 +788,95 @@ namespace silly
             return;
         }
 
-        mainIP = builder.saveInsertionPoint();
-
-        builder.setInsertionPointToStart( mod->getBody() );
-
         assert( ctx->IDENTIFIER() );
         std::string funcName = ctx->IDENTIFIER()->getText();
+        ParserPerFunctionState &f = funcState( funcName );
+        mlir::func::FuncOp funcOp = f.getFuncOp();
 
-        std::vector<mlir::Type> returns;
-        if ( SillyParser::ScalarTypeContext *rt = ctx->scalarType() )
+        if ( funcOp )
         {
-            mlir::Type returnType = parseScalarType( rt->getText() );
-
-            if ( returnType )
+            if ( !funcOp.isExternal() )
             {
-                returns.push_back( returnType );
-            }
-            else
-            {
-                mlir::Location loc = getStartLocation( ctx );
-                emitInternalError( loc, __FILE__, __LINE__, __func__, "no returnType", currentFuncName );
+                // test coverage: error_function_redefine.silly
+                emitUserError( locs.first, std::format( "Attempt to define function {} more than once", funcName ),
+                               currentFuncName );
                 return;
             }
-        }
 
-        std::vector<mlir::Type> paramTypes;
-        std::vector<std::string> paramNames;
-        for ( SillyParser::VariableTypeAndNameContext *paramCtx : ctx->variableTypeAndName() )
+            if ( !ctx->scopedStatements() )
+            {
+                // test coverage: error_function_redeclare.silly
+                emitUserError( locs.first, std::format( "Attempt to declare function {} more than once", funcName ),
+                               currentFuncName );
+                return;
+            }
+
+            mainIP = builder.saveInsertionPoint();
+
+            // fall through to createScope, which will set the IP.
+        }
+        else
         {
-            assert( paramCtx->scalarType() );
-            mlir::Type paramType = parseScalarType( paramCtx->scalarType()->getText() );
-            assert( paramCtx->IDENTIFIER() );
-            std::string paramName = paramCtx->IDENTIFIER()->getText();
-            paramTypes.push_back( paramType );
-            paramNames.push_back( paramName );
+            mainIP = builder.saveInsertionPoint();
+
+            builder.setInsertionPointToStart( mod->getBody() );
+
+            std::vector<mlir::Type> returns;
+            if ( SillyParser::ScalarTypeContext *rt = ctx->scalarType() )
+            {
+                mlir::Type returnType = parseScalarType( rt->getText() );
+
+                if ( returnType )
+                {
+                    returns.push_back( returnType );
+                }
+                else
+                {
+                    mlir::Location loc = getStartLocation( ctx );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__, "no returnType", currentFuncName );
+                    return;
+                }
+            }
+
+            std::vector<mlir::Type> paramTypes;
+            for ( SillyParser::VariableTypeAndNameContext *paramCtx : ctx->variableTypeAndName() )
+            {
+                assert( paramCtx->scalarType() );
+                mlir::Type paramType = parseScalarType( paramCtx->scalarType()->getText() );
+                paramTypes.push_back( paramType );
+            }
+
+            std::vector<mlir::NamedAttribute> attrs;
+            attrs.push_back(
+                mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
+
+            mlir::FunctionType funcType = builder.getFunctionType( paramTypes, returns );
+            funcOp = builder.create<mlir::func::FuncOp>( locs.first, funcName, funcType, attrs );
         }
 
-        std::vector<mlir::NamedAttribute> attrs;
-        attrs.push_back(
-            mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
+        if ( ctx->scopedStatements() )
+        {
+            std::vector<std::string> paramNames;
+            for ( SillyParser::VariableTypeAndNameContext *paramCtx : ctx->variableTypeAndName() )
+            {
+                assert( paramCtx->IDENTIFIER() );
+                std::string paramName = paramCtx->IDENTIFIER()->getText();
+                paramNames.push_back( paramName );
+            }
 
-        mlir::FunctionType funcType = builder.getFunctionType( paramTypes, returns );
-        mlir::func::FuncOp funcOp = builder.create<mlir::func::FuncOp>( locs.first, funcName, funcType, attrs );
-        createScope( locs.first, locs.second, funcOp, funcName, paramNames );
+            createScope( locs.first, locs.second, funcOp, funcName, paramNames );
+        }
+        else
+        {
+            currentFuncName = funcName;
+            f.setFuncOp( funcOp );
+        }
     }
 
     void ParseListener::exitFunctionStatement( SillyParser::FunctionStatementContext *ctx )
     {
         assert( ctx );
+
         builder.restoreInsertionPoint( mainIP );
 
         currentFuncName = ENTRY_SYMBOL_NAME;
