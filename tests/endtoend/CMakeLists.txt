@@ -128,6 +128,69 @@ function(add_endtoend_compile_tests)
     endforeach()
 endfunction()
 
+function( add_endtoend_multisource_compile_tests test_name )
+    # ARGN contains all arguments after test_name — treat them as source files
+    set( sources ${ARGN} )
+
+    # Build full source paths for DEPENDS and compiler invocation
+    set( source_paths )
+    foreach( src ${sources} )
+        list( APPEND source_paths "${CMAKE_CURRENT_SOURCE_DIR}/${src}" )
+    endforeach()
+
+    add_custom_command(
+        OUTPUT
+            "${CMAKE_CURRENT_BINARY_DIR}/${test_name}"
+        COMMAND
+            $<TARGET_FILE:silly>
+            --output-directory "${CMAKE_CURRENT_BINARY_DIR}"
+            -g
+            -o ${test_name}
+            ${source_paths}
+        DEPENDS silly ${source_paths}
+        COMMENT "Compiling ${test_name}"
+        VERBATIM
+    )
+
+    add_custom_target( compile_${test_name}
+        DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${test_name}"
+    )
+
+    add_dependencies( endtoend_tests compile_${test_name} )
+endfunction()
+
+function( add_silly_compile_link_test test_name source )
+    set( source_path "${CMAKE_CURRENT_SOURCE_DIR}/${source}" )
+    get_filename_component( source_stem "${source}" NAME_WE )
+    set( object_path "${CMAKE_CURRENT_BINARY_DIR}/${source_stem}.o" )
+    set( exe_path "${CMAKE_CURRENT_BINARY_DIR}/${test_name}" )
+
+    add_custom_command(
+        OUTPUT
+            "${exe_path}"
+            "${object_path}"
+        COMMAND
+            $<TARGET_FILE:silly>
+            --output-directory "${CMAKE_CURRENT_BINARY_DIR}"
+            -g -c
+            "${source_path}"
+        COMMAND
+            $<TARGET_FILE:silly>
+            "${object_path}"
+            -g
+            -o "${exe_path}"
+        DEPENDS silly "${source_path}"
+        COMMENT "Compiling ${test_name}"
+        VERBATIM
+    )
+
+    add_custom_target( compile_${test_name}
+        DEPENDS "${exe_path}"
+    )
+
+    add_dependencies( endtoend_tests compile_${test_name} )
+endfunction()
+
 function(add_endtoend_failure_tests CATEGORY)
     set(TEST_FILES ${ARGN})
 

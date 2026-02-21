@@ -5,7 +5,11 @@
 
 #### Driver
 
-* Reduce/eliminate use of raw ModuleOp — prefer passing OwningOpRef& or keep it local
+* CompilationUnit:
+ - Reduce use of raw ModuleOp — prefer passing OwningOpRef& or keep it local
+ - Fix up the ordering of the functions -- it got chaotic in the refactor.
+* Respect -o for --emit-mlir or --emit-llvm too (provided both aren't set.)  Add a round trip test taking .mlir as input like the -c/-o
+  test in /driver/
 * Don't think that driver is removing outputs before trying to recreate, so if there is an error after success, it is not visible.
 * Any driver error should delete any files opened (.o, .s, .ll, .mlir, ...).  There are mechanisms for that like:
 
@@ -19,11 +23,10 @@
     // it knows how to deal with StringRef)
     llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open file '{}': {}\n", std::string( path ), EC.message() );
 ```
-* CompilationUnit: Reduce use of raw ModuleOp — prefer passing OwningOpRef& or keep it local
-* Fix up the ordering of the functions in driver.cpp -- it got chaotic in the refactor.
 * Consider making DriverState own the parsed cl::opt values directly (instead of shadow copies) if they're immutable after parsing — reduces duplication risk.
 * If CompilationUnit grows, think about a Driver or CompilationDriver top-level class that owns the DriverState and orchestrates multiple CompilationUnits.
 * Automate the multi-file driver tests in CTest.
+* Implement support for .a suffixes (pass w/ --whole-archive)
 
 #### misc
 * tests/endtoend/expressions/modfloat.silly broken with mix of float32/float64's

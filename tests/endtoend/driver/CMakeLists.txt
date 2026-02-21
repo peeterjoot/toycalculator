@@ -1,52 +1,14 @@
 set(DRIVER_TESTS
-    twosilly
-    onesilly
+    twosource
+    onesource
 )
 
 #-------------------------------------------------
-# test two source compile and link
-add_custom_command(
-    OUTPUT
-        "${CMAKE_CURRENT_BINARY_DIR}/twosilly"
-    COMMAND
-        $<TARGET_FILE:silly>
-        --output-directory "${CMAKE_CURRENT_BINARY_DIR}"
-        -g
-        -o twosilly
-        ${CMAKE_CURRENT_SOURCE_DIR}/caller.silly
-        ${CMAKE_CURRENT_SOURCE_DIR}/callee.silly
-    DEPENDS silly ${CMAKE_CURRENT_SOURCE_DIR}/caller.silly ${CMAKE_CURRENT_SOURCE_DIR}/callee.silly
-    COMMENT "Compiling twosilly"
-    VERBATIM
-)
+# two source compile and link
+add_endtoend_multisource_compile_tests( twosource caller.silly callee.silly )
 
-# Create a target for this test so it gets built
-add_custom_target(compile_twosilly
-    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/twosilly"
-)
-
-# Add to the "all" target so it builds by default
-add_dependencies(endtoend_tests compile_twosilly)
-#-------------------------------------------------
-# test -c/-o, with separate link
-add_custom_command(
-    OUTPUT
-        "${CMAKE_CURRENT_BINARY_DIR}/onesilly"
-        "${CMAKE_CURRENT_BINARY_DIR}/one.o"
-    COMMAND
-        bash -c "$<TARGET_FILE:silly> --output-directory ${CMAKE_CURRENT_BINARY_DIR} -g -c ${CMAKE_CURRENT_SOURCE_DIR}/one.silly ; $<TARGET_FILE:silly> ${CMAKE_CURRENT_BINARY_DIR}/one.o -g -o ${CMAKE_CURRENT_BINARY_DIR}/onesilly"
-    DEPENDS silly ${CMAKE_CURRENT_SOURCE_DIR}/one.silly
-    COMMENT "Compiling onesilly"
-    VERBATIM
-)
-
-# Create a target for this test so it gets built
-add_custom_target(compile_onesilly
-    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/onesilly"
-)
-
-# Add to the "all" target so it builds by default
-add_dependencies(endtoend_tests compile_onesilly)
+# -c/-o, with separate link
+add_silly_compile_link_test( onesource one.silly )
 #-------------------------------------------------
 
 add_endtoend_run_tests("EndToEnd.driver"
