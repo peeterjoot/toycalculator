@@ -45,7 +45,6 @@
 
 // TODO:
 // Reduce use of raw ModuleOp — prefer passing OwningOpRef& or keep it local
-// Add support for -o name so you can see where the current executable-path logic breaks
 
 /// --debug- class for the driver
 #define DEBUG_TYPE "silly-driver"
@@ -71,6 +70,7 @@ enum class ReturnCodes : int
     openError,
     parseError,
     verifyError,
+    tempCreationError,
 };
 
 /// Supported source code file extensions.
@@ -135,9 +135,14 @@ class CompilationUnit
     void constructObjectPath( llvm::SmallString<128>& outputFilename );
 
     /// Return the executable path associated with this file.
-    const llvm::SmallString<128> & getDefaultExecutablePath() const
+    const llvm::SmallString<128>& getDefaultExecutablePath() const
     {
         return dirWithStem;
+    }
+
+    const llvm::SmallString<128>& getOutputDirectory() const
+    {
+        return outdir;
     }
 
    private:
@@ -170,6 +175,9 @@ class CompilationUnit
     /// Output directory combined with filename stem (no extension)
     llvm::SmallString<128> dirWithStem;
 
+    /// Just the output directory
+    llvm::SmallString<128> outdir;
+
     /// Determine the input type from a filename extension.
     ///
     /// @param filename The filename to examine
@@ -184,7 +192,7 @@ class CompilationUnit
 
     /// Create the directory named in --output-directory.
     ///
-    /// Populates dirWithStem as a side effect with the output directory, or the directory
+    /// Populates outdir as a side effect with the output directory, or the directory
     /// part of the filename path (if specified), or an empty string.
     void makeOutputDirectory();
 
@@ -206,13 +214,16 @@ static llvm::cl::opt<std::string> inputFilename( llvm::cl::Positional, llvm::cl:
 static llvm::cl::opt<bool> compileOnly( "c", llvm::cl::desc( "Compile only and don't link." ), llvm::cl::init( false ),
                                         llvm::cl::cat( SillyCategory ) );
 
+static llvm::cl::opt<bool> keepTemps( "keep-temp", llvm::cl::desc( "Do not automatically delete temporary files." ),
+                                      llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+
 static llvm::cl::opt<std::string> outDir(
     "output-directory", llvm::cl::desc( "Output directory for generated files (e.g., .mlir, .ll, .o)" ),
     llvm::cl::value_desc( "directory" ), llvm::cl::init( "" ), llvm::cl::cat( SillyCategory ) );
 
-static llvm::cl::opt<std::string> oName(
-    "o", llvm::cl::desc( "Executable or object name" ),
-    llvm::cl::value_desc( "filename" ), llvm::cl::init( "" ), llvm::cl::cat( SillyCategory ) );
+static llvm::cl::opt<std::string> oName( "o", llvm::cl::desc( "Executable or object name" ),
+                                         llvm::cl::value_desc( "filename" ), llvm::cl::init( "" ),
+                                         llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<bool> emitMLIR( "emit-mlir", llvm::cl::desc( "Emit MLIR IR" ), llvm::cl::init( false ),
                                      llvm::cl::cat( SillyCategory ) );
@@ -268,7 +279,7 @@ static llvm::cl::opt<bool> noColorErrors( "no-color-errors", llvm::cl::desc( "Di
 /// Assuming that a message has already been displayed, return with a non-zero return code.
 static void fatalDriverError( ReturnCodes rc )
 {
-    assert((int)rc < 256); // Assume unix.
+    assert( (int)rc < 256 );    // Assume unix.
 
     std::exit( (int)rc );
 }
@@ -304,8 +315,8 @@ static void showLinkCommand( const std::string& linker, llvm::SmallVector<llvm::
 /// Invoke the system linker to create an executable.
 ///
 /// @param objectPath Path to the object file to link
-static
-void invokeLinker( const llvm::SmallString<128>& exePath, const llvm::SmallString<128>& objectPath, silly::DriverState & ds )
+static void invokeLinker( const llvm::SmallString<128>& exePath, const llvm::SmallString<128>& objectPath,
+                          silly::DriverState& ds )
 {
     // Get the driver path
     std::string driver = llvm::sys::fs::getMainExecutable( ds.argv0, ds.mainSymbol );
@@ -394,6 +405,7 @@ CompilationUnit::CompilationUnit( silly::DriverState& d, std::string f, mlir::ML
         fatalDriverError( ReturnCodes::filenameParseError );
     }
 
+    dirWithStem = outdir;
     if ( dirWithStem.empty() )
     {
         dirWithStem = stem;
@@ -615,11 +627,11 @@ void CompilationUnit::makeOutputDirectory()
             fatalDriverError( ReturnCodes::directoryError );
         }
 
-        dirWithStem = outDir;
+        outdir = outDir;
     }
     else if ( dirname != "" )
     {
-        dirWithStem = dirname;
+        outdir = dirname;
     }
 }
 
@@ -741,7 +753,6 @@ InputType CompilationUnit::getInputType( llvm::StringRef filename )
 
 void CompilationUnit::constructObjectPath( llvm::SmallString<128>& outputFilename )
 {
-    // Emit object file.  FIXME: we should use a temporary path if compileOnly was not set.
     outputFilename += dirWithStem;
     outputFilename += ".o";
 }
@@ -757,7 +768,7 @@ int main( int argc, char** argv )
     // once this goes out of scope, the module is toast and can't be referenced further.
     silly::DialectContext dialectLoader;
 
-    silly::DriverState ds(argv[0], (void *)&main);
+    silly::DriverState ds( argv[0], (void*)&main );
     ds.isOptimized = optLevel != OptLevel::O0 ? true : false;
     ds.fillValue = (uint8_t)initFillValue;
     ds.wantDebug = debugInfo;
@@ -769,6 +780,7 @@ int main( int argc, char** argv )
     st.processSourceFile();
 
     llvm::SmallString<128> objectFilename;
+    bool createdTemporary{};
 
     if ( st.getInputType() == InputType::OBJECT )
     {
@@ -784,11 +796,52 @@ int main( int argc, char** argv )
         {
             objectFilename = oName;
         }
-        else
+        else if ( compileOnly )
         {
-            // We should serialize the .o to a temp path, unless -c is specified.
             st.constructObjectPath( objectFilename );
         }
+        else
+        {
+            const llvm::SmallString<128>& outdir = st.getOutputDirectory();
+            llvm::SmallString<128> p;
+
+            if ( outdir.empty() )
+            {
+                llvm::SmallString<128> td;
+                llvm::sys::path::system_temp_directory( true, td );
+                p = td;
+            }
+            else
+            {
+                p = outdir;
+            }
+
+            llvm::SmallString<128> o = llvm::sys::path::stem( inputFilename );
+            o += "-%%%%%%.o";
+            llvm::sys::path::append( p, o );
+
+            std::error_code EC;
+            EC = llvm::sys::fs::createUniqueFile( p, objectFilename );
+            if ( EC )
+            {
+                // FIXME: another place to use formatv
+                llvm::errs() << std::format( COMPILER_NAME
+                                             ": error: Failed to create temporary object file in path '{}': {}\n",
+                                             std::string(p), EC.message() );
+
+                fatalDriverError( ReturnCodes::tempCreationError );
+            }
+
+            if ( keepTemps )
+            {
+                // FIXME: another place to use formatv
+                llvm::errs() << std::format( COMPILER_NAME ": info: created temporary: {}\n",
+                                             std::string( objectFilename ) );
+            }
+
+            createdTemporary = true;
+        }
+
 
         st.serializeObjectCode( objectFilename );
     }
@@ -808,6 +861,11 @@ int main( int argc, char** argv )
         }
 
         invokeLinker( exeName, objectFilename, ds );
+    }
+
+    if ( createdTemporary && !keepTemps )
+    {
+        llvm::sys::fs::remove( objectFilename );
     }
 
     return (int)ReturnCodes::success;

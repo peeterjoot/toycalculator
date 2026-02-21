@@ -107,7 +107,8 @@
 * Refactored driver.cpp,:introduce CompilationUnit to manage single-source compilation pipeline, and prep for multi-file support.
 * Migrated error emission from DriverState → ParseListener
 * Centralized fatal exits
-* Implemented -o
+* temporary .o file is now created in either --output-directory or $TMPDIR.
+* Implemented -o, --keep-temp.
 
 ## Testing & Quality
 

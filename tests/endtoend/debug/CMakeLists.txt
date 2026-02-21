@@ -19,7 +19,7 @@ if(FILECHECK_EXECUTABLE)
         # Run dwarfdump (saving to a .dd suffixed file)
         add_test(
             NAME EndToEnd.debug.${test_name}.dwarf_dump
-            COMMAND bash -c "dwarfdump ${CMAKE_CURRENT_BINARY_DIR}/${test_name}.o > ${CMAKE_CURRENT_BINARY_DIR}/${test_name}.dd"
+            COMMAND bash -c "dwarfdump ${CMAKE_CURRENT_BINARY_DIR}/${test_name} > ${CMAKE_CURRENT_BINARY_DIR}/${test_name}.dd"
         )
 
         set_tests_properties(EndToEnd.debug.${test_name}.dwarf_dump
