@@ -413,6 +413,8 @@ Blocks use `{ ... }`, and expressions use parentheses `( ... )`.
 
 A Silly program may define supplementary functions in a different source from the Silly main source file.
 Such a source may only have comments, `FUNCTION` declarations, and `FUNCTION` definitions, and must use the `MODULE` keyword.
+A non-`MODULE` source may optionally use the `MAIN` keyword, but it is implied if `MODULE` is not specified (provided for symmetry).
+
 For example:
 
 ```

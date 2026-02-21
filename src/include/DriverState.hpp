@@ -4,6 +4,7 @@
 #pragma once
 
 #include <mlir/IR/Location.h>
+#include <llvm/Passes/OptimizationLevel.h>
 
 #include <cstdint>
 #include <string>
@@ -27,7 +28,7 @@ namespace silly
         bool abortOmitPath{};
 
         /// True if -g is passed.
-        bool wantDebug{};
+        bool debugInfo{};
 
         /// True for color error messages (when output is a terminal.)
         bool colorErrors{};
@@ -35,11 +36,20 @@ namespace silly
         /// Numeric --init-fill value if specified (zero otherwise.)
         uint8_t fillValue{};
 
+        bool emitMLIR{}; ///< --emit-mlir
+        bool emitLLVM{}; ///< --emit-llvm
+        bool toStdout{}; ///< --stdout
+
+        bool llvmDEBUG{}; ///< --debug-llvm
+        std::string outDir{}; ///< --output-directory
+
         /// Signal that -lm will be required when the program is linked (set by lowering)
         bool needsMathLib{};
 
         /// Signal that the source file could not be opened (set by parse-listener)
         bool openFailed{};
+
+        llvm::OptimizationLevel opt{}; ///< -O[0123]
 
         /// Driver name
         const char * argv0{};

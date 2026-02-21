@@ -135,7 +135,7 @@ namespace silly
 
     void LoweringContext::createDICompileUnit( mlir::Location loc )
     {
-        if ( driverState.wantDebug )
+        if ( driverState.debugInfo )
         {
             ModuleInsertionPointGuard ip( mod, builder );
 
@@ -262,7 +262,7 @@ namespace silly
             mlir::Region& region = funcOp.getRegion();
             mlir::Block& entryBlock = region.front();
 
-            if ( driverState.wantDebug )
+            if ( driverState.debugInfo )
             {
                 mlir::LLVM::DISubroutineTypeAttr subprogramType = createDISubroutineType( funcOp );
 
@@ -361,7 +361,7 @@ namespace silly
                                                             int64_t arraySize, const char*& typeName, unsigned& dwType,
                                                             unsigned& elemStorageSizeInBits )
     {
-        if ( !driverState.wantDebug )
+        if ( !driverState.debugInfo )
         {
             return mlir::success();
         }
@@ -445,7 +445,7 @@ namespace silly
                                                               mlir::Type& elemType, unsigned elemSizeInBits,
                                                               mlir::Value value, int64_t arraySize )
     {
-        if ( !driverState.wantDebug )
+        if ( !driverState.debugInfo )
         {
             return mlir::success();
         }
@@ -831,7 +831,7 @@ namespace silly
                                                 const std::string& varName, mlir::LLVM::AllocaOp value,
                                                 mlir::Type elemType, int paramIndex, const std::string& funcName )
     {
-        if ( driverState.wantDebug )
+        if ( driverState.debugInfo )
         {
             // Create debug type for basic types (e.g., i32, f32)
             mlir::MLIRContext* context = rewriter.getContext();
