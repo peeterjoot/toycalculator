@@ -104,9 +104,10 @@
 
 ## Driver
 
-* Refactored driver.cpp,:introduce CompilationUnit to manage single-source compilation pipeline, and prep for multi-file and -o support.
+* Refactored driver.cpp,:introduce CompilationUnit to manage single-source compilation pipeline, and prep for multi-file support.
 * Migrated error emission from DriverState → ParseListener
 * Centralized fatal exits
+* Implemented -o
 
 ## Testing & Quality
 

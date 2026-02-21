@@ -210,6 +210,10 @@ static llvm::cl::opt<std::string> outDir(
     "output-directory", llvm::cl::desc( "Output directory for generated files (e.g., .mlir, .ll, .o)" ),
     llvm::cl::value_desc( "directory" ), llvm::cl::init( "" ), llvm::cl::cat( SillyCategory ) );
 
+static llvm::cl::opt<std::string> oName(
+    "o", llvm::cl::desc( "Executable or object name" ),
+    llvm::cl::value_desc( "filename" ), llvm::cl::init( "" ), llvm::cl::cat( SillyCategory ) );
+
 static llvm::cl::opt<bool> emitMLIR( "emit-mlir", llvm::cl::desc( "Emit MLIR IR" ), llvm::cl::init( false ),
                                      llvm::cl::cat( SillyCategory ) );
 
@@ -764,11 +768,11 @@ int main( int argc, char** argv )
 
     st.processSourceFile();
 
-    llvm::SmallString<128> outputFilename;
+    llvm::SmallString<128> objectFilename;
 
     if ( st.getInputType() == InputType::OBJECT )
     {
-        outputFilename += inputFilename;
+        objectFilename = inputFilename;
     }
     else
     {
@@ -776,16 +780,34 @@ int main( int argc, char** argv )
 
         st.runOptimizationPasses();
 
-        st.constructObjectPath( outputFilename );
+        if ( !oName.empty() && compileOnly )
+        {
+            objectFilename = oName;
+        }
+        else
+        {
+            // We should serialize the .o to a temp path, unless -c is specified.
+            st.constructObjectPath( objectFilename );
+        }
 
-        st.serializeObjectCode( outputFilename );
+        st.serializeObjectCode( objectFilename );
     }
 
     if ( compileOnly == false )
     {
-        // This exe-path should be split out from CompilationUnit, as it may not match the input source file stem.
-        // The dirWithStem stuff is convoluted and confusing.
-        invokeLinker( st.getDefaultExecutablePath(), outputFilename, ds );
+        llvm::SmallString<128> exeName;
+        if ( oName.empty() )
+        {
+            // This exe-path should be split out from CompilationUnit, as it may not match the input source file stem.
+            // The dirWithStem stuff is convoluted and confusing.
+            exeName = st.getDefaultExecutablePath();
+        }
+        else
+        {
+            exeName = oName;
+        }
+
+        invokeLinker( exeName, objectFilename, ds );
     }
 
     return (int)ReturnCodes::success;

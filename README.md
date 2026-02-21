@@ -279,8 +279,9 @@ Once built, the compiler driver can be run with `build/bin/silly` with the follo
 * `-g` — Show MLIR location info in dumps and lowered LLVM IR
 * `-O[0123]` — Optimization level (standard)
 * `-c` — Compile only (don't link)
+* `-o` — Name of the object (w/ -c) or executable.
 * `--init-fill nnn` — Set fill character for stack variables (numeric value ≤ 255). Default is zero-initialized.
-* `--output-directory` — Specify output directory for generated files
+* `--output-directory` — Specify output directory for generated files (.mlir, .ll, .o, executable)
 * `--no-color-errors` — If stderr is output to a TTY, error messages will be in color by default.  This disables that color output.
 * `--no-abort-path` - If ABORT is called, omit any path components from the output message.  Implemented for test code, so that the output doesn't depend on user specific paths (i.e.: fatal.silly).
 
