@@ -36,6 +36,7 @@ i.e.: should be able to do something like:
 * Consider making DriverState own the parsed cl::opt values directly (instead of shadow copies) if they're immutable after parsing — reduces duplication risk.
 * If CompilationUnit grows, think about a Driver or CompilationDriver top-level class that owns the DriverState and orchestrates multiple CompilationUnits.
 * Implement support for .a suffixes (pass w/ --whole-archive)
+* Implement support for .ll suffixes? -- would be a dumb feature (complexity for little value.), but kind of fun to have, as a for-hacking compiler.
 
 #### misc
 * tests/endtoend/expressions/modfloat.silly broken with mix of float32/float64's
@@ -54,9 +55,11 @@ fedoravm:/home/peeter/toycalculator/build> nj
 ```
 What is it doing?
 
-#### Grammar
+#### MODULE IMPORT.
 
-* Perhaps: INTERFACE with only prototypes, used like includes?
+For some ideas, filtered through Claude, see:
+
+module_import_design.md
 
 #### Lowering
 
