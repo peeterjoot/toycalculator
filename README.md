@@ -300,6 +300,8 @@ Once built, the compiler driver can be run with `build/bin/silly` with the follo
 * `--no-emit-object` — Skip object file generation
 * `--verbose-link` — Show the link command.  This is implicit if the link fails.
 * `--keep-temp` — Do not delete temporary .o files (and give a message showing the name.)
+* `--no-verbose-parse-error' -- The default parse error message is noisy and lists a number of grammar specific tokens, which requires expected test output updates every time the grammar is changed.  This option inhibits that volatile output, which is still on by default.
+* `--imports mod1.silly` -- experimental `IMPORT` statement support.  A single module with silly/mlir/sir/mlirbc/sirbc is required (only one supported at this point in time).  If specified, any `IMPORT` statement will drive a ModuleOp lookup, and prototypes will be created from all the FuncOps in that named import module.
 
 ### Examples
 

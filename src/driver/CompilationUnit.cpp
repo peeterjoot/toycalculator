@@ -18,6 +18,7 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/TargetParser/Host.h>
+#include <mlir/Bytecode/BytecodeWriter.h>
 #include <mlir/Conversion/Passes.h>
 #include <mlir/IR/Verifier.h>
 #include <mlir/Parser/Parser.h>
@@ -25,7 +26,6 @@
 #include <mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h>
 #include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
 #include <mlir/Target/LLVMIR/Export.h>
-#include <mlir/Bytecode/BytecodeWriter.h>
 
 #include <format>
 #include <fstream>
@@ -38,6 +38,7 @@
 #include "ReturnCodes.hpp"
 #include "SillyDialect.hpp"
 #include "SillyPasses.hpp"
+#include "SourceManager.hpp"
 #include "createSillyToLLVMLoweringPass.hpp"
 
 // TODO:
@@ -49,7 +50,8 @@ namespace silly
 {
     void fatalDriverError( ReturnCodes rc );
 
-    CompilationUnit::CompilationUnit( silly::DriverState& d, mlir::MLIRContext* c ) : ds{ d }, context{ c }
+    CompilationUnit::CompilationUnit( silly::SourceManager& s )
+        : sm{ s }, ds{ sm.getDriverState() }, context{ sm.getContext() }
     {
         if ( ds.debugInfo )
         {
@@ -71,7 +73,7 @@ namespace silly
 
         if ( ity == InputType::Silly )
         {
-            silly::ParseListener listener( ds, sourceFileName, context );
+            silly::ParseListener listener( sm, sourceFileName );
 
             rmod = listener.run();
             if ( ds.openFailed )
@@ -87,7 +89,7 @@ namespace silly
                 fatalDriverError( ReturnCodes::parseError );
             }
         }
-        else if ( (ity == InputType::MLIR) || (ity == InputType::MLIRBC) )
+        else if ( ( ity == InputType::MLIR ) || ( ity == InputType::MLIRBC ) )
         {
             parseMLIRFile( sourceFileName );
             mod = rmod.get();
@@ -104,7 +106,7 @@ namespace silly
         }
     }
 
-    void CompilationUnit::mlirToLLVM( const std::string & llvmSourceFilename )
+    void CompilationUnit::mlirToLLVM( const std::string& llvmSourceFilename )
     {
         mlir::ModuleOp mod = rmod.get();
 
@@ -273,7 +275,8 @@ namespace silly
         else if ( ds.emitMLIR or ds.emitMLIRBC )
         {
             std::error_code EC;
-            llvm::raw_fd_ostream out( mlirOutputName.str(), EC, ds.emitMLIRBC ? llvm::sys::fs::OF_None : llvm::sys::fs::OF_Text );
+            llvm::raw_fd_ostream out( mlirOutputName.str(), EC,
+                                      ds.emitMLIRBC ? llvm::sys::fs::OF_None : llvm::sys::fs::OF_Text );
             if ( EC )
             {
                 llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}: {}\n",
@@ -285,7 +288,8 @@ namespace silly
             {
                 if ( mlir::failed( mlir::writeBytecodeToFile( mod, out ) ) )
                 {
-                    llvm::errs() << std::format( COMPILER_NAME ": error: Failed to write bytecode to '{}'\n", std::string( mlirOutputName ) );
+                    llvm::errs() << std::format( COMPILER_NAME ": error: Failed to write bytecode to '{}'\n",
+                                                 std::string( mlirOutputName ) );
                     fatalDriverError( ReturnCodes::ioError );
                 }
             }

@@ -29,6 +29,7 @@ namespace mlir
 namespace silly
 {
     class DriverState;
+    class SourceManager;
 
     /// Supported source code file extensions.
     enum class InputType
@@ -51,8 +52,8 @@ namespace silly
        public:
         /// Construct a new module state for a compilation unit.
         ///
-        /// @param c The MLIR context for this compilation
-        CompilationUnit( silly::DriverState& d, mlir::MLIRContext* c );
+        /// @param s [in] SourceManager to pass down to ParseListener for IMPORT lookup, DriverState, and context.
+        CompilationUnit( silly::SourceManager & s );
 
         /// Parse the source file and build the MLIR module.
         ///
@@ -91,7 +92,11 @@ namespace silly
         /// @param outputFilename[out] Path where the object file will be written
         void serializeObjectCode( const llvm::SmallString<128>& outputFilename );
 
+        mlir::ModuleOp getModule() { return rmod.get(); }
+
        private:
+        silly::SourceManager & sm;
+
         silly::DriverState& ds;
 
         /// MLIR context for this compilation unit

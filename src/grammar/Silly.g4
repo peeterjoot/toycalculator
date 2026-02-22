@@ -27,9 +27,14 @@ startRule
 statement
   : (callStatement | functionStatement | ifElifElseStatement |
      boolDeclareStatement | intDeclareStatement | floatDeclareStatement | stringDeclareStatement |
-     assignmentStatement | printStatement | errorStatement | abortStatement | getStatement | forStatement
+     assignmentStatement | printStatement | errorStatement | abortStatement | getStatement | forStatement |
+     importStatement
     )
     ENDOFSTATEMENT_TOKEN
+  ;
+
+importStatement
+  : IMPORT_TOKEN IDENTIFIER
   ;
 
 ifElifElseStatement
@@ -585,6 +590,10 @@ FUNCTION_TOKEN
 
 CALL_TOKEN
   : 'CALL'
+  ;
+
+IMPORT_TOKEN
+  : 'IMPORT'
   ;
 
 // Matches variable names (e.g., 'x', 'foo', 'my_var'), consisting of letters (any case), numbers and underscores, but starting with a letter.

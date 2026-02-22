@@ -22,6 +22,7 @@ add_executable(silly
   DialectContext.cpp
   MlirTypeCache.cpp
   CompilationUnit.cpp
+  SourceManager.cpp
   ${ANTLR_SOURCES}
 )
 

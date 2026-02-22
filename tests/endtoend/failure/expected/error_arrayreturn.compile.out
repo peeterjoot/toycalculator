@@ -1,12 +1,12 @@
-error_arrayreturn.silly:1:24: error: parse error: mismatched input '[' expecting ';'
+error_arrayreturn.silly:1:24: error: parse error
     1 | FUNCTION foo( ) : INT32[4]
       |                        ^
-error_arrayreturn.silly:5:5: error: parse error: extraneous input 'RETURN' expecting {<EOF>, COMMENT_SKIP_RULE, 'INT8', 'INT16', 'INT32', 'INT64', 'FLOAT32', 'FLOAT64', 'BOOL', 'FOR', 'IF', 'PRINT', 'ERROR', 'ABORT', 'GET', 'EXIT', 'STRING', 'FUNCTION', 'CALL', IDENTIFIER}
+error_arrayreturn.silly:5:5: error: parse error
     5 |     RETURN r;
       |     ^
-error_arrayreturn.silly:5:13: error: parse error: mismatched input ';' expecting '='
+error_arrayreturn.silly:5:13: error: parse error
     5 |     RETURN r;
       |             ^
-error_arrayreturn.silly:6:1: error: parse error: extraneous input '}' expecting {<EOF>, COMMENT_SKIP_RULE, 'INT8', 'INT16', 'INT32', 'INT64', 'FLOAT32', 'FLOAT64', 'BOOL', 'FOR', 'IF', 'PRINT', 'ERROR', 'ABORT', 'GET', 'EXIT', 'STRING', 'FUNCTION', 'CALL', IDENTIFIER}
+error_arrayreturn.silly:6:1: error: parse error
     6 | };
       | ^

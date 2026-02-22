@@ -5,7 +5,7 @@
 get_filename_component(SOURCE_FILENAME ${SOURCE_FILE} NAME)
 
 execute_process(
-    COMMAND ${SILLY_COMPILER} ${SOURCE_FILENAME}
+    COMMAND ${SILLY_COMPILER} ${COMPILER_FLAGS} ${SOURCE_FILENAME}
         --output-directory ${OUT_DIR}
     OUTPUT_VARIABLE compile_stdout
     ERROR_VARIABLE compile_stderr

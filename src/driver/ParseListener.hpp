@@ -29,6 +29,8 @@
 
 namespace silly
 {
+    class SourceManager;
+
     /// Per-function state tracked during parsing.
     class ParserPerFunctionState
     {
@@ -150,10 +152,8 @@ namespace silly
     {
        public:
         /// Constructor.
-        /// @param ds [in,out] Driver state (for emitUserError, emitInternalError)
         /// @param filename [in] Source filename for this module (used to construct Location info)
-        /// @param context [in] The context under which the mlir module is created.
-        ParseListener( DriverState &ds, const std::string &filename, mlir::MLIRContext *context );
+        ParseListener( silly::SourceManager & s, const std::string &filename );
 
         /// Open the file stream, and walk the parse tree.
         ///
@@ -179,6 +179,9 @@ namespace silly
 
         /// Antlr4 exit hook for the scopedStatements rule.
         void exitScopedStatements( SillyParser::ScopedStatementsContext *ctx ) override;
+
+        /// Antlr4 entry hook for the ImportStatementContext rule.
+        void enterImportStatement( SillyParser::ImportStatementContext * ctx ) override;
 
         /// Antlr4 enter hook for an IF statement
         void enterIfStatement( SillyParser::IfStatementContext *ctx ) override;
@@ -243,7 +246,12 @@ namespace silly
         void enterExitStatement( SillyParser::ExitStatementContext *ctx ) override;
 
        private:
-        /// Source filename, ...
+
+        silly::SourceManager &sm;
+
+        /// Compilation command line options and other stuff
+        ///
+        /// (
         DriverState &driverState;
 
         const std::string &sourceFile;
@@ -255,7 +263,7 @@ namespace silly
         mlir::OpBuilder builder;
 
         /// Top-level module.
-        mlir::OwningOpRef<mlir::ModuleOp> mod;
+        mlir::OwningOpRef<mlir::ModuleOp> rmod;
 
         /// mlir::Type values that will be used repeatedly
         MlirTypeCache typ;

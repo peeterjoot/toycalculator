@@ -201,6 +201,12 @@ function(add_endtoend_failure_tests CATEGORY)
         set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
         set(EXPECTED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/expected")
 
+        set(COMPILER_FLAGS "")
+
+        if(DEFINED COMPILER_FLAGS_${test_name})
+            list(APPEND COMPILER_FLAGS ${COMPILER_FLAGS_${test_name}})
+        endif()
+
         # Test: Compile should FAIL
         add_test(
             NAME ${CATEGORY}.${test_name}
@@ -208,6 +214,7 @@ function(add_endtoend_failure_tests CATEGORY)
                 -DSILLY_COMPILER=$<TARGET_FILE:silly>
                 -DSOURCE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/${source_file}
                 -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+                -DCOMPILER_FLAGS=${COMPILER_FLAGS}
                 -DOUT_DIR=${OUT_DIR}
                 -DTEST_NAME=${test_name}
                 -DEXPECTED_OUTPUT=${EXPECTED_DIR}/${test_name}.compile.out

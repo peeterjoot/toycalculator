@@ -11,18 +11,14 @@
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/InitLLVM.h>
 #include <llvm/Support/Path.h>
-#include <llvm/Support/Program.h>
-#include <llvm/Support/TargetSelect.h>
-
-#include <format>
-#include <fstream>
+#include <llvm/Support/TargetSelect.h>    // InitializeAllTargetInfos
 
 #include "CompilationUnit.hpp"
 #include "DialectContext.hpp"
 #include "DriverState.hpp"
 #include "OptLevel.hpp"
-#include "ParseListener.hpp"
 #include "ReturnCodes.hpp"
+#include "SourceManager.hpp"
 
 /// --debug- class for the driver
 #define DEBUG_TYPE "silly-driver"
@@ -42,7 +38,8 @@ static llvm::cl::list<std::string> inputFilenames( llvm::cl::Positional, llvm::c
 static llvm::cl::opt<bool> compileOnly( "c", llvm::cl::desc( "Compile only and don't link." ), llvm::cl::init( false ),
                                         llvm::cl::cat( SillyCategory ) );
 
-static llvm::cl::opt<bool> assembleOnly( "S", llvm::cl::desc( "Assemble only; emit silly dialect textual MLIR and stop." ),
+static llvm::cl::opt<bool> assembleOnly( "S",
+                                         llvm::cl::desc( "Assemble only; emit silly dialect textual MLIR and stop." ),
                                          llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<bool> keepTemps( "keep-temp", llvm::cl::desc( "Do not automatically delete temporary files." ),
@@ -56,8 +53,15 @@ static llvm::cl::opt<std::string> oName( "o", llvm::cl::desc( "Executable or obj
                                          llvm::cl::value_desc( "filename" ), llvm::cl::init( "" ),
                                          llvm::cl::cat( SillyCategory ) );
 
-static llvm::cl::opt<bool> emitMLIR( "emit-mlir", llvm::cl::desc( "Emit MLIR IR for the silly dialect.  Text .mlir format by default, and .mlirbc with -c" ),
-                                     llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+static llvm::cl::opt<std::string> imports( "imports",
+                                           llvm::cl::desc( "comma separated list of pre-compiled import modules" ),
+                                           llvm::cl::value_desc( "csv" ), llvm::cl::init( "" ),
+                                           llvm::cl::cat( SillyCategory ) );
+
+static llvm::cl::opt<bool> emitMLIR(
+    "emit-mlir",
+    llvm::cl::desc( "Emit MLIR IR for the silly dialect.  Text .mlir format by default, and .mlirbc with -c" ),
+    llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<bool> emitMLIRBC( "emit-mlirbc", llvm::cl::desc( "Emit MLIR BC for the silly dialect" ),
                                        llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
@@ -99,6 +103,10 @@ static llvm::cl::opt<bool> debugInfo( "g",
 static llvm::cl::opt<bool> verboseLink( "verbose-link", llvm::cl::desc( "Display the link command line on stderr" ),
                                         llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
+static llvm::cl::opt<bool> noVerboseParseError( "no-verbose-parse-error",
+                                                llvm::cl::desc( "Hide grammar specific context for parse errors" ),
+                                                llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+
 // Noisy debugging output (this is different than --debug which is intercepted by llvm itself)
 static llvm::cl::opt<bool> llvmDEBUG( "debug-llvm", llvm::cl::desc( "Include MLIR dump, and turn off multithreading" ),
                                       llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
@@ -138,139 +146,6 @@ static void llvmInitialization( int argc, char** argv )
     llvm::cl::ParseCommandLineOptions( argc, argv, "Calculator compiler\n" );
 }
 
-static void showLinkCommand( const std::string& linker, llvm::SmallVector<llvm::StringRef, 24>& args )
-{
-    llvm::errs() << "# " << linker;
-
-    for ( const auto& a : args )
-    {
-        llvm::errs() << a << ' ';
-    }
-
-    llvm::errs() << '\n';
-}
-
-/// Invoke the system linker to create an executable.
-///
-/// @param objectPath Path to the object file to link
-static void invokeLinker( const llvm::SmallString<128>& exePath, const std::vector<std::string>& objectPaths,
-                          silly::DriverState& ds )
-{
-    // Get the driver path
-    std::string driver = llvm::sys::fs::getMainExecutable( ds.argv0, ds.mainSymbol );
-    llvm::StringRef driverPath = llvm::sys::path::parent_path( driver );
-    LLVM_DEBUG( { llvm::outs() << "Compiler driver path: " << driverPath << '\n'; } );
-
-    // Find the linker (gcc)
-    const char* linker = "gcc";
-    llvm::ErrorOr<std::string> linkerPath = llvm::sys::findProgramByName( linker );
-    if ( !linkerPath )
-    {
-        std::error_code EC = linkerPath.getError();
-
-        llvm::errs() << std::format( COMPILER_NAME ": error: Error finding path for linker '{}': {}\n", linker,
-                                     EC.message() );
-        silly::fatalDriverError( ReturnCodes::filenameParseError );
-    }
-    LLVM_DEBUG( { llvm::outs() << "Linker path: " << linkerPath.get() << '\n'; } );
-
-    // Construct paths that need to persist
-    llvm::SmallString<128> libPath;
-    libPath.assign( driverPath );
-    libPath.append( "/../../lib" );
-
-    llvm::SmallString<128> rpathOption;
-    rpathOption.assign( "-Wl,-rpath," );
-    rpathOption.append( driverPath );
-    rpathOption.append( "/../../lib" );
-
-    // Create args for ExecuteAndWait
-    std::vector<std::string> linkerArgValues;
-    linkerArgValues.push_back( std::string( linkerPath.get() ) );
-    linkerArgValues.push_back( "-g" );
-    linkerArgValues.push_back( "-o" );
-    linkerArgValues.push_back( std::string( exePath ) );
-    for ( const auto& o : objectPaths )
-    {
-        linkerArgValues.push_back( o );
-    }
-    linkerArgValues.push_back( "-L" );
-    linkerArgValues.push_back( std::string( libPath ) );
-    linkerArgValues.push_back( "-l" );
-    linkerArgValues.push_back( "silly_runtime" );
-    linkerArgValues.push_back( std::string( rpathOption ) );
-    if ( ds.needsMathLib )
-    {
-        linkerArgValues.push_back( "-lm" );
-    }
-
-    llvm::SmallVector<llvm::StringRef, 24> linkerArgs;
-    for ( const auto& s : linkerArgValues )
-    {
-        linkerArgs.push_back( s );
-    }
-
-    if ( ds.verboseLink )
-    {
-        showLinkCommand( linkerPath.get(), linkerArgs );
-    }
-
-    // Execute the linker
-    std::string errMsg;
-    int result = llvm::sys::ExecuteAndWait( linkerPath.get(), linkerArgs, std::nullopt, {}, 0, 0, &errMsg );
-    if ( result != 0 )
-    {
-        if ( !ds.verboseLink )    // already showed this
-        {
-            showLinkCommand( linkerPath.get(), linkerArgs );
-        }
-
-        llvm::errs() << std::format( COMPILER_NAME ": error: Linker failed with exit code: {}, rc = {}\n", errMsg,
-                                     result );
-        silly::fatalDriverError( ReturnCodes::linkError );
-    }
-}
-
-/// Create the directory named in --output-directory.
-///
-/// Populates outdir as a side effect with the output directory, or the directory
-/// part of the filename path (if specified), or an empty string.
-static std::string makeOutputDirectory( const silly::DriverState& ds,
-                                        const std::string& sourceNameMaybeDirectoryQualified )
-{
-    std::string outdir;
-
-    llvm::StringRef dirname = llvm::sys::path::parent_path( sourceNameMaybeDirectoryQualified );
-    // Create output directory if specified
-    if ( !ds.outDir.empty() )
-    {
-        std::error_code EC = llvm::sys::fs::create_directories( ds.outDir );
-        if ( EC )
-        {
-            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to create output directory '{}': {}\n",
-                                         ds.outDir, EC.message() );
-            silly::fatalDriverError( ReturnCodes::directoryError );
-        }
-
-        outdir = ds.outDir;
-    }
-    else if ( dirname != "" )
-    {
-        outdir = dirname;
-    }
-
-    return outdir;
-}
-
-/// Construct the output path for the object file.
-///
-/// @param outputFilename[out] Buffer to receive the constructed path
-static void constructObjectPath( llvm::SmallString<128>& outputFilename,
-                                 const llvm::SmallString<128>& defaultExecutablePath )
-{
-    outputFilename += defaultExecutablePath;
-    outputFilename += ".o";
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -304,11 +179,13 @@ int main( int argc, char** argv )
     ds.noAbortPath = noAbortPath;
     ds.debugInfo = debugInfo;
     ds.verboseLink = verboseLink;
+    ds.noVerboseParseError = noVerboseParseError;
     ds.llvmDEBUG = llvmDEBUG;
     ds.noColorErrors = noColorErrors;
 
     ds.outDir = outDir;
     ds.oName = oName;
+    ds.imports = imports;
     ds.initFillValue = (uint8_t)initFillValue;
     switch ( optLevel )
     {
@@ -332,167 +209,45 @@ int main( int argc, char** argv )
         silly::fatalDriverError( ReturnCodes::badOption );
     }
 
-    std::vector<std::string> objFiles;
-    std::vector<std::string> tmpToDelete;
+    std::vector<std::string>& files = inputFilenames;
 
-    llvm::SmallString<128> exeName;
+    silly::SourceManager sm( ds, &dialectLoader.context, files[0] );
 
-    /// Just the output directory, based on the filename of the first source and --output-directory
-    llvm::SmallString<128> outdir;
-
-    /// Output directory combined with filename stem (no extension)
-    llvm::SmallString<128> defaultExecutablePath;
-
-    for ( const auto& filename : inputFilenames )
+    if ( !ds.imports.empty() )
     {
-        silly::CompilationUnit st( ds, &dialectLoader.context );
+        auto& cup = sm.createCU( ds.imports );
 
-        st.processSourceFile( filename );
+        // Go as far as mlir::ModuleOp creation, but don't lower to llvm (yet):
+        sm.createAndSerializeMLIR( cup );
+    }
 
-        if ( exeName.empty() )    // first source.
+    for ( const auto& filename : files )
+    {
+        auto& cup = sm.createCU( filename );
+
+        sm.createAndSerializeMLIR( cup );
+
+        bool moreToDo = sm.createAndSerializeLLVM( cup );
+
+        if ( moreToDo )
         {
-            outdir = makeOutputDirectory( ds, filename );
-
-            llvm::StringRef stem =
-                llvm::sys::path::stem( filename );    // foo/bar.silly -> stem: is just bar, not foo/bar
-            if ( stem.empty() )
-            {
-                llvm::errs() << std::format( COMPILER_NAME ": error: Invalid filename '{}', empty stem\n", filename );
-                silly::fatalDriverError( ReturnCodes::filenameParseError );
-            }
-
-            defaultExecutablePath = outdir;
-            if ( defaultExecutablePath.empty() )
-            {
-                defaultExecutablePath = stem;
-            }
-            else
-            {
-                llvm::sys::path::append( defaultExecutablePath, stem );
-            }
-
-            if ( ds.oName.empty() )
-            {
-                // This exe-path should be split out from CompilationUnit, as it may not match the input source file
-                // stem. The defaultExecutablePath stuff is convoluted and confusing.
-                exeName = defaultExecutablePath;
-            }
-            else
-            {
-                exeName = ds.oName;
-            }
-        }
-
-        llvm::SmallString<128> mlirOutputPath = defaultExecutablePath;
-        if ( ds.emitMLIRBC )
-        {
-            mlirOutputPath += ".mlirbc";
-        }
-        else
-        {
-            mlirOutputPath += ".mlir";
-        }
-        st.serializeModuleMLIR( mlirOutputPath );
-
-        // ds.assembleOnly produces the mlir
-        // ds.emitMLIRBC and ds.compileOnly produces the mlirbc
-        //
-        // -- we are done in either case.
-        if ( !( ds.assembleOnly or ( ds.emitMLIRBC and ds.compileOnly ) ) )
-        {
-            llvm::SmallString<128> objectFilename;
-            bool createdTemporary{};
-
-            if ( st.getInputType() == silly::InputType::OBJECT )
-            {
-                objectFilename = filename;
-
-                objFiles.push_back( std::string( objectFilename ) );
-            }
-            else
-            {
-                st.mlirToLLVM( filename );
-
-                llvm::SmallString<128> llvmOuputFile = defaultExecutablePath;
-                llvmOuputFile += ".ll";
-                st.serializeModuleLLVMIR( llvmOuputFile );
-
-                st.runOptimizationPasses();
-
-                if ( !ds.oName.empty() && ds.compileOnly )
-                {
-                    objectFilename = ds.oName;
-                }
-                else if ( ds.compileOnly )
-                {
-                    constructObjectPath( objectFilename, defaultExecutablePath );
-                }
-                else
-                {
-                    llvm::SmallString<128> p;
-
-                    if ( outdir.empty() )
-                    {
-                        llvm::SmallString<128> td;
-                        llvm::sys::path::system_temp_directory( true, td );
-                        p = td;
-                    }
-                    else
-                    {
-                        p = outdir;
-                    }
-
-                    llvm::SmallString<128> o = llvm::sys::path::stem( filename );
-                    o += "-%%%%%%.o";
-                    llvm::sys::path::append( p, o );
-
-                    std::error_code EC;
-                    EC = llvm::sys::fs::createUniqueFile( p, objectFilename );
-                    if ( EC )
-                    {
-                        // FIXME: another place to use formatv
-                        llvm::errs() << std::format(
-                            COMPILER_NAME ": error: Failed to create temporary object file in path '{}': {}\n",
-                            std::string( p ), EC.message() );
-
-                        silly::fatalDriverError( ReturnCodes::tempCreationError );
-                    }
-
-                    if ( ds.keepTemps )
-                    {
-                        // FIXME: another place to use formatv
-                        llvm::errs() << std::format( COMPILER_NAME ": info: created temporary: {}\n",
-                                                     std::string( objectFilename ) );
-                    }
-
-                    createdTemporary = true;
-                }
-
-
-                st.serializeObjectCode( objectFilename );
-
-                objFiles.push_back( std::string( objectFilename ) );
-
-                if ( createdTemporary )
-                {
-                    tmpToDelete.push_back( std::string( objectFilename ) );
-                }
-            }
+            sm.serializeObject( cup );
         }
     }
 
-    if ( !( ds.compileOnly or ds.assembleOnly ) )
+    if ( !ds.imports.empty() )
     {
-        invokeLinker( exeName, objFiles, ds );
-    }
+        auto & cup = sm.findCU( ds.imports );
 
-    if ( !ds.keepTemps )
-    {
-        for ( const auto& filename : tmpToDelete )
+        bool moreToDo = sm.createAndSerializeLLVM( cup );
+
+        if ( moreToDo )
         {
-            llvm::sys::fs::remove( filename );
+            sm.serializeObject( cup );
         }
     }
+
+    sm.link();
 
     return (int)ReturnCodes::success;
 }

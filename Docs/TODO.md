@@ -3,6 +3,20 @@
 ### running list of other issues and ideas, semi-randomly ordered
 ----------------------------------
 
+#### MODULE IMPORT.
+
+Next steps:
+
+- Automated testing of round trip export/import of .mlir, and .mlirbc format "sources"
+- ctest coverage for --import with .silly, .mlir, and .mlirbc.  Local files, files with paths, with and without --output-directory.  Start with the sample that's in the Changelog (and git log.)
+- ctest error coverage (module does not exist.)
+- ctest error coverage (module named in --imports and otherwise.)
+- add support for multiple --import modules.
+- ctest coverage for IMPORT when a function is already prototyped (should be skipped).
+- ctest coverage for multiple sources all doing IMPORT of the same module.
+- ctest coverage for repeated IMPORT (allow it, but the walk should not add anything, or have bad side effects.)
+- new SourceManager needs a bunch of doxygen markup.
+
 #### Driver
 
 * Want round trip ctesting for .mlir/.mlirbc write/parse.
@@ -54,12 +68,6 @@ i.e.: should be able to do something like:
 * Consider an error if prototype and definition have mismatched signatures (types, return, etc.) — currently probably crashes or silent mismatch; add sema check later (right now only check number of parameters, not return, nor types.)
 * What were the test dependencies on `--emit-llvm --emit-mlir` in add_endtoend_compile_tests?  Would make more sense to only do that when desired (that's a holdover from the switch from testit as the test driver.)
 
-
-#### MODULE IMPORT.
-
-For some ideas, filtered through Claude, see:
-
-module_import_design.md
 
 #### Lowering
 

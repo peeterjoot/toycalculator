@@ -8,6 +8,8 @@
 #error_decl_in_elif_else -- probably also want this to fail too.
 #'error_invalid_unary' => q(line 3:4 token recognition error at:),
 
+set(COMPILER_FLAGS_error_arrayreturn --no-verbose-parse-error)
+
 set(FAILURE_TESTS
     bad_call_num_params.silly
     error_arrayreturn.silly

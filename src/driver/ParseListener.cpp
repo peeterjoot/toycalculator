@@ -24,7 +24,9 @@
 #include "ParseListener.hpp"
 #include "SillyDialect.hpp"
 #include "SillyLexer.h"
+#include "SourceManager.hpp"
 #include "helper.hpp"
+#include "ModuleInsertionPointGuard.hpp"
 
 /// --debug- class for the parser
 #define DEBUG_TYPE "silly-parser"
@@ -116,17 +118,18 @@ namespace silly
     //--------------------------------------------------------------------------
     // ParseListener members
     //
-    ParseListener::ParseListener( DriverState &ds, const std::string &filename, mlir::MLIRContext *context )
-        : driverState{ ds },
+    ParseListener::ParseListener( silly::SourceManager &s, const std::string &filename )
+        : sm{ s },
+          driverState{ sm.getDriverState() },
           sourceFile{ filename },
-          ctx{ context },
+          ctx{ sm.getContext() },
           builder( ctx ),
-          mod( mlir::ModuleOp::create( getStartLocation( nullptr ) ) ),
+          rmod( mlir::ModuleOp::create( getStartLocation( nullptr ) ) ),
           mainIP{},
           currentFuncName{},
           functionStateMap{}
     {
-        builder.setInsertionPointToStart( mod->getBody() );
+        builder.setInsertionPointToStart( rmod->getBody() );
         typ.initialize( builder, ctx );
     }
 
@@ -159,7 +162,7 @@ namespace silly
             return nullptr;
         }
 
-        return std::move( mod );
+        return std::move( rmod );
     }
 
     void ParseListener::emitInternalError( mlir::Location loc, const char *compilerfile, unsigned compilerline,
@@ -572,7 +575,17 @@ namespace silly
         {
             mlir::Location loc = getTokenLocation( offendingSymbol );
 
-            emitUserError( loc, std::format( "parse error: {}", msg ), currentFuncName );
+            if ( driverState.noVerboseParseError )
+            {
+                // coverage: error_arrayreturn
+                emitUserError( loc, std::format( "parse error" ), currentFuncName );
+            }
+            else
+            {
+                // no test coverage.  specifically implemented this to avoid error messages that change with any grammar
+                // addition.
+                emitUserError( loc, std::format( "parse error: {}", msg ), currentFuncName );
+            }
         }
         else
         {
@@ -684,6 +697,42 @@ namespace silly
         }
     }
 
+    void ParseListener::enterImportStatement( SillyParser::ImportStatementContext *ctx )
+    {
+        assert( ctx );
+        // mlir::Location loc = getStartLocation( ctx );
+        assert( ctx->IDENTIFIER() );
+        std::string modname = ctx->IDENTIFIER()->getText();
+
+        LLVM_DEBUG( { llvm::errs() << std::format( "enterImportStatement: import: {}\n", modname ); } );
+
+        mlir::ModuleOp importMod = sm.findMOD( modname );
+        assert( importMod );
+
+        std::vector<mlir::NamedAttribute> attrs;
+        attrs.push_back(
+            mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
+
+        mlir::ModuleOp mod = rmod.get();
+        silly::ModuleInsertionPointGuard ip( mod, builder );
+
+        for ( mlir::func::FuncOp srcFuncOp : importMod.getBodyRegion().getOps<mlir::func::FuncOp>() )
+        {
+            // only import defined functions, not decls
+            if ( !srcFuncOp.isDeclaration() )
+            {
+                std::string funcName = srcFuncOp.getSymName().str();
+                ParserPerFunctionState &f = funcState( funcName );
+                if ( !f.getFuncOp() ) // treat declarations as idempotent.
+                {
+                    mlir::func::FuncOp proto = mlir::func::FuncOp::create(
+                        builder, srcFuncOp.getLoc(), srcFuncOp.getSymName(), srcFuncOp.getFunctionType(), attrs );
+
+                    f.setFuncOp( proto );
+                }
+            }
+        }
+    }
 
     void ParseListener::enterScopedStatements( SillyParser::ScopedStatementsContext *ctx )
     {
@@ -771,7 +820,7 @@ namespace silly
 #if 0
         LLVM_DEBUG( {
             llvm::errs() << "exitStartRule done: module dump:\n";
-            mod->dump();
+            rmod->dump();
         } );
 #endif
     }
@@ -829,7 +878,7 @@ namespace silly
         {
             mainIP = builder.saveInsertionPoint();
 
-            builder.setInsertionPointToStart( mod->getBody() );
+            builder.setInsertionPointToStart( rmod->getBody() );
 
             std::vector<mlir::Type> returns;
             if ( SillyParser::ScalarTypeContext *rt = ctx->scalarType() )
@@ -1013,7 +1062,7 @@ namespace silly
 
         registerDeclaration( loc, varName, ty, arrayBoundsExpression, assignmentExpression, pExpressions );
 
-        // LLVM_DEBUG( { llvm::errs() << "enterDeclareHelper done: module dump:\n"; mod->dump(); } );
+        // LLVM_DEBUG( { llvm::errs() << "enterDeclareHelper done: module dump:\n"; rmod->dump(); } );
     }
 
     void ParseListener::enterBoolDeclareStatement( SillyParser::BoolDeclareStatementContext *ctx )

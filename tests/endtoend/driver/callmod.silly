@@ -1,0 +1,9 @@
+IMPORT callee; // foo, bar
+
+PRINT "In main";
+CALL bar( 3 );
+PRINT "Back in main";
+
+INT32 rc = CALL foo();
+
+PRINT "Back in main again, rc = ", rc;

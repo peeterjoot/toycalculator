@@ -31,11 +31,13 @@ namespace silly
         bool noAbortPath{}; ///< --no-abort-path
         bool debugInfo{}; ///< True if -g is passed.
         bool verboseLink{}; ///< --verbose-link
+        bool noVerboseParseError{}; ///< --no-verbose-parse-error
         bool llvmDEBUG{}; ///< --debug-llvm
         bool noColorErrors{}; ///< --no-color-errors
 
         std::string outDir{}; ///< --output-directory
         std::string oName{}; ///< -o
+        std::string imports{}; ///< --imports
         uint8_t initFillValue{}; ///< --init-fill value if specified (zero otherwise.)
         llvm::OptimizationLevel opt{}; ///< -O[0123], mapped from silly::OptLevel to llvm::OptimizationLevel
 

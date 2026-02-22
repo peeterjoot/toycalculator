@@ -16,71 +16,6 @@ The mechanism:
 
 ---
 
-## Phase 0: Recommended First Step — `.mlirbc` Export/Import in the Driver
-
-Before tackling the full IMPORT system, add `.mlirbc` (MLIR bytecode) read/write support to the driver as a standalone feature. This:
-
-- Validates the round-trip serialization story before the module system depends on it.
-- Gives you a fast, compact intermediate format from day one.
-- Is low-risk and largely mechanical.
-
-MLIR has built-in bytecode support:
-
-```cpp
-// Write
-mlir::writeBytecodeToFile( module, outputStream );
-
-// Read — handles both text .mlir and binary .mlirbc automatically
-mlir::parseSourceFile<mlir::ModuleOp>( sourceMgr, context );
-```
-
-The `.sir` extension can map to either the textual or bytecode format depending on a driver flag, or you could use `.sir` for text and `.sirbc` for binary. Settle this before the module system is built on top of it.
-
----
-
-## Cloning a FuncOp as a Prototype
-
-The natural instinct is to use `FuncOp::clone()`, but that copies the region (body) too. Instead, construct a new `FuncOp` with the same name and type and leave the body empty. A newly created `FuncOp` with no `addEntryBlock()` call is already a prototype — `isExternal()` returns `true` whenever the region is empty.
-
-```cpp
-void importPrototype( mlir::func::FuncOp srcFuncOp,
-                      mlir::ModuleOp    dstModule,
-                      mlir::OpBuilder&  builder )
-{
-    // Skip private functions — not part of the module's public API
-    if ( srcFuncOp.isPrivate() )
-        return;
-
-    // Skip if already imported (idempotent)
-    if ( dstModule.lookupSymbol( srcFuncOp.getSymName() ) )
-        return;
-
-    mlir::OpBuilder::InsertionGuard guard( builder );
-    builder.setInsertionPointToStart( dstModule.getBody() );
-
-    auto protoOp = builder.create<mlir::func::FuncOp>(
-        srcFuncOp.getLoc(),
-        srcFuncOp.getSymName(),
-        srcFuncOp.getFunctionType()
-    );
-
-    protoOp.setPrivate(); // marks as external declaration
-}
-
-void importAllPrototypes( mlir::ModuleOp   srcModule,
-                          mlir::ModuleOp   dstModule,
-                          mlir::OpBuilder& builder )
-{
-    srcModule.walk( [&]( mlir::func::FuncOp funcOp )
-    {
-        if ( !funcOp.isExternal() ) // only import defined functions, not re-exported decls
-            importPrototype( funcOp, dstModule, builder );
-    } );
-}
-```
-
----
-
 ## Design Concerns and Notes
 
 ### 1. Bytecode Format — Pin Early
@@ -152,17 +87,19 @@ One subtlety: if multiple source files are passed in a single compiler invocatio
 
 ### 6. Re-exported Declarations
 
-The `importAllPrototypes` walk above skips `isExternal()` FuncOps (i.e., prototypes that were themselves imported into the `.sir` being read). This is intentional — you don't want to re-export another module's imports as if they were your own definitions. If you later want explicit re-export semantics (`EXPORT IMPORT foo` style), that's a separate feature.
+The `importAllPrototypes` walk above skips `isDeclaration()` FuncOps (i.e., prototypes that were themselves imported into the `.sir` being read). This is intentional — you don't want to re-export another module's imports as if they were your own definitions. If you later want explicit re-export semantics (`EXPORT IMPORT foo` style), that's a separate feature.
 
 ---
 
 ## Suggested Implementation Order
 
-1. **Phase 0**: Add `.mlirbc` write (`--emit-sir` flag) and read (`.sir`/`.sirbc` extension handling in `getInputType`) to the driver. Validate round-trip.
-2. **Phase 1**: Implement the prototype-cloning walk and `importAllPrototypes`. Test with manually constructed `.sir` files (no IMPORT parsing yet).
-3. **Phase 2**: Add `IMPORT` syntax to the parser/listener. Wire it to the source manager and prototype importer.
-3. **Phase 2b**: Bridge: IMPORT sources have only prototypes to start with, different from implementation.  Require a different suffix (.sillymod), and then phase that out when ready to do the next steps (single sourcing implementation and interface at that point.)
-4. **Phase 3**: Add timestamp checking and conditional recompilation.
+1. **Phase 0**:
+- Add `.mlirbc` write (`--emit-sir` flag) -- DONE.
+- read (`.sir`/`.sirbc` extension handling in `getInputType`) -- DONE.
+- Validate round-trip ctest cases -- TODO.
+3. **Phase 1**: Add `IMPORT` syntax to the parser/listener. Wire it to the source manager and prototype importer. -- DONE.
+2. **Phase 2**: Implement the prototype-cloning walk and `importAllPrototypes`. -- DONE.
+4. **Phase 3**: Add timestamp checking and conditional recompilation, removing the temporary --imports flag.
 5. **Phase 4**: Add cycle detection and multi-file topological sort.
 6. **Phase 5**: Revisit visibility — decide if an explicit `EXPORT` keyword is warranted.
 

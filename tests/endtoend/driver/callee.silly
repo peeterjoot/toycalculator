@@ -1,4 +1,4 @@
-// external2.silly
+// callee.silly
 MODULE;
 
 FUNCTION bar ( INT16 w )
