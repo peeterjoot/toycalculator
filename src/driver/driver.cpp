@@ -328,7 +328,7 @@ int main( int argc, char** argv )
 
     if ( ds.compileOnly and ds.assembleOnly )
     {
-        llvm::errs() << COMPILER_NAME ": error: command line options -S and -c are incompatible\n";
+        llvm::errs() << COMPILER_NAME ": error: command line options -S and -c cannot be used together\n";
         silly::fatalDriverError( ReturnCodes::badOption );
     }
 
