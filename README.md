@@ -301,12 +301,12 @@ Once built, the compiler driver can be run with `build/bin/silly` with the follo
 ### Examples
 
 ```bash
-cd tests/endtoend
-rm -rf out
-mkdir out
-../../build/bin/silly --output-directory out f.silly -g --emit-llvm --emit-mlir --debug
-../../build/bin/silly --output-directory out f.silly -O2
-../../build/bin/silly --output-directory out f.sir -O2
+silly --output-directory out f.silly -g --emit-llvm --emit-mlir --debug
+silly f.silly -O2
+silly f.sir -O2
+silly -c f.silly -g ; silly -o foo f.o
+silly mymain.silly mymodule.silly -g -o bar
+silly -c mymain.silly -g ; silly mymain.o mymodule.silly -g -o pgm
 ```
 
 The compiler can consume either silly sources (with .silly suffix), or MLIR silly-dialect sources (with .mlir or .sir suffix).

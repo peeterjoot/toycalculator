@@ -7,9 +7,19 @@
 
 * CompilationUnit:
  - Reduce use of raw ModuleOp — prefer passing OwningOpRef& or keep it local
- - Fix up the ordering of the functions -- it got chaotic in the refactor.
 * Respect -o for --emit-mlir or --emit-llvm too (provided both aren't set.)  Add a round trip test taking .mlir as input like the -c/-o
   test in /driver/
+
+i.e.: should be able to do something like:
+```
+    silly -c --emit-mlir f.silly -g -o f.sir ; silly -g -o foo f.sir
+```
+
+* Multi-source + -c (should produce multiple .o files)
+* -o with directory component (-o build/foo → creates build/foo exe)
+* Link failure case (bad object, missing symbol) + check --verbose-link output
+* No -o → default to first-file stem (already in your manual test)
+
 * Don't think that driver is removing outputs before trying to recreate, so if there is an error after success, it is not visible.
 * Any driver error should delete any files opened (.o, .s, .ll, .mlir, ...).  There are mechanisms for that like:
 
@@ -25,7 +35,6 @@
 ```
 * Consider making DriverState own the parsed cl::opt values directly (instead of shadow copies) if they're immutable after parsing — reduces duplication risk.
 * If CompilationUnit grows, think about a Driver or CompilationDriver top-level class that owns the DriverState and orchestrates multiple CompilationUnits.
-* Automate the multi-file driver tests in CTest.
 * Implement support for .a suffixes (pass w/ --whole-archive)
 
 #### misc

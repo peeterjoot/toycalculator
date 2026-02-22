@@ -1,7 +1,6 @@
 /// @file    CompilationUnit.cpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Silly compiler handling of a single compilation unit.
-#include "CompilationUnit.hpp"
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/IR/DebugProgramInstruction.h>
@@ -30,17 +29,18 @@
 #include <format>
 #include <fstream>
 
+#include "CompilationUnit.hpp"
 #include "DialectContext.hpp"
 #include "DriverState.hpp"
+#include "OptLevel.hpp"
 #include "ParseListener.hpp"
+#include "ReturnCodes.hpp"
 #include "SillyDialect.hpp"
 #include "SillyPasses.hpp"
 #include "createSillyToLLVMLoweringPass.hpp"
-#include "OptLevel.hpp"
-#include "ReturnCodes.hpp"
 
 // TODO:
-// Reduce use of raw ModuleOp — prefer passing OwningOpRef& or keep it local
+// Reduce use of raw ModuleOp -- prefer passing OwningOpRef& or keep it local
 
 #define DEBUG_TYPE "silly-cu"
 
@@ -76,103 +76,53 @@ namespace silly
         }
     }
 
-    void CompilationUnit::serializeModuleLLVMIR()
+    void CompilationUnit::processSourceFile()
     {
-        // Dump the pre-optimized LL if we aren't creating a .o
-        if ( !ds.emitLLVM )
+        ity = getInputType( filename );
+        if ( ity == InputType::Unknown )
         {
-            return;
+            llvm::errs() << std::format(
+                COMPILER_NAME ": error: filename {} extension is none of .silly, .mlir/.sir, or .o\n", filename );
+            fatalDriverError( ReturnCodes::badExtensionError );
         }
 
-        if ( ds.toStdout )
+        mlir::ModuleOp mod{};
+
+        if ( ity == InputType::Silly )
         {
-            llvmModule->print( llvm::outs(), nullptr, ds.debugInfo /* print debug info */ );
-        }
-        else
-        {
-            llvm::SmallString<128> path = dirWithStem;
-            path += ".ll";
-            std::error_code EC;
-            llvm::raw_fd_ostream out( path.str(), EC, llvm::sys::fs::OF_Text );
-            if ( EC )
+            silly::ParseListener listener( ds, filename, context );
+
+            rmod = listener.run();
+            if ( ds.openFailed )
             {
-                // FIXME: probably want llvm::formatv here and elsewhere to avoid the std::string casting hack (assuming
-                // it knows how to deal with StringRef)
-                llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open file '{}': {}\n",
-                                             std::string( path ), EC.message() );
+                llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}\n", filename );
                 fatalDriverError( ReturnCodes::openError );
             }
 
-            llvmModule->print( out, nullptr, ds.debugInfo /* print debug info */ );
+            mod = rmod.get();
+            if ( !mod )
+            {
+                // should have already emitted diagnostics.
+                fatalDriverError( ReturnCodes::parseError );
+            }
         }
-    }
-
-    void CompilationUnit::runOptimizationPasses()
-    {
-        std::string targetTripleStr = llvm::sys::getProcessTriple();
-        llvm::Triple targetTriple( targetTripleStr );
-        llvmModule->setTargetTriple( targetTriple );
-
-        // Lookup the target
-        std::string error;
-        const llvm::Target* target = llvm::TargetRegistry::lookupTarget( targetTriple, error );
-        if ( !target )
+        else if ( ity == InputType::MLIR )
         {
-            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to find target: {}\n", error );
-            fatalDriverError( ReturnCodes::loweringError );
+            parseMLIRFile();
+            mod = rmod.get();
         }
 
-        // Create the target machine
-        targetMachine.reset(
-            target->createTargetMachine( targetTriple, "generic", "", llvm::TargetOptions(), std::nullopt ) );
-
-        if ( !targetMachine )
+        if ( mod )
         {
-            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to create target machine\n" );
-            fatalDriverError( ReturnCodes::loweringError );
+            if ( mlir::failed( mlir::verify( mod ) ) )
+            {
+                llvm::errs() << COMPILER_NAME ": error: MLIR failed verification\n";
+                mod->dump();
+                fatalDriverError( ReturnCodes::verifyError );
+            }
+
+            serializeModuleMLIR();
         }
-
-        // Optimize the module (optional)
-        llvm::PassBuilder passBuilder( targetMachine.get() );
-        llvm::LoopAnalysisManager LAM;
-        llvm::FunctionAnalysisManager FAM;
-        llvm::CGSCCAnalysisManager CGAM;
-        llvm::ModuleAnalysisManager MAM;
-
-        passBuilder.registerModuleAnalyses( MAM );
-        passBuilder.registerCGSCCAnalyses( CGAM );
-        passBuilder.registerFunctionAnalyses( FAM );
-        passBuilder.registerLoopAnalyses( LAM );
-        passBuilder.crossRegisterProxies( LAM, FAM, CGAM, MAM );
-
-        llvm::ModulePassManager MPM = passBuilder.buildPerModuleDefaultPipeline( ds.opt );
-
-        MPM.run( *llvmModule, MAM );
-    }
-
-    void CompilationUnit::serializeObjectCode( const llvm::SmallString<128>& outputFilename )
-    {
-        std::error_code EC;
-        llvm::raw_fd_ostream dest( outputFilename.str(), EC, llvm::sys::fs::OF_None );
-        if ( EC )
-        {
-            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open output file '{}': {}\n",
-                                         std::string( outputFilename ), EC.message() );
-            fatalDriverError( ReturnCodes::openError );
-        }
-
-        llvmModule->setDataLayout( targetMachine->createDataLayout() );
-        llvm::legacy::PassManager codegenPM;
-        if ( targetMachine->addPassesToEmitFile( codegenPM, dest, nullptr, llvm::CodeGenFileType::ObjectFile ) )
-        {
-            llvm::errs() << std::format( COMPILER_NAME ": error: TargetMachine can't emit an object file\n" );
-            fatalDriverError( ReturnCodes::loweringError );
-        }
-
-        codegenPM.run( *llvmModule );
-        dest.close();
-
-        LLVM_DEBUG( { llvm::outs() << "Generated object file: " << outputFilename << '\n'; } );
     }
 
     void CompilationUnit::mlirToLLVM()
@@ -256,6 +206,158 @@ namespace silly
         serializeModuleLLVMIR();
     }
 
+    void CompilationUnit::runOptimizationPasses()
+    {
+        std::string targetTripleStr = llvm::sys::getProcessTriple();
+        llvm::Triple targetTriple( targetTripleStr );
+        llvmModule->setTargetTriple( targetTriple );
+
+        // Lookup the target
+        std::string error;
+        const llvm::Target* target = llvm::TargetRegistry::lookupTarget( targetTriple, error );
+        if ( !target )
+        {
+            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to find target: {}\n", error );
+            fatalDriverError( ReturnCodes::loweringError );
+        }
+
+        // Create the target machine
+        targetMachine.reset(
+            target->createTargetMachine( targetTriple, "generic", "", llvm::TargetOptions(), std::nullopt ) );
+
+        if ( !targetMachine )
+        {
+            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to create target machine\n" );
+            fatalDriverError( ReturnCodes::loweringError );
+        }
+
+        // Optimize the module (optional)
+        llvm::PassBuilder passBuilder( targetMachine.get() );
+        llvm::LoopAnalysisManager LAM;
+        llvm::FunctionAnalysisManager FAM;
+        llvm::CGSCCAnalysisManager CGAM;
+        llvm::ModuleAnalysisManager MAM;
+
+        passBuilder.registerModuleAnalyses( MAM );
+        passBuilder.registerCGSCCAnalyses( CGAM );
+        passBuilder.registerFunctionAnalyses( FAM );
+        passBuilder.registerLoopAnalyses( LAM );
+        passBuilder.crossRegisterProxies( LAM, FAM, CGAM, MAM );
+
+        llvm::ModulePassManager MPM = passBuilder.buildPerModuleDefaultPipeline( ds.opt );
+
+        MPM.run( *llvmModule, MAM );
+    }
+
+    void CompilationUnit::serializeObjectCode( const llvm::SmallString<128>& outputFilename )
+    {
+        std::error_code EC;
+        llvm::raw_fd_ostream dest( outputFilename.str(), EC, llvm::sys::fs::OF_None );
+        if ( EC )
+        {
+            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open output file '{}': {}\n",
+                                         std::string( outputFilename ), EC.message() );
+            fatalDriverError( ReturnCodes::openError );
+        }
+
+        llvmModule->setDataLayout( targetMachine->createDataLayout() );
+        llvm::legacy::PassManager codegenPM;
+        if ( targetMachine->addPassesToEmitFile( codegenPM, dest, nullptr, llvm::CodeGenFileType::ObjectFile ) )
+        {
+            llvm::errs() << std::format( COMPILER_NAME ": error: TargetMachine can't emit an object file\n" );
+            fatalDriverError( ReturnCodes::loweringError );
+        }
+
+        codegenPM.run( *llvmModule );
+        dest.close();
+
+        LLVM_DEBUG( { llvm::outs() << "Generated object file: " << outputFilename << '\n'; } );
+    }
+
+    void CompilationUnit::constructObjectPath( llvm::SmallString<128>& outputFilename )
+    {
+        outputFilename += dirWithStem;
+        outputFilename += ".o";
+    }
+
+    InputType CompilationUnit::getInputType( llvm::StringRef filename )
+    {
+        llvm::StringRef ext = llvm::sys::path::extension( filename );
+
+        if ( ext == ".mlir" || ext == ".sir" )
+        {
+            return InputType::MLIR;
+        }
+
+        if ( ext == ".silly" )
+        {
+            return InputType::Silly;
+        }
+
+        if ( ext == ".o" )
+        {
+            return InputType::OBJECT;
+        }
+
+        return InputType::Unknown;
+    }
+
+    void CompilationUnit::serializeModuleMLIR()
+    {
+        if ( ds.emitMLIR )
+        {
+            if ( ds.toStdout )
+            {
+                rmod->print( llvm::outs(), flags );
+            }
+            else
+            {
+                llvm::SmallString<128> path = dirWithStem;
+                path += ".mlir";
+                std::error_code EC;
+                llvm::raw_fd_ostream out( path.str(), EC, llvm::sys::fs::OF_Text );
+                if ( EC )
+                {
+                    llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}: {}\n",
+                                                 std::string( path ), EC.message() );
+                    fatalDriverError( ReturnCodes::openError );
+                }
+                rmod->print( out, flags );
+            }
+        }
+    }
+
+    void CompilationUnit::serializeModuleLLVMIR()
+    {
+        // Dump the pre-optimized LL if we aren't creating a .o
+        if ( !ds.emitLLVM )
+        {
+            return;
+        }
+
+        if ( ds.toStdout )
+        {
+            llvmModule->print( llvm::outs(), nullptr, ds.debugInfo /* print debug info */ );
+        }
+        else
+        {
+            llvm::SmallString<128> path = dirWithStem;
+            path += ".ll";
+            std::error_code EC;
+            llvm::raw_fd_ostream out( path.str(), EC, llvm::sys::fs::OF_Text );
+            if ( EC )
+            {
+                // FIXME: probably want llvm::formatv here and elsewhere to avoid the std::string casting hack (assuming
+                // it knows how to deal with StringRef)
+                llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open file '{}': {}\n",
+                                             std::string( path ), EC.message() );
+                fatalDriverError( ReturnCodes::openError );
+            }
+
+            llvmModule->print( out, nullptr, ds.debugInfo /* print debug info */ );
+        }
+    }
+
     void CompilationUnit::makeOutputDirectory()
     {
         llvm::StringRef dirname = llvm::sys::path::parent_path( filename );
@@ -265,8 +367,8 @@ namespace silly
             std::error_code EC = llvm::sys::fs::create_directories( ds.outDir );
             if ( EC )
             {
-                llvm::errs() << std::format( COMPILER_NAME ": error: Failed to create output directory '{}': {}\n", ds.outDir,
-                                             EC.message() );
+                llvm::errs() << std::format( COMPILER_NAME ": error: Failed to create output directory '{}': {}\n",
+                                             ds.outDir, EC.message() );
                 fatalDriverError( ReturnCodes::directoryError );
             }
 
@@ -296,107 +398,5 @@ namespace silly
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to parse MLIR file '{}'\n", filename );
             fatalDriverError( ReturnCodes::parseError );
         }
-    }
-
-    void CompilationUnit::serializeModuleMLIR()
-    {
-        if ( ds.emitMLIR )
-        {
-            if ( ds.toStdout )
-            {
-                rmod->print( llvm::outs(), flags );
-            }
-            else
-            {
-                llvm::SmallString<128> path = dirWithStem;
-                path += ".mlir";
-                std::error_code EC;
-                llvm::raw_fd_ostream out( path.str(), EC, llvm::sys::fs::OF_Text );
-                if ( EC )
-                {
-                    llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}: {}\n",
-                                                 std::string( path ), EC.message() );
-                    fatalDriverError( ReturnCodes::openError );
-                }
-                rmod->print( out, flags );
-            }
-        }
-    }
-
-    void CompilationUnit::processSourceFile()
-    {
-        ity = getInputType( filename );
-        if ( ity == InputType::Unknown )
-        {
-            llvm::errs() << std::format(
-                COMPILER_NAME ": error: filename {} extension is none of .silly, .mlir/.sir, or .o\n", filename );
-            fatalDriverError( ReturnCodes::badExtensionError );
-        }
-
-        mlir::ModuleOp mod{};
-
-        if ( ity == InputType::Silly )
-        {
-            silly::ParseListener listener( ds, filename, context );
-
-            rmod = listener.run();
-            if ( ds.openFailed )
-            {
-                llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}\n", filename );
-                fatalDriverError( ReturnCodes::openError );
-            }
-
-            mod = rmod.get();
-            if ( !mod )
-            {
-                // should have already emitted diagnostics.
-                fatalDriverError( ReturnCodes::parseError );
-            }
-        }
-        else if ( ity == InputType::MLIR )
-        {
-            parseMLIRFile();
-            mod = rmod.get();
-        }
-
-        if ( mod )
-        {
-            if ( mlir::failed( mlir::verify( mod ) ) )
-            {
-                llvm::errs() << COMPILER_NAME ": error: MLIR failed verification\n";
-                mod->dump();
-                fatalDriverError( ReturnCodes::verifyError );
-            }
-
-            serializeModuleMLIR();
-        }
-    }
-
-    InputType CompilationUnit::getInputType( llvm::StringRef filename )
-    {
-        llvm::StringRef ext = llvm::sys::path::extension( filename );
-
-        if ( ext == ".mlir" || ext == ".sir" )
-        {
-            return InputType::MLIR;
-        }
-
-        if ( ext == ".silly" )
-        {
-            return InputType::Silly;
-        }
-
-        if ( ext == ".o" )
-        {
-            return InputType::OBJECT;
-        }
-
-        return InputType::Unknown;
-    }
-
-    void CompilationUnit::constructObjectPath( llvm::SmallString<128>& outputFilename )
-    {
-        outputFilename += dirWithStem;
-        outputFilename += ".o";
     }
 }    // namespace silly
