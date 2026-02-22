@@ -590,7 +590,7 @@ namespace silly
 
         const std::string& filename = fileLoc.getFilename().str();
         mlir::StringAttr strAttr;
-        if ( driverState.abortOmitPath )
+        if ( driverState.noAbortPath )
         {
             llvm::StringRef name = llvm::sys::path::filename( filename );
             strAttr = builder.getStringAttr( name );
@@ -1063,7 +1063,7 @@ namespace silly
         mlir::Value i8Ptr = rewriter.create<mlir::LLVM::BitcastOp>( loc, typ.ptr, allocaOp );
 
         mlir::Value fillVal =
-            rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i8, rewriter.getI8IntegerAttr( driverState.fillValue ) );
+            rewriter.create<mlir::LLVM::ConstantOp>( loc, typ.i8, rewriter.getI8IntegerAttr( driverState.initFillValue ) );
 
         rewriter.create<mlir::LLVM::MemsetOp>( loc, i8Ptr, fillVal, bytesVal, rewriter.getBoolAttr( false ) );
     }

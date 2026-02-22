@@ -17,40 +17,32 @@
 
 namespace silly
 {
-    /// State to pass from the driver to parser/builder/lowering
+    /// State to pass from the driver to CompilationUnit, parser/builder, lowering
     class DriverState
     {
        public:
-        /// True if not OptLevel::O0
-        bool isOptimized{};
-
-        /// True if ABORT should omit path (--no-abort-path)
-        bool abortOmitPath{};
-
-        /// True if -g is passed.
-        bool debugInfo{};
-
-        /// True for color error messages (when output is a terminal.)
-        bool colorErrors{};
-
-        /// Numeric --init-fill value if specified (zero otherwise.)
-        uint8_t fillValue{};
-
+        bool compileOnly{}; ///< -c
+        bool keepTemps{}; ///< --keep-temp
         bool emitMLIR{}; ///< --emit-mlir
         bool emitMLIRBC{}; ///< --emit-mlirbc
         bool emitLLVM{}; ///< --emit-llvm
         bool toStdout{}; ///< --stdout
-
+        bool noAbortPath{}; ///< --no-abort-path
+        bool debugInfo{}; ///< True if -g is passed.
+        bool verboseLink{}; ///< --verbose-link
         bool llvmDEBUG{}; ///< --debug-llvm
+        bool noColorErrors{}; ///< --no-color-errors
+
         std::string outDir{}; ///< --output-directory
+        std::string oName{}; ///< -o
+        uint8_t initFillValue{}; ///< --init-fill value if specified (zero otherwise.)
+        llvm::OptimizationLevel opt{}; ///< -O[0123], mapped from silly::OptLevel to llvm::OptimizationLevel
 
         /// Signal that -lm will be required when the program is linked (set by lowering)
         bool needsMathLib{};
 
-        /// Signal that the source file could not be opened (set by parse-listener)
+        /// Signal that a source file could not be opened (set by parse-listener)
         bool openFailed{};
-
-        llvm::OptimizationLevel opt{}; ///< -O[0123]
 
         /// Driver name
         const char * argv0{};

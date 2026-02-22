@@ -207,7 +207,7 @@ static void invokeLinker( const llvm::SmallString<128>& exePath, const std::vect
         linkerArgs.push_back( s );
     }
 
-    if ( verboseLink == true )
+    if ( ds.verboseLink )
     {
         showLinkCommand( linkerPath.get(), linkerArgs );
     }
@@ -217,7 +217,7 @@ static void invokeLinker( const llvm::SmallString<128>& exePath, const std::vect
     int result = llvm::sys::ExecuteAndWait( linkerPath.get(), linkerArgs, std::nullopt, {}, 0, 0, &errMsg );
     if ( result != 0 )
     {
-        if ( verboseLink == false )    // already showed this
+        if ( !ds.verboseLink )    // already showed this
         {
             showLinkCommand( linkerPath.get(), linkerArgs );
         }
@@ -281,17 +281,22 @@ int main( int argc, char** argv )
     silly::DialectContext dialectLoader;
 
     silly::DriverState ds( argv[0], (void*)&main );
-    ds.isOptimized = optLevel != silly::OptLevel::O0 ? true : false;
-    ds.fillValue = (uint8_t)initFillValue;
-    ds.debugInfo = debugInfo;
-    ds.colorErrors = !noColorErrors;
-    ds.abortOmitPath = noAbortPath;
-    ds.toStdout = toStdout;
+
+    ds.compileOnly = compileOnly;
+    ds.keepTemps = keepTemps;
     ds.emitMLIR = emitMLIR;
     ds.emitMLIRBC = emitMLIRBC;
     ds.emitLLVM = emitLLVM;
+    ds.toStdout = toStdout;
+    ds.noAbortPath = noAbortPath;
+    ds.debugInfo = debugInfo;
+    ds.verboseLink = verboseLink;
     ds.llvmDEBUG = llvmDEBUG;
+    ds.noColorErrors = noColorErrors;
+
     ds.outDir = outDir;
+    ds.oName = oName;
+    ds.initFillValue = (uint8_t)initFillValue;
     switch ( optLevel )
     {
         case silly::OptLevel::O0:
@@ -347,7 +352,7 @@ int main( int argc, char** argv )
                 llvm::sys::path::append( defaultExecutablePath, stem );
             }
 
-            if ( oName.empty() )
+            if ( ds.oName.empty() )
             {
                 // This exe-path should be split out from CompilationUnit, as it may not match the input source file
                 // stem. The defaultExecutablePath stuff is convoluted and confusing.
@@ -355,7 +360,7 @@ int main( int argc, char** argv )
             }
             else
             {
-                exeName = oName;
+                exeName = ds.oName;
             }
         }
 
@@ -389,11 +394,11 @@ int main( int argc, char** argv )
 
             st.runOptimizationPasses();
 
-            if ( !oName.empty() && compileOnly )
+            if ( !ds.oName.empty() && ds.compileOnly )
             {
-                objectFilename = oName;
+                objectFilename = ds.oName;
             }
-            else if ( compileOnly )
+            else if ( ds.compileOnly )
             {
                 constructObjectPath( objectFilename, defaultExecutablePath );
             }
@@ -428,7 +433,7 @@ int main( int argc, char** argv )
                     silly::fatalDriverError( ReturnCodes::tempCreationError );
                 }
 
-                if ( keepTemps )
+                if ( ds.keepTemps )
                 {
                     // FIXME: another place to use formatv
                     llvm::errs() << std::format( COMPILER_NAME ": info: created temporary: {}\n",
@@ -450,12 +455,12 @@ int main( int argc, char** argv )
         }
     }
 
-    if ( compileOnly == false )
+    if ( ds.compileOnly == false )
     {
         invokeLinker( exeName, objFiles, ds );
     }
 
-    if ( !keepTemps )
+    if ( !ds.keepTemps )
     {
         for ( const auto& filename : tmpToDelete )
         {

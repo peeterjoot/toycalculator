@@ -173,7 +173,7 @@ namespace silly
     void ParseListener::emitError( mlir::Location loc, const std::string &message, const std::string &funcName,
                                    bool internal )
     {
-        bool inColor = isatty( fileno( stderr ) ) && driverState.colorErrors;
+        bool inColor = isatty( fileno( stderr ) ) && !driverState.noColorErrors;
         const char *RED = inColor ? "\033[1;31m" : "";
         const char *CYAN = inColor ? "\033[0;36m" : "";
         const char *RESET = inColor ? "\033[0m" : "";
