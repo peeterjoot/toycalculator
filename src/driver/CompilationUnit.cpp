@@ -25,6 +25,7 @@
 #include <mlir/Target/LLVMIR/Dialect/Builtin/BuiltinToLLVMIRTranslation.h>
 #include <mlir/Target/LLVMIR/Dialect/LLVMIR/LLVMToLLVMIRTranslation.h>
 #include <mlir/Target/LLVMIR/Export.h>
+#include <mlir/Bytecode/BytecodeWriter.h>
 
 #include <format>
 #include <fstream>
@@ -86,7 +87,7 @@ namespace silly
                 fatalDriverError( ReturnCodes::parseError );
             }
         }
-        else if ( ity == InputType::MLIR )
+        else if ( (ity == InputType::MLIR) || (ity == InputType::MLIRBC) )
         {
             parseMLIRFile( sourceFileName );
             mod = rmod.get();
@@ -239,6 +240,11 @@ namespace silly
             return InputType::MLIR;
         }
 
+        if ( ext == ".mlirbc" || ext == ".sirbc" )
+        {
+            return InputType::MLIRBC;
+        }
+
         if ( ext == ".silly" )
         {
             return InputType::Silly;
@@ -254,24 +260,45 @@ namespace silly
 
     void CompilationUnit::serializeModuleMLIR( const llvm::SmallString<128>& mlirOutputName )
     {
-        if ( ds.emitMLIR && rmod.get() )
+        mlir::ModuleOp mod = rmod.get();
+        if ( !mod )
         {
-            if ( ds.toStdout )
+            return;
+        }
+
+        if ( ds.emitMLIR and ds.toStdout )
+        {
+            mod.print( llvm::outs(), flags );
+        }
+        else if ( ds.emitMLIR or ds.emitMLIRBC )
+        {
+            std::error_code EC;
+            llvm::raw_fd_ostream out( mlirOutputName.str(), EC, ds.emitMLIRBC ? llvm::sys::fs::OF_None : llvm::sys::fs::OF_Text );
+            if ( EC )
             {
-                rmod->print( llvm::outs(), flags );
+                llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}: {}\n",
+                                             std::string( mlirOutputName ), EC.message() );
+                fatalDriverError( ReturnCodes::openError );
+            }
+
+            if ( ds.emitMLIRBC )
+            {
+                if ( mlir::failed( mlir::writeBytecodeToFile( mod, out ) ) )
+                {
+                    llvm::errs() << std::format( COMPILER_NAME ": error: Failed to write bytecode to '{}'\n", std::string( mlirOutputName ) );
+                    fatalDriverError( ReturnCodes::ioError );
+                }
             }
             else
             {
-                std::error_code EC;
-                llvm::raw_fd_ostream out( mlirOutputName.str(), EC, llvm::sys::fs::OF_Text );
-                if ( EC )
+                mod.print( out, flags );
+                out.close();
+                if ( out.has_error() )
                 {
-                    llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}: {}\n",
-                                                 std::string( mlirOutputName ), EC.message() );
-                    fatalDriverError( ReturnCodes::openError );
+                    llvm::errs() << std::format( COMPILER_NAME ": error: Write error on '{}': {}\n",
+                                                 std::string( mlirOutputName ), out.error().message() );
+                    fatalDriverError( ReturnCodes::ioError );
                 }
-
-                rmod->print( out, flags );
             }
         }
     }

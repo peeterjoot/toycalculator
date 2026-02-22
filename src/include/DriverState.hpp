@@ -37,6 +37,7 @@ namespace silly
         uint8_t fillValue{};
 
         bool emitMLIR{}; ///< --emit-mlir
+        bool emitMLIRBC{}; ///< --emit-mlirbc
         bool emitLLVM{}; ///< --emit-llvm
         bool toStdout{}; ///< --stdout
 

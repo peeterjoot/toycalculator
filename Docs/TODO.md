@@ -5,6 +5,18 @@
 
 #### Driver
 
+* Round trip ctesting for .mlir/.mlirbc write/parse.  Also need a way to only do --emit-mlirbc (don't do the assemble/compile/link)
+
+  Change to do this like clang, requiring one of:
+  - -S -emit-llvm (.ll)
+  - -S -emit-mlir (.mlir)
+  - -c -emit-mlir (.mlirbc)
+  - -emit-llvm (.ll plus regular compilation)
+  - -emit-mlir (.mlir plus regular compilation)
+
+  and later/maybe:
+  - -c -emit-llvm (.bc)
+
 * CompilationUnit:
  - Reduce use of raw ModuleOp — prefer passing OwningOpRef& or keep it local
 * Respect -o for --emit-mlir or --emit-llvm too (provided both aren't set.)  Add a round trip test taking .mlir as input like the -c/-o

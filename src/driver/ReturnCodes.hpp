@@ -13,12 +13,13 @@ enum class ReturnCodes : int
     badExtensionError,
     directoryError,
     filenameParseError,
+    ioError,
     linkError,
     loweringError,
     openError,
     parseError,
-    verifyError,
     tempCreationError,
+    verifyError,
 };
 
 

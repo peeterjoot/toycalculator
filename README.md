@@ -289,6 +289,7 @@ Once built, the compiler driver can be run with `build/bin/silly` with the follo
 
 * `--emit-llvm` — Emit LLVM IR files
 * `--emit-mlir` — Emit MLIR files
+* `--emit-mlirbc` — Emit MLIR files in binary format
 * `--debug` — Enable MLIR debug output (built-in option)
 * `-debug-only=silly-driver` — Enable driver-specific debug output
 * `-debug-only=silly-lowering` — Enable lowering-specific debug output

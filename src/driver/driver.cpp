@@ -53,8 +53,11 @@ static llvm::cl::opt<std::string> oName( "o", llvm::cl::desc( "Executable or obj
                                          llvm::cl::value_desc( "filename" ), llvm::cl::init( "" ),
                                          llvm::cl::cat( SillyCategory ) );
 
-static llvm::cl::opt<bool> emitMLIR( "emit-mlir", llvm::cl::desc( "Emit MLIR IR" ), llvm::cl::init( false ),
+static llvm::cl::opt<bool> emitMLIR( "emit-mlir", llvm::cl::desc( "Emit MLIR IR for the silly dialect" ), llvm::cl::init( false ),
                                      llvm::cl::cat( SillyCategory ) );
+
+static llvm::cl::opt<bool> emitMLIRBC( "emit-mlirbc", llvm::cl::desc( "Emit MLIR BC for the silly dialect" ),
+                                      llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<bool> emitLLVM( "emit-llvm", llvm::cl::desc( "Emit LLVM IR" ), llvm::cl::init( false ),
                                      llvm::cl::cat( SillyCategory ) );
@@ -285,6 +288,7 @@ int main( int argc, char** argv )
     ds.abortOmitPath = noAbortPath;
     ds.toStdout = toStdout;
     ds.emitMLIR = emitMLIR;
+    ds.emitMLIRBC = emitMLIRBC;
     ds.emitLLVM = emitLLVM;
     ds.llvmDEBUG = llvmDEBUG;
     ds.outDir = outDir;
@@ -356,7 +360,14 @@ int main( int argc, char** argv )
         }
 
         llvm::SmallString<128> mlirOutputPath = defaultExecutablePath;
-        mlirOutputPath += ".mlir";
+        if ( ds.emitMLIRBC )
+        {
+            mlirOutputPath += ".mlirbc";
+        }
+        else
+        {
+            mlirOutputPath += ".mlir";
+        }
         st.serializeModuleMLIR( mlirOutputPath );
 
         llvm::SmallString<128> objectFilename;

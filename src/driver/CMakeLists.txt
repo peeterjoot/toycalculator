@@ -80,6 +80,7 @@ target_link_libraries(silly
   MLIRLLVMToLLVMIRTranslation
   MLIRMemRefToLLVM
   MLIRSCFToControlFlow
+  MLIRTestIR
 )
 
 # Create bin directory and symlink

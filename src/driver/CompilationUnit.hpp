@@ -34,8 +34,11 @@ namespace silly
     enum class InputType
     {
         Silly,     // .silly or other source
-        MLIR,      // .mlir
+        MLIR,      // .mlir, or .sir
+        MLIRBC,    // .mlirbc, or .sirbc
         OBJECT,    // .o
+        //LLVMLL,    // .ll -- future?
+        //LLVMBC,    // .bc -- future?
         Unknown
     };
 
