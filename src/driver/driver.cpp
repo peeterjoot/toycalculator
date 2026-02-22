@@ -225,6 +225,47 @@ static void invokeLinker( const llvm::SmallString<128>& exePath, const std::vect
     }
 }
 
+/// Create the directory named in --output-directory.
+///
+/// Populates outdir as a side effect with the output directory, or the directory
+/// part of the filename path (if specified), or an empty string.
+static std::string makeOutputDirectory( const silly::DriverState& ds,
+                                        const std::string& sourceNameMaybeDirectoryQualified )
+{
+    std::string outdir;
+
+    llvm::StringRef dirname = llvm::sys::path::parent_path( sourceNameMaybeDirectoryQualified );
+    // Create output directory if specified
+    if ( !ds.outDir.empty() )
+    {
+        std::error_code EC = llvm::sys::fs::create_directories( ds.outDir );
+        if ( EC )
+        {
+            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to create output directory '{}': {}\n",
+                                         ds.outDir, EC.message() );
+            silly::fatalDriverError( ReturnCodes::directoryError );
+        }
+
+        outdir = ds.outDir;
+    }
+    else if ( dirname != "" )
+    {
+        outdir = dirname;
+    }
+
+    return outdir;
+}
+
+/// Construct the output path for the object file.
+///
+/// @param outputFilename[out] Buffer to receive the constructed path
+static void constructObjectPath( llvm::SmallString<128>& outputFilename,
+                                 const llvm::SmallString<128>& defaultExecutablePath )
+{
+    outputFilename += defaultExecutablePath;
+    outputFilename += ".o";
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////
 //
 // The driver entry point:
@@ -268,25 +309,55 @@ int main( int argc, char** argv )
 
     llvm::SmallString<128> exeName;
 
+    /// Just the output directory, based on the filename of the first source and --output-directory
+    llvm::SmallString<128> outdir;
+
+    /// Output directory combined with filename stem (no extension)
+    llvm::SmallString<128> defaultExecutablePath;
+
     for ( const auto& filename : inputFilenames )
     {
-        silly::CompilationUnit st( ds, filename, &dialectLoader.context );
+        silly::CompilationUnit st( ds, &dialectLoader.context );
 
-        st.processSourceFile();
+        st.processSourceFile( filename );
 
         if ( exeName.empty() )    // first source.
         {
+            outdir = makeOutputDirectory( ds, filename );
+
+            llvm::StringRef stem =
+                llvm::sys::path::stem( filename );    // foo/bar.silly -> stem: is just bar, not foo/bar
+            if ( stem.empty() )
+            {
+                llvm::errs() << std::format( COMPILER_NAME ": error: Invalid filename '{}', empty stem\n", filename );
+                silly::fatalDriverError( ReturnCodes::filenameParseError );
+            }
+
+            defaultExecutablePath = outdir;
+            if ( defaultExecutablePath.empty() )
+            {
+                defaultExecutablePath = stem;
+            }
+            else
+            {
+                llvm::sys::path::append( defaultExecutablePath, stem );
+            }
+
             if ( oName.empty() )
             {
                 // This exe-path should be split out from CompilationUnit, as it may not match the input source file
-                // stem. The dirWithStem stuff is convoluted and confusing.
-                exeName = st.getDefaultExecutablePath();
+                // stem. The defaultExecutablePath stuff is convoluted and confusing.
+                exeName = defaultExecutablePath;
             }
             else
             {
                 exeName = oName;
             }
         }
+
+        llvm::SmallString<128> mlirOutputPath = defaultExecutablePath;
+        mlirOutputPath += ".mlir";
+        st.serializeModuleMLIR( mlirOutputPath );
 
         llvm::SmallString<128> objectFilename;
         bool createdTemporary{};
@@ -299,7 +370,11 @@ int main( int argc, char** argv )
         }
         else
         {
-            st.mlirToLLVM();
+            st.mlirToLLVM( filename );
+
+            llvm::SmallString<128> llvmOuputFile = defaultExecutablePath;
+            llvmOuputFile += ".ll";
+            st.serializeModuleLLVMIR( llvmOuputFile );
 
             st.runOptimizationPasses();
 
@@ -309,11 +384,10 @@ int main( int argc, char** argv )
             }
             else if ( compileOnly )
             {
-                st.constructObjectPath( objectFilename );
+                constructObjectPath( objectFilename, defaultExecutablePath );
             }
             else
             {
-                const llvm::SmallString<128>& outdir = st.getOutputDirectory();
                 llvm::SmallString<128> p;
 
                 if ( outdir.empty() )
