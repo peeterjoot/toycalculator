@@ -42,7 +42,7 @@ static llvm::cl::list<std::string> inputFilenames( llvm::cl::Positional, llvm::c
 static llvm::cl::opt<bool> compileOnly( "c", llvm::cl::desc( "Compile only and don't link." ), llvm::cl::init( false ),
                                         llvm::cl::cat( SillyCategory ) );
 
-static llvm::cl::opt<bool> assembleOnly( "S", llvm::cl::desc( "Assemble only and don't link." ),
+static llvm::cl::opt<bool> assembleOnly( "S", llvm::cl::desc( "Assemble only; emit silly dialect textual MLIR and stop." ),
                                          llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<bool> keepTemps( "keep-temp", llvm::cl::desc( "Do not automatically delete temporary files." ),
@@ -56,7 +56,7 @@ static llvm::cl::opt<std::string> oName( "o", llvm::cl::desc( "Executable or obj
                                          llvm::cl::value_desc( "filename" ), llvm::cl::init( "" ),
                                          llvm::cl::cat( SillyCategory ) );
 
-static llvm::cl::opt<bool> emitMLIR( "emit-mlir", llvm::cl::desc( "Emit MLIR IR for the silly dialect" ),
+static llvm::cl::opt<bool> emitMLIR( "emit-mlir", llvm::cl::desc( "Emit MLIR IR for the silly dialect.  Text .mlir format by default, and .mlirbc with -c" ),
                                      llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<bool> emitMLIRBC( "emit-mlirbc", llvm::cl::desc( "Emit MLIR BC for the silly dialect" ),
@@ -88,7 +88,7 @@ static llvm::cl::opt<bool> noAbortPath( "no-abort-path",
                                         llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<bool> debugInfo( "g",
-                                      llvm::cl::desc( "Enable location output in MLIR, and dwarf metadata "
+                                      llvm::cl::desc( "Enable location output in MLIR dumps, and dwarf metadata "
                                                       "creation in the lowered LLVM IR)" ),
                                       llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 

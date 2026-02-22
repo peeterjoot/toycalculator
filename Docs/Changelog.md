@@ -110,7 +110,7 @@
 * Migrated error emission from DriverState → ParseListener
 * Centralized fatal exits
 * temporary .o file is now created in either --output-directory or $TMPDIR.
-* Implemented -o, --keep-temp.
+* Implemented -o, --keep-temp, -S.
 * Multiple sources are now supported (using `MODULE` and `MAIN` keywords) and will all be linked if specified.
 
 ## Testing & Quality
