@@ -100,7 +100,7 @@ function(add_endtoend_compile_tests)
 
         # Allow per-test override via a variable named like COMPILER_FLAGS_${test_name}
         if(DEFINED COMPILER_FLAGS_${test_name})
-            set(COMPILER_FLAGS ${COMPILER_FLAGS_${test_name}})
+            list(APPEND COMPILER_FLAGS ${COMPILER_FLAGS_${test_name}})
         endif()
 
         add_custom_command(
