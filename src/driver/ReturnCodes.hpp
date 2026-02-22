@@ -11,6 +11,7 @@ enum class ReturnCodes : int
 {
     success,
     badExtensionError,
+    badOption,
     directoryError,
     filenameParseError,
     ioError,

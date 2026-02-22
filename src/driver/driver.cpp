@@ -42,6 +42,9 @@ static llvm::cl::list<std::string> inputFilenames( llvm::cl::Positional, llvm::c
 static llvm::cl::opt<bool> compileOnly( "c", llvm::cl::desc( "Compile only and don't link." ), llvm::cl::init( false ),
                                         llvm::cl::cat( SillyCategory ) );
 
+static llvm::cl::opt<bool> assembleOnly( "S", llvm::cl::desc( "Assemble only and don't link." ),
+                                         llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+
 static llvm::cl::opt<bool> keepTemps( "keep-temp", llvm::cl::desc( "Do not automatically delete temporary files." ),
                                       llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
@@ -53,11 +56,11 @@ static llvm::cl::opt<std::string> oName( "o", llvm::cl::desc( "Executable or obj
                                          llvm::cl::value_desc( "filename" ), llvm::cl::init( "" ),
                                          llvm::cl::cat( SillyCategory ) );
 
-static llvm::cl::opt<bool> emitMLIR( "emit-mlir", llvm::cl::desc( "Emit MLIR IR for the silly dialect" ), llvm::cl::init( false ),
-                                     llvm::cl::cat( SillyCategory ) );
+static llvm::cl::opt<bool> emitMLIR( "emit-mlir", llvm::cl::desc( "Emit MLIR IR for the silly dialect" ),
+                                     llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<bool> emitMLIRBC( "emit-mlirbc", llvm::cl::desc( "Emit MLIR BC for the silly dialect" ),
-                                      llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+                                       llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<bool> emitLLVM( "emit-llvm", llvm::cl::desc( "Emit LLVM IR" ), llvm::cl::init( false ),
                                      llvm::cl::cat( SillyCategory ) );
@@ -283,9 +286,19 @@ int main( int argc, char** argv )
     silly::DriverState ds( argv[0], (void*)&main );
 
     ds.compileOnly = compileOnly;
+    ds.assembleOnly = assembleOnly;
     ds.keepTemps = keepTemps;
     ds.emitMLIR = emitMLIR;
     ds.emitMLIRBC = emitMLIRBC;
+    if ( ds.assembleOnly )
+    {
+        ds.emitMLIR = true;
+    }
+    if ( ds.emitMLIR and ds.compileOnly )
+    {
+        ds.emitMLIR = false;
+        ds.emitMLIRBC = true;
+    }
     ds.emitLLVM = emitLLVM;
     ds.toStdout = toStdout;
     ds.noAbortPath = noAbortPath;
@@ -311,6 +324,12 @@ int main( int argc, char** argv )
         case silly::OptLevel::O3:
             ds.opt = llvm::OptimizationLevel::O3;
             break;
+    }
+
+    if ( ds.compileOnly and ds.assembleOnly )
+    {
+        llvm::errs() << COMPILER_NAME ": error: command line options -S and -c are incompatible\n";
+        silly::fatalDriverError( ReturnCodes::badOption );
     }
 
     std::vector<std::string> objFiles;
@@ -375,87 +394,94 @@ int main( int argc, char** argv )
         }
         st.serializeModuleMLIR( mlirOutputPath );
 
-        llvm::SmallString<128> objectFilename;
-        bool createdTemporary{};
-
-        if ( st.getInputType() == silly::InputType::OBJECT )
+        // ds.assembleOnly produces the mlir
+        // ds.emitMLIRBC and ds.compileOnly produces the mlirbc
+        //
+        // -- we are done in either case.
+        if ( !( ds.assembleOnly or ( ds.emitMLIRBC and ds.compileOnly ) ) )
         {
-            objectFilename = filename;
+            llvm::SmallString<128> objectFilename;
+            bool createdTemporary{};
 
-            objFiles.push_back( std::string( objectFilename ) );
-        }
-        else
-        {
-            st.mlirToLLVM( filename );
-
-            llvm::SmallString<128> llvmOuputFile = defaultExecutablePath;
-            llvmOuputFile += ".ll";
-            st.serializeModuleLLVMIR( llvmOuputFile );
-
-            st.runOptimizationPasses();
-
-            if ( !ds.oName.empty() && ds.compileOnly )
+            if ( st.getInputType() == silly::InputType::OBJECT )
             {
-                objectFilename = ds.oName;
-            }
-            else if ( ds.compileOnly )
-            {
-                constructObjectPath( objectFilename, defaultExecutablePath );
+                objectFilename = filename;
+
+                objFiles.push_back( std::string( objectFilename ) );
             }
             else
             {
-                llvm::SmallString<128> p;
+                st.mlirToLLVM( filename );
 
-                if ( outdir.empty() )
+                llvm::SmallString<128> llvmOuputFile = defaultExecutablePath;
+                llvmOuputFile += ".ll";
+                st.serializeModuleLLVMIR( llvmOuputFile );
+
+                st.runOptimizationPasses();
+
+                if ( !ds.oName.empty() && ds.compileOnly )
                 {
-                    llvm::SmallString<128> td;
-                    llvm::sys::path::system_temp_directory( true, td );
-                    p = td;
+                    objectFilename = ds.oName;
+                }
+                else if ( ds.compileOnly )
+                {
+                    constructObjectPath( objectFilename, defaultExecutablePath );
                 }
                 else
                 {
-                    p = outdir;
+                    llvm::SmallString<128> p;
+
+                    if ( outdir.empty() )
+                    {
+                        llvm::SmallString<128> td;
+                        llvm::sys::path::system_temp_directory( true, td );
+                        p = td;
+                    }
+                    else
+                    {
+                        p = outdir;
+                    }
+
+                    llvm::SmallString<128> o = llvm::sys::path::stem( filename );
+                    o += "-%%%%%%.o";
+                    llvm::sys::path::append( p, o );
+
+                    std::error_code EC;
+                    EC = llvm::sys::fs::createUniqueFile( p, objectFilename );
+                    if ( EC )
+                    {
+                        // FIXME: another place to use formatv
+                        llvm::errs() << std::format(
+                            COMPILER_NAME ": error: Failed to create temporary object file in path '{}': {}\n",
+                            std::string( p ), EC.message() );
+
+                        silly::fatalDriverError( ReturnCodes::tempCreationError );
+                    }
+
+                    if ( ds.keepTemps )
+                    {
+                        // FIXME: another place to use formatv
+                        llvm::errs() << std::format( COMPILER_NAME ": info: created temporary: {}\n",
+                                                     std::string( objectFilename ) );
+                    }
+
+                    createdTemporary = true;
                 }
 
-                llvm::SmallString<128> o = llvm::sys::path::stem( filename );
-                o += "-%%%%%%.o";
-                llvm::sys::path::append( p, o );
 
-                std::error_code EC;
-                EC = llvm::sys::fs::createUniqueFile( p, objectFilename );
-                if ( EC )
+                st.serializeObjectCode( objectFilename );
+
+                objFiles.push_back( std::string( objectFilename ) );
+
+                if ( createdTemporary )
                 {
-                    // FIXME: another place to use formatv
-                    llvm::errs() << std::format( COMPILER_NAME
-                                                 ": error: Failed to create temporary object file in path '{}': {}\n",
-                                                 std::string( p ), EC.message() );
-
-                    silly::fatalDriverError( ReturnCodes::tempCreationError );
+                    tmpToDelete.push_back( std::string( objectFilename ) );
                 }
-
-                if ( ds.keepTemps )
-                {
-                    // FIXME: another place to use formatv
-                    llvm::errs() << std::format( COMPILER_NAME ": info: created temporary: {}\n",
-                                                 std::string( objectFilename ) );
-                }
-
-                createdTemporary = true;
-            }
-
-
-            st.serializeObjectCode( objectFilename );
-
-            objFiles.push_back( std::string( objectFilename ) );
-
-            if ( createdTemporary )
-            {
-                tmpToDelete.push_back( std::string( objectFilename ) );
             }
         }
     }
 
-    if ( ds.compileOnly == false )
+    if ( !( ds.compileOnly or ds.assembleOnly ) )
     {
         invokeLinker( exeName, objFiles, ds );
     }
