@@ -365,11 +365,10 @@ Having used ANTLR4 for previous prototyping (also generating C++ listeners), it 
 
 See `bin/buildllvm` for how I built and deployed the LLVM+MLIR installation used for this project.
 
-The currently required version of LLVM/MLIR is:
+Supported llvm-project versions:
 
-    21.1.0-rc3
-
-Any 21.1.* version after that will probably work as well.
+* V5,V6,V7,V8,V9 -- require llvm-project version >= 21.1.0-rc3, and llvm-project version < 22.1
+* V10 -- will require llvm-project 22.1+
 
 ### Building the Project
 
@@ -863,7 +862,8 @@ Single-line comments begin with `//` and extend to the end of the line.
 
 # Changelogs
 
-* [V9](Docs/Changelog.md) This is the current working version, not yet tagged.
+* [V10](Docs/Changelog.md) This is the current working version, not yet tagged.
+* [V9](Docs/Changelog.V9.md) (Feb 25, 2026)
 * [V8](Docs/Changelog.V8.md) (Feb 15, 2026)
 * [V7](Docs/Changelog.V7.md) (Jan 4, 2025)
 * [V6](Docs/Changelog.V6.md) (Dec 28, 2025)

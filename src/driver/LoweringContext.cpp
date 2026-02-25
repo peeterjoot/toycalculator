@@ -20,7 +20,7 @@
 #define DEBUG_TYPE "silly-lowering-context"
 
 /// For llvm.ident
-#define COMPILER_VERSION " V9"
+#define COMPILER_VERSION " V10"
 
 namespace silly
 {
