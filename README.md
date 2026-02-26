@@ -301,7 +301,7 @@ Once built, the compiler driver can be run with `build/bin/silly` with the follo
 * `--verbose-link` — Show the link command.  This is implicit if the link fails.
 * `--keep-temp` — Do not delete temporary .o files (and give a message showing the name.)
 * `--no-verbose-parse-error' -- The default parse error message is noisy and lists a number of grammar specific tokens, which requires expected test output updates every time the grammar is changed.  This option inhibits that volatile output, which is still on by default.
-* `--imports mod1.silly` -- experimental `IMPORT` statement support.  A single module with silly/mlir/sir/mlirbc/sirbc is required (only one supported at this point in time).  If specified, any `IMPORT` statement will drive a ModuleOp lookup, and prototypes will be created from all the FuncOps in that named import module.
+* `--imports mod1.silly` -- experimental `IMPORT` statement support.
 
 ### Examples
 
@@ -845,6 +845,67 @@ Single-line comments begin with `//` and extend to the end of the line.
 // This is a comment
 ```
 
+## Multi-module support (IMPORT statements)
+
+The silly language now supports a primitive but functional multi-module system using the IMPORT statement.
+
+* A module file (marked with the `MODULE`; keyword at the top) can define functions that are imported and called from the main program or from other sources.
+* Any source without `MODULE` is a `MAIN`.  A program can have at most one `MAIN`.  The `MAIN` keyword is implicit, but provided for symmetry.
+* Cross-file function calls were possible before via manual function prototypes, but this was an error-prone idea, as manual prototypes could be out of synch with the definitions. Now, `IMPORT` automates prototype generation, making the function implementations themselves the "source of truth".
+
+### Example:
+```
+// callee.silly
+MODULE;
+
+FUNCTION bar(INT16 w) {
+    PRINT w;
+    RETURN;
+};
+
+FUNCTION foo() : INT32 {
+    CALL bar(3);
+    RETURN 42;
+};
+```
+
+```
+// callmod.silly
+IMPORT callee;
+
+PRINT "In main";
+CALL bar(3);
+PRINT "Back in main";
+
+INT32 rc = CALL foo();
+
+PRINT "Back in main again, rc = ", rc;
+```
+
+### How to compile:
+
+```bash
+silly --imports callee.silly callmod.silly -o program
+
+# or with separate compilation steps:
+silly -c --emit-mlirbc callee.silly
+silly --import callee.mlirbc callmod.silly -o program
+```
+
+### Current limitations & status (early prototype):
+
+* A `MODULE` source has only functions, no variables and no "main".
+* Only one imported module is supported (specified via `--imports <file>`)
+* The imported file can be .silly source, textual .mlir, or binary .mlirbc
+* `IMPORT` creates function prototypes automatically from all `FUNCTION` definitions in the imported module
+* No qualified names, namespaces, visibility control (public/private), or cycle detection yet
+* No automatic search paths — the exact file must be named on the command line
+* Imported modules are compiled in two phases: prototypes first (for name resolution), bodies later (after main code is processed)
+
+Ideas for future refinement include support for multiple imports, filesystem-based module discovery, and more robust dependency handling. See [TODO](Docs/TODO.md), and [module design notes](Docs/module_import_design.md) for additional details.
+
+See tests/endtoend/driver/callmod.silly + callee.silly for a small working demo.
+
 ---
 
 ## Summary of Core Operations
@@ -859,6 +920,7 @@ Single-line comments begin with `//` and extend to the end of the line.
 - Functions and calls (with recursion support)
 - Input (`GET`) and output (`PRINT`, `ERROR`)
 - Explicit program termination (`EXIT`, `ABORT`)
+- Module support with `IMPORT` and `MODULE` keywords.
 
 ---
 

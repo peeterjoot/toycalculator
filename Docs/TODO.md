@@ -16,6 +16,7 @@ Next steps:
 - ctest coverage for multiple sources all doing IMPORT of the same module.
 - ctest coverage for repeated IMPORT (allow it, but the walk should not add anything, or have bad side effects.)
 - new SourceManager needs a bunch of doxygen markup.
+- ctest for `MAIN` anywhere?
 
 #### Driver
 
