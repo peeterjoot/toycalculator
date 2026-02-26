@@ -1,5 +1,9 @@
 # Changelog V10 (WIP)
 
+## LLVM version
+
+* Updated to llvm-project 22.1.0, with corresponding changes to the builder.create<> syntax and a few other updates.
+
 ## Major Features
 
 ### Debug Information Architecture

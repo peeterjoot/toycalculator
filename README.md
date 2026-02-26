@@ -368,7 +368,7 @@ See `bin/buildllvm` for how I built and deployed the LLVM+MLIR installation used
 Supported llvm-project versions:
 
 * V5,V6,V7,V8,V9 -- require llvm-project version >= 21.1.0-rc3, and llvm-project version < 22.1
-* V10 -- will require llvm-project 22.1+
+* V10+ -- requires llvm-project 22.1.0+
 
 ### Building the Project
 

@@ -268,14 +268,14 @@ namespace silly
             return mlir::Value{};
         }
 
-        return builder.create<mlir::arith::ConstantIntOp>( loc, val, 1 );
+        return mlir::arith::ConstantIntOp::create( builder, loc, val, 1 );
     }
 
     inline mlir::Value ParseListener::parseInteger( mlir::Location loc, int width, const std::string &s )
     {
         int64_t val = std::stoll( s );
 
-        return builder.create<mlir::arith::ConstantIntOp>( loc, val, width );
+        return mlir::arith::ConstantIntOp::create( builder, loc, val, width );
     }
 
     inline mlir::Value ParseListener::parseFloat( mlir::Location loc, mlir::FloatType ty, const std::string &s )
@@ -286,7 +286,7 @@ namespace silly
 
             llvm::APFloat apVal( val );
 
-            return builder.create<mlir::arith::ConstantFloatOp>( loc, typ.f32, apVal );
+            return mlir::arith::ConstantFloatOp::create( builder, loc, typ.f32, apVal );
         }
         else
         {
@@ -294,7 +294,7 @@ namespace silly
 
             llvm::APFloat apVal( val );
 
-            return builder.create<mlir::arith::ConstantFloatOp>( loc, typ.f64, apVal );
+            return mlir::arith::ConstantFloatOp::create( builder, loc, typ.f64, apVal );
         }
     }
 
@@ -314,7 +314,7 @@ namespace silly
 
         mlir::StringAttr strAttr = builder.getStringAttr( s );
 
-        stringLiteral = builder.create<silly::StringLiteralOp>( loc, typ.ptr, strAttr );
+        stringLiteral = silly::StringLiteralOp::create( builder, loc, typ.ptr, strAttr );
 
         return stringLiteral;
     }
@@ -532,12 +532,12 @@ namespace silly
 
         silly::varType varType = builder.getType<silly::varType>( ty, shapeAttr );
 
-        silly::DeclareOp dcl = builder.create<silly::DeclareOp>( loc, varType, initializers );
+        silly::DeclareOp dcl = silly::DeclareOp::create( builder, loc, varType, initializers );
         f.recordVariableValue( varName, dcl.getResult() );
 
         f.setLastDeclared( dcl.getOperation() );
 
-        builder.create<silly::DebugNameOp>( loc, dcl.getResult(), varName );
+        silly::DebugNameOp::create( builder, loc, dcl.getResult(), varName );
 
         builder.restoreInsertionPoint( savedIP );
 
@@ -655,7 +655,7 @@ namespace silly
             } );
 
             mlir::Value param = funcOp.getArgument( i );
-            builder.create<silly::DebugNameOp>( startLoc, param, paramNames[i] );
+            silly::DebugNameOp::create( builder, startLoc, param, paramNames[i] );
             f.recordParameterValue( paramNames[i], param );
         }
 
@@ -677,7 +677,7 @@ namespace silly
         else
         {
             mlir::FunctionType funcType = builder.getFunctionType( {}, typ.i32 );
-            mlir::func::FuncOp funcOp = builder.create<mlir::func::FuncOp>( locs.first, ENTRY_SYMBOL_NAME, funcType );
+            mlir::func::FuncOp funcOp = mlir::func::FuncOp::create( builder, locs.first, ENTRY_SYMBOL_NAME, funcType );
 
             std::vector<std::string> paramNames;
             createScope( locs.first, locs.second, funcOp, ENTRY_SYMBOL_NAME, paramNames );
@@ -739,17 +739,17 @@ namespace silly
         }
         else if ( currentFuncName == ENTRY_SYMBOL_NAME )
         {
-            value = builder.create<mlir::arith::ConstantIntOp>( loc, 0, 32 );
+            value = mlir::arith::ConstantIntOp::create( builder, loc, 0, 32 );
         }
 
         // Create ReturnOp with user specified value:
         if ( value )
         {
-            builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{ value } );
+            mlir::func::ReturnOp::create( builder, loc, mlir::ValueRange{ value } );
         }
         else
         {
-            builder.create<mlir::func::ReturnOp>( loc, mlir::ValueRange{} );
+            mlir::func::ReturnOp::create( builder, loc, mlir::ValueRange{} );
         }
     }
 
@@ -862,11 +862,11 @@ namespace silly
             //
             // However, in simple/external/callext.silly that resulted in a verifier error,
             // stating that public was not allowed.  For now, just use private always.
-            attrs.push_back( mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ),
-                                                   builder.getStringAttr( "private" ) ) );
+            attrs.push_back(
+                mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
 
             mlir::FunctionType funcType = builder.getFunctionType( paramTypes, returns );
-            funcOp = builder.create<mlir::func::FuncOp>( locs.first, funcName, funcType, attrs );
+            funcOp = mlir::func::FuncOp::create( builder, locs.first, funcName, funcType, attrs );
         }
 
         if ( ctx->scopedStatements() )
@@ -958,7 +958,7 @@ namespace silly
 
         mlir::TypeRange resultTypes = funcType.getResults();
 
-        mlir::func::CallOp callOp = builder.create<mlir::func::CallOp>( loc, resultTypes, funcName, parameters );
+        mlir::func::CallOp callOp = mlir::func::CallOp::create( builder, loc, resultTypes, funcName, parameters );
 
         // Return the first result (or null for void calls)
         if ( !resultTypes.empty() )
@@ -1110,7 +1110,7 @@ namespace silly
             if ( stringLiteral )
             {
                 mlir::Value i{};
-                builder.create<silly::AssignOp>( loc, var, i, stringLiteral );
+                silly::AssignOp::create( builder, loc, var, i, stringLiteral );
             }
         }
     }
@@ -1135,8 +1135,8 @@ namespace silly
             return;
         }
 
-        mlir::scf::IfOp ifOp = builder.create<mlir::scf::IfOp>( loc, conditionPredicate,
-                                                                /*withElseRegion=*/true );
+        mlir::scf::IfOp ifOp = mlir::scf::IfOp::create( builder, loc, conditionPredicate,
+                                                        /*withElseRegion=*/true );
 
         if ( saveIP )
         {
@@ -1323,13 +1323,13 @@ namespace silly
             unsigned width = ity.getWidth();
 
             //'scf.for' op failed to verify that all of {lowerBound, upperBound, step} have same type
-            step = builder.create<mlir::arith::ConstantIntOp>( loc, 1, width );
+            step = mlir::arith::ConstantIntOp::create( builder, loc, 1, width );
             step = castOpIfRequired( loc, step, elemType );
         }
 
         checkForReturnInScope( ctx->scopedStatements(), "FOR loop body" );
 
-        mlir::scf::ForOp forOp = builder.create<mlir::scf::ForOp>( loc, start, end, step );
+        mlir::scf::ForOp forOp = mlir::scf::ForOp::create( builder, loc, start, end, step );
         f.pushToInsertionPointStack( forOp.getOperation() );
 
         mlir::Block &loopBody = forOp.getRegion().front();
@@ -1339,7 +1339,7 @@ namespace silly
         f.pushInductionVariable( varName, inductionVar );
 
         mlir::Location varLoc = getTerminalLocation( ctx->IDENTIFIER() );
-        builder.create<silly::DebugNameOp>( varLoc, inductionVar, varName );
+        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName );
     }
 
     void ParseListener::exitForStatement( SillyParser::ForStatementContext *ctx )
@@ -1374,8 +1374,8 @@ namespace silly
             vargs.push_back( v );
         }
 
-        mlir::arith::ConstantIntOp constFlagOp = builder.create<mlir::arith::ConstantIntOp>( loc, pf, 32 );
-        builder.create<silly::PrintOp>( loc, constFlagOp, vargs );
+        mlir::arith::ConstantIntOp constFlagOp = mlir::arith::ConstantIntOp::create( builder, loc, pf, 32 );
+        silly::PrintOp::create( builder, loc, constFlagOp, vargs );
     }
 
     void ParseListener::enterPrintStatement( SillyParser::PrintStatementContext *ctx )
@@ -1408,7 +1408,7 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
-        builder.create<silly::AbortOp>( loc );
+        silly::AbortOp::create( builder, loc );
     }
 
     void ParseListener::enterGetStatement( SillyParser::GetStatementContext *ctx )
@@ -1455,8 +1455,8 @@ namespace silly
 
             mlir::Value var = declareOp.getResult();
 
-            silly::GetOp resultValue = builder.create<silly::GetOp>( loc, elemType );
-            builder.create<silly::AssignOp>( loc, var, optIndexValue, resultValue );
+            silly::GetOp resultValue = silly::GetOp::create( builder, loc, elemType );
+            silly::AssignOp::create( builder, loc, var, optIndexValue, resultValue );
         }
         else
         {
@@ -1475,22 +1475,22 @@ namespace silly
             {
                 if ( mlir::isa<mlir::IntegerType>( desiredType ) )
                 {
-                    value = builder.create<mlir::arith::FPToSIOp>( loc, desiredType, value );
+                    value = mlir::arith::FPToSIOp::create( builder, loc, desiredType, value );
                 }
                 else if ( desiredType.isF32() )
                 {
-                    value = builder.create<mlir::LLVM::FPExtOp>( loc, desiredType, value );
+                    value = mlir::LLVM::FPExtOp::create( builder, loc, desiredType, value );
                 }
             }
             else if ( valType.isF32() )
             {
                 if ( mlir::isa<mlir::IntegerType>( desiredType ) )
                 {
-                    value = builder.create<mlir::arith::FPToSIOp>( loc, desiredType, value );
+                    value = mlir::arith::FPToSIOp::create( builder, loc, desiredType, value );
                 }
                 else if ( desiredType.isF64() )
                 {
-                    value = builder.create<mlir::LLVM::FPExtOp>( loc, desiredType, value );
+                    value = mlir::LLVM::FPExtOp::create( builder, loc, desiredType, value );
                 }
             }
             else if ( mlir::IntegerType viType = mlir::cast<mlir::IntegerType>( valType ) )
@@ -1500,11 +1500,11 @@ namespace silly
                 {
                     if ( vwidth == 1 )
                     {
-                        value = builder.create<mlir::arith::UIToFPOp>( loc, desiredType, value );
+                        value = mlir::arith::UIToFPOp::create( builder, loc, desiredType, value );
                     }
                     else
                     {
-                        value = builder.create<mlir::arith::SIToFPOp>( loc, desiredType, value );
+                        value = mlir::arith::SIToFPOp::create( builder, loc, desiredType, value );
                     }
                 }
                 else if ( mlir::IntegerType miType = mlir::cast<mlir::IntegerType>( desiredType ) )
@@ -1513,15 +1513,15 @@ namespace silly
                     if ( ( vwidth == 1 ) && ( mwidth != 1 ) )
                     {
                         // widen bool to integer using unsigned extension:
-                        value = builder.create<mlir::arith::ExtUIOp>( loc, desiredType, value );
+                        value = mlir::arith::ExtUIOp::create( builder, loc, desiredType, value );
                     }
                     else if ( vwidth > mwidth )
                     {
-                        value = builder.create<mlir::arith::TruncIOp>( loc, desiredType, value );
+                        value = mlir::arith::TruncIOp::create( builder, loc, desiredType, value );
                     }
                     else if ( vwidth < mwidth )
                     {
-                        value = builder.create<mlir::arith::ExtSIOp>( loc, desiredType, value );
+                        value = mlir::arith::ExtSIOp::create( builder, loc, desiredType, value );
                     }
                 }
             }
@@ -1569,7 +1569,7 @@ namespace silly
         // Don't check if it's a StringLiteralOp if it's an induction variable, since op will be nullptr
         if ( !ba && isa<silly::StringLiteralOp>( op ) )
         {
-            builder.create<silly::AssignOp>( loc, var, i, resultValue );
+            silly::AssignOp::create( builder, loc, var, i, resultValue );
         }
         else
         {
@@ -1577,7 +1577,7 @@ namespace silly
             {
                 mlir::Value i = indexTypeCast( loc, currentIndexExpr );
 
-                silly::AssignOp assign = builder.create<silly::AssignOp>( loc, var, i, resultValue );
+                silly::AssignOp assign = silly::AssignOp::create( builder, loc, var, i, resultValue );
 
                 LLVM_DEBUG( {
                     mlir::OpPrintingFlags flags;
@@ -1589,7 +1589,7 @@ namespace silly
             }
             else
             {
-                builder.create<silly::AssignOp>( loc, var, i, resultValue );
+                silly::AssignOp::create( builder, loc, var, i, resultValue );
             }
         }
     }
@@ -1655,20 +1655,22 @@ namespace silly
             return mlir::Value{};
         }
 
-        return builder.create<mlir::arith::IndexCastOp>( loc, indexTy, val );
+        return mlir::arith::IndexCastOp::create( builder, loc, indexTy, val );
     }
 
     inline mlir::Value ParseListener::createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty,
                                                          mlir::Value lhs, mlir::Value rhs )
     {
-        return builder.create<silly::ArithBinOp>( loc, ty, silly::ArithBinOpKindAttr::get( this->ctx, what ), lhs, rhs )
+        return silly::ArithBinOp::create( builder, loc, ty, silly::ArithBinOpKindAttr::get( this->ctx, what ), lhs,
+                                          rhs )
             .getResult();
     }
 
     inline mlir::Value ParseListener::createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs,
                                                        mlir::Value rhs )
     {
-        return builder.create<silly::CmpBinOp>( loc, typ.i1, silly::CmpBinOpKindAttr::get( this->ctx, what ), lhs, rhs )
+        return silly::CmpBinOp::create( builder, loc, typ.i1, silly::CmpBinOpKindAttr::get( this->ctx, what ), lhs,
+                                        rhs )
             .getResult();
     }
 
@@ -2073,7 +2075,7 @@ namespace silly
             if ( opText == "-" )
             {
                 // Negation
-                value = builder.create<silly::NegOp>( loc, value.getType(), value ).getResult();
+                value = silly::NegOp::create( builder, loc, value.getType(), value ).getResult();
             }
             else if ( opText == "+" )
             {
@@ -2090,7 +2092,7 @@ namespace silly
 
                 // NOT x: (x == 0)
                 mlir::Value zero =
-                    builder.create<mlir::arith::ConstantIntOp>( loc, 0, value.getType().getIntOrFloatBitWidth() );
+                    mlir::arith::ConstantIntOp::create( builder, loc, 0, value.getType().getIntOrFloatBitWidth() );
                 value = createBinaryCmp( loc, silly::CmpBinOpKind::Equal, value, zero );
             }
             else
@@ -2239,7 +2241,7 @@ namespace silly
                     mlir::Location iloc = getStartLocation( indexExpr->expression() );
                     i = indexTypeCast( iloc, value );
 
-                    value = builder.create<silly::LoadOp>( loc, mlir::TypeRange{ elemType }, var, i );
+                    value = silly::LoadOp::create( builder, loc, mlir::TypeRange{ elemType }, var, i );
                 }
                 else
                 {
@@ -2258,7 +2260,7 @@ namespace silly
                         }
                     }
 
-                    value = builder.create<silly::LoadOp>( loc, mlir::TypeRange{ elemType }, var, i );
+                    value = silly::LoadOp::create( builder, loc, mlir::TypeRange{ elemType }, var, i );
                 }
             }
         }

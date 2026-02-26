@@ -96,20 +96,20 @@ namespace silly
                                                   arraySize, shape.size() ) );
                 }
 
-                sizeVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.typ.i64,
-                                                                   rewriter.getI64IntegerAttr( arraySize ) );
-                bytesVal = rewriter.create<mlir::LLVM::ConstantOp>(
-                    loc, lState.typ.i64, rewriter.getI64IntegerAttr( arraySize * elemSizeInBytes ) );
+                sizeVal = mlir::LLVM::ConstantOp::create( rewriter, loc, lState.typ.i64,
+                                                          rewriter.getI64IntegerAttr( arraySize ) );
+                bytesVal = mlir::LLVM::ConstantOp::create( rewriter, loc, lState.typ.i64,
+                                                           rewriter.getI64IntegerAttr( arraySize * elemSizeInBytes ) );
             }
             else
             {
                 sizeVal = lState.getI64one( loc, rewriter );
-                bytesVal = rewriter.create<mlir::LLVM::ConstantOp>( loc, lState.typ.i64,
-                                                                    rewriter.getI64IntegerAttr( elemSizeInBytes ) );
+                bytesVal = mlir::LLVM::ConstantOp::create( rewriter, loc, lState.typ.i64,
+                                                           rewriter.getI64IntegerAttr( elemSizeInBytes ) );
             }
 
             mlir::LLVM::AllocaOp allocaOp =
-                rewriter.create<mlir::LLVM::AllocaOp>( loc, lState.typ.ptr, elemType, sizeVal, alignment );
+                mlir::LLVM::AllocaOp::create( rewriter, loc, lState.typ.ptr, elemType, sizeVal, alignment );
 
             auto init = declareOp.getInitializers();
             if ( init.size() )
@@ -121,11 +121,11 @@ namespace silly
                 {
                     for ( size_t i = 0; i < init.size(); ++i )
                     {
-                        mlir::Value iVal64 = rewriter.create<mlir::LLVM::ConstantOp>(
-                            loc, lState.typ.i64, rewriter.getI64IntegerAttr( static_cast<int64_t>( i ) ) );
+                        mlir::Value iVal64 = mlir::LLVM::ConstantOp::create(
+                            rewriter, loc, lState.typ.i64, rewriter.getI64IntegerAttr( static_cast<int64_t>( i ) ) );
 
                         mlir::IndexType indexTy = rewriter.getIndexType();
-                        mlir::Value idxIndex = rewriter.create<mlir::arith::IndexCastOp>( loc, indexTy, iVal64 );
+                        mlir::Value idxIndex = mlir::arith::IndexCastOp::create( rewriter, loc, indexTy, iVal64 );
 
                         if ( mlir::failed( lState.generateAssignment(
                                  loc, rewriter, declareOp, init[i], elemType, allocaOp, alignment,
@@ -328,22 +328,21 @@ namespace silly
                     }
 
                     // Cast index to i64 for LLVM GEP
-                    mlir::Value idxI64 = rewriter.create<mlir::arith::IndexCastOp>( loc, lState.typ.i64, indexVal );
+                    mlir::Value idxI64 = mlir::arith::IndexCastOp::create( rewriter, loc, lState.typ.i64, indexVal );
 
                     // GEP to element
-                    mlir::Value elemPtr =
-                        rewriter.create<mlir::LLVM::GEPOp>( loc,
-                                                            basePtr.getType(),    // result type: ptr-to-elem
-                                                            elemType,             // pointee type
-                                                            basePtr, mlir::ValueRange{ idxI64 } );
+                    mlir::Value elemPtr = mlir::LLVM::GEPOp::create( rewriter, loc,
+                                                                     basePtr.getType(),    // result type: ptr-to-elem
+                                                                     elemType,             // pointee type
+                                                                     basePtr, mlir::ValueRange{ idxI64 } );
 
                     // Load array element
-                    load = rewriter.create<mlir::LLVM::LoadOp>( loc, elemType, elemPtr ).getResult();
+                    load = mlir::LLVM::LoadOp::create( rewriter, loc, elemType, elemPtr ).getResult();
                 }
                 else
                 {
                     // Scalar load
-                    load = rewriter.create<mlir::LLVM::LoadOp>( loc, elemType, allocaOp ).getResult();
+                    load = mlir::LLVM::LoadOp::create( rewriter, loc, elemType, allocaOp ).getResult();
                 }
             }
 
@@ -505,19 +504,20 @@ namespace silly
                 }
 
                 mlir::LLVM::ConstantOp indexVal =
-                    rewriter.create<mlir::LLVM::ConstantOp>( argLoc, lState.typ.i64, rewriter.getI64IntegerAttr( i ) );
-                mlir::LLVM::GEPOp slotPtr = rewriter.create<mlir::LLVM::GEPOp>(
-                    argLoc, lState.typ.ptr, lState.printArgStructTy, arrayAlloca, mlir::ValueRange{ indexVal } );
+                    mlir::LLVM::ConstantOp::create( rewriter, argLoc, lState.typ.i64, rewriter.getI64IntegerAttr( i ) );
+                mlir::LLVM::GEPOp slotPtr =
+                    mlir::LLVM::GEPOp::create( rewriter, argLoc, lState.typ.ptr, lState.printArgStructTy, arrayAlloca,
+                                               mlir::ValueRange{ indexVal } );
 
-                rewriter.create<mlir::LLVM::StoreOp>( argLoc, argStruct, slotPtr );
+                mlir::LLVM::StoreOp::create( rewriter, argLoc, argStruct, slotPtr );
             }
 
             // Final call
-            mlir::LLVM::ConstantOp numArgsConst = rewriter.create<mlir::LLVM::ConstantOp>(
-                argLoc, lState.typ.i32, rewriter.getI32IntegerAttr( numArgs ) );
+            mlir::LLVM::ConstantOp numArgsConst = mlir::LLVM::ConstantOp::create(
+                rewriter, argLoc, lState.typ.i32, rewriter.getI32IntegerAttr( numArgs ) );
 
-            rewriter.create<mlir::func::CallOp>( loc, mlir::TypeRange{}, "__silly_print",
-                                                 mlir::ValueRange{ numArgsConst, arrayAlloca } );
+            mlir::func::CallOp::create( rewriter, loc, mlir::TypeRange{}, "__silly_print",
+                                        mlir::ValueRange{ numArgsConst, arrayAlloca } );
 
             rewriter.eraseOp( op );
             return mlir::success();
@@ -621,7 +621,7 @@ namespace silly
                     return mlir::failure();
                 }
 
-                result = rewriter.create<mlir::LLVM::SubOp>( loc, zero, result );
+                result = mlir::LLVM::SubOp::create( rewriter, loc, zero, result );
             }
             else if ( mlir::FloatType resultf = mlir::dyn_cast<mlir::FloatType>( result.getType() ) )
             {
@@ -641,7 +641,7 @@ namespace silly
                                            result.getType() ) );
                 }
 
-                result = rewriter.create<mlir::LLVM::FSubOp>( loc, zero, result );
+                result = mlir::LLVM::FSubOp::create( rewriter, loc, zero, result );
             }
             else
             {
@@ -671,18 +671,18 @@ namespace silly
 
                 if ( rwidth > width )
                 {
-                    lhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, resultType, lhs );
+                    lhs = mlir::LLVM::ZExtOp::create( rewriter, loc, resultType, lhs );
                 }
                 else if ( rwidth < width )
                 {
-                    lhs = rewriter.create<mlir::LLVM::TruncOp>( loc, resultType, lhs );
+                    lhs = mlir::LLVM::TruncOp::create( rewriter, loc, resultType, lhs );
                 }
             }
             else if ( lState.isTypeFloat( lhs.getType() ) )
             {
                 if ( allowFloat )
                 {
-                    lhs = rewriter.create<mlir::LLVM::FPToSIOp>( loc, resultType, lhs );
+                    lhs = mlir::LLVM::FPToSIOp::create( rewriter, loc, resultType, lhs );
                 }
                 else
                 {
@@ -696,18 +696,18 @@ namespace silly
 
                 if ( rwidth > width )
                 {
-                    rhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, resultType, rhs );
+                    rhs = mlir::LLVM::ZExtOp::create( rewriter, loc, resultType, rhs );
                 }
                 else if ( rwidth < width )
                 {
-                    rhs = rewriter.create<mlir::LLVM::TruncOp>( loc, resultType, rhs );
+                    rhs = mlir::LLVM::TruncOp::create( rewriter, loc, resultType, rhs );
                 }
             }
             else if ( lState.isTypeFloat( rhs.getType() ) )
             {
                 if ( allowFloat )
                 {
-                    rhs = rewriter.create<mlir::LLVM::FPToSIOp>( loc, resultType, rhs );
+                    rhs = mlir::LLVM::FPToSIOp::create( rewriter, loc, resultType, rhs );
                 }
                 else
                 {
@@ -715,7 +715,7 @@ namespace silly
                 }
             }
 
-            llvmIOpType result = rewriter.create<llvmIOpType>( loc, lhs, rhs );
+            llvmIOpType result = llvmIOpType::create( rewriter, loc, lhs, rhs );
             rewriter.replaceOp( op, result );
         }
         else if ( allowFloat )
@@ -727,11 +727,11 @@ namespace silly
 
                 if ( width == 1 )
                 {
-                    lhs = rewriter.create<mlir::LLVM::UIToFPOp>( loc, resultType, lhs );
+                    lhs = mlir::LLVM::UIToFPOp::create( rewriter, loc, resultType, lhs );
                 }
                 else
                 {
-                    lhs = rewriter.create<mlir::LLVM::SIToFPOp>( loc, resultType, lhs );
+                    lhs = mlir::LLVM::SIToFPOp::create( rewriter, loc, resultType, lhs );
                 }
             }
             if ( mlir::IntegerType rTyI = mlir::dyn_cast<mlir::IntegerType>( rhs.getType() ) )
@@ -740,11 +740,11 @@ namespace silly
 
                 if ( width == 1 )
                 {
-                    rhs = rewriter.create<mlir::LLVM::UIToFPOp>( loc, resultType, rhs );
+                    rhs = mlir::LLVM::UIToFPOp::create( rewriter, loc, resultType, rhs );
                 }
                 else
                 {
-                    rhs = rewriter.create<mlir::LLVM::SIToFPOp>( loc, resultType, rhs );
+                    rhs = mlir::LLVM::SIToFPOp::create( rewriter, loc, resultType, rhs );
                 }
             }
 
@@ -753,7 +753,7 @@ namespace silly
                 lState.markMathLibRequired();
             }
 
-            llvmFOpType result = rewriter.create<llvmFOpType>( loc, lhs, rhs );
+            llvmFOpType result = llvmFOpType::create( rewriter, loc, lhs, rhs );
             rewriter.replaceOp( op, result );
         }
         else
@@ -870,22 +870,22 @@ namespace silly
             {
                 if ( lwidth == 1 )
                 {
-                    lhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, rTyI, lhs );
+                    lhs = mlir::LLVM::ZExtOp::create( rewriter, loc, rTyI, lhs );
                 }
                 else
                 {
-                    lhs = rewriter.create<mlir::LLVM::SExtOp>( loc, rTyI, lhs );
+                    lhs = mlir::LLVM::SExtOp::create( rewriter, loc, rTyI, lhs );
                 }
             }
             else if ( rwidth < lwidth )
             {
                 if ( rwidth == 1 )
                 {
-                    rhs = rewriter.create<mlir::LLVM::ZExtOp>( loc, lTyI, rhs );
+                    rhs = mlir::LLVM::ZExtOp::create( rewriter, loc, lTyI, rhs );
                 }
                 else
                 {
-                    rhs = rewriter.create<mlir::LLVM::SExtOp>( loc, lTyI, rhs );
+                    rhs = mlir::LLVM::SExtOp::create( rewriter, loc, lTyI, rhs );
                 }
             }
             else if ( ( rwidth == lwidth ) && ( rwidth == 1 ) )
@@ -893,7 +893,7 @@ namespace silly
                 pred = ICmpPredU;
             }
 
-            IOpType cmp = rewriter.create<IOpType>( loc, pred, lhs, rhs );
+            IOpType cmp = IOpType::create( rewriter, loc, pred, lhs, rhs );
             rewriter.replaceOp( op, cmp.getResult() );
         }
         else if ( lTyF && rTyF )
@@ -903,14 +903,14 @@ namespace silly
 
             if ( lwidth < rwidth )
             {
-                lhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, rTyF, lhs );
+                lhs = mlir::LLVM::FPExtOp::create( rewriter, loc, rTyF, lhs );
             }
             else if ( rwidth < lwidth )
             {
-                rhs = rewriter.create<mlir::LLVM::FPExtOp>( loc, lTyF, rhs );
+                rhs = mlir::LLVM::FPExtOp::create( rewriter, loc, lTyF, rhs );
             }
 
-            FOpType cmp = rewriter.create<FOpType>( loc, FCmpPred, lhs, rhs );
+            FOpType cmp = FOpType::create( rewriter, loc, FCmpPred, lhs, rhs );
             rewriter.replaceOp( op, cmp.getResult() );
         }
         else
@@ -920,22 +920,22 @@ namespace silly
             {
                 if ( lTyI == lState.typ.i1 )
                 {
-                    lhs = rewriter.create<mlir::arith::UIToFPOp>( loc, rTyF, lhs );
+                    lhs = mlir::arith::UIToFPOp::create( rewriter, loc, rTyF, lhs );
                 }
                 else
                 {
-                    lhs = rewriter.create<mlir::arith::SIToFPOp>( loc, rTyF, lhs );
+                    lhs = mlir::arith::SIToFPOp::create( rewriter, loc, rTyF, lhs );
                 }
             }
             else if ( rTyI && lTyF )
             {
                 if ( rTyI == lState.typ.i1 )
                 {
-                    rhs = rewriter.create<mlir::arith::UIToFPOp>( loc, lTyF, rhs );
+                    rhs = mlir::arith::UIToFPOp::create( rewriter, loc, lTyF, rhs );
                 }
                 else
                 {
-                    rhs = rewriter.create<mlir::arith::SIToFPOp>( loc, lTyF, rhs );
+                    rhs = mlir::arith::SIToFPOp::create( rewriter, loc, lTyF, rhs );
                 }
             }
             else
@@ -943,7 +943,7 @@ namespace silly
                 return rewriter.notifyMatchFailure( op, "Unsupported type combination" );
             }
 
-            FOpType cmp = rewriter.create<FOpType>( loc, FCmpPred, lhs, rhs );
+            FOpType cmp = FOpType::create( rewriter, loc, FCmpPred, lhs, rhs );
             rewriter.replaceOp( op, cmp.getResult() );
         }
 
