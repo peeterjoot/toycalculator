@@ -901,6 +901,7 @@ silly --imports callee.mlirbc callmod.silly -o program
 * No qualified names, namespaces, visibility control (public/private), or cycle detection yet
 * No automatic search paths — the exact file must be named on the command line
 * Imported modules are compiled in two phases: prototypes first (for name resolution), bodies later (after main code is processed)
+* Name conflicts between imported modules are undefined
 
 Ideas for future refinement include support for multiple imports, filesystem-based module discovery, and more robust dependency handling. See [TODO](Docs/TODO.md), and [module design notes](Docs/module_import_design.md) for additional details.
 

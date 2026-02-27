@@ -89,14 +89,17 @@ namespace silly
 
         /// Emit object code (.o file) from the optimized LLVM module.
         ///
-        /// @param outputFilename[out] Path where the object file will be written
+        /// @param outputFilename [out] Path where the object file will be written
         void serializeObjectCode( const llvm::SmallString<128>& outputFilename );
 
+        /// Return a raw-pointer to the current silly dialect module.
         mlir::ModuleOp getModule() { return rmod.get(); }
 
        private:
+        /// back reference to the owning SourceManager
         silly::SourceManager & sm;
 
+        /// convienience reference to the SourceManager driver state.
         silly::DriverState& ds;
 
         /// MLIR context for this compilation unit

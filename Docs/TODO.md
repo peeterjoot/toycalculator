@@ -15,7 +15,6 @@ Next steps:
 - ctest coverage for IMPORT when a function is already prototyped (should be skipped).
 - ctest coverage for multiple sources all doing IMPORT of the same module.
 - ctest coverage for repeated IMPORT (allow it, but the walk should not add anything, or have bad side effects.)
-- new SourceManager needs a bunch of doxygen markup.
 - ctest for `MAIN` anywhere?
 
 #### Driver
@@ -77,7 +76,7 @@ i.e.: should be able to do something like:
 * Run include-what-you-use on lowering.cpp/driver.cpp/CompilationUnit.cpp (post refactoring cleanup.)  Will probably have to build it.
 * Consider an error if prototype and definition have mismatched signatures (types, return, etc.) — currently probably crashes or silent mismatch; add sema check later (right now only check number of parameters, not return, nor types.)
 * What were the test dependencies on `--emit-llvm --emit-mlir` in add_endtoend_compile_tests?  Would make more sense to only do that when desired (that's a holdover from the switch from testit as the test driver.)
-
+* sema check (eventually): enforce "RETURN must be last"
 
 #### Lowering
 

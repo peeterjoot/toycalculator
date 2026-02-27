@@ -152,6 +152,7 @@ namespace silly
     {
        public:
         /// Constructor.
+        /// @param s [in] Owning SourceManager (used for IMPORT module lookup.)
         /// @param filename [in] Source filename for this module (used to construct Location info)
         ParseListener( silly::SourceManager & s, const std::string &filename );
 
@@ -247,13 +248,13 @@ namespace silly
 
        private:
 
+        /// back reference to the owning SourceManager (used for IMPORT module lookup)
         silly::SourceManager &sm;
 
         /// Compilation command line options and other stuff
-        ///
-        /// (
         DriverState &driverState;
 
+        /// The path to the source being processed.
         const std::string &sourceFile;
 
         /// Context for all the loaded dialects.
