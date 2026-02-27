@@ -943,6 +943,15 @@ namespace silly
 
         builder.restoreInsertionPoint( mainIP );
 
+        if ( SillyParser::ScopedStatementsContext *scope = ctx->scopedStatements() )
+        {
+            if ( !scope->returnStatement() )
+            {
+                mlir::Location loc = getStopLocation( scope );
+                emitUserError( loc, "Function must have a RETURN statement", currentFuncName );
+            }
+        }
+
         currentFuncName = ENTRY_SYMBOL_NAME;
     }
 

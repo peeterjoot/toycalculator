@@ -20,6 +20,15 @@ Next steps:
 
 #### Driver
 
+* Outdir not respected by -o
+
+```
+silly -c --emit-mlir --output-directory o callee.silly
+silly --imports o/callee.mlirbc --output-directory o callmod.silly -o program
+```
+
+ends up in ./program
+
 * Want round trip ctesting for .mlir/.mlirbc write/parse.
 
   AIM: option handling something somewhat clang like:
@@ -231,7 +240,6 @@ tests/dialect/lit.cfg.py:15:    os.path.join(config.test_source_root, "..", ".."
 * All the runtime functions should take location context to show where in the users code the error was, if one happens (i.e.: GET functions)
 * Move scf lowering into 1st pass?  Attempt at this in xpgn:streamline-passes-attempt branch (not pushed.)
 * Lots of cut and paste duplication for type conversion in lowering.cpp -- split out into helper functions.
-* Final version of ELIF support meant that I didn't need getStopLocation() anymore (was using it to generate scf.yield with the end of the block location).
 * merge these?
 
 ----------------------------------

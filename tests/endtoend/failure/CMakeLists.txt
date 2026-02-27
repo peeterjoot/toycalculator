@@ -46,6 +46,7 @@ set(FAILURE_TESTS
     error_stringreturn.silly
     error_triple_nested_for_with_shadowing.silly
     error_undeclare.silly
+    function_without_return.silly
 )
 
 add_endtoend_failure_tests("EndToEnd.failure" ${FAILURE_TESTS})

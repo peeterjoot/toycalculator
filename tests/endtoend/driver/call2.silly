@@ -1,0 +1,7 @@
+IMPORT callee; // foo, bar
+IMPORT mod2; // blah
+
+CALL bar( 3 );
+CALL blah( );
+
+PRINT "done";

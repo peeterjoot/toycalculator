@@ -888,14 +888,14 @@ PRINT "Back in main again, rc = ", rc;
 silly --imports callee.silly callmod.silly -o program
 
 # or with separate compilation steps:
-silly -c --emit-mlirbc callee.silly
-silly --import callee.mlirbc callmod.silly -o program
+silly -c --emit-mlir callee.silly
+silly --imports callee.mlirbc callmod.silly -o program
 ```
 
 ### Current limitations & status (early prototype):
 
 * A `MODULE` source has only functions, no variables and no "main".
-* Only one imported module is supported (specified via `--imports <file>`)
+* Every `IMPORT` module must be specified in a `--imports <file>` command line option.
 * The imported file can be .silly source, textual .mlir, or binary .mlirbc
 * `IMPORT` creates function prototypes automatically from all `FUNCTION` definitions in the imported module
 * No qualified names, namespaces, visibility control (public/private), or cycle detection yet

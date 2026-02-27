@@ -10,7 +10,6 @@
 
 Have a primative, but working module import system:
 
-* only supports one named module (so far.)
 * must name that module with --imports.
 
 Processing algorithm:

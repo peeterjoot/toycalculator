@@ -1,0 +1,4 @@
+function_without_return.silly: In function ‘blah’:
+function_without_return.silly:8:1: error: Function must have a RETURN statement
+    8 | };
+      | ^

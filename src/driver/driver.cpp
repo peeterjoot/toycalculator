@@ -8,6 +8,7 @@
 /// - runs the antlr4 parse tree listener (w/ MLIR builder),
 /// - runs the LLVM-IR lowering pass, and
 /// - runs the assembly printer.
+#include <llvm/Support/CommandLine.h>
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/InitLLVM.h>
 #include <llvm/Support/Path.h>
@@ -53,10 +54,9 @@ static llvm::cl::opt<std::string> oName( "o", llvm::cl::desc( "Executable or obj
                                          llvm::cl::value_desc( "filename" ), llvm::cl::init( "" ),
                                          llvm::cl::cat( SillyCategory ) );
 
-static llvm::cl::opt<std::string> imports( "imports",
-                                           llvm::cl::desc( "comma separated list of pre-compiled import modules" ),
-                                           llvm::cl::value_desc( "csv" ), llvm::cl::init( "" ),
-                                           llvm::cl::cat( SillyCategory ) );
+static llvm::cl::list<std::string> imports(
+    "imports", llvm::cl::desc( "IMPORT module source or MLIR text/binary (may be specified multiple times)" ),
+    llvm::cl::value_desc( "file" ), llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<bool> emitMLIR(
     "emit-mlir",
@@ -185,7 +185,6 @@ int main( int argc, char** argv )
 
     ds.outDir = outDir;
     ds.oName = oName;
-    ds.imports = imports;
     ds.initFillValue = (uint8_t)initFillValue;
     switch ( optLevel )
     {
@@ -213,9 +212,9 @@ int main( int argc, char** argv )
 
     silly::SourceManager sm( ds, &dialectLoader.context, files[0] );
 
-    if ( !ds.imports.empty() )
+    for ( const auto& importModuleName : imports )
     {
-        auto& cup = sm.createCU( ds.imports );
+        auto& cup = sm.createCU( importModuleName );
 
         // Go as far as mlir::ModuleOp creation, but don't lower to llvm (yet):
         sm.createAndSerializeMLIR( cup );
@@ -235,9 +234,9 @@ int main( int argc, char** argv )
         }
     }
 
-    if ( !ds.imports.empty() )
+    for ( const auto& importModuleName : imports )
     {
-        auto & cup = sm.findCU( ds.imports );
+        auto& cup = sm.findCU( importModuleName );
 
         bool moreToDo = sm.createAndSerializeLLVM( cup );
 

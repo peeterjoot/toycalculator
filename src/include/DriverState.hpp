@@ -37,7 +37,6 @@ namespace silly
 
         std::string outDir{}; ///< --output-directory
         std::string oName{}; ///< -o
-        std::string imports{}; ///< --imports
         uint8_t initFillValue{}; ///< --init-fill value if specified (zero otherwise.)
         llvm::OptimizationLevel opt{}; ///< -O[0123], mapped from silly::OptLevel to llvm::OptimizationLevel
 
