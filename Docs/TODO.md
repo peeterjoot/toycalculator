@@ -19,6 +19,7 @@ Next steps:
 
 #### Driver
 
+* -c --emit-llvm* is still outputting the .o
 * Outdir not respected by -o
 
 ```
@@ -31,10 +32,10 @@ ends up in ./program
 * Want round trip ctesting for .mlir/.mlirbc write/parse.
 
   AIM: option handling something somewhat clang like:
-  - -S -emit-llvm (.ll) -- TODO
+  - -S -emit-llvm (.ll)
   - -S [-emit-mlir] (.mlir)
   - -c -emit-mlir (.mlirbc)
-  - -c -emit-llvm (.bc) -- TODO
+  - -c -emit-llvm (.bc)
   - -emit-llvm (.ll plus regular compilation)
   - -emit-mlir (.mlir plus regular compilation)
 

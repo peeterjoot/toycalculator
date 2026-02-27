@@ -38,8 +38,8 @@ namespace silly
         MLIR,      // .mlir, or .sir
         MLIRBC,    // .mlirbc, or .sirbc
         OBJECT,    // .o
-        //LLVMLL,    // .ll -- future?
-        //LLVMBC,    // .bc -- future?
+        LLVMLL,    // .ll
+        LLVMBC,    // .bc
         Unknown
     };
 
@@ -133,5 +133,10 @@ namespace silly
         ///
         /// Saves the parsed module to rmod as a side effect.
         void parseMLIRFile( const std::string & mlirSourceName );
+
+        /// Parse a .ll or .bc file
+        ///
+        /// Saves the parsed module to rmod as a side effect.
+        void parseLLVMFile( const std::string& llvmSourceName );
     };
 }    // namespace silly

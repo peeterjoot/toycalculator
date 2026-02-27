@@ -66,11 +66,11 @@ static llvm::cl::opt<bool> emitMLIR(
 static llvm::cl::opt<bool> emitMLIRBC( "emit-mlirbc", llvm::cl::desc( "Emit MLIR BC for the silly dialect" ),
                                        llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
-static llvm::cl::opt<bool> emitLLVM( "emit-llvm", llvm::cl::desc( "Emit LLVM IR" ), llvm::cl::init( false ),
+static llvm::cl::opt<bool> emitLLVM( "emit-llvm", llvm::cl::desc( "Emit LLVM-IR in text format" ), llvm::cl::init( false ),
                                      llvm::cl::cat( SillyCategory ) );
 
-static llvm::cl::opt<bool> toStdout( "stdout", llvm::cl::desc( "LLVM and MLIR on stdout instead of to a file" ),
-                                     llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+static llvm::cl::opt<bool> emitLLVMBC( "emit-llvmbc", llvm::cl::desc( "Emit LLVM-IR BC" ), llvm::cl::init( false ),
+                                       llvm::cl::cat( SillyCategory ) );
 
 ////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -174,8 +174,13 @@ int main( int argc, char** argv )
         ds.emitMLIR = false;
         ds.emitMLIRBC = true;
     }
+    if ( ds.emitLLVM and ds.compileOnly )
+    {
+        ds.emitLLVM = false;
+        ds.emitLLVMBC = true;
+    }
     ds.emitLLVM = emitLLVM;
-    ds.toStdout = toStdout;
+    ds.emitLLVMBC = emitLLVMBC;
     ds.noAbortPath = noAbortPath;
     ds.debugInfo = debugInfo;
     ds.verboseLink = verboseLink;

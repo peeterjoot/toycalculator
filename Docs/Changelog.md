@@ -88,6 +88,7 @@ Back in main again, rc = 42
 ## Driver
 
 * Implemented --no-verbose-parse-error.
+* Implemented --emit-llvmbc, and round trip support for both .ll and .bc
 
 ## Testing & Quality
 

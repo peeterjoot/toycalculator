@@ -3,10 +3,12 @@
 /// @brief   Silly compiler handling of a single compilation unit.
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/StringRef.h>
+#include <llvm/Bitcode/BitcodeWriter.h>
 #include <llvm/IR/DebugProgramInstruction.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/PassManager.h>
 #include <llvm/IR/Verifier.h>
+#include <llvm/IRReader/IRReader.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/CommandLine.h>
@@ -94,6 +96,10 @@ namespace silly
             parseMLIRFile( sourceFileName );
             mod = rmod.get();
         }
+        else if ( ( ity == InputType::LLVMLL ) || ( ity == InputType::LLVMBC ) )
+        {
+            parseLLVMFile( sourceFileName );
+        }
 
         if ( mod )
         {
@@ -110,75 +116,72 @@ namespace silly
     {
         mlir::ModuleOp mod = rmod.get();
 
-        // Register dialect translations
-        mlir::registerLLVMDialectTranslation( *context );
-        mlir::registerBuiltinDialectTranslation( *context );
-
-        if ( ds.llvmDEBUG )
+        if ( mod )
         {
-            context->disableMultithreading( true );
+            // Register dialect translations
+            mlir::registerLLVMDialectTranslation( *context );
+            mlir::registerBuiltinDialectTranslation( *context );
+
+            if ( ds.llvmDEBUG )
+            {
+                context->disableMultithreading( true );
+            }
+
+            // Set up pass manager for lowering
+            mlir::PassManager pm( context );
+            if ( ds.llvmDEBUG )
+            {
+                pm.enableIRPrinting();
+            }
+
+            LLVM_DEBUG( {
+                llvm::errs() << "IR before stage I lowering:\n";
+                mod->dump();
+            } );
+
+            pm.addPass( mlir::createSillyToLLVMLoweringPass( &ds ) );
+            pm.addPass( mlir::createSCFToControlFlowPass() );
+            pm.addPass( mlir::createFinalizeMemRefToLLVMConversionPass() );
+            pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
+
+            if ( llvm::failed( pm.run( mod ) ) )
+            {
+                llvm::errs() << "IR after stage I lowering failure:\n";
+                mod->dump();
+                llvm::errs() << COMPILER_NAME ": error: Stage I LLVM lowering failed\n";
+                fatalDriverError( ReturnCodes::loweringError );
+            }
+
+            mlir::PassManager pm2( context );
+            if ( ds.llvmDEBUG )
+            {
+                pm2.enableIRPrinting();
+            }
+
+            pm2.addPass( mlir::createConvertFuncToLLVMPass() );
+
+            if ( llvm::failed( pm2.run( mod ) ) )
+            {
+                llvm::errs() << "IR after stage II lowering failure:\n";
+                mod->dump();
+                llvm::errs() << COMPILER_NAME ": error: Stage II LLVM lowering failed\n";
+                fatalDriverError( ReturnCodes::loweringError );
+            }
+
+            // The module should now contain mostly LLVM-IR instructions, with the exception of the top level module,
+            // and the MLIR style loc() references.  Those last two MLIR artifacts will be convered to LLVM-IR
+            // now, also producing !DILocation's for all the loc()s.
+            //
+            // The filename parameter is fed to these two lines, overriding the following default:
+            //
+            // ; ModuleID = 'LLVMDialectModule'
+            // source_filename = "LLVMDialectModule"
+            llvmModule = mlir::translateModuleToLLVMIR( mod, llvmContext, llvmSourceFilename );
         }
-
-        // Set up pass manager for lowering
-        mlir::PassManager pm( context );
-        if ( ds.llvmDEBUG )
-        {
-            pm.enableIRPrinting();
-        }
-
-        LLVM_DEBUG( {
-            llvm::errs() << "IR before stage I lowering:\n";
-            mod->dump();
-        } );
-
-        pm.addPass( mlir::createSillyToLLVMLoweringPass( &ds ) );
-        pm.addPass( mlir::createSCFToControlFlowPass() );
-        pm.addPass( mlir::createFinalizeMemRefToLLVMConversionPass() );
-        pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
-
-        if ( llvm::failed( pm.run( mod ) ) )
-        {
-            llvm::errs() << "IR after stage I lowering failure:\n";
-            mod->dump();
-            llvm::errs() << COMPILER_NAME ": error: Stage I LLVM lowering failed\n";
-            fatalDriverError( ReturnCodes::loweringError );
-        }
-
-        mlir::PassManager pm2( context );
-        if ( ds.llvmDEBUG )
-        {
-            pm2.enableIRPrinting();
-        }
-
-        pm2.addPass( mlir::createConvertFuncToLLVMPass() );
-
-        if ( llvm::failed( pm2.run( mod ) ) )
-        {
-            llvm::errs() << "IR after stage II lowering failure:\n";
-            mod->dump();
-            llvm::errs() << COMPILER_NAME ": error: Stage II LLVM lowering failed\n";
-            fatalDriverError( ReturnCodes::loweringError );
-        }
-
-        if ( ds.toStdout )
-        {
-            llvm::outs() << "Before module lowering:\n";
-            mod.print( llvm::outs(), flags );
-        }
-
-        // The module should now contain mostly LLVM-IR instructions, with the exception of the top level module,
-        // and the MLIR style loc() references.  Those last two MLIR artifacts will be convered to LLVM-IR
-        // now, also producing !DILocation's for all the loc()s.
-        //
-        // The filename parameter is fed to these two lines, overriding the following default:
-        //
-        // ; ModuleID = 'LLVMDialectModule'
-        // source_filename = "LLVMDialectModule"
-        llvmModule = mlir::translateModuleToLLVMIR( mod, llvmContext, llvmSourceFilename );
 
         if ( !llvmModule )
         {
-            llvm::errs() << COMPILER_NAME ": error: Failed to translate to LLVM IR\n";
+            llvm::errs() << COMPILER_NAME ": error: Failed to translate to LLVM IR or parse supplied LLVM IR\n";
             fatalDriverError( ReturnCodes::loweringError );
         }
 
@@ -215,22 +218,34 @@ namespace silly
             fatalDriverError( ReturnCodes::loweringError );
         }
 
-        // Optimize the module (optional)
-        llvm::PassBuilder passBuilder( targetMachine.get() );
-        llvm::LoopAnalysisManager LAM;
-        llvm::FunctionAnalysisManager FAM;
-        llvm::CGSCCAnalysisManager CGAM;
-        llvm::ModuleAnalysisManager MAM;
+        // Claude:
+        //   At O0, buildPerModuleDefaultPipeline returns a nearly empty pass pipeline — it's essentially a no-op in terms
+        //   of optimization. However it's not completely inert; it still runs a few mandatory passes:
+        //
+        //   * Annotation-to-metadata lowering — converts LLVM IR annotations to metadata, required for correctness.
+        //   * CoroEarly / CoroCleanup — coroutine lowering passes, which are structural rather than optimizing.
+        //   * Verifier — validates the IR is well-formed."
+        //
+        // Omitted entirely at O0 to see what differences are observable in the serialized LL:
+        if ( ds.opt != llvm::OptimizationLevel::O0 )
+        {
+            // Optimize the module (optional)
+            llvm::PassBuilder passBuilder( targetMachine.get() );
+            llvm::LoopAnalysisManager LAM;
+            llvm::FunctionAnalysisManager FAM;
+            llvm::CGSCCAnalysisManager CGAM;
+            llvm::ModuleAnalysisManager MAM;
 
-        passBuilder.registerModuleAnalyses( MAM );
-        passBuilder.registerCGSCCAnalyses( CGAM );
-        passBuilder.registerFunctionAnalyses( FAM );
-        passBuilder.registerLoopAnalyses( LAM );
-        passBuilder.crossRegisterProxies( LAM, FAM, CGAM, MAM );
+            passBuilder.registerModuleAnalyses( MAM );
+            passBuilder.registerCGSCCAnalyses( CGAM );
+            passBuilder.registerFunctionAnalyses( FAM );
+            passBuilder.registerLoopAnalyses( LAM );
+            passBuilder.crossRegisterProxies( LAM, FAM, CGAM, MAM );
 
-        llvm::ModulePassManager MPM = passBuilder.buildPerModuleDefaultPipeline( ds.opt );
+            llvm::ModulePassManager MPM = passBuilder.buildPerModuleDefaultPipeline( ds.opt );
 
-        MPM.run( *llvmModule, MAM );
+            MPM.run( *llvmModule, MAM );
+        }
     }
 
     InputType CompilationUnit::getInputType( llvm::StringRef filename )
@@ -242,9 +257,19 @@ namespace silly
             return InputType::MLIR;
         }
 
+        if ( ext == ".ll" )
+        {
+            return InputType::LLVMLL;
+        }
+
         if ( ext == ".mlirbc" || ext == ".sirbc" )
         {
             return InputType::MLIRBC;
+        }
+
+        if ( ext == ".bc" )
+        {
+            return InputType::LLVMBC;
         }
 
         if ( ext == ".silly" )
@@ -268,11 +293,7 @@ namespace silly
             return;
         }
 
-        if ( ds.emitMLIR and ds.toStdout )
-        {
-            mod.print( llvm::outs(), flags );
-        }
-        else if ( ds.emitMLIR or ds.emitMLIRBC )
+        if ( ds.emitMLIR or ds.emitMLIRBC )
         {
             std::error_code EC;
             llvm::raw_fd_ostream out( mlirOutputName.str(), EC,
@@ -310,29 +331,38 @@ namespace silly
     void CompilationUnit::serializeModuleLLVMIR( const llvm::SmallString<128>& llvmOuputFile )
     {
         // Dump the pre-optimized LL if we aren't creating a .o
-        if ( !ds.emitLLVM )
+        if ( !( ds.emitLLVM || ds.emitLLVMBC ) )
         {
             return;
         }
 
-        if ( ds.toStdout )
+        std::error_code EC;
+        llvm::raw_fd_ostream out( llvmOuputFile.str(), EC,
+                                  ds.emitLLVMBC ? llvm::sys::fs::OF_None : llvm::sys::fs::OF_Text );
+        if ( EC )
         {
-            llvmModule->print( llvm::outs(), nullptr, ds.debugInfo /* print debug info */ );
+            // FIXME: probably want llvm::formatv here and elsewhere to avoid the std::string casting hack (assuming
+            // it knows how to deal with StringRef)
+            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open file '{}': {}\n",
+                                         std::string( llvmOuputFile ), EC.message() );
+            fatalDriverError( ReturnCodes::openError );
+        }
+
+        if ( ds.emitLLVMBC )
+        {
+            llvm::WriteBitcodeToFile( *llvmModule, out );
         }
         else
         {
-            std::error_code EC;
-            llvm::raw_fd_ostream out( llvmOuputFile.str(), EC, llvm::sys::fs::OF_Text );
-            if ( EC )
-            {
-                // FIXME: probably want llvm::formatv here and elsewhere to avoid the std::string casting hack (assuming
-                // it knows how to deal with StringRef)
-                llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open file '{}': {}\n",
-                                             std::string( llvmOuputFile ), EC.message() );
-                fatalDriverError( ReturnCodes::openError );
-            }
-
             llvmModule->print( out, nullptr, ds.debugInfo /* print debug info */ );
+        }
+
+        out.close();
+        if ( out.has_error() )
+        {
+            llvm::errs() << std::format( COMPILER_NAME ": error: Write error on '{}': {}\n",
+                                         std::string( llvmOuputFile ), out.error().message() );
+            fatalDriverError( ReturnCodes::openError );
         }
     }
 
@@ -380,6 +410,18 @@ namespace silly
         {
             // TODO: coverage
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to parse MLIR file '{}'\n", mlirSourceName );
+            fatalDriverError( ReturnCodes::parseError );
+        }
+    }
+
+    void CompilationUnit::parseLLVMFile( const std::string& llvmSourceName )
+    {
+        llvm::SMDiagnostic err;
+        llvmModule = llvm::parseIRFile( llvmSourceName, err, llvmContext );
+        if ( !llvmModule )
+        {
+            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to parse IR file '{}': {}\n", llvmSourceName,
+                                         err.getMessage().str() );
             fatalDriverError( ReturnCodes::parseError );
         }
     }

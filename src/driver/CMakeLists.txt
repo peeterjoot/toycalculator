@@ -66,6 +66,8 @@ target_link_libraries(silly
   LLVMMC # llvm::TargetRegistry::lookupTarget
   LLVMAnalysis # llvm::AnalysisManager<llvm::LazyCallGraph::SCC, llvm::LazyCallGraph&>::AnalysisManager()
   LLVMPasses
+  LLVMBitWriter
+  LLVMIRReader
   LLVM${LLVM_TARGET_ARCH}AsmParser
   LLVM${LLVM_TARGET_ARCH}CodeGen
   LLVM${LLVM_TARGET_ARCH}Desc

@@ -263,18 +263,38 @@ namespace silly
 
             return false;
         }
+
+        cu->mlirToLLVM( cup.filename );
+
+        llvm::SmallString<128> llvmOutputPath = defaultExecutablePath;
+
+        if ( ds.emitLLVMBC )
+        {
+            llvmOutputPath += ".bc";
+        }
         else
         {
-            cu->mlirToLLVM( cup.filename );
-
-            llvm::SmallString<128> llvmOuputFile = defaultExecutablePath;
-            llvmOuputFile += ".ll";
-            cu->serializeModuleLLVMIR( llvmOuputFile );
-
-            cu->runOptimizationPasses();
-
-            return true;
+            llvmOutputPath += ".ll";
         }
+
+        cu->runOptimizationPasses();
+
+        // Serialize only after any passes have been run.
+        cu->serializeModuleLLVMIR( llvmOutputPath );
+
+        // -S --emit-llvm
+        if ( ds.assembleOnly and ds.emitLLVM )
+        {
+            return false;
+        }
+
+        // -c --emit-llvmbc
+        if ( ds.compileOnly and ds.emitLLVMBC )
+        {
+            return false;
+        }
+
+        return true;
     }
 
     void SourceManager::serializeObject( FileNameAndCU& cup )

@@ -27,7 +27,7 @@ namespace silly
         bool emitMLIR{}; ///< --emit-mlir
         bool emitMLIRBC{}; ///< --emit-mlirbc
         bool emitLLVM{}; ///< --emit-llvm
-        bool toStdout{}; ///< --stdout
+        bool emitLLVMBC{}; ///< --emit-llvmbc
         bool noAbortPath{}; ///< --no-abort-path
         bool debugInfo{}; ///< True if -g is passed.
         bool verboseLink{}; ///< --verbose-link

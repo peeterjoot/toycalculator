@@ -289,15 +289,14 @@ Once built, the compiler driver can be run with `build/bin/silly` with the follo
 
 ### Debug/Hacking Options
 
-* `--emit-llvm` — Emit LLVM IR files
+* `--emit-llvm` — Emit LLVM IR files (text format)
+* `--emit-llvmbc` — Emit LLVM IR files (byte code format)
 * `--emit-mlir` — Emit MLIR files
 * `--emit-mlirbc` — Emit MLIR files in binary format (and proceed to other steps in compilation pipeline)
 * `--debug` — Enable MLIR debug output (built-in option)
 * `-debug-only=silly-driver` — Enable driver-specific debug output
 * `-debug-only=silly-lowering` — Enable lowering-specific debug output
 * `--debug-mlir` — Enable MLIR-specific debugging
-* `--stdout` — Send MLIR and LLVM IR output to stdout instead of files
-* `--no-emit-object` — Skip object file generation
 * `--verbose-link` — Show the link command.  This is implicit if the link fails.
 * `--keep-temp` — Do not delete temporary .o files (and give a message showing the name.)
 * `--no-verbose-parse-error' -- The default parse error message is noisy and lists a number of grammar specific tokens, which requires expected test output updates every time the grammar is changed.  This option inhibits that volatile output, which is still on by default.
@@ -901,7 +900,7 @@ silly --imports callee.mlirbc callmod.silly -o program
 * No qualified names, namespaces, visibility control (public/private), or cycle detection yet
 * No automatic search paths — the exact file must be named on the command line
 * Imported modules are compiled in two phases: prototypes first (for name resolution), bodies later (after main code is processed)
-* Name conflicts between imported modules are undefined
+* If multiple imported modules define functions with the same name, behavior is currently undefined (may result in last-one-wins resolution, link-time errors, or silent overrides). Qualified names or visibility modifiers are planned for future versions.
 
 Ideas for future refinement include support for multiple imports, filesystem-based module discovery, and more robust dependency handling. See [TODO](Docs/TODO.md), and [module design notes](Docs/module_import_design.md) for additional details.
 
