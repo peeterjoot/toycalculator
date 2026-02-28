@@ -37,14 +37,6 @@ i.e.: should be able to do something like:
     silly -c --emit-mlir f.silly -g -o f.sir ; silly -g -o foo f.sir
 ```
 
-  AIM: option handling something somewhat clang like:
-  - -S -emit-llvm (.ll)
-  - -S [-emit-mlir] (.mlir)
-  - -c -emit-mlir (.mlirbc)
-  - -c -emit-llvm (.bc)
-  - -emit-llvm (.ll plus regular compilation)
-  - -emit-mlir (.mlir plus regular compilation)
-
 * CompilationUnit:
  - Reduce use of raw ModuleOp — prefer passing OwningOpRef& or keep it local
 * Respect -o for --emit-mlir or --emit-llvm too (provided both aren't set.)

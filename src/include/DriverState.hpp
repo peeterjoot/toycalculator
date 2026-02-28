@@ -22,7 +22,6 @@ namespace silly
     {
        public:
         bool compileOnly{}; ///< -c
-        bool assembleOnly{}; ///< -S
         bool keepTemps{}; ///< --keep-temp
         bool emitMLIR{}; ///< --emit-mlir
         bool emitMLIRBC{}; ///< --emit-mlirbc

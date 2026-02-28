@@ -45,10 +45,14 @@ namespace silly
         void createAndSerializeMLIR( FileNameAndCU& cup );
 
         /// Lower the MLIR module to LLVM-IR (and emit that as a file if desired.)
+        /// @retval true if LLVM-IR was created (i.e.: more to do)
         bool createAndSerializeLLVM( FileNameAndCU& cup );
 
         /// Write out the object file to disk for the linker (if desired.)
         void serializeObject( FileNameAndCU& cup );
+
+        /// Take the current filename, grab the stem, and add the suffix.  This includes the --output-directory if specified.
+        void constructPathForStem( llvm::SmallString<128> & outputPath, const std::string & sourceName, const char * suffixWithDot );
 
         /// Invoke the system linker to create an executable.
         void link();

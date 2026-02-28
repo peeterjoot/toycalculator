@@ -1,0 +1,6 @@
+// multi-source-with-c-and-o-should-fail.silly
+// Test that silly rejects -c + -o with multiple input sources
+//
+// RUN: %Not silly -c %s d2.silly -o %t.o 2>&1 | %FileCheck %s --check-prefix=ERR
+//
+// ERR: error: command line option -c with -o cannot be used with multiple sources

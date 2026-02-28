@@ -143,7 +143,7 @@ namespace silly
 
     void SourceManager::link()
     {
-        if ( ds.compileOnly or ds.assembleOnly )
+        if ( ds.compileOnly )
         {
             return;
         }
@@ -223,6 +223,38 @@ namespace silly
         }
     }
 
+    void SourceManager::constructPathForStem( llvm::SmallString<128>& outputPath, const std::string& sourceName,
+                                              const char* suffixWithDot )
+    {
+        // FIXME: there is portable LLVM infra for path construction (but I don't currently care about Windows, so "/" is okay for now)
+        if ( !ds.oName.empty() )
+        {
+            // If outputPath is fully qualified, ignore any implicit (constructed from the path of the source) output directory or any explicit --output-directory:
+            if ( !outdir.empty() and (ds.oName[0] != '/') )
+            {
+                outputPath = outdir;
+                outputPath += "/";
+            }
+            outputPath += ds.oName;
+        }
+        else
+        {
+            llvm::StringRef stem = llvm::sys::path::stem( sourceName );
+            if ( !outdir.empty() )
+            {
+                outputPath = outdir;
+                outputPath += "/";
+                outputPath += stem;
+            }
+            else
+            {
+                outputPath += stem;
+            }
+
+            outputPath += suffixWithDot;
+        }
+    }
+
     void SourceManager::createAndSerializeMLIR( FileNameAndCU& cup )
     {
         std::string& filename = cup.filename;
@@ -230,29 +262,20 @@ namespace silly
 
         cu->processSourceFile( filename );
 
-        llvm::SmallString<128> mlirOutputPath = defaultExecutablePath;
-        if ( ds.emitMLIRBC )
-        {
-            mlirOutputPath += ".mlirbc";
-        }
-        else
-        {
-            mlirOutputPath += ".mlir";
-        }
-
+        llvm::SmallString<128> mlirOutputPath;
+        constructPathForStem( mlirOutputPath, filename, ds.emitMLIRBC ? ".mlirbc" : ".mlir" );
         cu->serializeModuleMLIR( mlirOutputPath );
     }
 
-    // return true if LLVM-IR was created (i.e.: more to do)
     bool SourceManager::createAndSerializeLLVM( FileNameAndCU& cup )
     {
         auto cu = cup.pCU;
 
-        // ds.assembleOnly produces the mlir
-        // ds.emitMLIRBC and ds.compileOnly produces the mlirbc
+        // ds.emitMLIR and ds.compileOnly produces the mlir (only, no object)
+        // ds.emitMLIRBC and ds.compileOnly produces the mlirbc (only, no object)
         //
         // -- we are done in either case.
-        if ( ds.assembleOnly or ( ds.emitMLIRBC and ds.compileOnly ) )
+        if ( ( ds.emitMLIRBC or ds.emitMLIR ) and ds.compileOnly )
         {
             return false;
         }
@@ -266,32 +289,20 @@ namespace silly
 
         cu->mlirToLLVM( cup.filename );
 
-        llvm::SmallString<128> llvmOutputPath = defaultExecutablePath;
-
-        if ( ds.emitLLVMBC )
-        {
-            llvmOutputPath += ".bc";
-        }
-        else
-        {
-            llvmOutputPath += ".ll";
-        }
-
         cu->runOptimizationPasses();
 
         // Serialize only after any passes have been run.
+        llvm::SmallString<128> llvmOutputPath;
+        constructPathForStem( llvmOutputPath, cup.filename, ds.emitLLVMBC ? ".bc" : ".ll" );
         cu->serializeModuleLLVMIR( llvmOutputPath );
 
-        // -S --emit-llvm
-        if ( ds.assembleOnly and ds.emitLLVM )
+        // -c --emit-llvm, or -c --emit-llvmbc
+        if ( ds.compileOnly )
         {
-            return false;
-        }
-
-        // -c --emit-llvmbc
-        if ( ds.compileOnly and ds.emitLLVMBC )
-        {
-            return false;
+            if ( ds.emitLLVM or ds.emitLLVMBC )
+            {
+                return false;
+            }
         }
 
         return true;

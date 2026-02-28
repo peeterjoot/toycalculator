@@ -39,10 +39,6 @@ static llvm::cl::list<std::string> inputFilenames( llvm::cl::Positional, llvm::c
 static llvm::cl::opt<bool> compileOnly( "c", llvm::cl::desc( "Compile only and don't link." ), llvm::cl::init( false ),
                                         llvm::cl::cat( SillyCategory ) );
 
-static llvm::cl::opt<bool> assembleOnly( "S",
-                                         llvm::cl::desc( "Assemble only; emit silly dialect textual MLIR and stop." ),
-                                         llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
-
 static llvm::cl::opt<bool> keepTemps( "keep-temp", llvm::cl::desc( "Do not automatically delete temporary files." ),
                                       llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
@@ -161,24 +157,9 @@ int main( int argc, char** argv )
     silly::DriverState ds( argv[0], (void*)&main );
 
     ds.compileOnly = compileOnly;
-    ds.assembleOnly = assembleOnly;
     ds.keepTemps = keepTemps;
     ds.emitMLIR = emitMLIR;
     ds.emitMLIRBC = emitMLIRBC;
-    if ( ds.assembleOnly )
-    {
-        ds.emitMLIR = true;
-    }
-    if ( ds.emitMLIR and ds.compileOnly )
-    {
-        ds.emitMLIR = false;
-        ds.emitMLIRBC = true;
-    }
-    if ( ds.emitLLVM and ds.compileOnly )
-    {
-        ds.emitLLVM = false;
-        ds.emitLLVMBC = true;
-    }
     ds.emitLLVM = emitLLVM;
     ds.emitLLVMBC = emitLLVMBC;
     ds.noAbortPath = noAbortPath;
@@ -207,13 +188,16 @@ int main( int argc, char** argv )
             break;
     }
 
-    if ( ds.compileOnly and ds.assembleOnly )
+    std::vector<std::string>& files = inputFilenames;
+
+    size_t totalSources = inputFilenames.size() + imports.size();
+
+    if ( ds.compileOnly and !ds.oName.empty() and (totalSources > 1) )
     {
-        llvm::errs() << COMPILER_NAME ": error: command line options -S and -c cannot be used together\n";
+        // TODO: coverage:
+        llvm::errs() << COMPILER_NAME ": error: command line option -c with -o cannot be used with multiple sources\n";
         silly::fatalDriverError( ReturnCodes::badOption );
     }
-
-    std::vector<std::string>& files = inputFilenames;
 
     silly::SourceManager sm( ds, &dialectLoader.context, files[0] );
 

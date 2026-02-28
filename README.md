@@ -278,9 +278,11 @@ Once built, the compiler driver can be run with `build/bin/silly` with the follo
 
 * `-g` — Show MLIR location info in dumps and lowered LLVM IR
 * `-O[0123]` — Optimization level (standard)
-* `-c` — Compile only (don't link)
-* `-c --emit-mlir` — Compile only (to .mlirbc) (don't link)
-* `-S` — Assemble only (to .mlir) (don't link)
+* `-c` — Compile only, producing .o (don't link)
+* `-c --emit-mlir` — Compile only (to text .mlir) (don't link, or create object)
+* `-c --emit-mlirbc` — Compile only (to binary .mlirbc) (don't link, or create object)
+* `-c --emit-llvm` — Compile only (to text LLVM-IR .ll) (don't link, or create object)
+* `-c --emit-llvmbc` — Compile only (to binary LLVM-IR .bc) (don't link, or create object)
 * `-o` — Name of the object (w/ -c) or executable.
 * `--init-fill nnn` — Set fill character for stack variables (numeric value ≤ 255). Default is zero-initialized.
 * `--output-directory` — Specify output directory for generated files (.mlir, .ll, .o, executable)
@@ -289,10 +291,10 @@ Once built, the compiler driver can be run with `build/bin/silly` with the follo
 
 ### Debug/Hacking Options
 
-* `--emit-llvm` — Emit LLVM IR files (text format)
-* `--emit-llvmbc` — Emit LLVM IR files (byte code format)
-* `--emit-mlir` — Emit MLIR files
-* `--emit-mlirbc` — Emit MLIR files in binary format (and proceed to other steps in compilation pipeline)
+* `--emit-llvm` — Emit LLVM-IR files (text format)
+* `--emit-llvmbc` — Emit LLVM-IR files (byte code format)
+* `--emit-mlir` — Emit MLIR files (text format)
+* `--emit-mlirbc` — Emit MLIR files (binary format)
 * `--debug` — Enable MLIR debug output (built-in option)
 * `-debug-only=silly-driver` — Enable driver-specific debug output
 * `-debug-only=silly-lowering` — Enable lowering-specific debug output
@@ -892,7 +894,7 @@ PRINT "Back in main again, rc = ", rc;
 silly --imports callee.silly callmod.silly -o program
 
 # or with separate compilation steps:
-silly -c --emit-mlir callee.silly
+silly -c --emit-mlirbc callee.silly
 silly --imports callee.mlirbc callmod.silly -o program
 ```
 
