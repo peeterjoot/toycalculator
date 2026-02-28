@@ -268,7 +268,7 @@ Array `BOOL` values may use a packed bitmask representation in the future.
 * Sample programs in `tests/endtoend/` and a [test driver](bin/testit).  These serve as samples and ctest based test cases.
 * A [build script](bin/build) that runs both cmake and ninja, setting various options.
 * A [mlir-opt wrapper](bin/silly-opt), that loads the silly dialect shared object
-* A set of silly dialect lit tests (`tests/dialect/`) that are used to unit test the dialect verify functions.
+* A set of silly dialect lit tests (`tests/lit/dialect/`) that are used to unit test the dialect verify functions.
 
 ## Command Line Options
 
@@ -401,7 +401,7 @@ Testing is ctest-based. Examples:
 cd build
 ctest -j 3                      # Run the full test suite
 ctest -R EndToEnd --verbose     # Run all the tests/endtoend/ tests.
-ctest -R silly-dialecttests     # Run the low-level dialect verify tests (tests/dialect/)
+ctest -R silly-dialecttests     # Run the low-level dialect verify tests (tests/lit/dialect/)
 ctest -R "EndToEnd.failure"     # Run just the expected-failure tests.
 ```
 

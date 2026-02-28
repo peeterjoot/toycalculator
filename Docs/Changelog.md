@@ -94,6 +94,9 @@ Back in main again, rc = 42
 
 ### Test Coverage Expansion
 
+* Moved tests/dialect to tests/lit/dialect
+* Added tests/lit/driver (one .bc round trip test to start with.)
+
 ### Test Infrastructure Updates
 
 ### Bug Fixes

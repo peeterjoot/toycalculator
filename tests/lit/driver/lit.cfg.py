@@ -1,0 +1,16 @@
+import lit.formats
+
+config.name = "Silly-DriverTests"
+config.test_format = lit.formats.ShTest(execute_external=True)
+
+# Recognize .silly files as tests
+config.suffixes = ['.silly']
+
+# Use the generated site config
+config.test_source_root = os.path.dirname(__file__)
+config.test_exec_root = os.path.join(config.test_source_root, "..", "..", "..", "build", "tests", "lit", "driver")
+
+lit_config.load_config(
+    config,
+    os.path.join(config.test_source_root, "..", "..", "..", "build", "lit.site.cfg.py")
+)

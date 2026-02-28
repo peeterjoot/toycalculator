@@ -19,6 +19,7 @@ Next steps:
 
 #### Driver
 
+* tests/lit/driver/ -- may be implicitly be depending on $PATH to find silly in build/bin/ -- try without that in env to see.
 * Outdir not respected by -o
 
 ```
