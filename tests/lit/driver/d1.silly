@@ -1,10 +1,10 @@
 // To run just this test (noisily): /home/peeter/build-llvm/bin/llvm-lit -v /home/peeter/toycalculator/tests/lit/driver/d1.silly
+// This test required --output-directory as a workaround because -o is ignored with --emit-llvmbc (to be fixed)
+// Once that is implemented, can get rid of %t.dir stuff and the basename, and just use -o (keep a test like this too, for output-directory coverage)
 
 // RUN: mkdir -p %t.dir
 // RUN: rm -f %t.dir/*
 // RUN: silly -c --emit-llvmbc --output-directory %t.dir %s
-// RUN: ls %t.dir
-// RUN: ls -l %t.dir/$(basename %s .silly).bc
 // RUN: %LlvmDis %t.dir/$(basename %s .silly).bc -o - | %FileCheck %s --check-prefix=CHECK-BC
 // RUN: silly %t.dir/$(basename %s .silly).bc --output-directory %t.dir
 // RUN: %t.dir/$(basename %s .silly) | %FileCheck %s --check-prefix=EXEC
