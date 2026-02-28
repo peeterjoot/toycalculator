@@ -89,13 +89,14 @@ Back in main again, rc = 42
 
 * Implemented --no-verbose-parse-error.
 * Implemented --emit-llvmbc, and round trip support for both .ll and .bc
+* Implemented support for -o w/ --emit-llvm, --emit-mlir, ... (also fixing path construction when fully qualified paths used.)
 
 ## Testing & Quality
 
 ### Test Coverage Expansion
 
 * Moved tests/dialect to tests/lit/dialect
-* Added tests/lit/driver (one .bc round trip test to start with.)
+* Added tests/lit/driver, with round trip tests for -c (--emit-llvm, --emit-mlir, ...)
 
 ### Test Infrastructure Updates
 

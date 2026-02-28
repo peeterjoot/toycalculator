@@ -1,0 +1,7 @@
+// mod2.silly
+MODULE;
+
+FUNCTION timestwo ( INT16 v ) : INT16
+{
+    RETURN v * 2;
+};

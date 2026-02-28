@@ -1,0 +1,7 @@
+// mod1.silly
+MODULE;
+
+FUNCTION addone ( INT16 w ) : INT16
+{
+    RETURN w + 1;
+};

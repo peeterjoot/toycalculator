@@ -7,11 +7,8 @@
 
 Next steps:
 
-- Automated testing of round trip export/import of .mlir, and .mlirbc format "sources"
-- ctest coverage for --import with .silly, .mlir, and .mlirbc.  Local files, files with paths, with and without --output-directory.  Start with the sample that's in the Changelog (and git log.)
 - ctest error coverage (module does not exist.)
 - ctest error coverage (module named in --imports and otherwise.)
-- add support for multiple --import modules.
 - ctest coverage for IMPORT when a function is already prototyped (should be skipped).
 - ctest coverage for multiple sources all doing IMPORT of the same module.
 - ctest coverage for repeated IMPORT (allow it, but the walk should not add anything, or have bad side effects.)
@@ -19,8 +16,8 @@ Next steps:
 
 #### Driver
 
-* tests/lit/driver/ -- may be implicitly be depending on $PATH to find silly in build/bin/ -- try without that in env to see.
 * Outdir not respected by -o
+* tests/lit/driver/ -- may be implicitly be depending on $PATH to find silly in build/bin/ -- try without that in env to see.
 
 ```
 silly -c --emit-mlir --output-directory o callee.silly
@@ -29,19 +26,10 @@ silly --imports o/callee.mlirbc --output-directory o callmod.silly -o program
 
 ends up in ./program
 
-* Want round trip ctesting or lit for .mlir/.mlirbc write/parse.
-( example: bin/manual-test-for-mlir-llvm-round-trip )
-
-i.e.: should be able to do something like:
-```
-    silly -c --emit-mlir f.silly -g -o f.sir ; silly -g -o foo f.sir
-```
-
 * CompilationUnit:
  - Reduce use of raw ModuleOp — prefer passing OwningOpRef& or keep it local
 * Respect -o for --emit-mlir or --emit-llvm too (provided both aren't set.)
 
-* Multi-source + -c (should produce multiple .o files)
 * -o with directory component (-o build/foo → creates build/foo exe)
 * Link failure case (bad object, missing symbol) + check --verbose-link output
 * No -o → default to first-file stem (already in your manual test)

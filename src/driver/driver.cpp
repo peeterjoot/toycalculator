@@ -195,7 +195,7 @@ int main( int argc, char** argv )
     if ( ds.compileOnly and !ds.oName.empty() and (totalSources > 1) )
     {
         // TODO: coverage:
-        llvm::errs() << COMPILER_NAME ": error: command line option -c with -o cannot be used with multiple sources\n";
+        llvm::errs() << COMPILER_NAME ": error: -c and -o cannot be used together with multiple input files (ambiguous output name)\n";
         silly::fatalDriverError( ReturnCodes::badOption );
     }
 

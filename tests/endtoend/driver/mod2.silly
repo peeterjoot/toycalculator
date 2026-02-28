@@ -1,8 +1,0 @@
-// mod2.silly
-MODULE;
-
-FUNCTION blah ( )
-{
-    PRINT "blah!";
-    RETURN;
-};

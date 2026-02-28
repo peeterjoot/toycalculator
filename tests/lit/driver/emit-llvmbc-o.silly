@@ -2,10 +2,10 @@
 // Tests -c --emit-* with -o and with --output-directory
 
 // RUN: cp %s %t.silly
- // RUN: silly -c --emit-llvmbc %t.silly -o %t.bc
- // RUN: %LlvmDis %t.bc -o - | %FileCheck %s --check-prefix=CHECK-BC
- // RUN: silly %t.bc -o %t.exe
- // RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
+// RUN: silly -c --emit-llvmbc %t.silly -o %t.bc
+// RUN: %LlvmDis %t.bc -o - | %FileCheck %s --check-prefix=CHECK-BC
+// RUN: silly %t.bc -o %t.exe
+// RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
 
 // CHECK-BC: define i32 @main()
 // EXEC: hi

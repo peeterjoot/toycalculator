@@ -1,0 +1,10 @@
+// Test for --output-directory, and --keep-temp:
+
+// RUN: rm -rf %t.dir
+// RUN: mkdir -p %t.dir
+// RUN: silly %S/keep-temp.silly -o keep-temp --output-directory %t.dir
+// RUN: find %t.dir | %FileCheck %s --check-prefix=FIND
+// EXEC: Hi
+// FIND: xx
+
+PRINT "hi";
