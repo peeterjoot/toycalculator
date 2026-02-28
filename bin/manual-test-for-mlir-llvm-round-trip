@@ -1,0 +1,95 @@
+
+# run from tests/endtoend/driver/
+set -x
+
+rm -f *.ll *.o *.bc *.mlir* one
+silly --emit-llvm one.silly 
+ls one*
+file one.ll
+cat one.ll
+./one
+echo ''
+echo ''
+echo ''
+echo ''
+echo ''
+
+rm -f *.ll *.o *.bc *.mlir* one
+silly --emit-llvmbc one.silly 
+ls one*
+file one.bc
+/usr/local/llvm-22.1.0/bin/llvm-dis one.bc -o -
+./one
+echo ''
+echo ''
+echo ''
+echo ''
+echo ''
+
+rm -f *.ll *.o *.bc *.mlir* one
+silly -c --emit-llvm one.silly 
+ls one*
+file one.ll
+cat one.ll
+echo ''
+echo ''
+echo ''
+echo ''
+echo ''
+
+rm -f *.ll *.o *.bc *.mlir* one
+silly -c --emit-llvmbc one.silly 
+ls one*
+file one.bc
+/usr/local/llvm-22.1.0/bin/llvm-dis one.bc -o -
+echo ''
+echo ''
+echo ''
+echo ''
+echo ''
+
+echo "test that mlir/mlirbc round trip also still works"
+
+rm -f *.ll *.o *.bc *.mlir* one
+silly --emit-mlir one.silly 
+ls one*
+file one.mlir
+cat one.mlir
+./one
+echo ''
+echo ''
+echo ''
+echo ''
+echo ''
+
+rm -f *.ll *.o *.bc *.mlir* one
+silly --emit-mlirbc one.silly 
+ls one*
+file one.mlirbc
+silly-opt -s one.mlirbc
+./one
+echo ''
+echo ''
+echo ''
+echo ''
+echo ''
+
+rm -f *.ll *.o *.bc *.mlir* one
+silly -c --emit-mlir one.silly 
+ls one*
+file one.mlir
+cat one.mlir
+echo ''
+echo ''
+echo ''
+echo ''
+echo ''
+
+rm -f *.ll *.o *.bc *.mlir* one
+silly -c --emit-mlirbc one.silly 
+ls one*
+file one.mlirbc
+silly-opt -s one.mlirbc
+
+
+

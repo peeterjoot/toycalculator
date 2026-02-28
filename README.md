@@ -313,8 +313,13 @@ silly mymain.silly mymodule.silly -g -o bar
 silly -c mymain.silly -g ; silly mymain.o mymodule.silly -g -o pgm
 ```
 
-The compiler can consume either silly sources (with .silly suffix), or MLIR silly-dialect sources (with .mlir or .sir suffix).
+The compiler can consume:
+- silly sources (with .silly suffix),
+- MLIR silly-dialect sources (with .mlir, .sir, or .mlirbc suffixes).
+- LLVM-IR sources (with .ll or .bc suffixes).
+
 Specifying a MLIR silly-dialect source means that the compiler will bypass the front end (parser/builder) and go straight to lowering.
+Specifying a LLVM-IR source means that the compiler will go straight to the assembly printer.  Module imports (--imports ...) may only pass .silly or MLIR sources (`IMPORT` processing uses the mlir::func::FuncOp objects from that internal representation to generate prototypes in the caller module.)
 
 ## Running silly-opt
 

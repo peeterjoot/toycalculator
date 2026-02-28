@@ -19,7 +19,6 @@ Next steps:
 
 #### Driver
 
-* -c --emit-llvm* is still outputting the .o
 * Outdir not respected by -o
 
 ```
@@ -29,7 +28,13 @@ silly --imports o/callee.mlirbc --output-directory o callmod.silly -o program
 
 ends up in ./program
 
-* Want round trip ctesting for .mlir/.mlirbc write/parse.
+* Want round trip ctesting or lit for .mlir/.mlirbc write/parse.
+( example: bin/manual-test-for-mlir-llvm-round-trip )
+
+i.e.: should be able to do something like:
+```
+    silly -c --emit-mlir f.silly -g -o f.sir ; silly -g -o foo f.sir
+```
 
   AIM: option handling something somewhat clang like:
   - -S -emit-llvm (.ll)
@@ -41,13 +46,7 @@ ends up in ./program
 
 * CompilationUnit:
  - Reduce use of raw ModuleOp — prefer passing OwningOpRef& or keep it local
-* Respect -o for --emit-mlir or --emit-llvm too (provided both aren't set.)  Add a round trip test taking .mlir as input like the -c/-o
-  test in /driver/
-
-i.e.: should be able to do something like:
-```
-    silly -c --emit-mlir f.silly -g -o f.sir ; silly -g -o foo f.sir
-```
+* Respect -o for --emit-mlir or --emit-llvm too (provided both aren't set.)
 
 * Multi-source + -c (should produce multiple .o files)
 * -o with directory component (-o build/foo → creates build/foo exe)
