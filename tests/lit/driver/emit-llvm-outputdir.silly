@@ -3,9 +3,9 @@
 
 // RUN: cp %s %t.silly
 // RUN: mkdir -p %t.dir
-// RUN: silly -c --emit-llvm %t.silly --output-directory %t.dir -o my.ll
+// RUN: %ExeSilly -c --emit-llvm %t.silly --output-directory %t.dir -o my.ll
 // RUN: head %t.dir/my.ll | %FileCheck %s --check-prefix=CHECK-LL
-// RUN: silly %t.dir/my.ll -o %t.exe
+// RUN: %ExeSilly %t.dir/my.ll -o %t.exe
 // RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
 
 // CHECK-LL: define i32 @main()

@@ -90,6 +90,7 @@ Back in main again, rc = 42
 * Implemented --no-verbose-parse-error.
 * Implemented --emit-llvmbc, and round trip support for both .ll and .bc
 * Implemented support for -o w/ --emit-llvm, --emit-mlir, ... (also fixing path construction when fully qualified paths used.)
+* Fix -o exename w/ --output-directory (adds a test for that, also testing --keep-temp)
 
 ## Testing & Quality
 

@@ -52,33 +52,8 @@ namespace silly
             outdir = dirname;
         }
 
-        llvm::StringRef stem = llvm::sys::path::stem( firstFile );    // foo/bar.silly -> stem: is just bar, not foo/bar
-        if ( stem.empty() )
-        {
-            llvm::errs() << std::format( COMPILER_NAME ": error: Invalid filename '{}', empty stem\n", firstFile );
-            silly::fatalDriverError( ReturnCodes::filenameParseError );
-        }
-
-        defaultExecutablePath = outdir;
-        if ( defaultExecutablePath.empty() )
-        {
-            defaultExecutablePath = stem;
-        }
-        else
-        {
-            llvm::sys::path::append( defaultExecutablePath, stem );
-        }
-
-        if ( ds.oName.empty() )
-        {
-            // This exe-path should be split out from CompilationUnit, as it may not match the input source file
-            // stem. The defaultExecutablePath stuff is convoluted and confusing.
-            exeName = defaultExecutablePath;
-        }
-        else
-        {
-            exeName = ds.oName;
-        }
+        constructPathForStem( defaultExecutablePath, firstFile, "" );
+        exeName = defaultExecutablePath;
     }
 
     SourceManager::FileNameAndCU& SourceManager::createCU( const std::string& filename )

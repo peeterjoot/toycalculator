@@ -3,9 +3,9 @@
 // RUN: rm -rf %t.dir
 // RUN: mkdir -p %t.dir
 // RUN: cp %s %t.dir/call2modules.silly
-// RUN: silly -c --emit-mlirbc %S/mod1.silly -o %t.dir/mod1.mlirbc
-// RUN: silly -c --emit-mlirbc %S/mod2.silly -o %t.dir/mod2.mlirbc
-// RUN: silly --imports %t.dir/mod1.mlirbc --imports %t.dir/mod2.mlirbc %S/call2modules.silly -o %t.exe
+// RUN: %ExeSilly -c --emit-mlirbc %S/mod1.silly -o %t.dir/mod1.mlirbc
+// RUN: %ExeSilly -c --emit-mlirbc %S/mod2.silly -o %t.dir/mod2.mlirbc
+// RUN: %ExeSilly --imports %t.dir/mod1.mlirbc --imports %t.dir/mod2.mlirbc %S/call2modules.silly -o %t.exe
 // RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
 // EXEC: r1 = 2
 // EXEC: r2 = 4

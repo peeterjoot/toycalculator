@@ -3,9 +3,9 @@
 
 // RUN: cp %s %t.silly
 // RUN: mkdir -p %t.dir
-// RUN: silly -c --emit-mlirbc %t.silly --output-directory %t.dir -o my.mlirbc
-// RUN: silly-opt -s %t.dir/my.mlirbc | %FileCheck %s --check-prefix=CHECK-MLIR
-// RUN: silly %t.dir/my.mlirbc -o %t.exe
+// RUN: %ExeSilly -c --emit-mlirbc %t.silly --output-directory %t.dir -o my.mlirbc
+// RUN: %OptSilly -s %t.dir/my.mlirbc | %FileCheck %s --check-prefix=CHECK-MLIR
+// RUN: %ExeSilly %t.dir/my.mlirbc -o %t.exe
 // RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
 
 // CHECK-MLIR: func.func @main()

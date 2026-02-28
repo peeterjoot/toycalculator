@@ -1,0 +1,11 @@
+// Test for --output-directory w/ -o, as well as --keep-temp
+
+// RUN: rm -rf %t.dir
+// RUN: mkdir -p %t.dir
+// RUN: %ExeSilly %S/keep-temp.silly --keep-temp -o keep-temp --output-directory %t.dir
+// RUN: find %t.dir -name "*.o" | wc -l | %FileCheck %s --check-prefix=FIND
+// RUN: %t.dir/keep-temp | %FileCheck %s --check-prefix=EXEC
+// EXEC: hi
+// FIND: 1
+
+PRINT "hi";

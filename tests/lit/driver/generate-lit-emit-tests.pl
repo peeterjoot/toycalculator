@@ -35,9 +35,9 @@ sub generate {
 # ----------------------------------------------------------------------
 
 generate("emit-llvm-o", <<'RUNS', <<'CHECKS');
-// RUN: silly -c --emit-llvm %t.silly -o %t.ll
+// RUN: %ExeSilly -c --emit-llvm %t.silly -o %t.ll
 // RUN: head %t.ll | %FileCheck %s --check-prefix=CHECK-LL
-// RUN: silly %t.ll -o %t.exe
+// RUN: %ExeSilly %t.ll -o %t.exe
 // RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
 RUNS
 // CHECK-LL: define i32 @main()
@@ -45,9 +45,9 @@ RUNS
 CHECKS
 
 generate("emit-llvmbc-o", <<'RUNS', <<'CHECKS');
-// RUN: silly -c --emit-llvmbc %t.silly -o %t.bc
+// RUN: %ExeSilly -c --emit-llvmbc %t.silly -o %t.bc
 // RUN: %LlvmDis %t.bc -o - | %FileCheck %s --check-prefix=CHECK-BC
-// RUN: silly %t.bc -o %t.exe
+// RUN: %ExeSilly %t.bc -o %t.exe
 // RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
 RUNS
 // CHECK-BC: define i32 @main()
@@ -55,9 +55,9 @@ RUNS
 CHECKS
 
 generate("emit-mlir-o", <<'RUNS', <<'CHECKS');
-// RUN: silly -c --emit-mlir %t.silly -o %t.mlir
+// RUN: %ExeSilly -c --emit-mlir %t.silly -o %t.mlir
 // RUN: head %t.mlir | %FileCheck %s --check-prefix=CHECK-MLIR
-// RUN: silly %t.mlir -o %t.exe
+// RUN: %ExeSilly %t.mlir -o %t.exe
 // RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
 RUNS
 // CHECK-MLIR: func.func @main()
@@ -65,9 +65,9 @@ RUNS
 CHECKS
 
 generate("emit-mlirbc-o", <<'RUNS', <<'CHECKS');
-// RUN: silly -c --emit-mlirbc %t.silly -o %t.mlirbc
-// RUN: silly-opt -s %t.mlirbc | %FileCheck %s --check-prefix=CHECK-MLIR
-// RUN: silly %t.mlirbc -o %t.exe
+// RUN: %ExeSilly -c --emit-mlirbc %t.silly -o %t.mlirbc
+// RUN: %OptSilly -s %t.mlirbc | %FileCheck %s --check-prefix=CHECK-MLIR
+// RUN: %ExeSilly %t.mlirbc -o %t.exe
 // RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
 RUNS
 // CHECK-MLIR: func.func @main()
@@ -80,9 +80,9 @@ CHECKS
 
 generate("emit-llvm-outputdir", <<'RUNS', <<'CHECKS');
 // RUN: mkdir -p %t.dir
-// RUN: silly -c --emit-llvm %t.silly --output-directory %t.dir -o my.ll
+// RUN: %ExeSilly -c --emit-llvm %t.silly --output-directory %t.dir -o my.ll
 // RUN: head %t.dir/my.ll | %FileCheck %s --check-prefix=CHECK-LL
-// RUN: silly %t.dir/my.ll -o %t.exe
+// RUN: %ExeSilly %t.dir/my.ll -o %t.exe
 // RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
 RUNS
 // CHECK-LL: define i32 @main()
@@ -91,9 +91,9 @@ CHECKS
 
 generate("emit-llvmbc-outputdir", <<'RUNS', <<'CHECKS');
 // RUN: mkdir -p %t.dir
-// RUN: silly -c --emit-llvmbc %t.silly --output-directory %t.dir -o my.bc
+// RUN: %ExeSilly -c --emit-llvmbc %t.silly --output-directory %t.dir -o my.bc
 // RUN: %LlvmDis %t.dir/my.bc -o - | %FileCheck %s --check-prefix=CHECK-BC
-// RUN: silly %t.dir/my.bc -o %t.exe
+// RUN: %ExeSilly %t.dir/my.bc -o %t.exe
 // RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
 RUNS
 // CHECK-BC: define i32 @main()
@@ -102,9 +102,9 @@ CHECKS
 
 generate("emit-mlir-outputdir", <<'RUNS', <<'CHECKS');
 // RUN: mkdir -p %t.dir
-// RUN: silly -c --emit-mlir %t.silly --output-directory %t.dir -o my.mlir
+// RUN: %ExeSilly -c --emit-mlir %t.silly --output-directory %t.dir -o my.mlir
 // RUN: head %t.dir/my.mlir | %FileCheck %s --check-prefix=CHECK-MLIR
-// RUN: silly %t.dir/my.mlir -o %t.exe
+// RUN: %ExeSilly %t.dir/my.mlir -o %t.exe
 // RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
 RUNS
 // CHECK-MLIR: func.func @main()
@@ -113,9 +113,9 @@ CHECKS
 
 generate("emit-mlirbc-outputdir", <<'RUNS', <<'CHECKS');
 // RUN: mkdir -p %t.dir
-// RUN: silly -c --emit-mlirbc %t.silly --output-directory %t.dir -o my.mlirbc
-// RUN: silly-opt -s %t.dir/my.mlirbc | %FileCheck %s --check-prefix=CHECK-MLIR
-// RUN: silly %t.dir/my.mlirbc -o %t.exe
+// RUN: %ExeSilly -c --emit-mlirbc %t.silly --output-directory %t.dir -o my.mlirbc
+// RUN: %OptSilly -s %t.dir/my.mlirbc | %FileCheck %s --check-prefix=CHECK-MLIR
+// RUN: %ExeSilly %t.dir/my.mlirbc -o %t.exe
 // RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
 RUNS
 // CHECK-MLIR: func.func @main()

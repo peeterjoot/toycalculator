@@ -1,6 +1,7 @@
 import os
 
 config.silly_opt = "@CMAKE_SOURCE_DIR@/bin/silly-opt"
+config.silly_exe = "@CMAKE_BINARY_DIR@/bin/silly"
 config.FileCheck = "@LLVM_PREFIX@/bin/FileCheck"
 config.LlvmDis = "@LLVM_PREFIX@/bin/llvm-dis"
 config.Not = "@LLVM_PREFIX@/bin/not"
@@ -18,3 +19,4 @@ config.substitutions.append(('%OptSilly', f'{config.silly_opt}' + " --plugin " +
 config.substitutions.append(('%FileCheck', f'{config.FileCheck}'))
 config.substitutions.append(('%LlvmDis', f'{config.LlvmDis}'))
 config.substitutions.append(('%Not', f'{config.Not}'))
+config.substitutions.append(('%ExeSilly', f'{config.silly_exe}'))

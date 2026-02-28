@@ -3,9 +3,9 @@
 
 // RUN: cp %s %t.silly
 // RUN: mkdir -p %t.dir
-// RUN: silly -c --emit-mlir %t.silly --output-directory %t.dir -o my.mlir
+// RUN: %ExeSilly -c --emit-mlir %t.silly --output-directory %t.dir -o my.mlir
 // RUN: head %t.dir/my.mlir | %FileCheck %s --check-prefix=CHECK-MLIR
-// RUN: silly %t.dir/my.mlir -o %t.exe
+// RUN: %ExeSilly %t.dir/my.mlir -o %t.exe
 // RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
 
 // CHECK-MLIR: func.func @main()

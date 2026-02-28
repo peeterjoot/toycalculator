@@ -2,9 +2,9 @@
 // Tests -c --emit-* with -o and with --output-directory
 
 // RUN: cp %s %t.silly
-// RUN: silly -c --emit-llvm %t.silly -o %t.ll
+// RUN: %ExeSilly -c --emit-llvm %t.silly -o %t.ll
 // RUN: head %t.ll | %FileCheck %s --check-prefix=CHECK-LL
-// RUN: silly %t.ll -o %t.exe
+// RUN: %ExeSilly %t.ll -o %t.exe
 // RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
 
 // CHECK-LL: define i32 @main()
