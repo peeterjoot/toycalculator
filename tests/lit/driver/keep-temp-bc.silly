@@ -1,0 +1,15 @@
+// Test for --output-directory w/ -o, as well as --keep-temp
+
+// RUN: rm -rf %t.dir
+// RUN: mkdir -p %t.dir
+// RUN: %ExeSilly %S/keep-temp.silly --emit-llvmbc --emit-mlirbc --keep-temp -o keep-temp --output-directory %t.dir
+// RUN: %t.dir/keep-temp | %FileCheck %s --check-prefix=EXEC
+// RUN: file %t.dir/*.o | %FileCheck %s --check-prefix=CHECK-O
+// RUN: %OptSilly -s %t.dir/*.mlirbc | %FileCheck %s --check-prefix=CHECK-MLIRBC
+// RUN: %LlvmDis %t.dir/*.bc -o - | %FileCheck %s --check-prefix=CHECK-BC
+// EXEC: hi
+// CHECK-O: ELF 64-bit
+// CHECK-MLIRBC: func.func @main() -> i32
+// CHECK-BC: define i32 @main()
+
+PRINT "hi";

@@ -2,10 +2,14 @@
 
 // RUN: rm -rf %t.dir
 // RUN: mkdir -p %t.dir
-// RUN: %ExeSilly %S/keep-temp.silly --keep-temp -o keep-temp --output-directory %t.dir
-// RUN: find %t.dir -name "*.o" | wc -l | %FileCheck %s --check-prefix=FIND
+// RUN: %ExeSilly %S/keep-temp.silly --emit-llvm --emit-mlir --keep-temp -o keep-temp --output-directory %t.dir
 // RUN: %t.dir/keep-temp | %FileCheck %s --check-prefix=EXEC
+// RUN: file %t.dir/*.o | %FileCheck %s --check-prefix=CHECK-O
+// RUN: head %t.dir/*.mlir | %FileCheck %s --check-prefix=CHECK-MLIR
+// RUN: head %t.dir/*.ll | %FileCheck %s --check-prefix=CHECK-LL
 // EXEC: hi
-// FIND: 1
+// CHECK-O: ELF 64-bit
+// CHECK-MLIR: func.func @main() -> i32
+// CHECK-LL: define i32 @main()
 
 PRINT "hi";

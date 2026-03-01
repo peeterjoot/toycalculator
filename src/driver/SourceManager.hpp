@@ -52,6 +52,8 @@ namespace silly
         void serializeObject( FileNameAndCU& cup );
 
         /// Take the current filename, grab the stem, and add the suffix.  This includes the --output-directory if specified.
+        ///
+        /// Used to construct --emit-llvm/mlir output file names, as well as the executable file name (with empty suffix string)
         void constructPathForStem( llvm::SmallString<128> & outputPath, const std::string & sourceName, const char * suffixWithDot );
 
         /// Invoke the system linker to create an executable.

@@ -201,16 +201,32 @@ namespace silly
     void SourceManager::constructPathForStem( llvm::SmallString<128>& outputPath, const std::string& sourceName,
                                               const char* suffixWithDot )
     {
-        // FIXME: there is portable LLVM infra for path construction (but I don't currently care about Windows, so "/" is okay for now)
+        // FIXME: there is portable LLVM infra for path construction (but I don't currently care about Windows, so "/"
+        // is okay for now)
         if ( !ds.oName.empty() )
         {
-            // If outputPath is fully qualified, ignore any implicit (constructed from the path of the source) output directory or any explicit --output-directory:
-            if ( !outdir.empty() and (ds.oName[0] != '/') )
+            // If outputPath is fully qualified, ignore any implicit (constructed from the path of the source) output
+            // directory or any explicit --output-directory:
+            if ( !outdir.empty() and ( ds.oName[0] != '/' ) )
             {
                 outputPath = outdir;
                 outputPath += "/";
             }
-            outputPath += ds.oName;
+
+            // Now want to distinguish -o exename, and --emit-llvm/--emit-mlir (without -c) where
+            // --emit-llvm/--emit-mlir is just to produce a supplementary listing, and let the
+            // compile/lower/assemble/link proceed.
+            if ( !ds.compileOnly and ( ds.emitLLVM or ds.emitLLVMBC or ds.emitMLIR or ds.emitMLIRBC ) and
+                 suffixWithDot[0] )
+            {
+                llvm::StringRef fn = llvm::sys::path::stem( llvm::sys::path::filename( sourceName ) );
+                outputPath += fn;
+                outputPath += suffixWithDot;
+            }
+            else
+            {
+                outputPath += ds.oName;
+            }
         }
         else
         {
