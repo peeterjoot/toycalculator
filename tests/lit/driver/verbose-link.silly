@@ -1,0 +1,4 @@
+// RUN: %ExeSilly --verbose-link %s 2>&1 | %FileCheck %s --check-prefix=EXEC
+// EXEC: /gcc
+
+PRINT "hi";

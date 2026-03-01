@@ -96,18 +96,19 @@ function(add_endtoend_compile_tests)
         set(SOURCE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${source_file}")
 
         # Default flags
-        set(COMPILER_FLAGS -g --emit-llvm --emit-mlir)
+        set(COMPILER_FLAGS -g)
+        #set(COMPILER_FLAGS -g --emit-llvm --emit-mlir)
 
         # Allow per-test override via a variable named like COMPILER_FLAGS_${test_name}
         if(DEFINED COMPILER_FLAGS_${test_name})
             list(APPEND COMPILER_FLAGS ${COMPILER_FLAGS_${test_name}})
         endif()
 
+        #"${OUT_DIR}/${test_name}.mlir"
+        #"${OUT_DIR}/${test_name}.ll"
         add_custom_command(
             OUTPUT
                 "${OUT_DIR}/${test_name}"
-                "${OUT_DIR}/${test_name}.mlir"
-                "${OUT_DIR}/${test_name}.ll"
             COMMAND
                 $<TARGET_FILE:silly>
                     --output-directory "${OUT_DIR}"

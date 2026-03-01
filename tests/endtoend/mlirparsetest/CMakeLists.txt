@@ -3,6 +3,8 @@ if(FILECHECK_EXECUTABLE)
         two_declare_no_init.silly
     )
 
+    set(COMPILER_FLAGS_two_declare_no_init --emit-llvm --emit-mlir)
+
     add_endtoend_compile_tests(${DECLARE_ORDER_TESTS})
 
     add_endtoend_run_tests("EndToEnd.mlirparsetest"
