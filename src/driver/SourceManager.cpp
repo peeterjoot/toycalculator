@@ -16,8 +16,6 @@
 
 namespace silly
 {
-    void fatalDriverError( ReturnCodes rc );
-
     static void showLinkCommand( const std::string& linker, llvm::SmallVector<llvm::StringRef, 24>& args )
     {
         llvm::errs() << "# " << linker;
@@ -30,8 +28,12 @@ namespace silly
         llvm::errs() << '\n';
     }
 
-    SourceManager::SourceManager( silly::DriverState& d, mlir::MLIRContext* c, const std::string& firstFile )
+    SourceManager::SourceManager( silly::DriverState& d, mlir::MLIRContext* c )
         : ds{ d }, context{ c }
+    {
+    }
+
+    ReturnCodes SourceManager::constructOutputDirectory( const std::string& firstFile )
     {
         llvm::StringRef dirname = llvm::sys::path::parent_path( firstFile );
         // Create output directory if specified
@@ -42,7 +44,7 @@ namespace silly
             {
                 llvm::errs() << std::format( COMPILER_NAME ": error: Failed to create output directory '{}': {}\n",
                                              ds.outDir, EC.message() );
-                silly::fatalDriverError( ReturnCodes::directoryError );
+                return ReturnCodes::directoryError;
             }
 
             outdir = ds.outDir;
@@ -54,36 +56,43 @@ namespace silly
 
         constructPathForStem( defaultExecutablePath, firstFile, "" );
         exeName = defaultExecutablePath;
+
+        return ReturnCodes::success;
     }
 
-    SourceManager::FileNameAndCU& SourceManager::createCU( const std::string& filename )
+    ReturnCodes SourceManager::createCU( const std::string& filename, SourceManager::FileNameAndCU *& cup )
     {
+        cup = nullptr;
         std::string stem = llvm::sys::path::stem( filename ).str();
 
         auto i = CUs.find( stem );
         if ( i != CUs.end() )
         {
             llvm::errs() << std::format( COMPILER_NAME ": error: file stem {} specified multiple times\n", stem );
-            silly::fatalDriverError( ReturnCodes::duplicateCUError );
+            return ReturnCodes::duplicateCUError;
         }
 
         CUs[stem] = FileNameAndCU( filename, new silly::CompilationUnit( *this ) );
 
-        return CUs[stem];
+        cup = &CUs[stem];
+
+        return ReturnCodes::success;
     }
 
-    SourceManager::FileNameAndCU& SourceManager::findCU( const std::string& filename )
+    ReturnCodes SourceManager::findCU( const std::string& filename, SourceManager::FileNameAndCU *& cup )
     {
+        cup = nullptr;
         std::string stem = llvm::sys::path::stem( filename ).str();
-
         auto i = CUs.find( stem );
         if ( i == CUs.end() )
         {
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to find CU for stem {}\n", stem );
-            silly::fatalDriverError( ReturnCodes::missingCUError );
+            return ReturnCodes::missingCUError;
         }
 
-        return i->second;
+        cup = &i->second;
+
+        return ReturnCodes::success;
     }
 
     mlir::ModuleOp SourceManager::findMOD( const std::string& filename )
@@ -116,11 +125,11 @@ namespace silly
         }
     }
 
-    void SourceManager::link()
+    ReturnCodes SourceManager::link()
     {
         if ( ds.compileOnly )
         {
-            return;
+            return ReturnCodes::success;
         }
 
         // Get the driver path
@@ -137,7 +146,7 @@ namespace silly
 
             llvm::errs() << std::format( COMPILER_NAME ": error: Error finding path for linker '{}': {}\n", linker,
                                          EC.message() );
-            silly::fatalDriverError( ReturnCodes::filenameParseError );
+            return ReturnCodes::filenameParseError;
         }
         LLVM_DEBUG( { llvm::outs() << "Linker path: " << linkerPath.get() << '\n'; } );
 
@@ -194,8 +203,10 @@ namespace silly
 
             llvm::errs() << std::format( COMPILER_NAME ": error: Linker failed with exit code: {}, rc = {}\n", errMsg,
                                          result );
-            silly::fatalDriverError( ReturnCodes::linkError );
+            return ReturnCodes::linkError;
         }
+
+        return ReturnCodes::success;
     }
 
     void SourceManager::constructPathForStem( llvm::SmallString<128>& outputPath, const std::string& sourceName,
@@ -246,21 +257,32 @@ namespace silly
         }
     }
 
-    void SourceManager::createAndSerializeMLIR( FileNameAndCU& cup )
+    ReturnCodes SourceManager::createAndSerializeMLIR( FileNameAndCU& cup )
     {
         std::string& filename = cup.filename;
         auto cu = cup.pCU;
 
-        cu->processSourceFile( filename );
+        ReturnCodes rc = cu->processSourceFile( filename );
+        if ( rc != ReturnCodes::success )
+        {
+            return rc;
+        }
 
         llvm::SmallString<128> mlirOutputPath;
         constructPathForStem( mlirOutputPath, filename, ds.emitMLIRBC ? ".mlirbc" : ".mlir" );
-        cu->serializeModuleMLIR( mlirOutputPath );
+        rc = cu->serializeModuleMLIR( mlirOutputPath );
+        if ( rc != ReturnCodes::success )
+        {
+            return rc;
+        }
+
+        return ReturnCodes::success;
     }
 
-    bool SourceManager::createAndSerializeLLVM( FileNameAndCU& cup )
+    ReturnCodes SourceManager::createAndSerializeLLVM( FileNameAndCU& cup, bool & isDone )
     {
         auto cu = cup.pCU;
+        isDone = false;
 
         // ds.emitMLIR and ds.compileOnly produces the mlir (only, no object)
         // ds.emitMLIRBC and ds.compileOnly produces the mlirbc (only, no object)
@@ -268,38 +290,52 @@ namespace silly
         // -- we are done in either case.
         if ( ( ds.emitMLIRBC or ds.emitMLIR ) and ds.compileOnly )
         {
-            return false;
+            return ReturnCodes::success;
         }
 
         if ( cu->getInputType() == silly::InputType::OBJECT )
         {
             objFiles.push_back( cup.filename );
 
-            return false;
+            return ReturnCodes::success;
         }
 
-        cu->mlirToLLVM( cup.filename );
+        ReturnCodes rc = cu->mlirToLLVM( cup.filename );
+        if ( rc != ReturnCodes::success )
+        {
+            return rc;
+        }
 
-        cu->runOptimizationPasses();
+        rc = cu->runOptimizationPasses();
+        if ( rc != ReturnCodes::success )
+        {
+            return rc;
+        }
 
         // Serialize only after any passes have been run.
         llvm::SmallString<128> llvmOutputPath;
         constructPathForStem( llvmOutputPath, cup.filename, ds.emitLLVMBC ? ".bc" : ".ll" );
-        cu->serializeModuleLLVMIR( llvmOutputPath );
+        rc = cu->serializeModuleLLVMIR( llvmOutputPath );
+        if ( rc != ReturnCodes::success )
+        {
+            return rc;
+        }
 
         // -c --emit-llvm, or -c --emit-llvmbc
         if ( ds.compileOnly )
         {
             if ( ds.emitLLVM or ds.emitLLVMBC )
             {
-                return false;
+                return ReturnCodes::success;
             }
         }
 
-        return true;
+        isDone = true;
+
+        return ReturnCodes::success;
     }
 
-    void SourceManager::serializeObject( FileNameAndCU& cup )
+    ReturnCodes SourceManager::serializeObject( FileNameAndCU& cup )
     {
         llvm::SmallString<128> objectFilename;
         bool createdTemporary{};
@@ -343,7 +379,7 @@ namespace silly
                                              ": error: Failed to create temporary object file in path '{}': {}\n",
                                              std::string( p ), EC.message() );
 
-                silly::fatalDriverError( ReturnCodes::tempCreationError );
+                return ReturnCodes::tempCreationError;
             }
 
             if ( ds.keepTemps )
@@ -357,7 +393,11 @@ namespace silly
         }
 
 
-        cu->serializeObjectCode( objectFilename );
+        ReturnCodes rc = cu->serializeObjectCode( objectFilename );
+        if ( rc != ReturnCodes::success )
+        {
+            return rc;
+        }
 
         objFiles.push_back( std::string( objectFilename ) );
 
@@ -365,5 +405,7 @@ namespace silly
         {
             tmpToDelete.push_back( std::string( objectFilename ) );
         }
+
+        return ReturnCodes::success;
     }
 }    // namespace silly

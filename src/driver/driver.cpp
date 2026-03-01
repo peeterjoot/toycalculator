@@ -118,17 +118,6 @@ static llvm::cl::opt<bool> noColorErrors( "no-color-errors", llvm::cl::desc( "Di
 // Helper functions
 //
 
-namespace silly
-{
-    /// Assuming that a message has already been displayed, return with a non-zero return code.
-    void fatalDriverError( ReturnCodes rc )
-    {
-        assert( (int)rc < 256 );    // Assume unix.
-
-        std::exit( (int)rc );
-    }
-}    // namespace silly
-
 static void llvmInitialization( int argc, char** argv )
 {
     // Initialize LLVM targets for code generation
@@ -145,13 +134,13 @@ static void llvmInitialization( int argc, char** argv )
     llvm::cl::ParseCommandLineOptions( argc, argv, "Calculator compiler\n" );
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////////////
 //
 // The driver entry point:
 //
 int main( int argc, char** argv )
 {
+    static_assert( (int)silly::ReturnCodes::LAST_ERROR_VALUE < 256 ); // Unix rc semantics.
     llvmInitialization( argc, argv );
 
     // once this goes out of scope, the module is toast and can't be referenced further.
@@ -194,71 +183,122 @@ int main( int argc, char** argv )
     if ( versionFlag )
     {
         llvm::outs() << std::format( COMPILER_NAME ": info: silly compiler version {}, LLVM: {}\n", COMPILER_VERSION, LLVMVERSION);
-        return (int)ReturnCodes::success;
+        return (int)silly::ReturnCodes::success;
     }
 
     if ( ds.emitLLVM and ds.emitLLVMBC )
     {
         // coverage: emit-llvm-both-should-fail.silly
         llvm::errs() << COMPILER_NAME ": error: --emit-llvm and --emit-llvmbc are mutually exclusive (choose one for LLVM IR output)\n";
-        silly::fatalDriverError( ReturnCodes::badOption );
+        return (int)silly::ReturnCodes::badOption;
     }
 
     if ( ds.emitMLIR and ds.emitMLIRBC )
     {
         // coverage: emit-mlir-both-should-fail.silly
         llvm::errs() << COMPILER_NAME ": error: --emit-mlir and --emit-mlirbc are mutually exclusive (choose one for silly diaglect MLIR output)\n";
-        silly::fatalDriverError( ReturnCodes::badOption );
+        return (int)silly::ReturnCodes::badOption;
     }
 
     if ( ds.compileOnly and !ds.oName.empty() and (inputFilenames.size() > 1) )
     {
         // coverage: multi-source-with-c-and-o-should-fail.silly
         llvm::errs() << COMPILER_NAME ": error: -c and -o cannot be used together with multiple input files (ambiguous output name)\n";
-        silly::fatalDriverError( ReturnCodes::badOption );
+        return (int)silly::ReturnCodes::badOption;
     }
 
     std::vector<std::string>& files = inputFilenames;
 
-    silly::SourceManager sm( ds, &dialectLoader.context, files[0] );
+    silly::SourceManager sm( ds, &dialectLoader.context );
+
+    silly::ReturnCodes rc = sm.constructOutputDirectory( files[0] );
+    if ( rc != silly::ReturnCodes::success )
+    {
+        return (int)rc;
+    }
 
     for ( const auto& importModuleName : imports )
     {
-        auto& cup = sm.createCU( importModuleName );
+        silly::SourceManager::FileNameAndCU * cup{};
+        rc = sm.createCU( importModuleName, cup );
+        if ( rc != silly::ReturnCodes::success )
+        {
+            return (int)rc;
+        }
 
         // Go as far as mlir::ModuleOp creation, but don't lower to llvm (yet):
-        sm.createAndSerializeMLIR( cup );
+        rc = sm.createAndSerializeMLIR( *cup );
+        if ( rc != silly::ReturnCodes::success )
+        {
+            return (int)rc;
+        }
     }
 
     for ( const auto& filename : files )
     {
-        auto& cup = sm.createCU( filename );
+        silly::SourceManager::FileNameAndCU * cup{};
+        rc = sm.createCU( filename, cup );
+        if ( rc != silly::ReturnCodes::success )
+        {
+            return (int)rc;
+        }
 
-        sm.createAndSerializeMLIR( cup );
+        rc = sm.createAndSerializeMLIR( *cup );
+        if ( rc != silly::ReturnCodes::success )
+        {
+            return (int)rc;
+        }
 
-        bool moreToDo = sm.createAndSerializeLLVM( cup );
+        bool moreToDo{};
+        rc = sm.createAndSerializeLLVM( *cup, moreToDo );
+        if ( rc != silly::ReturnCodes::success )
+        {
+            return (int)rc;
+        }
 
         if ( moreToDo )
         {
-            sm.serializeObject( cup );
+            rc = sm.serializeObject( *cup );
+            if ( rc != silly::ReturnCodes::success )
+            {
+                return (int)rc;
+            }
         }
     }
 
     for ( const auto& importModuleName : imports )
     {
-        auto& cup = sm.findCU( importModuleName );
+        silly::SourceManager::FileNameAndCU * cup{};
+        rc = sm.findCU( importModuleName, cup );
+        if ( rc != silly::ReturnCodes::success )
+        {
+            return (int)rc;
+        }
 
-        bool moreToDo = sm.createAndSerializeLLVM( cup );
+        bool moreToDo{};
+        rc = sm.createAndSerializeLLVM( *cup, moreToDo );
+        if ( rc != silly::ReturnCodes::success )
+        {
+            return (int)rc;
+        }
 
         if ( moreToDo )
         {
-            sm.serializeObject( cup );
+            rc = sm.serializeObject( *cup );
+            if ( rc != silly::ReturnCodes::success )
+            {
+                return (int)rc;
+            }
         }
     }
 
-    sm.link();
+    rc = sm.link();
+    if ( rc != silly::ReturnCodes::success )
+    {
+        return (int)rc;
+    }
 
-    return (int)ReturnCodes::success;
+    return (int)silly::ReturnCodes::success;
 }
 
 // vim: et ts=4 sw=4

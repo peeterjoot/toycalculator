@@ -6,6 +6,8 @@
 #include <vector>
 #include <unordered_map>
 
+#include "ReturnCodes.hpp"
+
 namespace silly
 {
     class CompilationUnit;
@@ -14,12 +16,17 @@ namespace silly
     class SourceManager
     {
        public:
+        /// Squirrel away the DriverState and context
+        SourceManager( silly::DriverState& d, mlir::MLIRContext* c );
+
         /// Create the directory named in --output-directory.
         ///
-        /// Populates outdir as a side effect with the output directory, or the directory
-        /// part of the filename path (if specified), or an empty string.
-        SourceManager( silly::DriverState& d, mlir::MLIRContext* c, const std::string& firstFile );
+        /// Populates member var outdir with the directory
+        /// part of the (first) filename path (if specified), or an empty string,
+        /// or the user specified --output-directory
+        ReturnCodes constructOutputDirectory( const std::string& firstFile );
 
+        /// Cleanup.
         ~SourceManager();
 
         /// A filename and CompilationUnit (pointer) pair.
@@ -33,23 +40,23 @@ namespace silly
         };
 
         /// Create a CompilationUnit for this file
-        FileNameAndCU& createCU( const std::string& filename );
+        ReturnCodes createCU( const std::string& filename, SourceManager::FileNameAndCU *& cup );
 
         /// Find and return the CompilationUnit for this file
-        FileNameAndCU& findCU( const std::string& filename );
+        ReturnCodes findCU( const std::string& filename, SourceManager::FileNameAndCU *& cup );
 
         /// Extract the stem from filename and look for a compiled module for it.
         mlir::ModuleOp findMOD( const std::string& filename );
 
         /// Build the MLIR representation of the named source, if required, and emit it (if desired.)
-        void createAndSerializeMLIR( FileNameAndCU& cup );
+        ReturnCodes createAndSerializeMLIR( FileNameAndCU& cup );
 
         /// Lower the MLIR module to LLVM-IR (and emit that as a file if desired.)
-        /// @retval true if LLVM-IR was created (i.e.: more to do)
-        bool createAndSerializeLLVM( FileNameAndCU& cup );
+        /// @param isDone [out] true if LLVM-IR was created (i.e.: more to do)
+        ReturnCodes createAndSerializeLLVM( FileNameAndCU& cup, bool & isDone );
 
         /// Write out the object file to disk for the linker (if desired.)
-        void serializeObject( FileNameAndCU& cup );
+        ReturnCodes serializeObject( FileNameAndCU& cup );
 
         /// Take the current filename, grab the stem, and add the suffix.  This includes the --output-directory if specified.
         ///
@@ -57,7 +64,7 @@ namespace silly
         void constructPathForStem( llvm::SmallString<128> & outputPath, const std::string & sourceName, const char * suffixWithDot );
 
         /// Invoke the system linker to create an executable.
-        void link();
+        ReturnCodes link();
 
         /// Getter for DriverState
         silly::DriverState& getDriverState()

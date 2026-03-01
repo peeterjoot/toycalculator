@@ -50,8 +50,6 @@
 
 namespace silly
 {
-    void fatalDriverError( ReturnCodes rc );
-
     CompilationUnit::CompilationUnit( silly::SourceManager& s )
         : sm{ s }, ds{ sm.getDriverState() }, context{ sm.getContext() }
     {
@@ -61,14 +59,14 @@ namespace silly
         }
     }
 
-    void CompilationUnit::processSourceFile( const std::string& sourceFileName )
+    ReturnCodes CompilationUnit::processSourceFile( const std::string& sourceFileName )
     {
         ity = getInputType( sourceFileName );
         if ( ity == InputType::Unknown )
         {
             llvm::errs() << std::format(
                 COMPILER_NAME ": error: filename {} extension is none of .silly, .mlir/.sir, or .o\n", sourceFileName );
-            fatalDriverError( ReturnCodes::badExtensionError );
+            return ReturnCodes::badExtensionError;
         }
 
         mlir::ModuleOp mod{};
@@ -81,14 +79,14 @@ namespace silly
             if ( ds.openFailed )
             {
                 llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}\n", sourceFileName );
-                fatalDriverError( ReturnCodes::openError );
+                return ReturnCodes::openError;
             }
 
             mod = rmod.get();
             if ( !mod )
             {
                 // should have already emitted diagnostics.
-                fatalDriverError( ReturnCodes::parseError );
+                return ReturnCodes::parseError;
             }
         }
         else if ( ( ity == InputType::MLIR ) || ( ity == InputType::MLIRBC ) )
@@ -107,12 +105,14 @@ namespace silly
             {
                 llvm::errs() << COMPILER_NAME ": error: MLIR failed verification\n";
                 mod->dump();
-                fatalDriverError( ReturnCodes::verifyError );
+                return ReturnCodes::verifyError;
             }
         }
+
+        return ReturnCodes::success;
     }
 
-    void CompilationUnit::mlirToLLVM( const std::string& llvmSourceFilename )
+    ReturnCodes CompilationUnit::mlirToLLVM( const std::string& llvmSourceFilename )
     {
         mlir::ModuleOp mod = rmod.get();
 
@@ -149,7 +149,7 @@ namespace silly
                 llvm::errs() << "IR after stage I lowering failure:\n";
                 mod->dump();
                 llvm::errs() << COMPILER_NAME ": error: Stage I LLVM lowering failed\n";
-                fatalDriverError( ReturnCodes::loweringError );
+                return ReturnCodes::loweringError;
             }
 
             mlir::PassManager pm2( context );
@@ -165,7 +165,7 @@ namespace silly
                 llvm::errs() << "IR after stage II lowering failure:\n";
                 mod->dump();
                 llvm::errs() << COMPILER_NAME ": error: Stage II LLVM lowering failed\n";
-                fatalDriverError( ReturnCodes::loweringError );
+                return ReturnCodes::loweringError;
             }
 
             // The module should now contain mostly LLVM-IR instructions, with the exception of the top level module,
@@ -182,18 +182,20 @@ namespace silly
         if ( !llvmModule )
         {
             llvm::errs() << COMPILER_NAME ": error: Failed to translate to LLVM IR or parse supplied LLVM IR\n";
-            fatalDriverError( ReturnCodes::loweringError );
+            return ReturnCodes::loweringError;
         }
 
         // Verify the module to ensure debug info is valid
         if ( llvm::verifyModule( *llvmModule, &llvm::errs() ) )
         {
             llvm::errs() << COMPILER_NAME ": error: Invalid LLVM IR module\n";
-            fatalDriverError( ReturnCodes::loweringError );
+            return ReturnCodes::loweringError;
         }
+
+        return ReturnCodes::success;
     }
 
-    void CompilationUnit::runOptimizationPasses()
+    ReturnCodes CompilationUnit::runOptimizationPasses()
     {
         std::string targetTripleStr = llvm::sys::getProcessTriple();
         llvm::Triple targetTriple( targetTripleStr );
@@ -205,7 +207,7 @@ namespace silly
         if ( !target )
         {
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to find target: {}\n", error );
-            fatalDriverError( ReturnCodes::loweringError );
+            return ReturnCodes::loweringError;
         }
 
         // Create the target machine
@@ -215,7 +217,7 @@ namespace silly
         if ( !targetMachine )
         {
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to create target machine\n" );
-            fatalDriverError( ReturnCodes::loweringError );
+            return ReturnCodes::loweringError;
         }
 
         // Claude:
@@ -246,6 +248,8 @@ namespace silly
 
             MPM.run( *llvmModule, MAM );
         }
+
+        return ReturnCodes::success;
     }
 
     InputType CompilationUnit::getInputType( llvm::StringRef filename )
@@ -285,12 +289,12 @@ namespace silly
         return InputType::Unknown;
     }
 
-    void CompilationUnit::serializeModuleMLIR( const llvm::SmallString<128>& mlirOutputName )
+    ReturnCodes CompilationUnit::serializeModuleMLIR( const llvm::SmallString<128>& mlirOutputName )
     {
         mlir::ModuleOp mod = rmod.get();
         if ( !mod )
         {
-            return;
+            return ReturnCodes::success;
         }
 
         if ( ds.emitMLIR or ds.emitMLIRBC )
@@ -302,7 +306,7 @@ namespace silly
             {
                 llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}: {}\n",
                                              std::string( mlirOutputName ), EC.message() );
-                fatalDriverError( ReturnCodes::openError );
+                return ReturnCodes::openError;
             }
 
             if ( ds.emitMLIRBC )
@@ -311,7 +315,7 @@ namespace silly
                 {
                     llvm::errs() << std::format( COMPILER_NAME ": error: Failed to write bytecode to '{}'\n",
                                                  std::string( mlirOutputName ) );
-                    fatalDriverError( ReturnCodes::ioError );
+                    return ReturnCodes::ioError;
                 }
             }
             else
@@ -322,18 +326,20 @@ namespace silly
                 {
                     llvm::errs() << std::format( COMPILER_NAME ": error: Write error on '{}': {}\n",
                                                  std::string( mlirOutputName ), out.error().message() );
-                    fatalDriverError( ReturnCodes::ioError );
+                    return ReturnCodes::ioError;
                 }
             }
         }
+
+        return ReturnCodes::success;
     }
 
-    void CompilationUnit::serializeModuleLLVMIR( const llvm::SmallString<128>& llvmOuputFile )
+    ReturnCodes CompilationUnit::serializeModuleLLVMIR( const llvm::SmallString<128>& llvmOuputFile )
     {
         // Dump the pre-optimized LL if we aren't creating a .o
         if ( !( ds.emitLLVM || ds.emitLLVMBC ) )
         {
-            return;
+            return ReturnCodes::success;
         }
 
         std::error_code EC;
@@ -345,7 +351,7 @@ namespace silly
             // it knows how to deal with StringRef)
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open file '{}': {}\n",
                                          std::string( llvmOuputFile ), EC.message() );
-            fatalDriverError( ReturnCodes::openError );
+            return ReturnCodes::openError;
         }
 
         if ( ds.emitLLVMBC )
@@ -362,11 +368,13 @@ namespace silly
         {
             llvm::errs() << std::format( COMPILER_NAME ": error: Write error on '{}': {}\n",
                                          std::string( llvmOuputFile ), out.error().message() );
-            fatalDriverError( ReturnCodes::openError );
+            return ReturnCodes::openError;
         }
+
+        return ReturnCodes::success;
     }
 
-    void CompilationUnit::serializeObjectCode( const llvm::SmallString<128>& outputFilename )
+    ReturnCodes CompilationUnit::serializeObjectCode( const llvm::SmallString<128>& outputFilename )
     {
         std::error_code EC;
         llvm::raw_fd_ostream dest( outputFilename.str(), EC, llvm::sys::fs::OF_None );
@@ -374,7 +382,7 @@ namespace silly
         {
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open output file '{}': {}\n",
                                          std::string( outputFilename ), EC.message() );
-            fatalDriverError( ReturnCodes::openError );
+            return ReturnCodes::openError;
         }
 
         llvmModule->setDataLayout( targetMachine->createDataLayout() );
@@ -382,16 +390,18 @@ namespace silly
         if ( targetMachine->addPassesToEmitFile( codegenPM, dest, nullptr, llvm::CodeGenFileType::ObjectFile ) )
         {
             llvm::errs() << std::format( COMPILER_NAME ": error: TargetMachine can't emit an object file\n" );
-            fatalDriverError( ReturnCodes::loweringError );
+            return ReturnCodes::loweringError;
         }
 
         codegenPM.run( *llvmModule );
         dest.close();
 
         LLVM_DEBUG( { llvm::outs() << "Generated object file: " << outputFilename << '\n'; } );
+
+        return ReturnCodes::success;
     }
 
-    void CompilationUnit::parseMLIRFile( const std::string& mlirSourceName )
+    ReturnCodes CompilationUnit::parseMLIRFile( const std::string& mlirSourceName )
     {
         auto fileOrErr = llvm::MemoryBuffer::getFile( mlirSourceName );
         if ( std::error_code EC = fileOrErr.getError() )
@@ -399,7 +409,7 @@ namespace silly
             // TODO: coverage
             llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file '{}': {}\n", mlirSourceName,
                                          EC.message() );
-            fatalDriverError( ReturnCodes::openError );
+            return ReturnCodes::openError;
         }
 
         llvm::SourceMgr sourceMgr;
@@ -410,11 +420,13 @@ namespace silly
         {
             // TODO: coverage
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to parse MLIR file '{}'\n", mlirSourceName );
-            fatalDriverError( ReturnCodes::parseError );
+            return ReturnCodes::parseError;
         }
+
+        return ReturnCodes::success;
     }
 
-    void CompilationUnit::parseLLVMFile( const std::string& llvmSourceName )
+    ReturnCodes CompilationUnit::parseLLVMFile( const std::string& llvmSourceName )
     {
         llvm::SMDiagnostic err;
         llvmModule = llvm::parseIRFile( llvmSourceName, err, llvmContext );
@@ -422,7 +434,9 @@ namespace silly
         {
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to parse IR file '{}': {}\n", llvmSourceName,
                                          err.getMessage().str() );
-            fatalDriverError( ReturnCodes::parseError );
+            return ReturnCodes::parseError;
         }
+
+        return ReturnCodes::success;
     }
 }    // namespace silly

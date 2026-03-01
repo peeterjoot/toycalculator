@@ -2,27 +2,27 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Silly compiler driver return codes.
 ///
-/// FIXME: revisit direct exit as a FATAL mechanism -- will orphan stuff.
-///
 #pragma once
 
-/// The numeric return codes for the silly driver
-enum class ReturnCodes : int
+namespace silly
 {
-    success,
-    badExtensionError,
-    badOption,
-    directoryError,
-    duplicateCUError,
-    filenameParseError,
-    ioError,
-    linkError,
-    loweringError,
-    missingCUError,
-    openError,
-    parseError,
-    tempCreationError,
-    verifyError,
-};
-
-
+    /// The numeric return codes for the silly driver
+    enum class ReturnCodes : int
+    {
+        success,
+        badExtensionError,
+        badOption,
+        directoryError,
+        duplicateCUError,
+        filenameParseError,
+        ioError,
+        linkError,
+        loweringError,
+        missingCUError,
+        openError,
+        parseError,
+        tempCreationError,
+        verifyError,
+        LAST_ERROR_VALUE
+    };
+}    // namespace silly
