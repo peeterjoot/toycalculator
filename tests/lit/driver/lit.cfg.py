@@ -6,7 +6,7 @@ config.test_format = lit.formats.ShTest(execute_external=True)
 # Recognize .silly files as tests
 config.suffixes = ['.silly']
 
-config.excludes = ['mod1.silly', 'mod2.silly']
+config.excludes = ['mod1.silly', 'mod2.silly', 'mod3.silly']
 
 # Use the generated site config
 config.test_source_root = os.path.dirname(__file__)

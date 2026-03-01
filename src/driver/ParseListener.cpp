@@ -714,8 +714,8 @@ namespace silly
             emitUserError( loc,
                            std::format( "Failed to process IMPORT {}.  All module imports must be named with --imports", modname ),
                            currentFuncName );
+            return;
         }
-        assert( importMod );
 
         std::vector<mlir::NamedAttribute> attrs;
         attrs.push_back(
