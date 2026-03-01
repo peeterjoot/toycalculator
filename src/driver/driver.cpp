@@ -190,7 +190,7 @@ int main( int argc, char** argv )
     if ( inputFilenames.size() == 0 )
     {
         // coverage: not-enough-args-should-fail.silly
-        llvm::errs() << COMPILER_NAME ": error: Sources (.silly, .mlir, .mlirbc, .ll, .bc, or .o) must be specified: not enough positional command line arguments!\n";
+        llvm::errs() << COMPILER_NAME ": error: no input files specified\nSee: silly --help\n";
         return (int)silly::ReturnCodes::badOption;
     }
 

@@ -1,3 +1,3 @@
 // RUN: %Not %ExeSilly 2>&1 | %FileCheck %s --check-prefix=ERR
 //
-// ERR: silly: error: Sources (.silly, .mlir, .mlirbc, .ll, .bc, or .o) must be specified: not enough positional command line arguments!
+// ERR: silly: error: no input files specified
