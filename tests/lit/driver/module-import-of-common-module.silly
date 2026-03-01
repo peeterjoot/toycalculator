@@ -1,0 +1,21 @@
+// Two modules, one main.  2 callers to timestwo in module mod2 (one from the main, one from the mod3 module)
+
+// RUN: rm -rf %t.dir
+// RUN: mkdir -p %t.dir
+// RUN: cp %s %t.dir/module-import-of-common-module.silly
+// RUN: %ExeSilly -c --emit-mlirbc %S/mod2.silly -o %t.dir/mod2.mlirbc
+// RUN: %ExeSilly -c --imports %t.dir/mod2.mlirbc --emit-mlirbc %S/mod3.silly -o %t.dir/mod3.mlirbc
+// RUN: %ExeSilly --imports %t.dir/mod2.mlirbc --imports %t.dir/mod3.mlirbc %S/module-import-of-common-module.silly -o %t.exe
+// RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
+// EXEC: foo: 2
+// EXEC: main: timestwo(6) = 12
+
+MAIN;
+
+IMPORT mod3; // foo (calls timestwo)
+IMPORT mod2; // timestwo
+
+CALL foo( 1 );
+
+INT16 r2 = CALL timestwo( 6 );
+PRINT "main: timestwo(6) = ", r2;

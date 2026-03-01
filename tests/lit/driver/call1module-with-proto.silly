@@ -1,0 +1,15 @@
+// One module test with a manual prototype before IMPORT.
+
+// RUN: rm -rf %t.dir
+// RUN: mkdir -p %t.dir
+// RUN: cp %s %t.dir/call1module-with-proto.silly
+// RUN: %ExeSilly -c --emit-mlirbc %S/mod1.silly -o %t.dir/mod1.mlirbc
+// RUN: %ExeSilly --imports %t.dir/mod1.mlirbc %S/call1module-with-proto.silly -o %t.exe
+// RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
+// EXEC: r1 = 2
+
+FUNCTION addone ( INT16 w ) : INT16;
+IMPORT mod1; // Can tolerate a manual prototype without triggering an IMPORT failure -- but perhaps it should!
+
+INT16 r1 = CALL addone( 1 ); // 2
+PRINT "r1 = ", r1;

@@ -3,27 +3,7 @@
 ### running list of other issues and ideas, semi-randomly ordered
 ----------------------------------
 
-#### MODULE IMPORT.
-
-Next steps:
-
-- ctest error coverage (module does not exist.)
-- ctest error coverage (module named in --imports and otherwise.)
-- ctest coverage for IMPORT when a function is already prototyped (should be skipped).
-- ctest coverage for multiple sources all doing IMPORT of the same module.
-- ctest coverage for repeated IMPORT (allow it, but the walk should not add anything, or have bad side effects.)
-- ctest for `MAIN` anywhere?
-
 #### Driver
-
-* tests/lit/driver/ -- may be implicitly be depending on $PATH to find silly in build/bin/ -- try without that in env to see.
-
-```
-silly -c --emit-mlir --output-directory o callee.silly
-silly --imports o/callee.mlirbc --output-directory o callmod.silly -o program
-```
-
-ends up in ./program
 
 * CompilationUnit:
  - Reduce use of raw ModuleOp — prefer passing OwningOpRef& or keep it local

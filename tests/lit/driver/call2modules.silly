@@ -12,6 +12,7 @@
 
 IMPORT mod1; // addone
 IMPORT mod2; // timestwo
+IMPORT mod2; // shouldn't generate errors to do a second time.
 
 INT16 r1 = CALL addone( 1 ); // 2
 PRINT "r1 = ", r1;

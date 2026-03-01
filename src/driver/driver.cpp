@@ -190,8 +190,6 @@ int main( int argc, char** argv )
 
     std::vector<std::string>& files = inputFilenames;
 
-    size_t totalSources = inputFilenames.size() + imports.size();
-
     if ( ds.emitLLVM and ds.emitLLVMBC )
     {
         // coverage: emit-llvm-both-should-fail.silly
@@ -206,7 +204,7 @@ int main( int argc, char** argv )
         silly::fatalDriverError( ReturnCodes::badOption );
     }
 
-    if ( ds.compileOnly and !ds.oName.empty() and (totalSources > 1) )
+    if ( ds.compileOnly and !ds.oName.empty() and (inputFilenames.size() > 1) )
     {
         // coverage: multi-source-with-c-and-o-should-fail.silly
         llvm::errs() << COMPILER_NAME ": error: -c and -o cannot be used together with multiple input files (ambiguous output name)\n";

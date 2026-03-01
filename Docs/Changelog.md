@@ -63,6 +63,8 @@ Back in main
 Back in main again, rc = 42
 ```
 
+* Allow IMPORT within MODULE.
+
 ### Debug Information Architecture
 
 ## MLIR Infrastructure Changes

@@ -707,6 +707,14 @@ namespace silly
         LLVM_DEBUG( { llvm::errs() << std::format( "enterImportStatement: import: {}\n", modname ); } );
 
         mlir::ModuleOp importMod = sm.findMOD( modname );
+        if (!importMod)
+        {
+            // coverage: module-bad.silly
+            mlir::Location loc = getStartLocation( ctx );
+            emitUserError( loc,
+                           std::format( "Failed to process IMPORT {}.  All module imports must be named with --imports", modname ),
+                           currentFuncName );
+        }
         assert( importMod );
 
         std::vector<mlir::NamedAttribute> attrs;

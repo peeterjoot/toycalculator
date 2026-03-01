@@ -1,0 +1,6 @@
+// Test that an error is produced for an unspecified module.
+//
+// RUN: %Not %ExeSilly %s 2>&1 | %FileCheck %s --check-prefix=ERR
+//
+// ERR: module-bad.silly:6:1: error: Failed to process IMPORT foo. All module imports must be named with --imports
+IMPORT foo;

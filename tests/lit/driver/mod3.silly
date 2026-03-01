@@ -1,0 +1,11 @@
+// mod3.silly
+MODULE;
+
+IMPORT mod2; // timestwo
+
+FUNCTION foo ( INT16 v )
+{
+    INT16 r = CALL timestwo( v );
+    PRINT "foo: ", r;
+    RETURN;
+};

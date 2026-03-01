@@ -18,7 +18,7 @@ grammar Silly;
 // ====================================
 // Entry point for the grammar, matching zero or more statements followed by optional EXIT, and then EOF.
 startRule
-  : ((MODULE_TOKEN ENDOFSTATEMENT_TOKEN ((functionStatement ENDOFSTATEMENT_TOKEN)|comment)*) |
+  : ((MODULE_TOKEN ENDOFSTATEMENT_TOKEN (((functionStatement | importStatement) ENDOFSTATEMENT_TOKEN)|comment)*) |
      ((MAIN_TOKEN ENDOFSTATEMENT_TOKEN)? (statement|comment)* (exitStatement ENDOFSTATEMENT_TOKEN)? comment*))
     EOF
   ;
