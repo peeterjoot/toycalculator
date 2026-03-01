@@ -3,4 +3,4 @@
 //
 // RUN: %Not %ExeSilly -c %s d2.silly -o %t.o 2>&1 | %FileCheck %s --check-prefix=ERR
 //
-// ERR: error: -c and -o cannot be used together with multiple input files (ambiguous output name)
+// ERR: silly: error: -c and -o cannot be used together with multiple input files (ambiguous output name)

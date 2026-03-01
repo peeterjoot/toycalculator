@@ -1,0 +1,5 @@
+// Test that --emit-mlir and --emit-mlirbc together is rejected
+//
+// RUN: %Not %ExeSilly --emit-mlir --emit-mlirbc %s 2>&1 | %FileCheck %s --check-prefix=ERR
+//
+// ERR: silly: error: --emit-mlir and --emit-mlirbc cannot be used together

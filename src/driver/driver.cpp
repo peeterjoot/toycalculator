@@ -192,9 +192,23 @@ int main( int argc, char** argv )
 
     size_t totalSources = inputFilenames.size() + imports.size();
 
+    if ( ds.emitLLVM and ds.emitLLVMBC )
+    {
+        // coverage: emit-llvm-both-should-fail.silly
+        llvm::errs() << COMPILER_NAME ": error: --emit-llvm and --emit-llvmbc cannot be used together\n";
+        silly::fatalDriverError( ReturnCodes::badOption );
+    }
+
+    if ( ds.emitMLIR and ds.emitMLIRBC )
+    {
+        // coverage: emit-mlir-both-should-fail.silly
+        llvm::errs() << COMPILER_NAME ": error: --emit-mlir and --emit-mlirbc cannot be used together\n";
+        silly::fatalDriverError( ReturnCodes::badOption );
+    }
+
     if ( ds.compileOnly and !ds.oName.empty() and (totalSources > 1) )
     {
-        // TODO: coverage:
+        // coverage: multi-source-with-c-and-o-should-fail.silly
         llvm::errs() << COMPILER_NAME ": error: -c and -o cannot be used together with multiple input files (ambiguous output name)\n";
         silly::fatalDriverError( ReturnCodes::badOption );
     }

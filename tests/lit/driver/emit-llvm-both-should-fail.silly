@@ -1,0 +1,5 @@
+// Test that --emit-llvm and --emit-llvmbc together is rejected
+//
+// RUN: %Not %ExeSilly --emit-llvm --emit-llvmbc %s 2>&1 | %FileCheck %s --check-prefix=ERR
+//
+// ERR: silly: error: --emit-llvm and --emit-llvmbc cannot be used together
