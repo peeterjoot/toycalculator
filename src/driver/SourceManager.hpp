@@ -52,6 +52,8 @@ namespace silly
         ReturnCodes createAndSerializeMLIR( FileNameAndCU& cup );
 
         /// Lower the MLIR module to LLVM-IR (and emit that as a file if desired.)
+        ///
+        /// @param cup [in] What to operate on.
         /// @param isDone [out] true if LLVM-IR was created (i.e.: more to do)
         ReturnCodes createAndSerializeLLVM( FileNameAndCU& cup, bool & isDone );
 

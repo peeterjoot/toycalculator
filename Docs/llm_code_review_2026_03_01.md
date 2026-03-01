@@ -83,13 +83,6 @@ The `TODO: coverage` explosion in `CompilationUnit.cpp` and `SourceManager.cpp` 
 
 ---
 
-### 6. `-S` Flag ✅
-
-- Emit assembly (`.s`) without linking.
-- `-S` and `-c` together correctly rejected with an error.
-
----
-
 ### 7. `fatalDriverError` Eliminated ✅
 
 - `fatalDriverError()` removed from `CompilationUnit` and `SourceManager`.
