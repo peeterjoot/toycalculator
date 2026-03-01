@@ -18,6 +18,7 @@ namespace silly
 {
     static void showLinkCommand( const std::string& linker, llvm::SmallVector<llvm::StringRef, 24>& args )
     {
+        // TODO: coverage
         llvm::errs() << "# " << linker;
 
         for ( const auto& a : args )
@@ -42,6 +43,7 @@ namespace silly
             std::error_code EC = llvm::sys::fs::create_directories( ds.outDir );
             if ( EC )
             {
+                // TODO: coverage
                 llvm::errs() << std::format( COMPILER_NAME ": error: Failed to create output directory '{}': {}\n",
                                              ds.outDir, EC.message() );
                 return ReturnCodes::directoryError;
@@ -68,6 +70,7 @@ namespace silly
         auto i = CUs.find( stem );
         if ( i != CUs.end() )
         {
+            // TODO: coverage
             llvm::errs() << std::format( COMPILER_NAME ": error: file stem {} specified multiple times\n", stem );
             return ReturnCodes::duplicateCUError;
         }
@@ -86,6 +89,7 @@ namespace silly
         auto i = CUs.find( stem );
         if ( i == CUs.end() )
         {
+            // TODO: coverage
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to find CU for stem {}\n", stem );
             return ReturnCodes::missingCUError;
         }
@@ -144,6 +148,7 @@ namespace silly
         {
             std::error_code EC = linkerPath.getError();
 
+            // TODO: coverage
             llvm::errs() << std::format( COMPILER_NAME ": error: Error finding path for linker '{}': {}\n", linker,
                                          EC.message() );
             return ReturnCodes::filenameParseError;
@@ -201,6 +206,7 @@ namespace silly
                 showLinkCommand( linkerPath.get(), linkerArgs );
             }
 
+            // TODO: coverage
             llvm::errs() << std::format( COMPILER_NAME ": error: Linker failed with exit code: {}, rc = {}\n", errMsg,
                                          result );
             return ReturnCodes::linkError;
@@ -374,6 +380,7 @@ namespace silly
             EC = llvm::sys::fs::createUniqueFile( p, objectFilename );
             if ( EC )
             {
+                // TODO: coverage
                 // FIXME: another place to use formatv
                 llvm::errs() << std::format( COMPILER_NAME
                                              ": error: Failed to create temporary object file in path '{}': {}\n",
@@ -384,6 +391,7 @@ namespace silly
 
             if ( ds.keepTemps )
             {
+                // TODO: coverage
                 // FIXME: another place to use formatv
                 llvm::errs() << std::format( COMPILER_NAME ": info: created temporary: {}\n",
                                              std::string( objectFilename ) );

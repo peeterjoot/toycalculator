@@ -33,7 +33,7 @@ static llvm::cl::OptionCategory SillyCategory( "Silly Compiler Options" );
 //
 
 static llvm::cl::list<std::string> inputFilenames( llvm::cl::Positional, llvm::cl::desc( "<input file(s)>" ),
-                                                   llvm::cl::OneOrMore, llvm::cl::value_desc( "filename" ),
+                                                   llvm::cl::value_desc( "filename" ),
                                                    llvm::cl::cat( SillyCategory ), llvm::cl::NotHidden );
 
 static llvm::cl::opt<bool> compileOnly( "c", llvm::cl::desc( "Compile only and don't link." ), llvm::cl::init( false ),
@@ -182,8 +182,16 @@ int main( int argc, char** argv )
 
     if ( versionFlag )
     {
+        // coverage: silly-version.silly
         llvm::outs() << std::format( COMPILER_NAME ": info: silly compiler version {}, LLVM: {}\n", COMPILER_VERSION, LLVMVERSION);
         return (int)silly::ReturnCodes::success;
+    }
+
+    if ( inputFilenames.size() == 0 )
+    {
+        // coverage: not-enough-args-should-fail.silly
+        llvm::errs() << COMPILER_NAME ": error: Sources (.silly, .mlir, .mlirbc, .ll, .bc, or .o) must be specified: not enough positional command line arguments!\n";
+        return (int)silly::ReturnCodes::badOption;
     }
 
     if ( ds.emitLLVM and ds.emitLLVMBC )

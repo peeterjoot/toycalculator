@@ -6,6 +6,7 @@ config.test_format = lit.formats.ShTest(execute_external=True)
 # Recognize .silly files as tests
 config.suffixes = ['.silly']
 
+# Exclude support/module files, that are only built with other MAINs, so they aren't discovered as standalone tests
 config.excludes = ['mod1.silly', 'mod2.silly', 'mod3.silly']
 
 # Use the generated site config

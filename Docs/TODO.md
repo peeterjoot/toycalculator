@@ -5,14 +5,14 @@
 
 #### Driver
 
+* LOTS of testing coverage TODOs to review.
 * 'silly --silly-version' requires a dummy file to also be specified -- how to avoid that?
 * CompilationUnit:
  - Reduce use of raw ModuleOp — prefer passing OwningOpRef& or keep it local
-* Respect -o for --emit-mlir or --emit-llvm too (provided both aren't set.)
 
 * -o with directory component (-o build/foo → creates build/foo exe)
 * Link failure case (bad object, missing symbol) + check --verbose-link output
-* No -o → default to first-file stem (already in your manual test)
+* test: No -o → default to first-file stem (as in earlier manual test)
 
 * Don't think that driver is removing outputs before trying to recreate, so if there is an error after success, it is not visible.
 * Any driver error should delete any files opened (.o, .s, .ll, .mlir, ...).  There are mechanisms for that like:
