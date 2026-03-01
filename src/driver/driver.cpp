@@ -195,14 +195,14 @@ int main( int argc, char** argv )
     if ( ds.emitLLVM and ds.emitLLVMBC )
     {
         // coverage: emit-llvm-both-should-fail.silly
-        llvm::errs() << COMPILER_NAME ": error: --emit-llvm and --emit-llvmbc cannot be used together\n";
+        llvm::errs() << COMPILER_NAME ": error: --emit-llvm and --emit-llvmbc are mutually exclusive (choose one for LLVM IR output)\n";
         silly::fatalDriverError( ReturnCodes::badOption );
     }
 
     if ( ds.emitMLIR and ds.emitMLIRBC )
     {
         // coverage: emit-mlir-both-should-fail.silly
-        llvm::errs() << COMPILER_NAME ": error: --emit-mlir and --emit-mlirbc cannot be used together\n";
+        llvm::errs() << COMPILER_NAME ": error: --emit-mlir and --emit-mlirbc are mutually exclusive (choose one for silly diaglect MLIR output)\n";
         silly::fatalDriverError( ReturnCodes::badOption );
     }
 
