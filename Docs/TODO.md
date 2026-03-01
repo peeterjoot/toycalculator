@@ -5,6 +5,7 @@
 
 #### Driver
 
+* 'silly --silly-version' requires a dummy file to also be specified -- how to avoid that?
 * CompilationUnit:
  - Reduce use of raw ModuleOp — prefer passing OwningOpRef& or keep it local
 * Respect -o for --emit-mlir or --emit-llvm too (provided both aren't set.)

@@ -12,6 +12,10 @@ set_source_files_properties(
   PROPERTIES GENERATED TRUE
 )
 
+add_compile_definitions(
+    LLVMVERSION=\"${LLVM_PREFIX}\"
+)
+
 add_executable(silly
   ${DRIVER_SOURCE_FILES}
   driver.cpp

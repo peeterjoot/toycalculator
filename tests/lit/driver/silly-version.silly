@@ -1,0 +1,2 @@
+// RUN: %ExeSilly --silly-version foo.silly | %FileCheck %s --check-prefix=VERSION
+// VERSION: silly: info: silly compiler version  V0.10.0, LLVM: /

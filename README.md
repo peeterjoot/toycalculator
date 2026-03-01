@@ -933,14 +933,14 @@ See tests/endtoend/driver/callmod.silly + callee.silly for a small working demo.
 
 # Changelogs
 
-* [V10](Docs/Changelog.md) This is the current working version, not yet tagged.
-* [V9](Docs/Changelog.V9.md) (Feb 25, 2026)
-* [V8](Docs/Changelog.V8.md) (Feb 15, 2026)
-* [V7](Docs/Changelog.V7.md) (Jan 4, 2025)
-* [V6](Docs/Changelog.V6.md) (Dec 28, 2025)
-* [V5](Docs/Changelog.V5.md) (Dec 22, 2025)
-* [V4](Docs/Changelog.V4.md) (July 7, 2025)
-* [V3](Docs/Changelog.V3.md) (Jun 2, 2025)
-* [V2](Docs/Changelog.V2.md) (May 25, 2025)
-* [V1](Docs/Changelog.V1.md) (May 17, 2025)
-* [V0](Docs/Changelog.V0.md) (May 4, 2025)
+* [V0.10](Docs/Changelog.md) This is the current working version, not yet tagged.
+* [V0.9](Docs/Changelog.V0.9.md) (Feb 25, 2026)
+* [V0.8](Docs/Changelog.V0.8.md) (Feb 15, 2026)
+* [V0.7](Docs/Changelog.V0.7.md) (Jan 4, 2025)
+* [V0.6](Docs/Changelog.V0.6.md) (Dec 28, 2025)
+* [V0.5](Docs/Changelog.V0.5.md) (Dec 22, 2025)
+* [V0.4](Docs/Changelog.V0.4.md) (July 7, 2025)
+* [V0.3](Docs/Changelog.V0.3.md) (Jun 2, 2025)
+* [V0.2](Docs/Changelog.V0.2.md) (May 25, 2025)
+* [V0.1](Docs/Changelog.V0.1.md) (May 17, 2025)
+* [V0.0](Docs/Changelog.V0.0.md) (May 4, 2025)

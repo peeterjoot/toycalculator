@@ -19,9 +19,6 @@
 /// --debug- type for lowering
 #define DEBUG_TYPE "silly-lowering-context"
 
-/// For llvm.ident
-#define COMPILER_VERSION " V10"
-
 namespace silly
 {
     LoweringContext::LoweringContext( mlir::ModuleOp& moduleOp, silly::DriverState& ds )

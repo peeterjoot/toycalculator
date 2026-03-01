@@ -42,6 +42,9 @@ static llvm::cl::opt<bool> compileOnly( "c", llvm::cl::desc( "Compile only and d
 static llvm::cl::opt<bool> keepTemps( "keep-temp", llvm::cl::desc( "Do not automatically delete temporary files." ),
                                       llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
+static llvm::cl::opt<bool> versionFlag( "silly-version", llvm::cl::desc( "Show the silly compiler/language version and the LLVM path used to build it, then exit" ),
+                                        llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+
 static llvm::cl::opt<std::string> outDir(
     "output-directory", llvm::cl::desc( "Output directory for generated files (e.g., .mlir, .ll, .o)" ),
     llvm::cl::value_desc( "directory" ), llvm::cl::init( "" ), llvm::cl::cat( SillyCategory ) );
@@ -188,7 +191,11 @@ int main( int argc, char** argv )
             break;
     }
 
-    std::vector<std::string>& files = inputFilenames;
+    if ( versionFlag )
+    {
+        llvm::outs() << std::format( COMPILER_NAME ": info: silly compiler version {}, LLVM: {}\n", COMPILER_VERSION, LLVMVERSION);
+        return (int)ReturnCodes::success;
+    }
 
     if ( ds.emitLLVM and ds.emitLLVMBC )
     {
@@ -210,6 +217,8 @@ int main( int argc, char** argv )
         llvm::errs() << COMPILER_NAME ": error: -c and -o cannot be used together with multiple input files (ambiguous output name)\n";
         silly::fatalDriverError( ReturnCodes::badOption );
     }
+
+    std::vector<std::string>& files = inputFilenames;
 
     silly::SourceManager sm( ds, &dialectLoader.context, files[0] );
 

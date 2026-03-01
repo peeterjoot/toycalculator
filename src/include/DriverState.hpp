@@ -15,6 +15,9 @@
 /// Name of the silly compiler driver, and used in llvm.ident and DICompileUnitAttr
 #define COMPILER_NAME "silly"
 
+/// For llvm.ident, and silly --version
+#define COMPILER_VERSION " V0.10.0"
+
 namespace silly
 {
     /// State to pass from the driver to CompilationUnit, parser/builder, lowering
