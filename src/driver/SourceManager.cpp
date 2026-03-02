@@ -18,7 +18,7 @@ namespace silly
 {
     static void showLinkCommand( const std::string& linker, llvm::SmallVector<llvm::StringRef, 24>& args )
     {
-        // TODO: no coverage
+        // coverage: verbose-link.silly
         llvm::errs() << "# " << linker;
 
         for ( const auto& a : args )
@@ -43,7 +43,7 @@ namespace silly
             std::error_code EC = llvm::sys::fs::create_directories( ds.outDir );
             if ( EC )
             {
-                // TODO: no coverage
+                // coverage: output-directory-bad-should-fail.silly
                 llvm::errs() << std::format( COMPILER_NAME ": error: Failed to create output directory '{}': {}\n",
                                              ds.outDir, EC.message() );
                 return ReturnCodes::directoryError;
@@ -70,7 +70,8 @@ namespace silly
         auto i = CUs.find( stem );
         if ( i != CUs.end() )
         {
-            // TODO: no coverage
+            // coverage: source-repeated-should-fail.silly
+            // FIXME: this error message is not clear.
             llvm::errs() << std::format( COMPILER_NAME ": error: file stem {} specified multiple times\n", stem );
             return ReturnCodes::duplicateCUError;
         }
@@ -206,7 +207,7 @@ namespace silly
                 showLinkCommand( linkerPath.get(), linkerArgs );
             }
 
-            // TODO: no coverage
+            // coverage: link-failure.silly
             llvm::errs() << std::format( COMPILER_NAME ": error: Linker failed with exit code: {}, rc = {}\n", errMsg,
                                          result );
             return ReturnCodes::linkError;
@@ -391,7 +392,7 @@ namespace silly
 
             if ( ds.keepTemps )
             {
-                // TODO: no coverage
+                // coverage: keep-temp.silly
                 // FIXME: another place to use formatv
                 llvm::errs() << std::format( COMPILER_NAME ": info: created temporary: {}\n",
                                              std::string( objectFilename ) );

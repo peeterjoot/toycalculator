@@ -1,0 +1,7 @@
+// RUN: %Not %ExeSilly %s -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: undefined reference to `addone'
+// CHECK: error: Linker failed with exit code:
+
+FUNCTION addone ( INT16 w ) : INT16;
+
+INT16 r1 = CALL addone( 1 ); // 2

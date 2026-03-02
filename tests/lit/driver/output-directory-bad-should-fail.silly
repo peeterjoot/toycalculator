@@ -1,0 +1,3 @@
+// RUN: %Not %ExeSilly %s --output-directory /foo -o %t.exe 2>&1 | %FileCheck %s --check-prefix=ERR
+//
+// ERR: silly: error: Failed to create output directory '/foo': Permission denied

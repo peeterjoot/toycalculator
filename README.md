@@ -247,7 +247,7 @@ Some ideas for improvements (as well as bug fixes) can be found in the [TODO](Do
 
 * Like scripted languages, there is an implicit `main` in this silly language.
 No user-defined `main` function is allowed.
-* Functions can be defined anywhere, but must be declared (i.e.: prototype) if called before the definition.
+* Functions can be defined anywhere (including in other sources), but must be declared (i.e.: prototype or `IMPORT`) if called before the definition.
 * The `EXIT` statement, if specified, currently must be at the end of the program.
 `EXIT` without a numeric value is equivalent to `EXIT 0`, as is a program with no explicit `EXIT`.
 * The `RETURN` statement must be at the end of a function.
@@ -255,20 +255,25 @@ It is currently mandatory.
 * See the [TODO](Docs/TODO.md) for a long list of nice-to-have features that I haven't gotten around to yet, and may never.
 * `GET` into a `BOOL` value will abort if the input value is not 0 or 1.
 This is inconsistent with assignment to a `BOOL` variable, which will truncate without raising a runtime error.
-* The storage requirement of `BOOL` is currently one byte per element, even for arrays.
+* The storage requirement of `BOOL` is currently one byte per element, even for `BOOL` arrays.
 Array `BOOL` values may use a packed bitmask representation in the future.
+* Negative `FOR` loop step sizes currently have implementation defined behaviour.
+`FOR` loops have no `BREAK` nor `CONTINUE` support.
 
 ## Interesting Files
 
 * The [ANTLR4 grammar](src/grammar/Silly.g4) for the silly language.
-* Tablegen definition for the [silly MLIR dialect](src/dialect/silly.td).  This is the compiler's internal view of all grammar elements.
-* The [Compiler driver](src/driver/driver.cpp).  This parses and handles command-line options, opens output files, and orchestrates all lower-level actions (parse tree walk + MLIR builder, lowering to LLVM IR, assembly printing, and linker invocation.)
+* Tablegen definition for the [silly MLIR dialect](src/dialect/silly.td).
+This is the compiler's internal view of all grammar elements.
+* The [Compiler driver](src/driver/driver.cpp).
+This parses and handles command-line options, opens output files, and orchestrates all lower-level actions (parse tree walk + MLIR builder, lowering to LLVM IR, assembly printing, and linker invocation.)
 * The [ANTLR4 parse tree walker and MLIR builder](src/driver/ParseListener.cpp).
 * The [LLVM IR lowering classes](src/driver/lowering.cpp) used to transform silly dialect operators to LLVM-IR.
-* Sample programs in `tests/endtoend/` and a [test driver](bin/testit).  These serve as samples and ctest based test cases.
+* Sample programs in `tests/endtoend/`. These serve as samples and ctest based test cases.
 * A [build script](bin/build) that runs both cmake and ninja, setting various options.
-* A [mlir-opt wrapper](bin/silly-opt), that loads the silly dialect shared object
+* A [mlir-opt wrapper](bin/silly-opt), that pre-loads the silly dialect shared object
 * A set of silly dialect lit tests (`tests/lit/dialect/`) that are used to unit test the dialect verify functions.
+Special case testing is being gradually migrated to llvm-lit.
 
 ## Command Line Options
 
@@ -286,23 +291,27 @@ Once built, the compiler driver can be run with `build/bin/silly` with the follo
 * `-o` — Name of the object (w/ -c) or executable.
 * `--init-fill nnn` — Set fill character for stack variables (numeric value ≤ 255). Default is zero-initialized.
 * `--output-directory` — Specify output directory for generated files (.mlir, .ll, .o, executable)
-* `--no-color-errors` — If stderr is output to a TTY, error messages will be in color by default.  This disables that color output.
-* `--no-abort-path` - If ABORT is called, omit any path components from the output message.  Implemented for test code, so that the output doesn't depend on user specific paths (i.e.: fatal.silly).
+* `--no-color-errors` — If stderr is output to a TTY, error messages will be in color by default.
+This disables that color output.
+* `--imports mod1.silly` -- experimental `IMPORT` statement support.
 
-### Debug/Hacking Options
+### Debug/Hacking/Testing Options
 
 * `--emit-llvm` — Emit LLVM-IR files (text format)
 * `--emit-llvmbc` — Emit LLVM-IR files (byte code format)
 * `--emit-mlir` — Emit MLIR files (text format)
 * `--emit-mlirbc` — Emit MLIR files (binary format)
-* `--debug` — Enable MLIR debug output (built-in option)
+* `--debug` — Enable MLIR debug output (built-in LLVM option)
 * `-debug-only=silly-driver` — Enable driver-specific debug output
 * `-debug-only=silly-lowering` — Enable lowering-specific debug output
 * `--debug-mlir` — Enable MLIR-specific debugging
-* `--verbose-link` — Show the link command.  This is implicit if the link fails.
+* `--verbose-link` — Show the link command.
+This is implicit if the link fails.
 * `--keep-temp` — Do not delete temporary .o files (and give a message showing the name.)
-* `--no-verbose-parse-error' -- The default parse error message is noisy and lists a number of grammar specific tokens, which requires expected test output updates every time the grammar is changed.  This option inhibits that volatile output, which is still on by default.
-* `--imports mod1.silly` -- experimental `IMPORT` statement support.
+* `--no-verbose-parse-error' -- The default parse error message is noisy and lists a number of grammar specific tokens, which requires expected test output updates every time the grammar is changed.
+This option inhibits that volatile output, which is still on by default.
+* `--no-abort-path` - If ABORT is called, omit any path components from the output message.
+Implemented for test code, so that the output doesn't depend on user specific paths (i.e.: fatal.silly).
 
 ### Examples
 
@@ -321,7 +330,8 @@ The compiler can consume:
 - LLVM-IR sources (with .ll or .bc suffixes).
 
 Specifying a MLIR silly-dialect source means that the compiler will bypass the front end (parser/builder) and go straight to lowering.
-Specifying a LLVM-IR source means that the compiler will go straight to the assembly printer.  Module imports (--imports ...) may only pass .silly or MLIR sources (`IMPORT` processing uses the mlir::func::FuncOp objects from that internal representation to generate prototypes in the caller module.)
+Specifying a LLVM-IR source means that the compiler will go straight to the assembly printer.
+Module imports (--imports ...) may only pass .silly or MLIR sources (`IMPORT` processing uses the mlir::func::FuncOp objects from that internal representation to generate prototypes in the caller module.)
 
 ## Running silly-opt
 
@@ -385,19 +395,21 @@ Supported llvm-project versions:
 build
 ```
 
-The build script (which also runs cscope, doxygen and ctags by default), currently assumes that I'm the one building it, and is likely not sufficiently general for other people to use. It will surely break as I upgrade the systems I build on.
+The build script (which may or may not also run cscope, doxygen and ctags by default, depending on my mood), currently assumes that I'm the one building it.  This build script is probably not sufficiently general for other people to use, and will surely break as I upgrade the systems I build on.
 
-Linux-only is assumed.
+This project has been built in a few (Linux-only) configurations:
 
-Depending on what I currently have booted, this project has been built on only a few configurations:
-
+* Fedora 42/ARM (running on a UTM VM, hosted on a macbook)
 * Fedora 42/X64 (on a dual-boot Windows 11/Linux laptop)
 * WSL Ubuntu 24/X64 (same laptop)
-* Armbian (Ubuntu), running on a Raspberry Pi (this is why there's an ARM case in buildllvm and CMakeLists.txt)
+* Armbian (Ubuntu), running on a Raspberry Pi.
+
+and currently requires LLVM 22.1.0+.
+The V9 tag (aka: V0.9.0) was last built on LLVM 21.1.8.
 
 ### Testing
 
-Testing is ctest-based. Examples:
+Testing is ctest and llvm-lit based. Examples:
 
 ```bash
 cd build
@@ -422,17 +434,30 @@ Each statement is terminated by a semicolon (`;`).
 Blocks use `{ ... }`, and expressions use parentheses `( ... )`.
 
 A Silly program may define supplementary functions in a different source from the Silly main source file.
-Such a source may only have comments, `FUNCTION` declarations, and `FUNCTION` definitions, and must use the `MODULE` keyword.
+Such a source may only have comments, `FUNCTION` declarations, `FUNCTION` definitions, `IMPORT` statements, and must use the `MODULE` keyword.
 A non-`MODULE` source may optionally use the `MAIN` keyword, but it is implied if `MODULE` is not specified (provided for symmetry).
 
-For example:
+Here is an example of a silly main program
 
 ```
-MODULE;
+MAIN;
 
-FUNCTION dcl1(...) ...;
+PRINT "Hello Silly World!"
+EXIT 0;
+```
+
+and an example of a silly module:
+
+```
+// mymodule.silly
+MODULE;
+IMPORT foo; // import all the prototypes from foo.silly
+
+// prototypes:
+FUNCTION name2(...) ...;
 FUNCTION dcl2(...) ...;
 
+// functions (can call each other if ordered appropriately, or prototyped.)
 FUNCTION name1(...) ...
 {
 }
@@ -442,7 +467,8 @@ FUNCTION name2(...) ...
 }
 ```
 
-When building a multiple source silly program, all but one source must use the `MODULE` keyword.
+An `IMPORT mymodule;` from some other silly source, will insert prototypes for `name1`, and `name2`.
+When building a multiple source silly program, only one source may omit a `MODULE` statement.
 
 ---
 
@@ -455,7 +481,7 @@ The expression grammar supports **generalized expressions** with proper preceden
 | Precedence | Operators                  | Associativity | Notes                               |
 |------------|----------------------------|---------------|-------------------------------------|
 | 1 (highest)| `NOT`, unary `+`, unary `-`| right         | Unary operators chain right-to-left |
-| 2          | `*`, `/`, `%`              | left          | Multiplicative                      |
+| 2          | `\*`, `/`, `%`              | left          | Multiplicative                      |
 | 3          | `+`, `-`                   | left          | Additive                            |
 | 4          | `<`, `>`, `<=`, `>=`       | left          | Relational (non-associative in practice) |
 | 5          | `EQ`, `NE`                 | left          | Equality                            |
@@ -619,7 +645,7 @@ Binary arithmetic operators work on numeric operands.
 |----------|----------------|
 | `+`      | Addition       |
 | `-`      | Subtraction    |
-| `*`      | Multiplication |
+| `\*`      | Multiplication |
 | `/`      | Division       |
 | `%`      | Modulus        |
 
@@ -745,7 +771,8 @@ FUNCTION void(INT32 a, INT32 b) {
 };
 ```
 
-Functions may be declared, and then defined later.  Example:
+Functions may be declared, and then defined later.
+Example:
 
 ```
 FUNCTION bar ( INT16 w );
@@ -856,7 +883,9 @@ Single-line comments begin with `//` and extend to the end of the line.
 The silly language now supports a primitive but functional multi-module system using the IMPORT statement.
 
 * A module file (marked with the `MODULE`; keyword at the top) can define functions that are imported and called from the main program or from other sources.
-* Any source without `MODULE` is a `MAIN`.  A program can have at most one `MAIN`.  The `MAIN` keyword is implicit, but provided for symmetry.
+* Any source without `MODULE` is a `MAIN`.
+A program can have at most one `MAIN`.
+The `MAIN` keyword is implicit, but provided for symmetry.
 * Cross-file function calls were possible before via manual function prototypes, but this was an error-prone idea, as manual prototypes could be out of synch with the definitions. Now, `IMPORT` automates prototype generation, making the function implementations themselves the "source of truth".
 
 ### Example:
@@ -927,7 +956,7 @@ See tests/endtoend/driver/callmod.silly + callee.silly for a small working demo.
 - Functions and calls (with recursion support)
 - Input (`GET`) and output (`PRINT`, `ERROR`)
 - Explicit program termination (`EXIT`, `ABORT`)
-- Module support with `IMPORT` and `MODULE` keywords.
+- Module support with `IMPORT` and `MODULE`/`MAIN` statements.
 
 ---
 

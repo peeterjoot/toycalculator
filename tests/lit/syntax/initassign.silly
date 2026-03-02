@@ -1,0 +1,4 @@
+// RUN: %Not %ExeSilly -g %s -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: initassign.silly:4:12: error: parse error: mismatched input '=' expecting ';'
+
+INT32 s{3} = 4;

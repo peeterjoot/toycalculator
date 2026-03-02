@@ -1060,16 +1060,10 @@ namespace silly
 
         if ( hasInitList || expressions.size() )
         {
-            if ( declareAssignmentExpression )
-            {
-                // TODO: no coverage.
-                emitUserError(
-                    loc,
-                    std::format(
-                        "Declaration cannot have both assignment expression and initialization-list expression." ),
-                    currentFuncName );
-                return;
-            }
+            // coverage: initassign.silly tries to trigger this, but the grammar prohibits this.
+            // Explicit, unreachable seeming, user-error removed -- switched to assert only.
+            assert ( !declareAssignmentExpression );
+
             pExpressions = &expressions;
         }
         else if ( declareAssignmentExpression )
@@ -1510,7 +1504,7 @@ namespace silly
             }
             else if ( !shape.empty() )
             {
-                // TODO: no coverage.
+                // coverage: error_get_string.silly
                 emitUserError( loc, std::format( "Attempted GET to string literal or array?" ), currentFuncName );
                 return;
             }
