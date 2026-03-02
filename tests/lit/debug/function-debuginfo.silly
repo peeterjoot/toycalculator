@@ -1,0 +1,30 @@
+// This is a test case used to resolve a dwarf DI instrumentation issue (where line numbers were wrong
+// for the location info for the bar0 func.func.)
+// RUN: %ExeSilly -g %s -o %t.exe
+// RUN: dwarfdump %t.exe > %t.dd
+// RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
+// RUN: %FileCheck %s --input-file=%t.dd
+// EXEC: hi
+// EXEC: bar0
+// CHECK: DW_AT_linkage_name{{[[:space:]]+}}bar0
+// CHECK: DW_AT_decl_line{{[[:space:]]+}}0x00000017
+// CHECK: DW_AT_type{{.*}}void
+
+
+
+
+
+
+
+
+
+PRINT "hi"; // line 21
+
+FUNCTION bar0 ( ) // line 23
+{
+    PRINT "bar0"; // line 25
+    RETURN; // line 26
+};
+
+CALL bar0(); // line 29
+

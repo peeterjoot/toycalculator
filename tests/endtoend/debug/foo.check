@@ -1,2 +1,0 @@
-; Check line table entry
-; CHECK: 0x{{[0-9a-f]+}}  [   3, 6]

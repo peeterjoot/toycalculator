@@ -1,9 +1,0 @@
-INT64 v;
-
-FOR (INT64 myLoopVar : (1, 5))
-{
-    PRINT myLoopVar;
-    v = myLoopVar + 1;
-};
-
-PRINT "after loop: ", v;

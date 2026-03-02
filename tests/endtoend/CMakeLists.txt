@@ -234,7 +234,6 @@ endfunction()
 #add_subdirectory(sir)
 
 add_subdirectory(driver)
-add_subdirectory(debug)
 add_subdirectory(exit)
 add_subdirectory(failure)
 add_subdirectory(fatal)

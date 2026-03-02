@@ -1,0 +1,22 @@
+// Check line table entry
+// RUN: %ExeSilly -g %s -o %t.exe
+// RUN: dwarfdump %t.exe > %t.dd
+// RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
+// RUN: %FileCheck %s --input-file=%t.dd
+// EXEC: 3.000000
+// CHECK: 0x{{[0-9a-f]+}}  [   22, 6]
+
+
+
+
+
+
+
+
+
+
+
+// spaces above to allow for adjustments (insert/delete) so that the test payload ends up on a fixed line number.
+FLOAT64 x = 3; // line 20
+// This indenting is to test location generation, and to verify that the resulting columnar position is right.
+     PRINT x; // line 22

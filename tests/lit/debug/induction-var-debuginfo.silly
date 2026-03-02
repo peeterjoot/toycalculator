@@ -1,0 +1,28 @@
+// Check that myLoopVar has correct debug info
+// RUN: %ExeSilly -g %s -o %t.exe
+// RUN: dwarfdump %t.exe > %t.dd
+// RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
+// RUN: %FileCheck %s --input-file=%t.dd
+// EXEC: 1
+// EXEC-NEXT: 2
+// EXEC-NEXT: 3
+// EXEC-NEXT: 4
+// EXEC-NEXT: after loop: 5
+// CHECK: DW_AT_name{{[[:space:]]+}}myLoopVar
+// CHECK: DW_AT_decl_file{{.*}}induction-var-debuginfo.silly
+// CHECK: DW_AT_decl_line{{[[:space:]]+}}0x00000016
+
+
+
+
+
+
+INT64 v; // line 20
+
+FOR (INT64 myLoopVar : (1, 5)) // line 22
+{
+    PRINT myLoopVar;
+    v = myLoopVar + 1;
+};
+
+PRINT "after loop: ", v;

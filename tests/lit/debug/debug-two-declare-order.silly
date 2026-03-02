@@ -1,14 +1,14 @@
 // RUN: rm -rf %t.dir
 // RUN: mkdir %t.dir
-// RUN: %ExeSilly -g -c --emit-mlir %s -o %t.dir/two_declare_no_init.mlir
-// RUN: %FileCheck %s --input-file=%t.dir/two_declare_no_init.mlir
+// RUN: %ExeSilly -g -c --emit-mlir %s -o %t.dir/debug-two-declare-order.mlir
+// RUN: %FileCheck %s --input-file=%t.dir/debug-two-declare-order.mlir
 // Capture location labels from the declare ops
 // CHECK:      {{%[0-9]+}} = "silly.declare"(){{.*}}loc(#loc[[LOC_A:[0-9]+]])
 // CHECK:      {{%[0-9]+}} = "silly.declare"(){{.*}}loc(#loc[[LOC_B:[0-9]+]])
 
 // Verify the locations point to the correct source lines
-// CHECK: #loc[[LOC_A]] = loc("{{.*}}two_declare_no_init.silly":30:
-// CHECK: #loc[[LOC_B]] = loc("{{.*}}two_declare_no_init.silly":32:
+// CHECK: #loc[[LOC_A]] = loc("{{.*}}debug-two-declare-order.silly":30:
+// CHECK: #loc[[LOC_B]] = loc("{{.*}}debug-two-declare-order.silly":32:
 
 // At one point the silly builder was generating declarations out of order (new
 // declarations were always inserted into the very beginning of the function

@@ -1,4 +1,0 @@
-; Check that myLoopVar has correct debug info
-; CHECK: DW_AT_name{{[[:space:]]+}}myLoopVar
-; CHECK: DW_AT_decl_file{{.*}}for_simplest.silly
-; CHECK: DW_AT_decl_line{{[[:space:]]+}}0x00000003
