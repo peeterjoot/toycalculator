@@ -5,11 +5,9 @@
 
 #### ctest/lit:
 
-* endtoend/driver/ merge that into lit/driver/ -- remove add_silly_compile_link_test, add_endtoend_multisource_compile_tests
-* endtoend/failure/ merge that into lit/syntax/ -- remove add_endtoend_failure_tests
-* review the test names when those two are done.  rename systematically and adjust coverage comments to match.
-* readme states: No user-defined main function is allowed. -- should have a test for that.
+* review the lit test names.  rename systematically and adjust coverage comments to match.
 * readme: GET into a BOOL value will abort if the input value is not 0 or 1. -- do I have a test for that?
+* error message for error test: main-function.silly is not the clearest (should be something like: cannot define user defined function named main.)
 
 #### Next
 

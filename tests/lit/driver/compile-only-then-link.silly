@@ -1,0 +1,8 @@
+// A test that uses -c to compile and not link, and then links as a separate step (perhaps a dup test now.)
+
+// RUN: %ExeSilly -g -c %s -o %t.o
+// RUN: %ExeSilly -g %t.o -o %t.exe
+// RUN: %t.exe | %FileCheck %s
+// CHECK: hi
+
+PRINT "hi";

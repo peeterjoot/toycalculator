@@ -1,0 +1,7 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g error_expressions4d.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: error_expressions4d.silly:7:14: error: parse error: mismatched input 'EQ' expecting ';'
+// CHECK:     7 | PRINT 1 EQ 2 EQ 3;
+// CHECK:       |              ^
+
+PRINT 1 EQ 2 EQ 3;

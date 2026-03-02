@@ -1,3 +1,0 @@
-FLOAT64 x;
-FLOAT64 y;
-x = y ^ z;  // Invalid binary operator

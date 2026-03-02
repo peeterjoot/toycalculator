@@ -1,3 +1,0 @@
-INT32 y[1];
-GET y;
-PRINT "should not compile";

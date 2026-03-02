@@ -416,7 +416,7 @@ cd build
 ctest -j 3                      # Run the full test suite
 ctest -R EndToEnd --verbose     # Run all the tests/endtoend/ tests.
 ctest -R silly-dialecttests     # Run the low-level dialect verify tests (tests/lit/dialect/)
-ctest -R "EndToEnd.failure"     # Run just the expected-failure tests.
+ctest -R "EndToEnd.get"         # Run just the GET tests.
 ```
 
 ---

@@ -1,0 +1,14 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g error_triple_nested_for_with_shadowing.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: error_triple_nested_for_with_shadowing.silly:10:9: error: Induction variable i used by enclosing FOR
+// CHECK:    10 |         FOR (INT32 i: (0,2)) {  // expect death: shadows outer i
+// CHECK:       |         ^
+
+
+FOR (INT32 i: (0,2)) {
+    FOR (INT32 j: (0,2)) {
+        FOR (INT32 i: (0,2)) {  // expect death: shadows outer i
+            PRINT "inner i=", i, " j=", j, " outer-ish i=", i;
+        };
+    };
+};

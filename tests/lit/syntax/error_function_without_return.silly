@@ -1,0 +1,15 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g error_function_without_return.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: error_function_without_return.silly: In function ‘blah’:
+// CHECK: error_function_without_return.silly:15:1: error: Function must have a RETURN statement
+// CHECK:    15 | };
+// CHECK:       | ^
+
+// mod2.silly
+MODULE;
+
+FUNCTION blah ( )
+{
+    PRINT "blah!";
+    //RETURN;
+};

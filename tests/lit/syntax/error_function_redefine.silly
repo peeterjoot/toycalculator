@@ -1,0 +1,16 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g error_function_redefine.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: error_function_redefine.silly:13:1: error: Attempt to define function bar more than once
+// CHECK:    13 | FUNCTION bar ( INT16 w )
+// CHECK:       | ^
+
+FUNCTION bar ( INT16 w )
+{
+    PRINT w;
+    RETURN;
+};
+
+FUNCTION bar ( INT16 w )
+{
+    RETURN;
+};

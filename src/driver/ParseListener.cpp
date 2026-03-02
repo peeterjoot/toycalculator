@@ -510,7 +510,7 @@ namespace silly
                 // coverage: error_array_too_many_init.silly, error_init_list1.silly, error_init_list2.silly
                 emitUserError(
                     loc,
-                    std::format( "For variable '{}', more initializers ({}) specified than number of elements ({}).\n",
+                    std::format( "For variable '{}', more initializers ({}) specified than number of elements ({}).",
                                  varName, initializers.size(), numElements ),
                     currentFuncName );
                 return;
@@ -1318,7 +1318,7 @@ namespace silly
         if ( declared )
         {
             // coverage: error_shadow_induction.silly
-            emitUserError( loc, std::format( "Induction variable {} clashes with declared variable\n", varName ),
+            emitUserError( loc, std::format( "Induction variable {} clashes with declared variable", varName ),
                            currentFuncName );
             return;
         }
@@ -1328,7 +1328,7 @@ namespace silly
         if ( p )
         {
             // coverage: error_triple_nested_for_with_shadowing.silly error_nested_ivar_conflict.silly
-            emitUserError( loc, std::format( "Induction variable {} used by enclosing FOR\n", varName ),
+            emitUserError( loc, std::format( "Induction variable {} used by enclosing FOR", varName ),
                            currentFuncName );
             return;
         }
@@ -1670,7 +1670,7 @@ namespace silly
         if ( !declared )
         {
             // coverage: error_undeclare.silly
-            emitUserError( loc, std::format( "Attempt to assign to undeclared variable: {}\n", currentVarName ),
+            emitUserError( loc, std::format( "Attempt to assign to undeclared variable: {}", currentVarName ),
                            currentFuncName );
             return;
         }
@@ -2146,7 +2146,7 @@ namespace silly
                 if ( !value.getType().isInteger() )
                 {
                     // coverage: error_notfloat.silly
-                    emitUserError( loc, std::format( "NOT on non-integer type\n" ), currentFuncName );
+                    emitUserError( loc, std::format( "NOT on non-integer type" ), currentFuncName );
                     return mlir::Value{};
                 }
 

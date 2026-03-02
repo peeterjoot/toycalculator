@@ -7,7 +7,7 @@ config.test_format = lit.formats.ShTest(execute_external=True)
 config.suffixes = ['.silly', '.ll', '.mlir']
 
 # Exclude support/module files, that are only built with other MAINs, so they aren't discovered as standalone tests
-config.excludes = ['mod1.silly', 'mod2.silly', 'mod3.silly']
+config.excludes = ['mod1.silly', 'mod2.silly', 'mod3.silly', 'twosource-callee.silly']
 
 # Use the generated site config
 config.test_source_root = os.path.dirname(__file__)

@@ -1,3 +1,0 @@
-error_function_redefine.silly:7:1: error: Attempt to define function bar more than once
-    7 | FUNCTION bar ( INT16 w )
-      | ^

@@ -1,8 +1,0 @@
-IF (1 EQ 0)
-{
-    PRINT "hi";
-}
-ELSE
-{
-    RETURN 0;
-};

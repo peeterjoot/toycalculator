@@ -1,0 +1,20 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g error_scopebug.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: error_scopebug.silly: In function ‘foo’:
+// CHECK: error_scopebug.silly:16:11: error: Undeclared variable x
+// CHECK:    16 |     PRINT x;
+// CHECK:       |           ^
+
+// This is documented as a bug in the README.  Doesn't make sense if you are used to C semantics
+
+FUNCTION foo()
+{
+    IF (TRUE)
+    {
+        INT32 x = 1;
+    };
+    PRINT x;
+    RETURN;
+};
+
+CALL foo();

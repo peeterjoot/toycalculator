@@ -1,0 +1,33 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g error_nested.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: error_nested.silly: In function ‘foo’:
+// CHECK: error_nested.silly:18:5: error: Nested functions are not currently supported.
+// CHECK:    18 |     FUNCTION bar( INT32 v )
+// CHECK:       |     ^
+// CHECK: error_nested.silly:25:15: error: Undeclared variable x
+// CHECK:    25 |     INT32 y = x;
+// CHECK:       |               ^
+// CHECK: error_nested.silly:28:12: error: Undeclared variable r
+// CHECK:    28 |     RETURN r;
+// CHECK:       |            ^
+
+FUNCTION foo( INT32 v ) : INT32
+{
+    INT32 r = 1 + v;
+
+    FUNCTION bar( INT32 v )
+    {
+        PRINT "bar's v = ", v;
+
+        RETURN;
+    };
+
+    INT32 y = x;
+    CALL bar( r );
+
+    RETURN r;
+};
+
+INT32 x = CALL foo( 3 );
+
+PRINT "foo's return = ", x;

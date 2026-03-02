@@ -1,0 +1,138 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g error_nested_if.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: error_nested_if.silly:107:23: error: Undeclared variable xx
+// CHECK:   107 |                 PRINT xx; // error
+// CHECK:       |                       ^
+// CHECK: error_nested_if.silly:108:23: error: Undeclared variable yy
+// CHECK:   108 |                 PRINT yy; // error
+// CHECK:       |                       ^
+// CHECK: error_nested_if.silly:109:23: error: Undeclared variable zz
+// CHECK:   109 |                 PRINT zz; // error
+// CHECK:       |                       ^
+// CHECK: error_nested_if.silly:112:19: error: Undeclared variable xx
+// CHECK:   112 |             PRINT xx; // error
+// CHECK:       |                   ^
+// CHECK: error_nested_if.silly:113:19: error: Undeclared variable yy
+// CHECK:   113 |             PRINT yy; // error
+// CHECK:       |                   ^
+// CHECK: error_nested_if.silly:114:19: error: Undeclared variable zz
+// CHECK:   114 |             PRINT zz; // error
+// CHECK:       |                   ^
+// CHECK: error_nested_if.silly:119:15: error: Undeclared variable z
+// CHECK:   119 |         PRINT z; // error
+// CHECK:       |               ^
+// CHECK: error_nested_if.silly:120:15: error: Undeclared variable xx
+// CHECK:   120 |         PRINT xx; // error
+// CHECK:       |               ^
+// CHECK: error_nested_if.silly:121:15: error: Undeclared variable yy
+// CHECK:   121 |         PRINT yy; // error
+// CHECK:       |               ^
+// CHECK: error_nested_if.silly:122:15: error: Undeclared variable zz
+// CHECK:   122 |         PRINT zz; // error
+// CHECK:       |               ^
+// CHECK: error_nested_if.silly:126:11: error: Undeclared variable y
+// CHECK:   126 |     PRINT y; // error
+// CHECK:       |           ^
+// CHECK: error_nested_if.silly:127:11: error: Undeclared variable z
+// CHECK:   127 |     PRINT z; // error
+// CHECK:       |           ^
+// CHECK: error_nested_if.silly:128:11: error: Undeclared variable xx
+// CHECK:   128 |     PRINT xx; // error
+// CHECK:       |           ^
+// CHECK: error_nested_if.silly:129:11: error: Undeclared variable yy
+// CHECK:   129 |     PRINT yy; // error
+// CHECK:       |           ^
+// CHECK: error_nested_if.silly:130:11: error: Undeclared variable zz
+// CHECK:   130 |     PRINT zz; // error
+// CHECK:       |           ^
+// CHECK: error_nested_if.silly:133:7: error: Undeclared variable x
+// CHECK:   133 | PRINT x; // error
+// CHECK:       |       ^
+// CHECK: error_nested_if.silly:134:7: error: Undeclared variable y
+// CHECK:   134 | PRINT y; // error
+// CHECK:       |       ^
+// CHECK: error_nested_if.silly:135:7: error: Undeclared variable z
+// CHECK:   135 | PRINT z; // error
+// CHECK:       |       ^
+// CHECK: error_nested_if.silly:136:7: error: Undeclared variable xx
+// CHECK:   136 | PRINT xx; // error
+// CHECK:       |       ^
+// CHECK: error_nested_if.silly:137:7: error: Undeclared variable yy
+// CHECK:   137 | PRINT yy; // error
+// CHECK:       |       ^
+// CHECK: error_nested_if.silly:138:7: error: Undeclared variable zz
+// CHECK:   138 | PRINT zz; // error
+// CHECK:       |       ^
+
+FOR (INT32 level : (-1, 5))
+{
+    PRINT "level var = ", level;
+    INT32 x{42};
+    PRINT x; // okay
+
+    IF (level > 0)
+    {
+        INT32 y{32};
+        PRINT y; // okay
+
+        PRINT "Level 1";
+        IF (level > 1)
+        {
+            INT32 z{22};
+            PRINT z; // okay
+            PRINT "Level 2";
+            IF (level > 2)
+            {
+                INT32 w{11};
+                PRINT w;
+                PRINT "Level 3";
+                IF (level > 3)
+                {
+                    INT32 xx{11};
+                    PRINT xx; // okay
+                    PRINT "Level 4 - deepest";
+                }
+                ELIF ( x EQ 42 )
+                {
+                    INT32 zz{11};
+                    PRINT zz; // okay
+                    PRINT "Level 4 not reached";
+                }
+                ELSE
+                {
+                    INT32 yy{11};
+                    PRINT yy; // okay
+                    PRINT "Level 4 not reached";
+                };
+                PRINT xx; // error
+                PRINT yy; // error
+                PRINT zz; // error
+            };
+            PRINT z; // okay
+            PRINT xx; // error
+            PRINT yy; // error
+            PRINT zz; // error
+        };
+
+        PRINT x; // okay
+        PRINT y; // okay
+        PRINT z; // error
+        PRINT xx; // error
+        PRINT yy; // error
+        PRINT zz; // error
+    };
+
+    PRINT x; // okay
+    PRINT y; // error
+    PRINT z; // error
+    PRINT xx; // error
+    PRINT yy; // error
+    PRINT zz; // error
+};
+
+PRINT x; // error
+PRINT y; // error
+PRINT z; // error
+PRINT xx; // error
+PRINT yy; // error
+PRINT zz; // error

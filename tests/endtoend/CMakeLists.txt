@@ -95,17 +95,14 @@ function(add_endtoend_compile_tests)
         set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
         set(SOURCE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/${source_file}")
 
-        # Default flags
+        # Default flags.  Don't really need -g for any of these, but it's nice if it fails at runtime.
         set(COMPILER_FLAGS -g)
-        #set(COMPILER_FLAGS -g --emit-llvm --emit-mlir)
 
         # Allow per-test override via a variable named like COMPILER_FLAGS_${test_name}
         if(DEFINED COMPILER_FLAGS_${test_name})
             list(APPEND COMPILER_FLAGS ${COMPILER_FLAGS_${test_name}})
         endif()
 
-        #"${OUT_DIR}/${test_name}.mlir"
-        #"${OUT_DIR}/${test_name}.ll"
         add_custom_command(
             OUTPUT
                 "${OUT_DIR}/${test_name}"
@@ -129,113 +126,10 @@ function(add_endtoend_compile_tests)
     endforeach()
 endfunction()
 
-function( add_endtoend_multisource_compile_tests test_name )
-    # ARGN contains all arguments after test_name — treat them as source files
-    set( sources ${ARGN} )
-
-    # Build full source paths for DEPENDS and compiler invocation
-    set( source_paths )
-    foreach( src ${sources} )
-        list( APPEND source_paths "${CMAKE_CURRENT_SOURCE_DIR}/${src}" )
-    endforeach()
-
-    add_custom_command(
-        OUTPUT
-            "${CMAKE_CURRENT_BINARY_DIR}/${test_name}"
-        COMMAND
-            $<TARGET_FILE:silly>
-            --output-directory "${CMAKE_CURRENT_BINARY_DIR}"
-            -g
-            -o ${test_name}
-            ${source_paths}
-        DEPENDS silly ${source_paths}
-        COMMENT "Compiling ${test_name}"
-        VERBATIM
-    )
-
-    add_custom_target( compile_${test_name}
-        DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/${test_name}"
-    )
-
-    add_dependencies( endtoend_tests compile_${test_name} )
-endfunction()
-
-function( add_silly_compile_link_test test_name source )
-    set( source_path "${CMAKE_CURRENT_SOURCE_DIR}/${source}" )
-    get_filename_component( source_stem "${source}" NAME_WE )
-    set( object_path "${CMAKE_CURRENT_BINARY_DIR}/${source_stem}.o" )
-    set( exe_path "${CMAKE_CURRENT_BINARY_DIR}/${test_name}" )
-
-    add_custom_command(
-        OUTPUT
-            "${exe_path}"
-            "${object_path}"
-        COMMAND
-            $<TARGET_FILE:silly>
-            --output-directory "${CMAKE_CURRENT_BINARY_DIR}"
-            -g -c
-            "${source_path}"
-        COMMAND
-            $<TARGET_FILE:silly>
-            "${object_path}"
-            -g
-            -o "${exe_path}"
-        DEPENDS silly "${source_path}"
-        COMMENT "Compiling ${test_name}"
-        VERBATIM
-    )
-
-    add_custom_target( compile_${test_name}
-        DEPENDS "${exe_path}"
-    )
-
-    add_dependencies( endtoend_tests compile_${test_name} )
-endfunction()
-
-function(add_endtoend_failure_tests CATEGORY)
-    set(TEST_FILES ${ARGN})
-
-    foreach(source_file IN LISTS TEST_FILES)
-        # Extract test name from filename
-        get_filename_component(test_name ${source_file} NAME_WE)
-
-        set(OUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
-        set(EXPECTED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/expected")
-
-        set(COMPILER_FLAGS "")
-
-        if(DEFINED COMPILER_FLAGS_${test_name})
-            list(APPEND COMPILER_FLAGS ${COMPILER_FLAGS_${test_name}})
-        endif()
-
-        # Test: Compile should FAIL
-        add_test(
-            NAME ${CATEGORY}.${test_name}
-            COMMAND ${CMAKE_COMMAND}
-                -DSILLY_COMPILER=$<TARGET_FILE:silly>
-                -DSOURCE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/${source_file}
-                -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-                -DCOMPILER_FLAGS=${COMPILER_FLAGS}
-                -DOUT_DIR=${OUT_DIR}
-                -DTEST_NAME=${test_name}
-                -DEXPECTED_OUTPUT=${EXPECTED_DIR}/${test_name}.compile.out
-                -P ${CMAKE_SOURCE_DIR}/cmake/RunFailureTest.cmake
-        )
-
-        set_tests_properties(${CATEGORY}.${test_name}
-            PROPERTIES
-                LABELS "failure;end-to-end;compiler-cycle;${CATEGORY}"
-                TIMEOUT 30
-        )
-    endforeach()
-endfunction()
-
 # haven't generateed expected outputs for this one -- am not sure I should:
 #add_subdirectory(sir)
 
-add_subdirectory(driver)
 add_subdirectory(exit)
-add_subdirectory(failure)
 add_subdirectory(fatal)
 add_subdirectory(get)
 add_subdirectory(simple/array)

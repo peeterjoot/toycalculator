@@ -1,0 +1,21 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g error_multiple_in_func.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: error_multiple_in_func.silly: In function ‘moo’:
+// CHECK: error_multiple_in_func.silly:15:15: error: Undeclared variable x
+// CHECK:    15 |     INT32 y = x;
+// CHECK:       |               ^
+// CHECK: error_multiple_in_func.silly:16:15: error: Undeclared variable w
+// CHECK:    16 |     INT32 z = w;
+// CHECK:       |               ^
+
+FUNCTION moo( INT32 v ) : INT32
+{
+    INT32 r = 1 + v;
+
+    INT32 y = x;
+    INT32 z = w;
+
+    RETURN r;
+};
+
+

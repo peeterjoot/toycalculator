@@ -1,4 +1,0 @@
-FUNCTION foo( ) : STRING[4]
-{
-    RETURN "hi";
-};

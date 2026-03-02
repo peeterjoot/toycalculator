@@ -1,6 +1,0 @@
-FUNCTION foo( ) : INT32[4]
-{
-    INT32 r[4];
-
-    RETURN r;
-};

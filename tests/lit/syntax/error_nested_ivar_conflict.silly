@@ -1,0 +1,13 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g error_nested_ivar_conflict.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: error_nested_ivar_conflict.silly:10:5: error: Induction variable i used by enclosing FOR
+// CHECK:    10 |     FOR (INT32 i: (0, 2)) {  // redeclaration error
+// CHECK:       |     ^
+
+
+// error_nested_ivar_conflict.silly
+FOR (INT32 i: (0, 2)) {
+    FOR (INT32 i: (0, 2)) {  // redeclaration error
+        PRINT i;
+    };
+};

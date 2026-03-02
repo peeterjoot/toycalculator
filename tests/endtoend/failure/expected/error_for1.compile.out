@@ -1,3 +1,0 @@
-error_for1.silly:5:11: error: Undeclared variable j
-    5 |     PRINT j;
-      |           ^

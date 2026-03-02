@@ -1,0 +1,13 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g main-function.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: main-function.silly:10:1: error: Attempt to define function main more than once
+// CHECK:    10 | FUNCTION main ( INT16 w ) : INT16
+// CHECK:       | ^
+// CHECK: main-function.silly:12:12: error: Undeclared variable w
+// CHECK:    12 |     RETURN w;
+// CHECK:       |            ^
+
+FUNCTION main ( INT16 w ) : INT16
+{
+    RETURN w;
+};
