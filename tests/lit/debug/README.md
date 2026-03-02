@@ -8,11 +8,11 @@ Run from the repo TOP dir with:
 ```
 or just one:
 ```
-    $HOME/build-llvm/bin/llvm-lit -v tests/lit/debug/debug-two-declare-order.silly
+    $HOME/build-llvm/bin/llvm-lit -v tests/lit/debug/two-declare-order-location.silly
 ```
 
 In this dir, run one with:
 
 ```
-    $HOME/build-llvm/bin/llvm-lit -v debug-two-declare-order.silly
+    $HOME/build-llvm/bin/llvm-lit -v two-declare-order-location.silly
 ```
