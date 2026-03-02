@@ -1,4 +1,0 @@
-INT32 a;
-PRINT a;
-INT32 b;
-EXIT 0;

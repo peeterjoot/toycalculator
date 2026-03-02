@@ -20,5 +20,6 @@ configure_file(
 
 message(STATUS "lit.site.cfg.py set to ${CMAKE_BINARY_DIR}/lit.site.cfg.py")
 
-add_subdirectory(driver)
+add_subdirectory(debug)
 add_subdirectory(dialect)
+add_subdirectory(driver)

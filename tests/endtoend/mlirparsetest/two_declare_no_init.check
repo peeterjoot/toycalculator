@@ -1,9 +1,0 @@
-; Check that SSA values map correctly to variable names
-; Capture the SSA value for 'a'
-; CHECK: [[A_VAL:%[0-9]+]] = "silly.declare"(){{.*}}loc(#loc)
-; Capture the SSA value for 'b'
-; CHECK: [[B_VAL:%[0-9]+]] = "silly.declare"(){{.*}}loc(#loc1)
-
-; Verify debug_name uses the correct SSA values
-; CHECK-DAG: "silly.debug_name"([[B_VAL]]){{.*}}<{name = "b"}>
-; CHECK-DAG: "silly.debug_name"([[A_VAL]]){{.*}}<{name = "a"}>
