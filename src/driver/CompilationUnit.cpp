@@ -182,7 +182,7 @@ namespace silly
         // Verify the module to ensure debug info is valid
         if ( llvm::verifyModule( *llvmModule, &llvm::errs() ) )
         {
-            // TODO: coverage
+            // TODO: no coverage
             llvm::errs() << COMPILER_NAME ": error: Invalid LLVM IR module\n";
             return ReturnCodes::loweringError;
         }
@@ -201,7 +201,7 @@ namespace silly
         const llvm::Target* target = llvm::TargetRegistry::lookupTarget( targetTriple, error );
         if ( !target )
         {
-            // TODO: coverage
+            // TODO: no coverage
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to find target: {}\n", error );
             return ReturnCodes::loweringError;
         }
@@ -212,7 +212,7 @@ namespace silly
 
         if ( !targetMachine )
         {
-            // TODO: coverage
+            // TODO: no coverage
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to create target machine\n" );
             return ReturnCodes::loweringError;
         }
@@ -300,7 +300,7 @@ namespace silly
                                       ds.emitMLIRBC ? llvm::sys::fs::OF_None : llvm::sys::fs::OF_Text );
             if ( EC )
             {
-                // TODO: coverage: bad-mlir-output-path-should-fail.silly
+                // coverage: bad-mlir-output-path-should-fail.silly
                 llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}: {}\n",
                                              std::string( mlirOutputName ), EC.message() );
                 return ReturnCodes::openError;
@@ -310,7 +310,7 @@ namespace silly
             {
                 if ( mlir::failed( mlir::writeBytecodeToFile( *rmod, out ) ) )
                 {
-                    // TODO: coverage.  Trigger with quotas or small filesystem?
+                    // TODO: no coverage.  Trigger with quotas or small filesystem?
                     llvm::errs() << std::format( COMPILER_NAME ": error: Failed to write bytecode to '{}'\n",
                                                  std::string( mlirOutputName ) );
                     return ReturnCodes::ioError;
@@ -322,7 +322,7 @@ namespace silly
                 out.close();
                 if ( out.has_error() )
                 {
-                    // TODO: coverage.  Trigger with quotas or small filesystem?
+                    // TODO: no coverage.  Trigger with quotas or small filesystem?
                     llvm::errs() << std::format( COMPILER_NAME ": error: Write error on '{}': {}\n",
                                                  std::string( mlirOutputName ), out.error().message() );
                     return ReturnCodes::ioError;
@@ -366,7 +366,7 @@ namespace silly
         out.close();
         if ( out.has_error() )
         {
-            // TODO: coverage.  Trigger with quotas or small filesystem?
+            // TODO: no coverage.  Trigger with quotas or small filesystem?
             llvm::errs() << std::format( COMPILER_NAME ": error: Write error on '{}': {}\n",
                                          std::string( llvmOuputFile ), out.error().message() );
             return ReturnCodes::openError;
@@ -391,7 +391,7 @@ namespace silly
         llvm::legacy::PassManager codegenPM;
         if ( targetMachine->addPassesToEmitFile( codegenPM, dest, nullptr, llvm::CodeGenFileType::ObjectFile ) )
         {
-            // TODO: coverage
+            // TODO: no coverage
             llvm::errs() << std::format( COMPILER_NAME ": error: TargetMachine can't emit an object file\n" );
             return ReturnCodes::loweringError;
         }
@@ -435,7 +435,7 @@ namespace silly
         llvmModule = llvm::parseIRFile( llvmSourceName, err, llvmContext );
         if ( !llvmModule )
         {
-            // TODO: coverage
+            // TODO: no coverage
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to parse IR file '{}': {}\n", llvmSourceName,
                                          err.getMessage().str() );
             return ReturnCodes::parseError;
