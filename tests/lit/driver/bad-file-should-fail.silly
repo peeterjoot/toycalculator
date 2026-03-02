@@ -1,0 +1,3 @@
+// RUN: %Not %ExeSilly foo.silly 2>&1 | %FileCheck %s --check-prefix=ERR
+//
+// ERR: silly: error: Cannot open file foo.silly

@@ -6,7 +6,7 @@
 #### Next
 
 * Automated DWARF Tests (llm_code_review_2026_03_01.md) -- migrate those to LIT.
-* LOTS of driver testing coverage TODOs to review -- implement tests where possible.
+* More driver testing coverage TODOs to review -- some of the remaining ones are hard to trigger.  Do another pass to see if there is more low hanging fruit.
 
 #### Driver
 

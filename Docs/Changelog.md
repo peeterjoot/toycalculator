@@ -100,6 +100,8 @@ Back in main again, rc = 42
 
 * Moved tests/dialect to tests/lit/dialect
 * Added tests/lit/driver, with round trip tests for -c (--emit-llvm, --emit-mlir, ...)
+* Merged tests/endtoend/mlirparsetest and tests/endtoend/debug into tests/lit/debug (all now using more sensible single source lit/FileCheck orchestration)
+* test coverage for various driver error codepaths.
 
 ### Test Infrastructure Updates
 

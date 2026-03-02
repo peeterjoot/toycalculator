@@ -43,9 +43,6 @@
 #include "SourceManager.hpp"
 #include "createSillyToLLVMLoweringPass.hpp"
 
-// TODO:
-// Reduce use of raw ModuleOp -- prefer passing OwningOpRef& or keep it local
-
 #define DEBUG_TYPE "silly-cu"
 
 namespace silly
@@ -64,13 +61,11 @@ namespace silly
         ity = getInputType( sourceFileName );
         if ( ity == InputType::Unknown )
         {
-            // TODO: coverage
+            // coverage: bad-suffix-should-fail.silly
             llvm::errs() << std::format(
                 COMPILER_NAME ": error: filename {} extension is none of .silly, .mlir/.sir, or .o\n", sourceFileName );
             return ReturnCodes::badExtensionError;
         }
-
-        mlir::ModuleOp mod{};
 
         if ( ity == InputType::Silly )
         {
@@ -79,13 +74,12 @@ namespace silly
             rmod = listener.run();
             if ( ds.openFailed )
             {
-            // TODO: coverage
+                // coverage: bad-file-should-fail.silly
                 llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}\n", sourceFileName );
                 return ReturnCodes::openError;
             }
 
-            mod = rmod.get();
-            if ( !mod )
+            if ( !rmod )
             {
                 // should have already emitted diagnostics.
                 return ReturnCodes::parseError;
@@ -94,19 +88,18 @@ namespace silly
         else if ( ( ity == InputType::MLIR ) || ( ity == InputType::MLIRBC ) )
         {
             parseMLIRFile( sourceFileName );
-            mod = rmod.get();
         }
         else if ( ( ity == InputType::LLVMLL ) || ( ity == InputType::LLVMBC ) )
         {
             parseLLVMFile( sourceFileName );
         }
 
-        if ( mod )
+        if ( rmod )
         {
-            if ( mlir::failed( mlir::verify( mod ) ) )
+            if ( mlir::failed( mlir::verify( *rmod ) ) )
             {
                 llvm::errs() << COMPILER_NAME ": error: MLIR failed verification\n";
-                mod->dump();
+                (*rmod).dump();
                 return ReturnCodes::verifyError;
             }
         }
@@ -116,9 +109,7 @@ namespace silly
 
     ReturnCodes CompilationUnit::mlirToLLVM( const std::string& llvmSourceFilename )
     {
-        mlir::ModuleOp mod = rmod.get();
-
-        if ( mod )
+        if ( mlir::ModuleOp mod = rmod.get() )
         {
             // Register dialect translations
             mlir::registerLLVMDialectTranslation( *context );
@@ -183,7 +174,7 @@ namespace silly
 
         if ( !llvmModule )
         {
-            // TODO: coverage
+            // coverage: bad-llvm-ir.ll
             llvm::errs() << COMPILER_NAME ": error: Failed to translate to LLVM IR or parse supplied LLVM IR\n";
             return ReturnCodes::loweringError;
         }
@@ -297,8 +288,7 @@ namespace silly
 
     ReturnCodes CompilationUnit::serializeModuleMLIR( const llvm::SmallString<128>& mlirOutputName )
     {
-        mlir::ModuleOp mod = rmod.get();
-        if ( !mod )
+        if ( !rmod )
         {
             return ReturnCodes::success;
         }
@@ -310,7 +300,7 @@ namespace silly
                                       ds.emitMLIRBC ? llvm::sys::fs::OF_None : llvm::sys::fs::OF_Text );
             if ( EC )
             {
-                // TODO: coverage
+                // TODO: coverage: bad-mlir-output-path-should-fail.silly
                 llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}: {}\n",
                                              std::string( mlirOutputName ), EC.message() );
                 return ReturnCodes::openError;
@@ -318,9 +308,9 @@ namespace silly
 
             if ( ds.emitMLIRBC )
             {
-                if ( mlir::failed( mlir::writeBytecodeToFile( mod, out ) ) )
+                if ( mlir::failed( mlir::writeBytecodeToFile( *rmod, out ) ) )
                 {
-                    // TODO: coverage
+                    // TODO: coverage.  Trigger with quotas or small filesystem?
                     llvm::errs() << std::format( COMPILER_NAME ": error: Failed to write bytecode to '{}'\n",
                                                  std::string( mlirOutputName ) );
                     return ReturnCodes::ioError;
@@ -328,11 +318,11 @@ namespace silly
             }
             else
             {
-                mod.print( out, flags );
+                (*rmod).print( out, flags );
                 out.close();
                 if ( out.has_error() )
                 {
-                    // TODO: coverage
+                    // TODO: coverage.  Trigger with quotas or small filesystem?
                     llvm::errs() << std::format( COMPILER_NAME ": error: Write error on '{}': {}\n",
                                                  std::string( mlirOutputName ), out.error().message() );
                     return ReturnCodes::ioError;
@@ -356,7 +346,7 @@ namespace silly
                                   ds.emitLLVMBC ? llvm::sys::fs::OF_None : llvm::sys::fs::OF_Text );
         if ( EC )
         {
-            // TODO: coverage
+            // coverage: bad-llvm-ir-output-path-should-fail.silly
             // FIXME: probably want llvm::formatv here and elsewhere to avoid the std::string casting hack (assuming
             // it knows how to deal with StringRef)
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open file '{}': {}\n",
@@ -376,7 +366,7 @@ namespace silly
         out.close();
         if ( out.has_error() )
         {
-            // TODO: coverage
+            // TODO: coverage.  Trigger with quotas or small filesystem?
             llvm::errs() << std::format( COMPILER_NAME ": error: Write error on '{}': {}\n",
                                          std::string( llvmOuputFile ), out.error().message() );
             return ReturnCodes::openError;
@@ -391,7 +381,7 @@ namespace silly
         llvm::raw_fd_ostream dest( outputFilename.str(), EC, llvm::sys::fs::OF_None );
         if ( EC )
         {
-            // TODO: coverage
+            // coverage: bad-object-output-path-should-fail.silly
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open output file '{}': {}\n",
                                          std::string( outputFilename ), EC.message() );
             return ReturnCodes::openError;
@@ -419,7 +409,7 @@ namespace silly
         auto fileOrErr = llvm::MemoryBuffer::getFile( mlirSourceName );
         if ( std::error_code EC = fileOrErr.getError() )
         {
-            // TODO: coverage
+            // coverage: bad-mlir-path-should-fail.silly
             llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file '{}': {}\n", mlirSourceName,
                                          EC.message() );
             return ReturnCodes::openError;
@@ -429,9 +419,9 @@ namespace silly
         sourceMgr.AddNewSourceBuffer( std::move( *fileOrErr ), llvm::SMLoc{} );
 
         rmod = mlir::parseSourceFile<mlir::ModuleOp>( sourceMgr, context );
-        if ( !rmod.get() )
+        if ( !rmod )
         {
-            // TODO: coverage
+            // coverage: bad-mlir-should-fail.mlir
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to parse MLIR file '{}'\n", mlirSourceName );
             return ReturnCodes::parseError;
         }
