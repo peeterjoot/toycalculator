@@ -1,0 +1,6 @@
+// RUN: %ExeSilly %s -o %t.exe
+// RUN: %t.exe || (test $? -eq 3 || { echo "Expected exit 3, got $?"; exit 1; })
+
+EXIT 3;
+// comments should be allowed after
+//  explicit exit.

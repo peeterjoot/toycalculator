@@ -1,0 +1,14 @@
+// RUN: %ExeSilly %s -o %t.exe
+// RUN: %t.exe || (test $? -eq 1 || { echo "Expected exit 1, got $?"; exit 1; })
+// CHECK: 0
+// CHECK: 1.000000
+// CHECK: 1
+
+BOOL i1v = TRUE;
+BOOL i2v = FALSE;
+PRINT i2v;
+i2v = i1v;
+FLOAT64 f = i1v;
+PRINT f;
+PRINT i2v;
+EXIT i1v;

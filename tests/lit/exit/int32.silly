@@ -1,0 +1,7 @@
+// RUN: %ExeSilly %s -o %t.exe
+// RUN: %t.exe || (test $? -eq 1 || { echo "Expected exit 1, got $?"; exit 1; })
+
+INT32 i1 = 1;
+INT32 i2 = 0;
+INT32 i3 = i1 + i2;
+EXIT i3;

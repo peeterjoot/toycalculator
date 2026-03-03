@@ -1,8 +1,0 @@
-BOOL i1v = TRUE;
-BOOL i2v = FALSE;
-PRINT i2v;
-i2v = i1v;
-FLOAT64 f = i1v;
-PRINT f;
-PRINT i2v;
-EXIT i1v;
