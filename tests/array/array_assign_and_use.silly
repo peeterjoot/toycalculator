@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/array/array_assign_and_use.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/array/array_assign_and_use.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/array/expected/array_assign_and_use.out %t.out

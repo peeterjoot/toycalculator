@@ -1,3 +1,0 @@
-// RUN: %Not %ExeSilly %s %s -o %t.exe 2>&1 | %FileCheck %s --check-prefix=ERR
-//
-// ERR: silly: error: file stem source-repeated-should-fail specified multiple times

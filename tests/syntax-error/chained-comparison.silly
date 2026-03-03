@@ -1,0 +1,8 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g chained-comparison.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: chained-comparison.silly:8:16: error: parse error: mismatched input '<' expecting ';'
+// CHECK:     8 | BOOL b = 1 < x < 10;   // should fail
+// CHECK:       |                ^
+
+INT32 x = 5;
+BOOL b = 1 < x < 10;   // should fail

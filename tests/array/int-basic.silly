@@ -1,0 +1,7 @@
+// Auto-generated lit wrapper for Samples/array/int-basic.silly
+// Regenerate with: generate-lit-wrappers.pl
+// Do not edit manually
+
+// RUN: %ExeSilly -g  %Examples/array/int-basic.silly -o %t.exe
+// RUN: %t.exe > %t.out 2> %t.err
+// RUN: diff -up %Examples/array/expected/int-basic.out %t.out

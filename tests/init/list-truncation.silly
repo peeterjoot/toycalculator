@@ -1,0 +1,7 @@
+// Auto-generated lit wrapper for Samples/init/list-truncation.silly
+// Regenerate with: generate-lit-wrappers.pl
+// Do not edit manually
+
+// RUN: %ExeSilly -g  %Examples/init/list-truncation.silly -o %t.exe
+// RUN: %t.exe > %t.out 2> %t.err
+// RUN: diff -up %Examples/init/expected/list-truncation.out %t.out

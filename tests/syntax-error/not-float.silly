@@ -1,0 +1,8 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g not-float.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: not-float.silly:8:7: error: NOT on non-integer type
+// CHECK:     8 | PRINT NOT 3.14;
+// CHECK:       |       ^
+
+
+PRINT NOT 3.14;

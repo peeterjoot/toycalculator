@@ -1,0 +1,7 @@
+// Auto-generated lit wrapper for Samples/for/forward-ref-init.silly
+// Regenerate with: generate-lit-wrappers.pl
+// Do not edit manually
+
+// RUN: %ExeSilly -g  %Examples/for/forward-ref-init.silly -o %t.exe
+// RUN: %t.exe > %t.out 2> %t.err
+// RUN: diff -up %Examples/for/expected/forward-ref-init.out %t.out

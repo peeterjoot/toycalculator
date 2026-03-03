@@ -1,0 +1,8 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g array-too-many-init.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: array-too-many-init.silly:8:1: error: For variable 'a', more initializers (4) specified than number of elements (3).
+// CHECK:     8 | INT32 a[3] {1,2,3,4};     // too many initializers
+// CHECK:       | ^
+
+
+INT32 a[3] {1,2,3,4};     // too many initializers

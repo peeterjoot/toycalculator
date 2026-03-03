@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/operators/orop.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/operators/orop.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/operators/expected/orop.out %t.out

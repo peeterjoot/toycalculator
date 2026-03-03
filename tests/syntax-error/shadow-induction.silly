@@ -1,0 +1,15 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g shadow-induction.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: shadow-induction.silly:11:1: error: Induction variable i clashes with declared variable
+// CHECK:    11 | FOR (INT32 i: (0, 3)) {  // shadows outer i
+// CHECK:       | ^
+
+
+// shadow-induction.silly
+INT32 i = 99;  // outer var
+
+FOR (INT32 i: (0, 3)) {  // shadows outer i
+    PRINT "inner i=", i;  // uses induction %arg0
+};
+
+PRINT "outer i=", i;  // uses declared 99

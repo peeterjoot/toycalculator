@@ -1,9 +1,0 @@
-// Auto-generated lit wrapper for Samples/function/function_void_intparm.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/function/function_void_intparm.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: %FileCheck %s --allow-empty --check-prefix=EMPTY < %t.out
-
-// EMPTY-NOT: ."

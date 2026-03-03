@@ -182,35 +182,35 @@ int main( int argc, char** argv )
 
     if ( versionFlag )
     {
-        // coverage: silly-version.silly
+        // coverage: driver/version-flag.silly
         llvm::outs() << std::format( COMPILER_NAME ": info: silly compiler version {}, LLVM: {}\n", COMPILER_VERSION, LLVMVERSION);
         return (int)silly::ReturnCodes::success;
     }
 
     if ( inputFilenames.size() == 0 )
     {
-        // coverage: not-enough-args-should-fail.silly
+        // coverage: driver/no-input-fail.silly
         llvm::errs() << COMPILER_NAME ": error: no input files specified\nSee: silly --help\n";
         return (int)silly::ReturnCodes::badOption;
     }
 
     if ( ds.emitLLVM and ds.emitLLVMBC )
     {
-        // coverage: emit-llvm-both-should-fail.silly
+        // coverage: driver/emit-llvm-conflict.silly
         llvm::errs() << COMPILER_NAME ": error: --emit-llvm and --emit-llvmbc are mutually exclusive (choose one for LLVM IR output)\n";
         return (int)silly::ReturnCodes::badOption;
     }
 
     if ( ds.emitMLIR and ds.emitMLIRBC )
     {
-        // coverage: emit-mlir-both-should-fail.silly
+        // coverage: driver/emit-mlir-conflict.silly
         llvm::errs() << COMPILER_NAME ": error: --emit-mlir and --emit-mlirbc are mutually exclusive (choose one for silly diaglect MLIR output)\n";
         return (int)silly::ReturnCodes::badOption;
     }
 
     if ( ds.compileOnly and !ds.oName.empty() and (inputFilenames.size() > 1) )
     {
-        // coverage: multi-source-with-c-and-o-should-fail.silly
+        // coverage: driver/multi-source-c-o-fail.silly
         llvm::errs() << COMPILER_NAME ": error: -c and -o cannot be used together with multiple input files (ambiguous output name)\n";
         return (int)silly::ReturnCodes::badOption;
     }

@@ -1,9 +1,0 @@
-// RUN: cd %S
-// RUN: %Not %ExeSilly -g error_chained_equality.silly -o %t.exe 2>&1 | %FileCheck %s
-// CHECK: error_chained_equality.silly:8:17: error: parse error: mismatched input 'EQ' expecting ';'
-// CHECK:     8 | BOOL b = 1 EQ 1 EQ 0;  // should fail
-// CHECK:       |                 ^
-
-
-BOOL b = 1 EQ 1 EQ 0;  // should fail
-

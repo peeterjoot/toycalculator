@@ -408,12 +408,14 @@ The V9 tag (aka: V0.9.0) was last built on LLVM 21.1.8.
 
 ### Testing
 
-Testing is ctest and llvm-lit based. Examples:
+Testing is now all llvm-lit based. Examples:
 
 ```bash
-cd build
-ctest -j 3                      # Run the full test suite
+$HOME/build-llvm/bin/llvm-lit -v tests/*/driver-*     # Run the driver tests
+$HOME/build-llvm/bin/llvm-lit -v -j3 tests/           # Run all the tests
 ```
+
+ctest can also be used (from the build/ dir) to run these tests.
 
 ---
 

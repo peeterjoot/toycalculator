@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/array/unary_on_array_elem.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/array/unary_on_array_elem.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/array/expected/unary_on_array_elem.out %t.out

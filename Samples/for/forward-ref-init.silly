@@ -1,0 +1,4 @@
+// forward-ref-scalar-basic.silly
+INT32 later = 100;
+INT32 first = 5;
+PRINT first + later;  // 105 (references later var)

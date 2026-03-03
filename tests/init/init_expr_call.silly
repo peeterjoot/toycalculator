@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/init/init_expr_call.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/init/init_expr_call.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/init/expected/init_expr_call.out %t.out

@@ -1,8 +1,0 @@
-// RUN: cd %S
-// RUN: %Not %ExeSilly -g error_function_redeclare.silly -o %t.exe 2>&1 | %FileCheck %s
-// CHECK: error_function_redeclare.silly:8:1: error: Attempt to declare function bar more than once
-// CHECK:     8 | FUNCTION bar ( INT16 w );
-// CHECK:       | ^
-
-FUNCTION bar ( INT16 w );
-FUNCTION bar ( INT16 w );

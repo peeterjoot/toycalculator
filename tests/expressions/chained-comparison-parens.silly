@@ -1,0 +1,7 @@
+// Auto-generated lit wrapper for Samples/expressions/chained-comparison-parens.silly
+// Regenerate with: generate-lit-wrappers.pl
+// Do not edit manually
+
+// RUN: %ExeSilly -g  %Examples/expressions/chained-comparison-parens.silly -o %t.exe
+// RUN: %t.exe > %t.out 2> %t.err
+// RUN: diff -up %Examples/expressions/expected/chained-comparison-parens.out %t.out

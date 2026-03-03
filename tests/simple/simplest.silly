@@ -1,9 +1,0 @@
-// Auto-generated lit wrapper for Samples/simple/simplest.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/simple/simplest.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: %FileCheck %s --allow-empty --check-prefix=EMPTY < %t.out
-
-// EMPTY-NOT: ."

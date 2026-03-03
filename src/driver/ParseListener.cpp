@@ -436,7 +436,7 @@ namespace silly
         mlir::Value v = f.searchForVariable( varName );
         if ( v )
         {
-            // coverage: error_redeclare.silly
+            // coverage: syntax-error/redeclare.silly
             emitUserError( loc, std::format( "Variable {} already declared", varName ), currentFuncName );
             return;
         }
@@ -507,7 +507,7 @@ namespace silly
 
             if ( initializers.size() > numElements )
             {
-                // coverage: error_array_too_many_init.silly, error_init_list1.silly, error_init_list2.silly
+                // coverage: syntax-error/array-too-many-init.silly, syntax-error/init-list-mismatch.silly, syntax-error/init-list2.silly
                 emitUserError(
                     loc,
                     std::format( "For variable '{}', more initializers ({}) specified than number of elements ({}).",
@@ -577,13 +577,13 @@ namespace silly
 
             if ( driverState.noVerboseParseError )
             {
-                // coverage: error_arrayreturn
+                // coverage: syntax-error/array-return.silly
                 emitUserError( loc, std::format( "parse error" ), currentFuncName );
             }
             else
             {
-                // no test coverage.  specifically implemented this to avoid error messages that change with any grammar
-                // addition.
+                // TODO: no coverage.  specifically implemented this to avoid error messages that change with any grammar
+                // addition... but with the lit infra, that path dependence could now be handled.
                 emitUserError( loc, std::format( "parse error: {}", msg ), currentFuncName );
             }
         }
@@ -604,7 +604,7 @@ namespace silly
         mlir::Value var = f.searchForVariable( varName );
         if ( !var )
         {
-            // coverage: error_induction_var_in_step.silly
+            // coverage: syntax-error/induction-in-step.silly
             emitUserError( loc, std::format( "Undeclared variable {}", varName ), currentFuncName );
             return declareOp;
         }
@@ -709,7 +709,7 @@ namespace silly
         mlir::ModuleOp importMod = sm.findMOD( modname );
         if (!importMod)
         {
-            // coverage: module-bad.silly
+            // coverage: driver/module-not-found.silly
             mlir::Location loc = getStartLocation( ctx );
             emitUserError( loc,
                            std::format( "Failed to process IMPORT {}.  All module imports must be named with --imports", modname ),
@@ -779,7 +779,7 @@ namespace silly
         {
             if ( !returnType )
             {
-                // coverage: error_return_expr_no_return_type.silly
+                // coverage: syntax-error/return-expr-no-type.silly
                 emitUserError( loc,
                                std::format( "return expression found '{}', but no return type for function {}",
                                             expression->getText(), currentFuncName ),
@@ -845,7 +845,7 @@ namespace silly
 
         if ( currentFuncName != ENTRY_SYMBOL_NAME )
         {
-            // coverage: error_nested.silly
+            // coverage: syntax-error/nested.silly
             //
             // To support this, exitFor would have to pop an insertion point and current-function-name,
             // and we'd have to push an insertion-point/function-name instead of just assuming that
@@ -864,7 +864,7 @@ namespace silly
         {
             if ( !funcOp.isDeclaration() )
             {
-                // test coverage: error_function_redefine.silly
+                // coverage: syntax-error/function-redefine.silly
                 emitUserError( locs.first, std::format( "Attempt to define function {} more than once", funcName ),
                                currentFuncName );
                 return;
@@ -872,7 +872,7 @@ namespace silly
 
             if ( !ctx->scopedStatements() )
             {
-                // test coverage: error_function_redeclare.silly
+                // coverage: syntax-error/function-syntax-error/redeclare.silly
                 emitUserError( locs.first, std::format( "Attempt to declare function {} more than once", funcName ),
                                currentFuncName );
                 return;
@@ -992,7 +992,7 @@ namespace silly
             size_t fsz = funcType.getInputs().size();
             if ( psz != fsz )
             {
-                // coverage: bad_call_num_params.silly
+                // coverage: syntax-error/call-wrong-params.silly
                 emitUserError(
                     loc,
                     std::format( "Mismatched number of arguments to call of function {}.  Passing: {}, required: {}.",
@@ -1060,7 +1060,7 @@ namespace silly
 
         if ( hasInitList || expressions.size() )
         {
-            // coverage: initassign.silly tries to trigger this, but the grammar prohibits this.
+            // coverage: syntax-error/init-assign.silly tries to trigger this, but the grammar prohibits this.
             // Explicit, unreachable seeming, user-error removed -- switched to assert only.
             assert ( !declareAssignmentExpression );
 
@@ -1317,7 +1317,7 @@ namespace silly
         bool declared = isVariableDeclared( varName );
         if ( declared )
         {
-            // coverage: error_shadow_induction.silly
+            // coverage: syntax-error/shadow-induction.silly
             emitUserError( loc, std::format( "Induction variable {} clashes with declared variable", varName ),
                            currentFuncName );
             return;
@@ -1327,7 +1327,7 @@ namespace silly
         mlir::Value p = f.searchForInduction( varName );
         if ( p )
         {
-            // coverage: error_triple_nested_for_with_shadowing.silly error_nested_ivar_conflict.silly
+            // coverage: syntax-error/triple-for-shadow.silly syntax-error/nested-induction-conflict.silly
             emitUserError( loc, std::format( "Induction variable {} used by enclosing FOR", varName ),
                            currentFuncName );
             return;
@@ -1504,7 +1504,7 @@ namespace silly
             }
             else if ( !shape.empty() )
             {
-                // coverage: error_get_string.silly
+                // coverage: syntax-error/get-string.silly
                 emitUserError( loc, std::format( "Attempted GET to string literal or array?" ), currentFuncName );
                 return;
             }
@@ -1669,7 +1669,7 @@ namespace silly
         bool declared = isVariableDeclared( currentVarName );
         if ( !declared )
         {
-            // coverage: error_undeclare.silly
+            // coverage: syntax-error/undeclared-var.silly
             emitUserError( loc, std::format( "Attempt to assign to undeclared variable: {}", currentVarName ),
                            currentFuncName );
             return;
@@ -2145,7 +2145,7 @@ namespace silly
             {
                 if ( !value.getType().isInteger() )
                 {
-                    // coverage: error_notfloat.silly
+                    // coverage: syntax-error/not-float.silly
                     emitUserError( loc, std::format( "NOT on non-integer type" ), currentFuncName );
                     return mlir::Value{};
                 }

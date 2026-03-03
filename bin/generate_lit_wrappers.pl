@@ -84,9 +84,8 @@ my %flags = (
 );
 
 my %skip = map { $_ => 1 } (qw(
-modfloat
-px
-div_zero_int
+mod-float-all-types
+div-zero-int
 ));
 
 die "Samples root not found: $SAMPLES_ROOT\n" unless -d $SAMPLES_ROOT;

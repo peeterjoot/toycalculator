@@ -1,0 +1,4 @@
+// sequence.silly
+INT32 x = 42;
+INT32 y = x + 1;               // sees x=42
+PRINT y;                       // expect: 43

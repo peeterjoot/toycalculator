@@ -1,6 +1,0 @@
-// printdi_nested.silly
-FOR (INT32 i: (0, 3)) {
-    FOR (INT32 j: (0, 2)) {
-        PRINT "i=", i, " j=", j;
-    };
-};

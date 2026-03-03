@@ -1,0 +1,21 @@
+// A test that uses two sources, but without IMPORT.  simple compile and link with temporary .o's saved implicitly to $TMPDIR
+
+// RUN: %ExeSilly -g %s %S/twosource-module.silly -o %t.exe
+// RUN: %t.exe | %FileCheck %s
+// CHECK: In main
+// CHECK: 3
+// CHECK: Back in main
+// CHECK: 3
+// CHECK: Back in main again, rc = 42
+
+FUNCTION bar ( INT16 w );
+
+PRINT "In main";
+CALL bar( 3 );
+PRINT "Back in main";
+
+FUNCTION foo ( ) : INT32;
+
+INT32 rc = CALL foo();
+
+PRINT "Back in main again, rc = ", rc;

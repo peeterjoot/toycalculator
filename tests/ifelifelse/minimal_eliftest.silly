@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/ifelifelse/minimal_eliftest.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/ifelifelse/minimal_eliftest.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/ifelifelse/expected/minimal_eliftest.out %t.out

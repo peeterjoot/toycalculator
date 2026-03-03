@@ -1,0 +1,10 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g invalid-binary-op.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: line 10:6 token recognition error at: '^'
+// CHECK: invalid-binary-op.silly:10:9: error: parse error: extraneous input 'z' expecting ';'
+// CHECK:    10 | x = y ^ z;  // Invalid binary operator
+// CHECK:       |         ^
+
+FLOAT64 x;
+FLOAT64 y;
+x = y ^ z;  // Invalid binary operator

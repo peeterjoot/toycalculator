@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/expressions/bin.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/expressions/bin.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/expressions/expected/bin.out %t.out

@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/expressions/expressions_in_call.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/expressions/expressions_in_call.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/expressions/expected/expressions_in_call.out %t.out

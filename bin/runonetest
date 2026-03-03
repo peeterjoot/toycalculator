@@ -1,0 +1,1 @@
+$HOME/build-llvm/bin/llvm-lit -v $*

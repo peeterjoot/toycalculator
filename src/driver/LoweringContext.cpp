@@ -247,7 +247,7 @@ namespace silly
         if ( funcOp.isDeclaration() )
         {
             // Just a prototype... nothing to do.
-            // Test coverage: function/proto1.silly
+            // coverage: function/function/proto-decl-only.silly
             return false;
         }
         else

@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/operators/neqop.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/operators/neqop.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/operators/expected/neqop.out %t.out

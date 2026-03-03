@@ -1,0 +1,7 @@
+// Auto-generated lit wrapper for Samples/expressions/mod-int-all-types.silly
+// Regenerate with: generate-lit-wrappers.pl
+// Do not edit manually
+
+// RUN: %ExeSilly -g  %Examples/expressions/mod-int-all-types.silly -o %t.exe
+// RUN: %t.exe > %t.out 2> %t.err
+// RUN: diff -up %Examples/expressions/expected/mod-int-all-types.out %t.out

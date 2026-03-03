@@ -1,0 +1,3 @@
+// expr-unary.silly
+INT32 neg[1] { - (10 + 5) };   // -15
+PRINT neg[0];                  // expect: -15

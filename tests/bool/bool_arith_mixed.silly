@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/bool/bool_arith_mixed.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/bool/bool_arith_mixed.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/bool/expected/bool_arith_mixed.out %t.out

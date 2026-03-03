@@ -1,0 +1,7 @@
+// Auto-generated lit wrapper for Samples/string/empty-string-lit.silly
+// Regenerate with: generate-lit-wrappers.pl
+// Do not edit manually
+
+// RUN: %ExeSilly -g  %Examples/string/empty-string-lit.silly -o %t.exe
+// RUN: %t.exe > %t.out 2> %t.err
+// RUN: diff -up %Examples/string/expected/empty-string-lit.out %t.out

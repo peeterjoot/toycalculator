@@ -1,8 +1,0 @@
-// RUN: cd %S
-// RUN: %Not %ExeSilly -g error_undeclare.silly -o %t.exe 2>&1 | %FileCheck %s
-// CHECK: error_undeclare.silly:8:1: error: Attempt to assign to undeclared variable: x
-// CHECK:     8 | x = 3;
-// CHECK:       | ^
-
-
-x = 3;

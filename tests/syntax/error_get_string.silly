@@ -1,9 +1,0 @@
-// RUN: cd %S
-// RUN: %Not %ExeSilly -g error_get_string.silly -o %t.exe 2>&1 | %FileCheck %s
-// CHECK: error_get_string.silly:8:1: error: Attempted GET to string literal or array?
-// CHECK:     8 | GET y;
-// CHECK:       | ^
-
-INT32 y[1];
-GET y;
-PRINT "should not compile";

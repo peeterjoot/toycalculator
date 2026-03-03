@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/ifelifelse/nested_if_deep.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/ifelifelse/nested_if_deep.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/ifelifelse/expected/nested_if_deep.out %t.out

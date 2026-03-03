@@ -108,6 +108,7 @@ Back in main again, rc = 42
 * Moved tests/endtoend/get to tests/lit/get
 * Moved tests/endtoend/fatal to tests/lit/fatal (remove RunFailureTest.cmake)
 * Moved tests/lit/* to tests/, moved tests/endtoend/* to Samples/, generate lit wrappers for all the Samples/*/*silly
+* Did a systematic rename of all the tests/, using names that match the testing better, and removing redundancy.
 
 ### Test Infrastructure Updates
 

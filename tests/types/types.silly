@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/types/types.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/types/types.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/types/expected/types.out %t.out

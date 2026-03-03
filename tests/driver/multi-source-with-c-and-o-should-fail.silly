@@ -1,6 +1,0 @@
-// multi-source-with-c-and-o-should-fail.silly
-// Test that silly rejects -c + -o with multiple input sources
-//
-// RUN: %Not %ExeSilly -c %s d2.silly -o %t.o 2>&1 | %FileCheck %s --check-prefix=ERR
-//
-// ERR: silly: error: -c and -o cannot be used together with multiple input files (ambiguous output name)

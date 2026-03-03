@@ -1,7 +1,0 @@
-// RUN: cd %S
-// RUN: %Not %ExeSilly -g error_keyword_declare2.silly -o %t.exe 2>&1 | %FileCheck %s
-// CHECK: error_keyword_declare2.silly:7:7: error: parse error: extraneous input 'INT32' expecting IDENTIFIER
-// CHECK:     7 | INT32 INT32 x;
-// CHECK:       |       ^
-
-INT32 INT32 x;

@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/function/proto2.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/function/proto2.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/function/expected/proto2.out %t.out

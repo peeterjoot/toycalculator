@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/function/function_foo_with_local.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/function/function_foo_with_local.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/function/expected/function_foo_with_local.out %t.out

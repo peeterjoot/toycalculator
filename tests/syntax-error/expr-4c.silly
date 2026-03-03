@@ -1,0 +1,7 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g expr-4c.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: expr-4c.silly:7:13: error: parse error: mismatched input '<' expecting ';'
+// CHECK:     7 | PRINT 1 < 2 < 3; // Expected: 0 ( (1 < 2) < 3 ) = 1 < 3 = 1, but if bool as 1, then 1 < 3 = 1 (TRUE)
+// CHECK:       |             ^
+
+PRINT 1 < 2 < 3; // Expected: 0 ( (1 < 2) < 3 ) = 1 < 3 = 1, but if bool as 1, then 1 < 3 = 1 (TRUE)

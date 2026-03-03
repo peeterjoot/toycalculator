@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/for/for.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/for/for.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/for/expected/for.out %t.out

@@ -58,7 +58,7 @@ namespace silly
         if ( !varType )
         {
             // TODO: no coverage -- not sure if we can get here.  Think that the MLIR infra enforces this before the verify.
-            // See: bad_declare_not_var_return.mlir
+            // See: bad-declare-not-var-return.mlir
             return emitOpError( "result must be of type !silly.var" );
         }
 
@@ -69,12 +69,12 @@ namespace silly
         {
             if ( shape.size() != 1 )
             {
-                // TODO: no coverage -- not sure if we can get here.  See: bad_declare_2darray.mlir -- type parser raises error first
+                // TODO: no coverage -- not sure if we can get here.  See: bad-declare-2darray.mlir -- type parser raises error first
                 return emitOpError( "only 1D arrays are supported (rank must be 0 or 1)" );
             }
             if ( shape[0] <= 0 )
             {
-                // TODO: no coverage -- see: bad_declare_negative_array_shape.mlir -- type parser raises error first.
+                // TODO: no coverage -- see: bad-declare-negative-array-shape.mlir -- type parser raises error first.
                 return emitOpError( "array size must be a positive integer" );
             }
         }
@@ -85,7 +85,7 @@ namespace silly
 
         if ( numInits > numElements )
         {
-            // coverage: bad_declare_toomany_init_array.mlir bad_declare_toomany_init_scalar.mlir
+            // coverage: bad-declare-toomany-init-array.mlir bad-declare-toomany-init-scalar.mlir
             return emitOpError( "number of initializers (" )
                    << numInits << ") exceeds number of elements (" << numElements << ")";
         }
@@ -96,7 +96,7 @@ namespace silly
         {
             if ( init.getType() != elemTy )
             {
-                // coverage: bad_dcl_init_mismatch_types.mlir
+                // coverage: bad-declare-init-mismatch-types.mlir
                 return emitOpError( "initializer type " )
                        << init.getType() << " does not match variable element type " << elemTy;
             }

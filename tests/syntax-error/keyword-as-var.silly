@@ -1,0 +1,7 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g keyword-as-var.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: keyword-as-var.silly:7:7: error: parse error: mismatched input 'INT32' expecting IDENTIFIER
+// CHECK:     7 | INT32 INT32;
+// CHECK:       |       ^
+
+INT32 INT32;

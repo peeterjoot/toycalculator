@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/function/function_void_void.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/function/function_void_void.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/function/expected/function_void_void.out %t.out

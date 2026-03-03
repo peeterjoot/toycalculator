@@ -61,7 +61,7 @@ namespace silly
         ity = getInputType( sourceFileName );
         if ( ity == InputType::Unknown )
         {
-            // coverage: bad-suffix-should-fail.silly
+            // coverage: driver/bad-suffix-should-fail.silly
             llvm::errs() << std::format(
                 COMPILER_NAME ": error: filename {} extension is none of .silly, .mlir/.sir, or .o\n", sourceFileName );
             return ReturnCodes::badExtensionError;
@@ -74,7 +74,7 @@ namespace silly
             rmod = listener.run();
             if ( ds.openFailed )
             {
-                // coverage: bad-file-should-fail.silly
+                // coverage: driver/bad-file-should-fail.silly
                 llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}\n", sourceFileName );
                 return ReturnCodes::openError;
             }
@@ -300,7 +300,7 @@ namespace silly
                                       ds.emitMLIRBC ? llvm::sys::fs::OF_None : llvm::sys::fs::OF_Text );
             if ( EC )
             {
-                // coverage: bad-mlir-output-path-should-fail.silly
+                // coverage: driver/bad-mlir-output-path-should-fail.silly
                 llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}: {}\n",
                                              std::string( mlirOutputName ), EC.message() );
                 return ReturnCodes::openError;
@@ -346,7 +346,7 @@ namespace silly
                                   ds.emitLLVMBC ? llvm::sys::fs::OF_None : llvm::sys::fs::OF_Text );
         if ( EC )
         {
-            // coverage: bad-llvm-ir-output-path-should-fail.silly
+            // coverage: driver/bad-llvm-ir-output-path-should-fail.silly
             // FIXME: probably want llvm::formatv here and elsewhere to avoid the std::string casting hack (assuming
             // it knows how to deal with StringRef)
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open file '{}': {}\n",
@@ -381,7 +381,7 @@ namespace silly
         llvm::raw_fd_ostream dest( outputFilename.str(), EC, llvm::sys::fs::OF_None );
         if ( EC )
         {
-            // coverage: bad-object-output-path-should-fail.silly
+            // coverage: driver/bad-object-output-path-should-fail.silly
             llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open output file '{}': {}\n",
                                          std::string( outputFilename ), EC.message() );
             return ReturnCodes::openError;
@@ -409,7 +409,7 @@ namespace silly
         auto fileOrErr = llvm::MemoryBuffer::getFile( mlirSourceName );
         if ( std::error_code EC = fileOrErr.getError() )
         {
-            // coverage: bad-mlir-path-should-fail.silly
+            // coverage: driver/bad-mlir-path-should-fail.silly
             llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file '{}': {}\n", mlirSourceName,
                                          EC.message() );
             return ReturnCodes::openError;

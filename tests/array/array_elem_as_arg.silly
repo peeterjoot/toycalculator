@@ -1,7 +1,0 @@
-// Auto-generated lit wrapper for Samples/array/array_elem_as_arg.silly
-// Regenerate with: generate-lit-wrappers.pl
-// Do not edit manually
-
-// RUN: %ExeSilly -g  %Examples/array/array_elem_as_arg.silly -o %t.exe
-// RUN: %t.exe > %t.out 2> %t.err
-// RUN: diff -up %Examples/array/expected/array_elem_as_arg.out %t.out
