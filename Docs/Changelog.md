@@ -105,6 +105,8 @@ Back in main again, rc = 42
 * Moved tests/endtoend/driver/* to tests/lit/driver/ (renaming each for clarity with lit conversion)
 * Moved tests/endtoend/failure/* to tests/lit/syntax/
 * Moved tests/endtoend/exit to tests/lit/exit
+* Moved tests/endtoend/get to tests/lit/get
+* Moved tests/endtoend/fatal to tests/lit/fatal (remove RunFailureTest.cmake)
 
 ### Test Infrastructure Updates
 

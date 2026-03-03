@@ -1,0 +1,8 @@
+// RUN: %ExeSilly %s -o %t.exe
+// RUN: %Not sh -c "%t.exe < %S/input/getboolfail.in 2> %t.err > %t.out"
+// RUN: %FileCheck %s --check-prefix=ERR < %t.err
+// ERR: Fatal runtime error:__silly_get_i1: Boolean has unexpected value: 2
+
+BOOL b;
+GET b;
+PRINT b; // Dead code.

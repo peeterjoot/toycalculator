@@ -1,0 +1,10 @@
+// RUN: %ExeSilly %s -o %t.exe
+// RUN: %Not sh -c "%t.exe 2> %t.err > %t.out"
+// RUN: %FileCheck %s --check-prefix=ERR < %t.err
+// ERR: Unexpected value: 42
+// ERR: fatal.silly:10:FATAL ERROR: aborting
+
+INT32 v = 42;
+
+ERROR "Unexpected value: ", v; // line 3.
+ABORT;

@@ -1,3 +1,14 @@
+// RUN: %ExeSilly %s -o %t.exe
+// RUN: %t.exe < %S/input/get.in | %FileCheck %s
+// CHECK: 6
+// CHECK: 7
+// CHECK: 42
+// CHECK: 1
+// CHECK: 2
+// CHECK: 3
+// CHECK: 4.000000
+// CHECK: 5.000000
+
 INT32 x;
 GET x;
 PRINT x;

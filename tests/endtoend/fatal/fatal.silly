@@ -1,4 +1,0 @@
-INT32 v = 42;
-
-ERROR "Unexpected value: ", v; // line 3.
-ABORT;

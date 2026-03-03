@@ -129,8 +129,6 @@ endfunction()
 # haven't generateed expected outputs for this one -- am not sure I should:
 #add_subdirectory(sir)
 
-add_subdirectory(fatal)
-add_subdirectory(get)
 add_subdirectory(simple/array)
 add_subdirectory(simple/bool)
 add_subdirectory(simple/expressions)

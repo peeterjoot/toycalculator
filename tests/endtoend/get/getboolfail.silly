@@ -1,3 +1,0 @@
-BOOL b;
-GET b;
-PRINT b;

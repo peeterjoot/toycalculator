@@ -1,0 +1,11 @@
+// RUN: %ExeSilly %s -o %t.exe
+// RUN: %t.exe < %S/input/getbool.in | %FileCheck %s
+// CHECK: 0
+// CHECK: 1
+
+BOOL b;
+GET b;
+PRINT b;
+
+GET b;
+PRINT b;
