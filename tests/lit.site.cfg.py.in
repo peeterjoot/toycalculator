@@ -1,0 +1,17 @@
+import os
+
+#Never use these prefixes for substitutions:
+#
+#Prefix	Reason
+#%s	test file path
+#%S	source dir
+#%p	temp file
+#%t	temp base
+#%T	temp dir
+
+config.substitutions.append(('%OptSilly', "@CMAKE_SOURCE_DIR@/bin/silly-opt --plugin @CMAKE_BINARY_DIR@/lib"))
+config.substitutions.append(('%FileCheck', "@LLVM_PREFIX@/bin/FileCheck"))
+config.substitutions.append(('%LlvmDis', "@LLVM_PREFIX@/bin/llvm-dis"))
+config.substitutions.append(('%Not', "@LLVM_PREFIX@/bin/not"))
+config.substitutions.append(('%ExeSilly', "@CMAKE_BINARY_DIR@/bin/silly"))
+config.substitutions.append(('%Examples', "@CMAKE_SOURCE_DIR@/Samples"))

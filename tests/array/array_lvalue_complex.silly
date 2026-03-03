@@ -1,0 +1,7 @@
+// Auto-generated lit wrapper for Samples/array/array_lvalue_complex.silly
+// Regenerate with: generate-lit-wrappers.pl
+// Do not edit manually
+
+// RUN: %ExeSilly -g  %Examples/array/array_lvalue_complex.silly -o %t.exe
+// RUN: %t.exe > %t.out 2> %t.err
+// RUN: diff -up %Examples/array/expected/array_lvalue_complex.out %t.out

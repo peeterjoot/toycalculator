@@ -1,0 +1,7 @@
+// Auto-generated lit wrapper for Samples/function/nested_calls.silly
+// Regenerate with: generate-lit-wrappers.pl
+// Do not edit manually
+
+// RUN: %ExeSilly -g  %Examples/function/nested_calls.silly -o %t.exe
+// RUN: %t.exe > %t.out 2> %t.err
+// RUN: diff -up %Examples/function/expected/nested_calls.out %t.out

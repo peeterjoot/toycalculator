@@ -269,11 +269,10 @@ This is the compiler's internal view of all grammar elements.
 This parses and handles command-line options, opens output files, and orchestrates all lower-level actions (parse tree walk + MLIR builder, lowering to LLVM IR, assembly printing, and linker invocation.)
 * The [ANTLR4 parse tree walker and MLIR builder](src/driver/ParseListener.cpp).
 * The [LLVM IR lowering classes](src/driver/lowering.cpp) used to transform silly dialect operators to LLVM-IR.
-* Sample programs in `tests/endtoend/`. These serve as samples and ctest based test cases.
+* Sample programs in `Samples/`. These serve both as samples, and as test cases.
 * A [build script](bin/build) that runs both cmake and ninja, setting various options.
 * A [mlir-opt wrapper](bin/silly-opt), that pre-loads the silly dialect shared object
-* A set of silly dialect lit tests (`tests/lit/dialect/`) that are used to unit test the dialect verify functions.
-Special case testing is being gradually migrated to llvm-lit.
+* A set of lit tests (`tests/dialect/`, ...) that are used to unit test the dialect verify functions, driver, syntax, ...
 
 ## Command Line Options
 
@@ -338,7 +337,7 @@ Module imports (--imports ...) may only pass .silly or MLIR sources (`IMPORT` pr
 Example:
 
 ```bash
-cd tests/endtoend
+cd Samples/types
 testit -j loadstore.silly
 silly-opt --pretty --source out/loadstore.mlir
 ```
@@ -414,9 +413,6 @@ Testing is ctest and llvm-lit based. Examples:
 ```bash
 cd build
 ctest -j 3                      # Run the full test suite
-ctest -R EndToEnd --verbose     # Run all the tests/endtoend/ tests.
-ctest -R silly-dialecttests     # Run the low-level dialect verify tests (tests/lit/dialect/)
-ctest -R "EndToEnd.get"         # Run just the GET tests.
 ```
 
 ---
@@ -940,7 +936,7 @@ silly --imports callee.mlirbc callmod.silly -o program
 
 Ideas for future refinement include support for multiple imports, filesystem-based module discovery, and more robust dependency handling. See [TODO](Docs/TODO.md), and [module design notes](Docs/module_import_design.md) for additional details.
 
-See tests/endtoend/driver/callmod.silly + callee.silly for a small working demo.
+See tests/driver/callmod.silly + callee.silly for a small working demo.
 
 ---
 

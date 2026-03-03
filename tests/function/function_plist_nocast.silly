@@ -1,0 +1,7 @@
+// Auto-generated lit wrapper for Samples/function/function_plist_nocast.silly
+// Regenerate with: generate-lit-wrappers.pl
+// Do not edit manually
+
+// RUN: %ExeSilly -g  %Examples/function/function_plist_nocast.silly -o %t.exe
+// RUN: %t.exe > %t.out 2> %t.err
+// RUN: diff -up %Examples/function/expected/function_plist_nocast.out %t.out

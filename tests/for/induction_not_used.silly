@@ -1,0 +1,7 @@
+// Auto-generated lit wrapper for Samples/for/induction_not_used.silly
+// Regenerate with: generate-lit-wrappers.pl
+// Do not edit manually
+
+// RUN: %ExeSilly -g  %Examples/for/induction_not_used.silly -o %t.exe
+// RUN: %t.exe > %t.out 2> %t.err
+// RUN: diff -up %Examples/for/expected/induction_not_used.out %t.out

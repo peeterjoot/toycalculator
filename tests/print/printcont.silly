@@ -1,0 +1,8 @@
+// Auto-generated lit wrapper for Samples/print/printcont.silly
+// Regenerate with: generate-lit-wrappers.pl
+// Do not edit manually
+
+// RUN: %ExeSilly -g  %Examples/print/printcont.silly -o %t.exe
+// RUN: %t.exe > %t.out 2> %t.err
+// RUN: diff -up %Examples/print/expected/printcont.out %t.out
+// RUN: diff -up %Examples/print/expected/printcont.stderr.out %t.err

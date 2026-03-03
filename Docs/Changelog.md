@@ -107,6 +107,7 @@ Back in main again, rc = 42
 * Moved tests/endtoend/exit to tests/lit/exit
 * Moved tests/endtoend/get to tests/lit/get
 * Moved tests/endtoend/fatal to tests/lit/fatal (remove RunFailureTest.cmake)
+* Moved tests/lit/* to tests/, moved tests/endtoend/* to Samples/, generate lit wrappers for all the Samples/*/*silly
 
 ### Test Infrastructure Updates
 
