@@ -20,10 +20,14 @@ configure_file(
 
 message(STATUS "lit.site.cfg.py set to ${CMAKE_BINARY_DIR}/lit.site.cfg.py")
 
-add_subdirectory(debug)
-add_subdirectory(dialect)
-add_subdirectory(driver)
-add_subdirectory(exit)
-add_subdirectory(fatal)
-add_subdirectory(get)
-add_subdirectory(syntax)
+# i.e.: ninja check-silly-lit-tests
+add_lit_testsuite(check-silly-lit-tests "Running silly lit tests"
+    ${CMAKE_CURRENT_BINARY_DIR}
+    DEPENDS silly
+    ARGS -v
+)
+
+add_test(
+    NAME silly-lit-tests
+    COMMAND ${LLVM_LIT_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}
+)

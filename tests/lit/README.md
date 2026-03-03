@@ -10,7 +10,7 @@ or just one test:
     $HOME/build-llvm/bin/llvm-lit -v tests/lit/debug/two-declare-order-location.silly
 ```
 
-In the test dir, can run without any path:
+In that test dir, can run without any path:
 
 ```
     $HOME/build-llvm/bin/llvm-lit -v two-declare-order-location.silly
