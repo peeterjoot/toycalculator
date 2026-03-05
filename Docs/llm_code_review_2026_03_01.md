@@ -383,7 +383,7 @@ auto callOp = rewriter.create<mlir::LLVM::CallOp>( fusedLoc, ... );
 
 The key insight is that `FusedLoc` is not just a multi-location — it signals to LLVM's DI emission that all the fused locations belong to the same logical instruction, suppressing intermediate line table entries.
 
-**Test:** `print_multiple.silly` — stepping should stop exactly once per PRINT statement.
+**Test:** `multiple-args.silly` — stepping should stop exactly once per PRINT statement.
 
 **Estimated Effort:** 1-2 days.
 

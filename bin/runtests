@@ -1,0 +1,4 @@
+
+# this can also be used to run all the tests (specify tests/ instead of a named test from $TOP)
+
+$HOME/build-llvm/bin/llvm-lit -v $*

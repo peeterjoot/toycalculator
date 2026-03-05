@@ -6,7 +6,6 @@
 #### ctest/lit:
 
 * review the tests/exit tests.  Some of those should be in with the features being tested.  With lit providing a flexible way to handle ad-hoc stuff like exit code testing, some of those can be scattered (or make a test that specifically tests the exit codepath, and leave the rest for other tests.)
-* review the lit test names.  rename systematically and adjust coverage comments to match.
 * readme: GET into a BOOL value will abort if the input value is not 0 or 1. -- do I have a test for that?  May make sense to move the GET tests to lit too and strip out stdin stuff from the ctest rules.
 * error message for error test: main-function.silly is not the clearest (should be something like: cannot define user defined function named main.)
 * review everything that's left in .endtoend.old/failure -- those were desired-failure tests never enabled for various reasons.  If possibly, enable (fixing issues) and move to tests/lit/syntax/ as regular failure tests.
@@ -15,6 +14,8 @@
 #### Next
 
 * More driver testing coverage TODOs to review -- some of the remaining ones are hard to trigger.  Do another pass to see if there is more low hanging fruit.
+* `silly -g out/complex-body.ll -o c` -- writes the binary in out/c but I'd have expected it in ./c
+* `silly -g out/complex-body.ll -o ./c` -- also doesn't work!
 * Add a licence (perhaps something with attribution, but free otherwise.)
 
 #### Driver
