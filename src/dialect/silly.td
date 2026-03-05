@@ -95,6 +95,19 @@ def Silly_AssignOp : Op<Silly_Dialect, "assign"> {
   }];
 }
 
+def Silly_DebugScopeOp : Op<Silly_Dialect, "scope", [NoMemoryEffect]> {
+  let summary = "Defines a new lexical scoping level for debug information lookup of loop induction variables and scoped-declarations.";
+
+  let description = [{
+    This operation has no runtime effect and exists solely to propagate scoping level information
+    to lowering passes for emission of debug metadatra.
+    a variable name.
+  }];
+
+  let arguments = (ins);
+  let results = (outs AnyType:$result);
+}
+
 def Silly_DebugNameOp : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {
   let summary = "Associates a source-level name with a value for debug information purposes.";
 
@@ -111,7 +124,8 @@ def Silly_DebugNameOp : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {
 
   let arguments = (ins
     AnyType:$value,
-    StrAttr:$name
+    StrAttr:$name,
+    Optional<AnyType>:$scope
   );
 }
 

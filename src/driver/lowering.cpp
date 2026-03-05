@@ -377,6 +377,38 @@ namespace silly
     };
 #endif
 
+    /// Lower silly::DebugScopeOp
+    class DebugScopeOpLowering : public mlir::ConversionPattern
+    {
+       private:
+        LoweringContext& lState;    ///< lowering context (including DriverState)
+
+       public:
+        /// Constructor boilerplate for DebugScopeOpLowering
+        DebugScopeOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( silly::DebugScopeOp::getOperationName(), benefit, context ),
+              lState( loweringState )
+        {
+        }
+
+        /// Lowering workhorse for silly::DebugScopeOp
+        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
+                                             mlir::ConversionPatternRewriter& rewriter ) const override
+        {
+            silly::DebugScopeOp debugScopeOp = cast<silly::DebugScopeOp>( op );
+            mlir::Location loc = debugScopeOp.getLoc();
+            mlir::FileLineColLoc fileLoc = locationToFLCLoc( loc );
+
+            if ( mlir::failed( lState.constructLexicalBlockDI( fileLoc, rewriter, op ) ) )
+            {
+                return mlir::failure();
+            }
+
+            rewriter.eraseOp( debugScopeOp );
+            return mlir::success();
+        }
+    };
+
     /// Lower silly::DebugNameOp
     class DebugNameOpLowering : public mlir::ConversionPattern
     {
@@ -396,53 +428,10 @@ namespace silly
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
             silly::DebugNameOp debugNameOp = cast<silly::DebugNameOp>( op );
-            mlir::Value value = debugNameOp.getValue();
-            mlir::Location loc = debugNameOp.getLoc();
-            mlir::FileLineColLoc fileLoc = locationToFLCLoc( loc );
-            std::string funcName = lookupFuncNameForOp( debugNameOp );
 
-            if ( silly::DeclareOp declareOp = value.getDefiningOp<silly::DeclareOp>() )
+            if ( mlir::failed( lState.constructVariableDI( rewriter, debugNameOp ) ) )
             {
-                std::string varName = debugNameOp.getName().str();
-                mlir::LLVM::AllocaOp allocaOp = lState.getAlloca( funcName, declareOp.getOperation() );
-                silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
-                mlir::Type elemType = varTy.getElementType();
-                LLVM_DEBUG( llvm::dbgs() << "DebugNameOpLowering: elemType: " << elemType << '\n' );
-
-                if ( !elemType.isIntOrFloat() )
-                {
-                    return rewriter.notifyMatchFailure( declareOp, "declare type must be integer or float" );
-                }
-
-                unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
-
-                mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
-                llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
-
-                int64_t arraySize = 1;
-                if ( !shape.empty() )
-                {
-                    arraySize = shape[0];
-                }
-
-                if ( mlir::failed( lState.constructVariableDI( fileLoc, rewriter, declareOp, varName, elemType,
-                                                               elemSizeInBits, allocaOp.getResult(), arraySize ) ) )
-                {
-                    return mlir::failure();
-                }
-            }
-            else
-            {
-                std::string varName = debugNameOp.getName().str();
-
-                mlir::Type elemType = value.getType();
-                unsigned elemSizeInBits = elemType.getIntOrFloatBitWidth();
-
-                if ( mlir::failed( lState.constructVariableDI( fileLoc, rewriter, debugNameOp, varName, elemType,
-                                                               elemSizeInBits, value, 1 ) ) )
-                {
-                    return mlir::failure();
-                }
+                return mlir::failure();
             }
 
             rewriter.eraseOp( debugNameOp );
@@ -1086,7 +1075,7 @@ namespace silly
                 target.addLegalDialect<mlir::LLVM::LLVMDialect>();
                 target.addIllegalOp<silly::AssignOp, silly::DeclareOp, silly::LoadOp, silly::NegOp, silly::PrintOp,
                                     silly::GetOp, silly::StringLiteralOp, silly::AbortOp, silly::DebugNameOp,
-                                    silly::ArithBinOp, silly::CmpBinOp>();
+                                    silly::DebugScopeOp, silly::ArithBinOp, silly::CmpBinOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
 
                 target.addIllegalDialect<mlir::scf::SCFDialect>();
@@ -1095,7 +1084,7 @@ namespace silly
                 mlir::RewritePatternSet patterns( &getContext() );
                 patterns.add<AssignOpLowering, LoadOpLowering, NegOpLowering, PrintOpLowering, AbortOpLowering,
                              GetOpLowering, StringLiteralOpLowering, ArithBinOpLowering, CmpBinOpLowering,
-                             DeclareOpLowering, DebugNameOpLowering>( lState, &getContext(), 1 );
+                             DeclareOpLowering, DebugScopeOpLowering, DebugNameOpLowering>( lState, &getContext(), 1 );
 
                 // SCF -> CF
                 mlir::populateSCFToControlFlowConversionPatterns( patterns );

@@ -3,6 +3,11 @@
 ### running list of other issues and ideas, semi-randomly ordered
 ----------------------------------
 
+#### WIP
+* fused-loc experimentation in branch: fused-loc-hacking -- need to tackle lexical scoping first.
+* Do I really have a good reason to set the IP to beginning of function for declarations?  Why not in place (since they are alloca's anyways).
+  -- How does clang manage allocas?  What drives cleanup of them?
+
 #### ctest/lit:
 
 * review the tests/exit tests.  Some of those should be in with the features being tested.  With lit providing a flexible way to handle ad-hoc stuff like exit code testing, some of those can be scattered (or make a test that specifically tests the exit codepath, and leave the rest for other tests.)

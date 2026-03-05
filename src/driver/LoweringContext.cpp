@@ -8,6 +8,7 @@
 #include <llvm/Support/FormatVariadic.h>
 #include <llvm/Support/Path.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
+#include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 
 #include <format>
 
@@ -352,21 +353,81 @@ namespace silly
         funcState[funcName].declareToAlloca[dclOp] = aOp;
     }
 
-    mlir::LogicalResult LoweringContext::infoForVariableDI( mlir::FileLineColLoc loc,
-                                                            mlir::ConversionPatternRewriter& rewriter,
-                                                            mlir::Operation* op, llvm::StringRef varName,
-                                                            mlir::Type& elemType, unsigned elemSizeInBits,
-                                                            int64_t arraySize, const char*& typeName, unsigned& dwType,
-                                                            unsigned& elemStorageSizeInBits )
+    mlir::LogicalResult LoweringContext::constructLexicalBlockDI( mlir::FileLineColLoc fileLoc,
+                                                                  mlir::ConversionPatternRewriter& rewriter,
+                                                                  mlir::Operation* op )
+    {
+        mlir::MLIRContext* context = builder.getContext();
+        std::string funcName = lookupFuncNameForOp( op );
+        auto& f = funcState[funcName];
+        mlir::LLVM::DISubprogramAttr sub = f.subProgramDI;
+
+        mlir::LLVM::DILexicalBlockAttr lexicalBlock =
+            mlir::LLVM::DILexicalBlockAttr::get( context, sub, fileAttr, fileLoc.getLine(), fileLoc.getColumn() );
+
+        f.scopeOpToAttr[op] = lexicalBlock;
+
+        return mlir::success();
+    }
+
+    mlir::LogicalResult LoweringContext::constructVariableDI( mlir::ConversionPatternRewriter& rewriter,
+                                                              silly::DebugNameOp debugNameOp )
     {
         if ( !driverState.debugInfo )
         {
             return mlir::success();
         }
 
-        typeName = nullptr;
-        dwType = llvm::dwarf::DW_ATE_signed;
-        elemStorageSizeInBits = elemSizeInBits;    // Storage size (e.g., i1 uses i8)
+        mlir::Value value = debugNameOp.getValue();
+        mlir::Location loc = debugNameOp.getLoc();
+        mlir::FileLineColLoc fileLoc = locationToFLCLoc( loc );
+        std::string funcName = lookupFuncNameForOp( debugNameOp );
+        std::string varName = debugNameOp.getName().str();
+        mlir::Type elemType{};
+        int64_t arraySize{ 1 };
+        unsigned elemSizeInBits{};
+        mlir::Value opValue{};
+
+        if ( silly::DeclareOp declareOp = value.getDefiningOp<silly::DeclareOp>() )
+        {
+            mlir::LLVM::AllocaOp allocaOp = getAlloca( funcName, declareOp.getOperation() );
+            silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
+            elemType = varTy.getElementType();
+            LLVM_DEBUG( llvm::dbgs() << "DebugNameOpLowering: elemType: " << elemType << '\n' );
+
+            if ( !elemType.isIntOrFloat() )
+            {
+                return rewriter.notifyMatchFailure( declareOp, "declare type must be integer or float" );
+            }
+
+            elemSizeInBits = elemType.getIntOrFloatBitWidth();
+
+            mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
+            llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
+
+            if ( !shape.empty() )
+            {
+                arraySize = shape[0];
+            }
+
+            opValue = allocaOp.getResult();
+        }
+        else
+        {
+            elemType = value.getType();
+            elemSizeInBits = elemType.getIntOrFloatBitWidth();
+
+            opValue = value;
+        }
+
+        PerFunctionLoweringState& f = funcState[funcName];
+
+        mlir::LLVM::DILocalVariableAttr diVar;
+        mlir::LLVM::DITypeAttr diType;
+
+        const char* typeName{};
+        unsigned dwType = llvm::dwarf::DW_ATE_signed;
+        unsigned elemStorageSizeInBits = elemSizeInBits;    // Storage size (e.g., i1 uses i8)
 
         if ( mlir::isa<mlir::IntegerType>( elemType ) )
         {
@@ -402,8 +463,7 @@ namespace silly
                 }
                 default:
                 {
-                    return rewriter.notifyMatchFailure(
-                        op, llvm::formatv( "Unsupported integer type size: {0}", elemSizeInBits ) );
+                    return mlir::failure();
                 }
             }
         }
@@ -424,52 +484,33 @@ namespace silly
                 }
                 default:
                 {
-                    return rewriter.notifyMatchFailure(
-                        op, llvm::formatv( "Unsupported float type size: {0}", elemSizeInBits ) );
+                    return mlir::failure();
                 }
             }
         }
         else
-        {
-            return rewriter.notifyMatchFailure( op, llvm::formatv( "Unsupported type for debug info {0}", elemType ) );
-        }
-
-        return mlir::success();
-    }
-
-    mlir::LogicalResult LoweringContext::constructVariableDI( mlir::FileLineColLoc fileLoc,
-                                                              mlir::ConversionPatternRewriter& rewriter,
-                                                              mlir::Operation* op, llvm::StringRef varName,
-                                                              mlir::Type& elemType, unsigned elemSizeInBits,
-                                                              mlir::Value value, int64_t arraySize )
-    {
-        if ( !driverState.debugInfo )
-        {
-            return mlir::success();
-        }
-
-        assert( fileLoc );
-
-        std::string funcName = lookupFuncNameForOp( op );
-        mlir::LLVM::DISubprogramAttr sub = funcState[funcName].subProgramDI;
-        assert( sub );
-
-        mlir::LLVM::DILocalVariableAttr diVar;
-        mlir::LLVM::DITypeAttr diType;
-
-        const char* typeName;
-        unsigned dwType;
-        unsigned elemStorageSizeInBits;
-
-        if ( mlir::failed( LoweringContext::infoForVariableDI( fileLoc, rewriter, op, varName, elemType, elemSizeInBits,
-                                                               arraySize, typeName, dwType, elemStorageSizeInBits ) ) )
         {
             return mlir::failure();
         }
 
         mlir::MLIRContext* context = builder.getContext();
 
-        if ( mlir::LLVM::AllocaOp allocaOp = value.getDefiningOp<mlir::LLVM::AllocaOp>() )
+        mlir::LLVM::DIScopeAttr subOrLexicalBlock{};
+
+#if 0
+        if ( mlir::Value scope = debugNameOp.getScope() )
+        {
+            silly::DebugScopeOp scopeOp = scope.getDefiningOp<silly::DebugScopeOp>();
+
+            subOrLexicalBlock = f.scopeOpToAttr[scopeOp.getOperation()];
+        }
+        else
+#endif
+        {
+            subOrLexicalBlock = f.subProgramDI;
+        }
+
+        if ( mlir::LLVM::AllocaOp allocaOp = opValue.getDefiningOp<mlir::LLVM::AllocaOp>() )
         {
             allocaOp->setAttr( "bindc_name", builder.getStringAttr( varName ) );
 
@@ -494,7 +535,7 @@ namespace silly
                     context, mlir::DistinctAttr::create( builder.getUnitAttr() ),
                     false,    // isRecSelf
                     llvm::dwarf::DW_TAG_array_type, builder.getStringAttr( "" ), fileAttr,
-                    /*line=*/0, sub, baseType, mlir::LLVM::DIFlags::Zero, totalSizeInBits, alignInBits,
+                    /*line=*/0, subOrLexicalBlock, baseType, mlir::LLVM::DIFlags::Zero, totalSizeInBits, alignInBits,
                     nullptr,    // DIExpressionAttr dataLocation
                     nullptr,    // DIExpressionAttr rank
                     nullptr,    // DIExpressionAttr allocated
@@ -510,7 +551,7 @@ namespace silly
             }
 
             diVar = mlir::LLVM::DILocalVariableAttr::get(
-                context, sub, builder.getStringAttr( varName ), fileAttr, fileLoc.getLine(),
+                context, subOrLexicalBlock, builder.getStringAttr( varName ), fileAttr, fileLoc.getLine(),
                 /*argNo=*/0, totalSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
 
             builder.setInsertionPointAfter( allocaOp );
@@ -523,14 +564,14 @@ namespace silly
                                                   builder.getStringAttr( typeName ), elemStorageSizeInBits, dwType );
 
             mlir::LLVM::DILocalVariableAttr diVar = mlir::LLVM::DILocalVariableAttr::get(
-                context, sub, builder.getStringAttr( varName ), fileAttr, fileLoc.getLine(),
+                context, subOrLexicalBlock, builder.getStringAttr( varName ), fileAttr, fileLoc.getLine(),
                 /*argNo=*/0, elemStorageSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
 
             // Emit llvm.dbg.value
             // Empty expression for direct value binding
             mlir::LLVM::DIExpressionAttr emptyExpr = mlir::LLVM::DIExpressionAttr::get( context, {} );
 
-            mlir::LLVM::DbgValueOp::create( rewriter, fileLoc, value, diVar, emptyExpr );
+            mlir::LLVM::DbgValueOp::create( rewriter, fileLoc, opValue, diVar, emptyExpr );
         }
 
         return mlir::success();

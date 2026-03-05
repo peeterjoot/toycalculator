@@ -102,9 +102,10 @@ namespace silly
         variables.back()[varName] = i;
     }
 
-    inline void ParserPerFunctionState::startScope()
+    inline void ParserPerFunctionState::startScope( mlir::Value value )
     {
         variables.push_back( {} );
+        pushScopeOp( value );
     }
 
     inline void ParserPerFunctionState::endScope()
@@ -113,6 +114,8 @@ namespace silly
         {
             variables.pop_back();
         }
+
+        debugScopeStack.pop_back();
     }
 
     //--------------------------------------------------------------------------
@@ -540,9 +543,11 @@ namespace silly
 
         f.setLastDeclared( dcl.getOperation() );
 
-        silly::DebugNameOp::create( builder, loc, dcl.getResult(), varName );
-
         builder.restoreInsertionPoint( savedIP );
+
+        mlir::Value debugScopeOp = f.currentDebugScope();
+
+        silly::DebugNameOp::create( builder, loc, dcl.getResult(), varName, debugScopeOp );
 
         if ( assignmentExpression )
         {
@@ -668,12 +673,17 @@ namespace silly
             } );
 
             mlir::Value param = funcOp.getArgument( i );
-            silly::DebugNameOp::create( builder, startLoc, param, paramNames[i] );
+            silly::DebugNameOp::create( builder, startLoc, param, paramNames[i], f.currentDebugScope() );
             f.recordParameterValue( paramNames[i], param );
         }
 
         currentFuncName = funcName;
         f.setFuncOp( funcOp );
+
+        if ( funcName == ENTRY_SYMBOL_NAME )
+        {
+            f.pushScopeOp( mlir::Value{} );
+        }
     }
 
     void ParseListener::enterStartRule( SillyParser::StartRuleContext *ctx )
@@ -700,7 +710,6 @@ namespace silly
     void ParseListener::enterImportStatement( SillyParser::ImportStatementContext *ctx )
     {
         assert( ctx );
-        // mlir::Location loc = getStartLocation( ctx );
         assert( ctx->IDENTIFIER() );
         std::string modname = ctx->IDENTIFIER()->getText();
 
@@ -745,7 +754,19 @@ namespace silly
     void ParseListener::enterScopedStatements( SillyParser::ScopedStatementsContext *ctx )
     {
         ParserPerFunctionState &f = funcState( currentFuncName );
-        f.startScope();
+
+        bool isFunctionBody = dynamic_cast<SillyParser::FunctionStatementContext *>( ctx->parent ) != nullptr;
+        bool isForBody      = dynamic_cast<SillyParser::ForStatementContext *>( ctx->parent ) != nullptr;
+
+        mlir::Value value{};
+        if ( !isFunctionBody and !isForBody )
+        {
+            mlir::Location loc = getStartLocation( ctx );
+            value = silly::DebugScopeOp::create( builder, loc, typ.i1 ).getResult();
+        }
+
+        // keep stack balanced, signals function scope when !isFunctionBody
+        f.startScope( value );
     }
 
     void ParseListener::exitScopedStatements( SillyParser::ScopedStatementsContext *ctx )
@@ -1399,7 +1420,10 @@ namespace silly
         f.pushInductionVariable( varName, inductionVar );
 
         mlir::Location varLoc = getTerminalLocation( ctx->IDENTIFIER() );
-        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName );
+        mlir::Value scopeToken = silly::DebugScopeOp::create( builder, varLoc, typ.i1 ).getResult();
+        f.pushScopeOp( scopeToken );
+
+        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, scopeToken );
     }
 
     void ParseListener::exitForStatement( SillyParser::ForStatementContext *ctx )

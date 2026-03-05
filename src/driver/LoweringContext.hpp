@@ -33,6 +33,8 @@ namespace silly
 
         /// Map from DeclareOp to AllocaOp for local variables.
         std::unordered_map<mlir::Operation*, mlir::Operation*> declareToAlloca;
+
+        std::unordered_map<mlir::Operation*, mlir::LLVM::DILexicalBlockAttr> scopeOpToAttr;
     };
 
     /// Context object holding state and helper functions used during lowering
@@ -54,11 +56,6 @@ namespace silly
         /// Returns the preferred alignment for an element type according to the data layout.
         unsigned preferredTypeAlignment( mlir::Operation* op, mlir::Type elemType );
 
-        /// Emits debug information for a local variable (scalar or array), or a parameter, or a FOR induction variable.
-        mlir::LogicalResult constructVariableDI( mlir::FileLineColLoc loc, mlir::ConversionPatternRewriter& rewriter,
-                                                 mlir::Operation* op, llvm::StringRef varName, mlir::Type& elemType,
-                                                 unsigned elemSizeInBits, mlir::Value value, int64_t arraySize );
-
         /// Looks up or creates a global constant for a string literal.
         mlir::LLVM::GlobalOp lookupOrInsertGlobalOp( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
                                                      mlir::StringAttr& stringLit, size_t strLen );
@@ -75,10 +72,18 @@ namespace silly
         mlir::LogicalResult createGetCall( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
                                            mlir::Operation* op, mlir::Type inputType, mlir::Value& output );
 
+        /// Emits debug information for a local variable (scalar or array), or a parameter, or a FOR induction variable.
+        mlir::LogicalResult constructVariableDI( mlir::ConversionPatternRewriter& rewriter,
+                                                 silly::DebugNameOp );
+
         /// Emits debug information for a function parameter.
         void constructParameterDI( mlir::FileLineColLoc loc, mlir::ConversionPatternRewriter& rewriter,
                                    const std::string& varName, mlir::LLVM::AllocaOp value, mlir::Type elemType,
                                    int paramIndex, const std::string& funcName );
+
+        /// Emits lexical scope DI for a for, if, else, elif block
+        mlir::LogicalResult constructLexicalBlockDI( mlir::FileLineColLoc fileLoc,
+                                                     mlir::ConversionPatternRewriter& rewriter, mlir::Operation* op );
 
         /// Return the PRINT args allocation for this function, big enough for the biggest PRINT list in the function.
         mlir::LLVM::AllocaOp getPrintArgs( const std::string& funcName );
@@ -189,12 +194,6 @@ namespace silly
 
         /// Creates a DISubroutineType attribute for a function.
         mlir::LLVM::DISubroutineTypeAttr createDISubroutineType( mlir::func::FuncOp funcOp );
-
-        /// Map silly types to llvm::dwarf::DW_ATE* types
-        mlir::LogicalResult infoForVariableDI( mlir::FileLineColLoc loc, mlir::ConversionPatternRewriter& rewriter,
-                                               mlir::Operation* op, llvm::StringRef varName, mlir::Type& elemType,
-                                               unsigned elemSizeInBits, int64_t arraySize, const char*& typeName,
-                                               unsigned& dwType, unsigned& elemStorageSizeInBits );
 
         /// Debug file attribute (used when debugging is enabled).
         mlir::LLVM::DIFileAttr fileAttr;

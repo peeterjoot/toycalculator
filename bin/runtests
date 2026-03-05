@@ -1,4 +1,5 @@
 
-# this can also be used to run all the tests (specify tests/ instead of a named test from $TOP)
+# this can also be used to run all the tests (specify tests/ instead of a named test from $TOP) :
+# runtests -j 3 tests
 
 $HOME/build-llvm/bin/llvm-lit -v $*

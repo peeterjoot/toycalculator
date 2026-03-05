@@ -103,12 +103,21 @@ namespace silly
         }
 
         /// New variables will be visible only for this scope and later
-        inline void startScope();
+        inline void startScope( mlir::Value );
 
         /// Any variables that had been declared in the current scope will no longer be visible.
         inline void endScope();
 
-       private:
+        mlir::Value currentDebugScope() const {
+            return debugScopeStack.empty() ? mlir::Value{} : debugScopeStack.back();
+        }
+
+        void pushScopeOp( mlir::Value value )
+        {
+            debugScopeStack.push_back( value );
+        }
+
+      private:
         /// The last silly::DeclareOp created for the current function.
         ///
         /// The next declaration in the function will be placed after this, and
@@ -135,6 +144,9 @@ namespace silly
 
         /// Stack for scf.if/scf.for blocks.
         std::vector<mlir::Operation *> insertionPointStack;
+
+        /// null/empty = function scope
+        std::vector<mlir::Value> debugScopeStack;
     };
 
     /// Start and end locations associated with parser context.
@@ -342,15 +354,12 @@ namespace silly
         silly::DeclareOp lookupDeclareForVar( mlir::Location loc, const std::string &varName );
 
         /// Construct locations from the getStart() and getStop() tokens.
-        /// Side effect: Creates a silly::ScopeOp for main, if not already done.
         inline LocPairs getLocations( antlr4::ParserRuleContext *ctx );
 
         /// Computes start location from parser context.
-        /// Side effect: Creates a silly::ScopeOp for main, if not already done.
         inline mlir::Location getStartLocation( antlr4::ParserRuleContext *ctx );
 
         /// Computes stop location from parser context.
-        /// Side effect: Creates a silly::ScopeOp for main, if not already done.
         inline mlir::Location getStopLocation( antlr4::ParserRuleContext *ctx );
 
         /// Build a Location for an antlr4 Token.
@@ -362,7 +371,12 @@ namespace silly
         /// Strip double quotes off of a string, and build a string literal op for it
         silly::StringLiteralOp buildStringLiteral( mlir::Location loc, const std::string &input );
 
-        /// Creates a silly::ScopeOp and initializes function state.
+        /// Initializes function state.
+        ///
+        /// - Records parameter Values, and creates each parameter DebugNameOp.
+        /// - set the current function name, and squirrel away the funcOp for lookup.
+        /// - Creates initial dummy DebugScopeOp placeholder.
+        ///
         void createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp func,
                           const std::string &funcName, const std::vector<std::string> &paramNames );
 
