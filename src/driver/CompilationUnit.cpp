@@ -20,6 +20,7 @@
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/TargetParser/Host.h>
+#include <llvm/Support/FormatVariadic.h>
 #include <mlir/Bytecode/BytecodeWriter.h>
 #include <mlir/Conversion/Passes.h>
 #include <mlir/IR/Verifier.h>
@@ -62,8 +63,8 @@ namespace silly
         if ( ity == InputType::Unknown )
         {
             // coverage: driver/bad-suffix-should-fail.silly
-            llvm::errs() << std::format(
-                COMPILER_NAME ": error: filename {} extension is none of .silly, .mlir/.sir, or .o\n", sourceFileName );
+            llvm::errs() << llvm::formatv(
+                COMPILER_NAME ": error: filename {0} extension is none of .silly, .mlir/.sir, or .o\n", sourceFileName );
             return ReturnCodes::badExtensionError;
         }
 
@@ -75,7 +76,7 @@ namespace silly
             if ( ds.openFailed )
             {
                 // coverage: driver/bad-file-should-fail.silly
-                llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}\n", sourceFileName );
+                llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Cannot open file {0}\n", sourceFileName );
                 return ReturnCodes::openError;
             }
 
@@ -202,7 +203,7 @@ namespace silly
         if ( !target )
         {
             // TODO: no coverage
-            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to find target: {}\n", error );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Failed to find target: {0}\n", error );
             return ReturnCodes::loweringError;
         }
 
@@ -219,7 +220,7 @@ std::nullopt
         if ( !targetMachine )
         {
             // TODO: no coverage
-            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to create target machine\n" );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Failed to create target machine\n" );
             return ReturnCodes::loweringError;
         }
 
@@ -307,8 +308,8 @@ std::nullopt
             if ( EC )
             {
                 // coverage: driver/bad-mlir-output-path-should-fail.silly
-                llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file {}: {}\n",
-                                             std::string( mlirOutputName ), EC.message() );
+                llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Cannot open file {0}: {1}\n",
+                                               mlirOutputName, EC.message() );
                 return ReturnCodes::openError;
             }
 
@@ -317,8 +318,8 @@ std::nullopt
                 if ( mlir::failed( mlir::writeBytecodeToFile( *rmod, out ) ) )
                 {
                     // TODO: no coverage.  Trigger with quotas or small filesystem?
-                    llvm::errs() << std::format( COMPILER_NAME ": error: Failed to write bytecode to '{}'\n",
-                                                 std::string( mlirOutputName ) );
+                    llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Failed to write bytecode to '{0}'\n",
+                                                   mlirOutputName );
                     return ReturnCodes::ioError;
                 }
             }
@@ -329,8 +330,8 @@ std::nullopt
                 if ( out.has_error() )
                 {
                     // TODO: no coverage.  Trigger with quotas or small filesystem?
-                    llvm::errs() << std::format( COMPILER_NAME ": error: Write error on '{}': {}\n",
-                                                 std::string( mlirOutputName ), out.error().message() );
+                    llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Write error on '{0}': {1}\n",
+                                                   mlirOutputName, out.error().message() );
                     return ReturnCodes::ioError;
                 }
             }
@@ -353,10 +354,8 @@ std::nullopt
         if ( EC )
         {
             // coverage: driver/bad-llvm-ir-output-path-should-fail.silly
-            // FIXME: probably want llvm::formatv here and elsewhere to avoid the std::string casting hack (assuming
-            // it knows how to deal with StringRef)
-            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open file '{}': {}\n",
-                                         std::string( llvmOuputFile ), EC.message() );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Failed to open file '{0}': {1}\n",
+                                           llvmOuputFile, EC.message() );
             return ReturnCodes::openError;
         }
 
@@ -373,8 +372,8 @@ std::nullopt
         if ( out.has_error() )
         {
             // TODO: no coverage.  Trigger with quotas or small filesystem?
-            llvm::errs() << std::format( COMPILER_NAME ": error: Write error on '{}': {}\n",
-                                         std::string( llvmOuputFile ), out.error().message() );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Write error on '{0}': {1}\n",
+                                           llvmOuputFile, out.error().message() );
             return ReturnCodes::openError;
         }
 
@@ -388,8 +387,8 @@ std::nullopt
         if ( EC )
         {
             // coverage: driver/bad-object-output-path-should-fail.silly
-            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to open output file '{}': {}\n",
-                                         std::string( outputFilename ), EC.message() );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Failed to open output file '{0}': {1}\n",
+                                           outputFilename, EC.message() );
             return ReturnCodes::openError;
         }
 
@@ -398,7 +397,7 @@ std::nullopt
         if ( targetMachine->addPassesToEmitFile( codegenPM, dest, nullptr, llvm::CodeGenFileType::ObjectFile ) )
         {
             // TODO: no coverage
-            llvm::errs() << std::format( COMPILER_NAME ": error: TargetMachine can't emit an object file\n" );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: TargetMachine can't emit an object file\n" );
             return ReturnCodes::loweringError;
         }
 
@@ -416,8 +415,8 @@ std::nullopt
         if ( std::error_code EC = fileOrErr.getError() )
         {
             // coverage: driver/bad-mlir-path-should-fail.silly
-            llvm::errs() << std::format( COMPILER_NAME ": error: Cannot open file '{}': {}\n", mlirSourceName,
-                                         EC.message() );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Cannot open file '{0}': {1}\n", mlirSourceName,
+                                           EC.message() );
             return ReturnCodes::openError;
         }
 
@@ -428,7 +427,7 @@ std::nullopt
         if ( !rmod )
         {
             // coverage: bad-mlir-should-fail.mlir
-            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to parse MLIR file '{}'\n", mlirSourceName );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Failed to parse MLIR file '{0}'\n", mlirSourceName );
             return ReturnCodes::parseError;
         }
 
@@ -442,8 +441,8 @@ std::nullopt
         if ( !llvmModule )
         {
             // TODO: no coverage
-            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to parse IR file '{}': {}\n", llvmSourceName,
-                                         err.getMessage().str() );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Failed to parse IR file '{0}': {1}\n", llvmSourceName,
+                                           err.getMessage().str() );
             return ReturnCodes::parseError;
         }
 

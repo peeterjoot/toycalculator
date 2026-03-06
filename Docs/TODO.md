@@ -3,6 +3,10 @@
 ### running list of other issues and ideas, semi-randomly ordered
 ----------------------------------
 
+#### Next (easier than the lexical issues for a change.)
+
+* More driver testing coverage TODOs to review -- some of the remaining ones are hard to trigger.  Do another pass to see if there is more low hanging fruit.
+
 #### Debug
 * fedoravm: branch: DebugScopeOp-no-type -- tried making DebugScopeOp not have a type.  Revisit this -- end up not knowing how to convert
   to mlir::Value to be able to pass as arg to DebugNameOp::create.
@@ -17,12 +21,13 @@
 * review everything that's left in .endtoend.old/failure -- those were desired-failure tests never enabled for various reasons.  If possibly, enable (fixing issues) and move to tests/lit/syntax/ as regular failure tests.
 * review: `manualtest_file_options.sh`, `manual-test-for-mlir-llvm-round-trip` -- anything left in those that isn't tested?
 
-#### Next
-
-* More driver testing coverage TODOs to review -- some of the remaining ones are hard to trigger.  Do another pass to see if there is more low hanging fruit.
+#### other
 * `silly -g out/complex-body.ll -o c` -- writes the binary in out/c but I'd have expected it in ./c
 * `silly -g out/complex-body.ll -o ./c` -- also doesn't work!
 * Add a licence (perhaps something with attribution, but free otherwise.)
+* have a mix of std::format (emitError, emitInternalError, ...) but using llvm::formatv for llvm::errs(), dbgs(), outs().
+  Probably want to change emitError and friends to use StringRef so that a wholescale switch from std::format for consistency
+  sake can be made.
 
 #### Driver
 

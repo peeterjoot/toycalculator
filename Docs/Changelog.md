@@ -67,6 +67,9 @@ Back in main again, rc = 42
 
 ### Debug Information Architecture
 
+## General Changes
+* Switched from std::format to llvm::formatv for most calls to llvm::errs(), dbgs(), outs().
+
 ## MLIR Infrastructure Changes
 
 ### Dialect Improvements

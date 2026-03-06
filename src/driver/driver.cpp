@@ -12,6 +12,7 @@
 #include <llvm/Support/FileSystem.h>
 #include <llvm/Support/InitLLVM.h>
 #include <llvm/Support/Path.h>
+#include <llvm/Support/FormatVariadic.h>
 #include <llvm/Support/TargetSelect.h>    // InitializeAllTargetInfos
 
 #include "CompilationUnit.hpp"
@@ -183,7 +184,7 @@ int main( int argc, char** argv )
     if ( versionFlag )
     {
         // coverage: driver/version-flag.silly
-        llvm::outs() << std::format( COMPILER_NAME ": info: silly compiler version {}, LLVM: {}\n", COMPILER_VERSION, LLVMVERSION);
+        llvm::outs() << llvm::formatv( COMPILER_NAME ": info: silly compiler version {0}, LLVM: {1}\n", COMPILER_VERSION, LLVMVERSION);
         return (int)silly::ReturnCodes::success;
     }
 

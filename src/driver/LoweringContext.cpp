@@ -585,7 +585,7 @@ namespace silly
         if ( it != stringLiterals.end() )
         {
             globalOp = it->second;
-            LLVM_DEBUG( llvm::dbgs() << std::format( "Found global: {} for string literal '{}'\n",
+            LLVM_DEBUG( llvm::dbgs() << llvm::formatv( "Found global: {0} for string literal '{1}'\n",
                                                      globalOp.getSymName().str(), stringLit.str() ) );
         }
 

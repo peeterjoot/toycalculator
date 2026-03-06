@@ -3,8 +3,8 @@
 /// @brief   Silly compiler handling of a set of sources or objects.
 #include <llvm/Support/Path.h>
 #include <llvm/Support/Program.h>
+#include <llvm/Support/FormatVariadic.h>
 
-#include <format>
 #include <fstream>
 
 #include "CompilationUnit.hpp"
@@ -44,8 +44,8 @@ namespace silly
             if ( EC )
             {
                 // coverage: driver/output-directory-bad.silly
-                llvm::errs() << std::format( COMPILER_NAME ": error: Failed to create output directory '{}': {}\n",
-                                             ds.outDir, EC.message() );
+                llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Failed to create output directory '{0}': {1}\n",
+                                               ds.outDir, EC.message() );
                 return ReturnCodes::directoryError;
             }
 
@@ -72,7 +72,7 @@ namespace silly
         {
             // coverage: driver/duplicate-source.silly
             // FIXME: this error message is not clear.
-            llvm::errs() << std::format( COMPILER_NAME ": error: file stem {} specified multiple times\n", stem );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: file stem {0} specified multiple times\n", stem );
             return ReturnCodes::duplicateCUError;
         }
 
@@ -91,7 +91,7 @@ namespace silly
         if ( i == CUs.end() )
         {
             // TODO: no coverage
-            llvm::errs() << std::format( COMPILER_NAME ": error: Failed to find CU for stem {}\n", stem );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Failed to find CU for stem {0}\n", stem );
             return ReturnCodes::missingCUError;
         }
 
@@ -150,8 +150,8 @@ namespace silly
             std::error_code EC = linkerPath.getError();
 
             // TODO: no coverage
-            llvm::errs() << std::format( COMPILER_NAME ": error: Error finding path for linker '{}': {}\n", linker,
-                                         EC.message() );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Error finding path for linker '{0}': {1}\n", linker,
+                                           EC.message() );
             return ReturnCodes::filenameParseError;
         }
         LLVM_DEBUG( { llvm::outs() << "Linker path: " << linkerPath.get() << '\n'; } );
@@ -208,8 +208,8 @@ namespace silly
             }
 
             // coverage: driver/link-failure.silly
-            llvm::errs() << std::format( COMPILER_NAME ": error: Linker failed with exit code: {}, rc = {}\n", errMsg,
-                                         result );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Linker failed with exit code: {0}, rc = {1}\n", errMsg,
+                                           result );
             return ReturnCodes::linkError;
         }
 
@@ -382,10 +382,9 @@ namespace silly
             if ( EC )
             {
                 // TODO: no coverage
-                // FIXME: another place to use formatv
-                llvm::errs() << std::format( COMPILER_NAME
-                                             ": error: Failed to create temporary object file in path '{}': {}\n",
-                                             std::string( p ), EC.message() );
+                llvm::errs() << llvm::formatv( COMPILER_NAME
+                                               ": error: Failed to create temporary object file in path '{0}': {1}\n",
+                                               p, EC.message() );
 
                 return ReturnCodes::tempCreationError;
             }
@@ -393,9 +392,8 @@ namespace silly
             if ( ds.keepTemps )
             {
                 // coverage: driver/keep-temp.silly
-                // FIXME: another place to use formatv
-                llvm::errs() << std::format( COMPILER_NAME ": info: created temporary: {}\n",
-                                             std::string( objectFilename ) );
+                llvm::errs() << llvm::formatv( COMPILER_NAME ": info: created temporary: {0}\n",
+                                               objectFilename );
             }
 
             createdTemporary = true;

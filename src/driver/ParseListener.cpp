@@ -4,6 +4,7 @@
 /// @brief   altlr4 parse tree listener and MLIR builder.
 ///
 #include <llvm/Support/Debug.h>
+#include <llvm/Support/FormatVariadic.h>
 #include <llvm/Support/raw_ostream.h>
 #include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
@@ -21,12 +22,12 @@
 #include <string>
 
 #include "DriverState.hpp"
+#include "ModuleInsertionPointGuard.hpp"
 #include "ParseListener.hpp"
 #include "SillyDialect.hpp"
 #include "SillyLexer.h"
 #include "SourceManager.hpp"
 #include "helper.hpp"
-#include "ModuleInsertionPointGuard.hpp"
 
 /// --debug- class for the parser
 #define DEBUG_TYPE "silly-parser"
@@ -194,7 +195,7 @@ namespace silly
         auto fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc );
         if ( !fileLoc )
         {
-            llvm::errs() << std::format( "{}{}error: {}{}\n", RED, internal ? "internal " : "", RESET, message );
+            llvm::errs() << llvm::formatv( "{0}{1}error: {2}{3}\n", RED, internal ? "internal " : "", RESET, message );
         }
 
         std::string sourcename = fileLoc.getFilename().str();
@@ -203,13 +204,13 @@ namespace silly
 
         if ( ( funcName != "" ) && ( funcName != ENTRY_SYMBOL_NAME ) && ( funcName != lastFunc ) )
         {
-            llvm::errs() << std::format( "{}: In function ‘{}’:\n", sourcename, funcName );
+            llvm::errs() << llvm::formatv( "{0}: In function ‘{1}’:\n", sourcename, funcName );
         }
         lastFunc = funcName;
 
         // Print: sourcename:line:col: error: message
-        llvm::errs() << std::format( "{}{}:{}:{}: {}{}error: {}{}\n", CYAN, sourcename, line, col, RED,
-                                     internal ? "internal " : "", RESET, message );
+        llvm::errs() << llvm::formatv( "{0}{1}:{2}:{3}: {4}{5}error: {6}{7}\n", CYAN, sourcename, line, col, RED,
+                                       internal ? "internal " : "", RESET, message );
 
         // Try to read and display the source line
         if ( !sourcename.empty() )
@@ -514,7 +515,8 @@ namespace silly
 
             if ( initializers.size() > numElements )
             {
-                // coverage: syntax-error/array-too-many-init.silly, syntax-error/init-list-mismatch.silly, syntax-error/init-list2.silly
+                // coverage: syntax-error/array-too-many-init.silly, syntax-error/init-list-mismatch.silly,
+                // syntax-error/init-list2.silly
                 emitUserError(
                     loc,
                     std::format( "For variable '{}', more initializers ({}) specified than number of elements ({}).",
@@ -593,8 +595,8 @@ namespace silly
             }
             else
             {
-                // TODO: no coverage.  specifically implemented this to avoid error messages that change with any grammar
-                // addition... but with the lit infra, that path dependence could now be handled.
+                // TODO: no coverage.  specifically implemented this to avoid error messages that change with any
+                // grammar addition... but with the lit infra, that path dependence could now be handled.
                 emitUserError( loc, std::format( "parse error: {}", msg ), currentFuncName );
             }
         }
@@ -663,8 +665,8 @@ namespace silly
                                      const std::string &funcName, const std::vector<std::string> &paramNames )
     {
         LLVM_DEBUG( {
-            llvm::errs() << std::format( "createScope: {}: startLoc: {}, endLoc: {}\n", funcName,
-                                         formatLocation( startLoc ), formatLocation( endLoc ) );
+            llvm::errs() << llvm::formatv( "createScope: {0}: startLoc: {1}, endLoc: {2}\n", funcName,
+                                           formatLocation( startLoc ), formatLocation( endLoc ) );
         } );
         mlir::Block &block = *funcOp.addEntryBlock();
         builder.setInsertionPointToStart( &block );
@@ -674,7 +676,7 @@ namespace silly
         for ( size_t i = 0; i < funcOp.getNumArguments() && i < paramNames.size(); ++i )
         {
             LLVM_DEBUG( {
-                llvm::errs() << std::format( "function {}: parameter{}:\n", funcName, i );
+                llvm::errs() << llvm::formatv( "function {0}: parameter{1}:\n", funcName, i );
                 funcOp.getArgument( i ).dump();
             } );
 
@@ -719,16 +721,17 @@ namespace silly
         assert( ctx->IDENTIFIER() );
         std::string modname = ctx->IDENTIFIER()->getText();
 
-        LLVM_DEBUG( { llvm::errs() << std::format( "enterImportStatement: import: {}\n", modname ); } );
+        LLVM_DEBUG( { llvm::errs() << llvm::formatv( "enterImportStatement: import: {0}\n", modname ); } );
 
         mlir::ModuleOp importMod = sm.findMOD( modname );
-        if (!importMod)
+        if ( !importMod )
         {
             // coverage: driver/module-not-found.silly
             mlir::Location loc = getStartLocation( ctx );
-            emitUserError( loc,
-                           std::format( "Failed to process IMPORT {}.  All module imports must be named with --imports", modname ),
-                           currentFuncName );
+            emitUserError(
+                loc,
+                std::format( "Failed to process IMPORT {}.  All module imports must be named with --imports", modname ),
+                currentFuncName );
             return;
         }
 
@@ -746,7 +749,7 @@ namespace silly
             {
                 std::string funcName = srcFuncOp.getSymName().str();
                 ParserPerFunctionState &f = funcState( funcName );
-                if ( !f.getFuncOp() ) // treat declarations as idempotent.
+                if ( !f.getFuncOp() )    // treat declarations as idempotent.
                 {
                     mlir::func::FuncOp proto = mlir::func::FuncOp::create(
                         builder, srcFuncOp.getLoc(), srcFuncOp.getSymName(), srcFuncOp.getFunctionType(), attrs );
@@ -762,7 +765,7 @@ namespace silly
         ParserPerFunctionState &f = funcState( currentFuncName );
 
         bool isFunctionBody = dynamic_cast<SillyParser::FunctionStatementContext *>( ctx->parent ) != nullptr;
-        bool isForBody      = dynamic_cast<SillyParser::ForStatementContext *>( ctx->parent ) != nullptr;
+        bool isForBody = dynamic_cast<SillyParser::ForStatementContext *>( ctx->parent ) != nullptr;
 
         mlir::Value value{};
         if ( !isFunctionBody and !isForBody )
@@ -866,8 +869,8 @@ namespace silly
         LocPairs locs = getLocations( ctx );
 
         LLVM_DEBUG( {
-            llvm::errs() << std::format( "enterFunctionStatement: startLoc: {}, endLoc: {}:\n",
-                                         formatLocation( locs.first ), formatLocation( locs.second ) );
+            llvm::errs() << llvm::formatv( "enterFunctionStatement: startLoc: {0}, endLoc: {1}:\n",
+                                           formatLocation( locs.first ), formatLocation( locs.second ) );
         } );
 
         if ( currentFuncName != ENTRY_SYMBOL_NAME )
@@ -1033,7 +1036,8 @@ namespace silly
                 SillyParser::ExpressionContext *p = e->expression();
                 assert( p );
                 std::string paramText = p->getText();
-                // LLVM_DEBUG( { llvm::errs() << std::format( "CALL function {}: param: {}\n", funcName, paramText ) }
+                // LLVM_DEBUG( { llvm::errs() << llvm::formatv( "CALL function {0}: param: {1}\n", funcName, paramText )
+                // }
                 // );
 
                 mlir::Type ty = funcType.getInputs()[i];
@@ -1089,7 +1093,7 @@ namespace silly
         {
             // coverage: syntax-error/init-assign.silly tries to trigger this, but the grammar prohibits this.
             // Explicit, unreachable seeming, user-error removed -- switched to assert only.
-            assert ( !declareAssignmentExpression );
+            assert( !declareAssignmentExpression );
 
             pExpressions = &expressions;
         }
@@ -1319,7 +1323,7 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
-        LLVM_DEBUG( { llvm::errs() << std::format( "For: {}\n", ctx->getText() ); } );
+        LLVM_DEBUG( { llvm::errs() << llvm::formatv( "For: {0}\n", ctx->getText() ); } );
 
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
@@ -2183,7 +2187,7 @@ namespace silly
                 if ( !value.getType().isInteger() )
                 {
                     // coverage: syntax-error/not-float.silly
-                    emitUserError( loc, std::format( "NOT on non-integer type" ), currentFuncName );
+                    emitUserError( loc, "NOT on non-integer type", currentFuncName );
                     return mlir::Value{};
                 }
 
