@@ -3,10 +3,6 @@
 ### running list of other issues and ideas, semi-randomly ordered
 ----------------------------------
 
-#### Next (easier than the lexical issues for a change.)
-
-* More driver testing coverage TODOs to review -- some of the remaining ones are hard to trigger.  Do another pass to see if there is more low hanging fruit.
-
 #### Debug
 * fedoravm: branch: DebugScopeOp-no-type -- tried making DebugScopeOp not have a type.  Revisit this -- end up not knowing how to convert
   to mlir::Value to be able to pass as arg to DebugNameOp::create.

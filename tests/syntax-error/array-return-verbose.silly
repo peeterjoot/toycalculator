@@ -1,0 +1,21 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g array-return-verbose.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: array-return-verbose.silly:16:24: error: parse error: mismatched input '[' expecting ';'
+// CHECK:    16 | FUNCTION foo( ) : INT32[4]
+// CHECK:       |                        ^
+// CHECK: array-return-verbose.silly:20:5: error: parse error: extraneous input 'RETURN' expecting {{.*}}
+// CHECK:    20 |     RETURN r;
+// CHECK:       |     ^
+// CHECK: array-return-verbose.silly:20:13: error: parse error: mismatched input ';' expecting '='
+// CHECK:    20 |     RETURN r;
+// CHECK:       |             ^
+// CHECK: array-return-verbose.silly:21:1: error: parse error: extraneous input '}' expecting {{.*}}
+// CHECK:    21 | };
+// CHECK:       | ^
+
+FUNCTION foo( ) : INT32[4]
+{
+    INT32 r[4];
+
+    RETURN r;
+};

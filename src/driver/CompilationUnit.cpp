@@ -440,7 +440,7 @@ std::nullopt
         llvmModule = llvm::parseIRFile( llvmSourceName, err, llvmContext );
         if ( !llvmModule )
         {
-            // TODO: no coverage
+            // TODO: no coverage.  driver/bad-llvm-ir.ll passes bad IR, but hits different error first.
             llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Failed to parse IR file '{0}': {1}\n", llvmSourceName,
                                            err.getMessage().str() );
             return ReturnCodes::parseError;

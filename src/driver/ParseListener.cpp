@@ -595,8 +595,11 @@ namespace silly
             }
             else
             {
-                // TODO: no coverage.  specifically implemented this to avoid error messages that change with any
-                // grammar addition... but with the lit infra, that path dependence could now be handled.
+                // coverage: syntax-error/array-return-verbose.silly
+                //
+                // specifically implemented --no-verbose-parse-error to avoid error messages that change with any
+                // grammar addition... but with the lit infra, it's easy enough to use wildcards and test this path
+                // too.
                 emitUserError( loc, std::format( "parse error: {}", msg ), currentFuncName );
             }
         }
