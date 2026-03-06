@@ -428,6 +428,7 @@ namespace silly
         const char* typeName{};
         unsigned dwType = llvm::dwarf::DW_ATE_signed;
         unsigned elemStorageSizeInBits = elemSizeInBits;    // Storage size (e.g., i1 uses i8)
+        mlir::Operation * op = debugNameOp.getOperation();
 
         if ( mlir::isa<mlir::IntegerType>( elemType ) )
         {
@@ -463,7 +464,8 @@ namespace silly
                 }
                 default:
                 {
-                    return mlir::failure();
+                    return rewriter.notifyMatchFailure(
+                        op, llvm::formatv( "Unsupported integer type size: {0}", elemSizeInBits ) );
                 }
             }
         }
@@ -484,13 +486,14 @@ namespace silly
                 }
                 default:
                 {
-                    return mlir::failure();
+                    return rewriter.notifyMatchFailure(
+                        op, llvm::formatv( "Unsupported float type size: {0}", elemSizeInBits ) );
                 }
             }
         }
         else
         {
-            return mlir::failure();
+            return rewriter.notifyMatchFailure( op, llvm::formatv( "Unsupported type for debug info {0}", elemType ) );
         }
 
         mlir::MLIRContext* context = builder.getContext();

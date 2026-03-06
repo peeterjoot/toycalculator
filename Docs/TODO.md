@@ -16,6 +16,10 @@
 * review everything that's left in .endtoend.old/failure -- those were desired-failure tests never enabled for various reasons.  If possibly, enable (fixing issues) and move to tests/lit/syntax/ as regular failure tests.
 * review: manualtest_file_options.sh  manual-test-for-mlir-llvm-round-trip -- anything left in those that isn't tested?
 
+#### Misc
+* fedoravm: branch: DebugScopeOp-no-type -- tried making DebugScopeOp not have a type.  Revisit this -- end up not knowing how to convert
+  to mlir::Value to be able to pass as arg to DebugNameOp::create.
+
 #### Next
 
 * More driver testing coverage TODOs to review -- some of the remaining ones are hard to trigger.  Do another pass to see if there is more low hanging fruit.
