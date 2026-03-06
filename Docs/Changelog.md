@@ -79,7 +79,10 @@ Back in main again, rc = 42
 
 ### Grammar Enhancements
 
-### Parser Improvements
+### Parser/builder Improvements
+* I didn't have a good reason to set the IP to beginning of function for declarations anymore, now that the
+  symbol dependencies (old silly::ScopeOp) is gone.  Do them in place instead.
+* Introduced lexical scoping for FOR, IF, ELSE, ELIF (but not yet for induction variables yet.)  This is WIP.
 
 ## Lowering & Code Generation
 
@@ -121,8 +124,6 @@ Back in main again, rc = 42
 ## Known Issues & Limitations
 
 ### Type Converter Integration
-
-### ScopeOp Redundancy
 
 ## Migration Notes
 

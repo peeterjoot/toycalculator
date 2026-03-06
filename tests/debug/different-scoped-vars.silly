@@ -1,0 +1,40 @@
+// Check that aRepeatedVariable has correct debug info
+// RUN: %ExeSilly -g %s -o %t.exe
+// RUN: dwarfdump %t.exe > %t.dd
+// RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
+// RUN: %FileCheck %s --input-file=%t.dd
+// EXEC: 1.000000
+// EXEC-NEXT: 42
+// CHECK: DW_AT_name                  aRepeatedVariable
+// CHECK-NEXT: DW_AT_alignment             0x00000004
+// CHECK-NEXT: DW_AT_decl_file             0x00000001 {{.*}}different-scoped-vars.silly
+// CHECK-NEXT: DW_AT_decl_line             0x00000019
+// CHECK-NEXT: DW_AT_type                  <0x0000006d> Refers to: float
+// CHECK: DW_AT_name                  aRepeatedVariable
+// CHECK-NEXT: DW_AT_alignment             0x00000008
+// CHECK-NEXT: DW_AT_decl_file             0x00000001 {{.*}}different-scoped-vars.silly
+// CHECK-NEXT: DW_AT_decl_line             0x00000024
+// CHECK-NEXT: DW_AT_type                  <0x00000074> Refers to: int64_t
+
+
+
+
+
+IF ( TRUE )
+{
+    FLOAT32 aRepeatedVariable{1.0}; // line 25
+
+    PRINT aRepeatedVariable;
+};
+
+IF ( FALSE )
+{
+    PRINT "BUG";
+}
+ELSE
+{
+    INT64 aRepeatedVariable{42}; // line 36
+
+    PRINT aRepeatedVariable;
+};
+

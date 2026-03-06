@@ -3,10 +3,11 @@
 ### running list of other issues and ideas, semi-randomly ordered
 ----------------------------------
 
-#### WIP
+#### Debug
+* fedoravm: branch: DebugScopeOp-no-type -- tried making DebugScopeOp not have a type.  Revisit this -- end up not knowing how to convert
+  to mlir::Value to be able to pass as arg to DebugNameOp::create.
 * fused-loc experimentation in branch: fused-loc-hacking -- need to tackle lexical scoping first.
-* Do I really have a good reason to set the IP to beginning of function for declarations?  Why not in place (since they are alloca's anyways).
-  -- How does clang manage allocas?  What drives cleanup of them?
+* implementing lexical block wasn't enough: different-scoped-vars.silly -- dwarfdump looks okay, but gdb lookup fails to find the right var!
 
 #### ctest/lit:
 
@@ -14,11 +15,7 @@
 * readme: GET into a BOOL value will abort if the input value is not 0 or 1. -- do I have a test for that?  May make sense to move the GET tests to lit too and strip out stdin stuff from the ctest rules.
 * error message for error test: main-function.silly is not the clearest (should be something like: cannot define user defined function named main.)
 * review everything that's left in .endtoend.old/failure -- those were desired-failure tests never enabled for various reasons.  If possibly, enable (fixing issues) and move to tests/lit/syntax/ as regular failure tests.
-* review: manualtest_file_options.sh  manual-test-for-mlir-llvm-round-trip -- anything left in those that isn't tested?
-
-#### Misc
-* fedoravm: branch: DebugScopeOp-no-type -- tried making DebugScopeOp not have a type.  Revisit this -- end up not knowing how to convert
-  to mlir::Value to be able to pass as arg to DebugNameOp::create.
+* review: `manualtest_file_options.sh`, `manual-test-for-mlir-llvm-round-trip` -- anything left in those that isn't tested?
 
 #### Next
 
