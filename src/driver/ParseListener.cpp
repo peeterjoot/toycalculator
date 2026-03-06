@@ -1417,10 +1417,8 @@ namespace silly
         checkForReturnInScope( ctx->scopedStatements(), "FOR loop body" );
 
         mlir::Location varLoc = getTerminalLocation( ctx->IDENTIFIER() );
-        // HACK: DISABLE SCOPEOP just for FOR for now.  induction var DI is MIA:
-        //mlir::Value scopeToken = silly::DebugScopeOp::create( builder, varLoc, typ.i1 ).getResult();
-        //f.pushScopeOp( scopeToken );
-        f.pushScopeOp( mlir::Value{} );
+        mlir::Value scopeToken = silly::DebugScopeOp::create( builder, varLoc, typ.i1 ).getResult();
+        f.pushScopeOp( scopeToken );
 
         mlir::scf::ForOp forOp = mlir::scf::ForOp::create( builder, loc, start, end, step );
         f.pushToInsertionPointStack( forOp.getOperation() );
@@ -1432,9 +1430,13 @@ namespace silly
 
         f.pushInductionVariable( varName, inductionVar );
 
-        // HACK: DISABLE SCOPEOP just for FOR for now.  induction var DI is MIA:
-        //silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, scopeToken );
+        // HACK: DISABLE SCOPEOP just for FOR induction-variables for now (induction var DI is MIA after
+        // LLVM-IR lowering -- perhaps a dominance issue.)
+#if 0
+        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, scopeToken );
+#else
         silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, mlir::Value{} );
+#endif
     }
 
     void ParseListener::exitForStatement( SillyParser::ForStatementContext *ctx )
