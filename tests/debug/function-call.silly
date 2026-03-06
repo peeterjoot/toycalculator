@@ -8,7 +8,7 @@
 // EXEC: bar0
 // CHECK: DW_AT_linkage_name{{[[:space:]]+}}bar0
 // CHECK: DW_AT_decl_line{{[[:space:]]+}}0x00000017
-// CHECK: DW_AT_type{{.*}}void
+// CHECK: DW_AT_external yes
 
 
 

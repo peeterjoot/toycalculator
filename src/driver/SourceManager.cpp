@@ -138,7 +138,7 @@ namespace silly
         }
 
         // Get the driver path
-        std::string driver = llvm::sys::fs::getMainExecutable( ds.argv0, ds.mainSymbol );
+        std::string driver = llvm::sys::fs::getMainExecutable( ds.argv0, (void *)ds.mainSymbol );
         llvm::StringRef driverPath = llvm::sys::path::parent_path( driver );
         LLVM_DEBUG( { llvm::outs() << "Compiler driver path: " << driverPath << '\n'; } );
 

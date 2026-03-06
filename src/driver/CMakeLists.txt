@@ -16,6 +16,21 @@ add_compile_definitions(
     LLVMVERSION=\"${LLVM_PREFIX}\"
 )
 
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Try to read /etc/os-release (standard on modern distros)
+    file(READ "/etc/os-release" os_release)
+    string(REGEX MATCH "ID=([a-z]+)" _ "${os_release}")
+    set(DISTRO_ID "${CMAKE_MATCH_1}")
+
+    if(DISTRO_ID STREQUAL "ubuntu" OR DISTRO_ID STREQUAL "debian")
+        # Ubuntu/Debian default to PIE linking → force PIC objects
+        message(STATUS "Detected ${DISTRO_ID} → forcing PIC/PIE compatible code")
+        add_compile_definitions(
+            UBUNTU_PIC_REQUIRED=1
+        )
+    endif()
+endif()
+
 add_executable(silly
   ${DRIVER_SOURCE_FILES}
   driver.cpp

@@ -48,11 +48,6 @@ include_directories(/usr/include/antlr4-runtime)
 set(COMMON_COMPILE_OPTIONS
   -Wall
   -Wextra
-  -Werror
-  -Wno-error=unused-but-set-variable
-  -Wno-comment
-  -Wno-overloaded-virtual
-  -Wno-unused-parameter
   -g
 )
 
@@ -60,10 +55,29 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     message("Compiler is g++")
     list(APPEND COMMON_COMPILE_OPTIONS
       -fdiagnostics-show-option
-      -fdiagnostics-all-candidates
     )
+
+    # this is a nice option for understanding MLIR template overloads:
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 14)
+        message(STATUS "GCC >= 14 detected → adding -fdiagnostics-all-candidates")
+        list(APPEND COMMON_COMPILE_OPTIONS
+            -fdiagnostics-all-candidates
+        )
+    endif()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message("Compiler is clang++")
+    # -Werror w/ g++-[13,14] is incompatible with llvm-project 22.1.0, with no
+    # granular way of disabling various errors.  Restrict that to just when using
+    # clang for now (these all used to be common gcc/clang compile options):
+    list(APPEND COMMON_COMPILE_OPTIONS
+      -Werror
+      -Wno-error=unused-but-set-variable
+      -Wno-comment
+      -Wno-overloaded-virtual
+      -Wno-unused-parameter
+    )
+
+    # clang specific:
     list(APPEND COMMON_COMPILE_OPTIONS
       -Wno-error=unused-private-field
       -Wno-unused-private-field

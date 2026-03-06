@@ -20,10 +20,15 @@
 
 namespace silly
 {
+    using DriverMainFn = int(int, char**);
+
     /// State to pass from the driver to CompilationUnit, parser/builder, lowering
     class DriverState
     {
        public:
+        DriverState( const char * a, DriverMainFn m ) : argv0{a}, mainSymbol{m} {
+        }
+
         bool compileOnly{}; ///< -c
         bool keepTemps{}; ///< --keep-temp
         bool emitMLIR{}; ///< --emit-mlir
@@ -49,10 +54,10 @@ namespace silly
         bool openFailed{};
 
         /// Driver name
-        const char * argv0{};
+        const char * argv0;
 
         /// &main for the driver
-        void * mainSymbol{};
+        DriverMainFn * mainSymbol;
     };
 }    // namespace silly
 

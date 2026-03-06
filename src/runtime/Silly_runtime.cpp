@@ -54,7 +54,7 @@ extern "C"
                     break;
 
                 default:
-                    fprintf( stderr, "Unknown PrintKind %u, for argument %d of %d\n", arg.kind, i, num_args );
+                    fprintf( stderr, "Unknown PrintKind %u, for argument %d of %d\n", (unsigned)arg.kind, i, num_args );
                     abort();
             }
         }

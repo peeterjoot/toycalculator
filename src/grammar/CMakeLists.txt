@@ -17,9 +17,36 @@ set(ANTLR_GENERATED_FILES
     ${ANTLR_OUTPUT_DIR}/SillyLexer.h
 )
 
+# ------------------------------------------------------------------------------
+# Locate ANTLR tool: prefer local JAR in source tree (if found: for WSL which has mismatched antlr4 vs. includes), else system antlr4
+# ------------------------------------------------------------------------------
+
+set(ANTLR_JAR "${CMAKE_SOURCE_DIR}/antlr-4.10-complete.jar")
+
+if(EXISTS "${ANTLR_JAR}")
+    # Ensure we have java at all (for JAR case)
+    find_package(Java COMPONENTS Runtime REQUIRED)
+
+    # Use java -jar <local-jar> ...
+    set(ANTLR_COMMAND
+        ${Java_JAVA_EXECUTABLE} -jar "${ANTLR_JAR}"
+    )
+    message(STATUS "Using local ANTLR JAR: ${ANTLR_JAR}")
+else()
+    # Fall back to whatever 'antlr4' resolves to (system wrapper, alias, etc.)
+    find_program(ANTLR4_EXECUTABLE NAMES antlr4 antlr)
+    if(NOT ANTLR4_EXECUTABLE)
+        message(FATAL_ERROR "ANTLR tool not found: neither ${ANTLR_JAR} exists nor 'antlr4' is in PATH")
+    endif()
+    set(ANTLR_COMMAND "${ANTLR4_EXECUTABLE}")
+    message(STATUS "Using system ANTLR: ${ANTLR4_EXECUTABLE}")
+endif()
+
+# ------------------------------------------------------------------------------
+
 add_custom_command(
     OUTPUT ${ANTLR_GENERATED_FILES}
-    COMMAND antlr4 -Dlanguage=Cpp ${GRAMMAR_FILE} -listener -o ${ANTLR_OUTPUT_DIR}
+    COMMAND ${ANTLR_COMMAND} -Dlanguage=Cpp ${GRAMMAR_FILE} -listener -o ${ANTLR_OUTPUT_DIR}
     DEPENDS ${GRAMMAR_FILE}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     COMMENT "Generating ANTLR grammar files from Silly.g4"

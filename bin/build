@@ -82,13 +82,10 @@ if ( $serial ) {
 
 my $flags = '';
 
-# gcc-13 is too old:
-#
-#  c++: error: unrecognized command-line option ‘-fdiagnostics-all-candidates’
-#
-# ... which is very useful for all the MLIR template overloads.
 if ( defined $ENV{'WSL_DISTRO_NAME'} )
 {
+   #$flags .= '-DCMAKE_CXX_COMPILER=/usr/bin/g++ ';
+   #$flags .= '-DCMAKE_C_COMPILER=/usr/bin/gcc ';
    $flags .= '-DCMAKE_CXX_COMPILER=/usr/bin/g++-14 ';
    $flags .= '-DCMAKE_C_COMPILER=/usr/bin/gcc-14 ';
 }

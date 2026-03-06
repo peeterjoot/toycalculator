@@ -208,7 +208,13 @@ namespace silly
 
         // Create the target machine
         targetMachine.reset(
-            target->createTargetMachine( targetTriple, "generic", "", llvm::TargetOptions(), std::nullopt ) );
+            target->createTargetMachine( targetTriple, "generic", "", llvm::TargetOptions(),
+#ifdef UBUNTU_PIC_REQUIRED
+llvm::Reloc::PIC_
+#else
+std::nullopt
+#endif
+) );
 
         if ( !targetMachine )
         {

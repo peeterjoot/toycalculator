@@ -350,7 +350,7 @@ Run `silly-opt --help` for all available options.
 ### ANTLR4 Setup (Ubuntu)
 
 ```bash
-sudo apt-get install libantlr4-runtime-dev antlr4
+sudo apt-get install libantlr4-runtime-dev antlr4 dwarfdump
 ```
 
 This assumes that the ANTLR4 runtime, after installation, is version 4.10.

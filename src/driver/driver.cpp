@@ -146,7 +146,7 @@ int main( int argc, char** argv )
     // once this goes out of scope, the module is toast and can't be referenced further.
     silly::DialectContext dialectLoader;
 
-    silly::DriverState ds( argv[0], (void*)&main );
+    silly::DriverState ds( argv[0], main );
 
     ds.compileOnly = compileOnly;
     ds.keepTemps = keepTemps;
