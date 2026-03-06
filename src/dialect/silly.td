@@ -100,8 +100,7 @@ def Silly_DebugScopeOp : Op<Silly_Dialect, "scope", [NoMemoryEffect]> {
 
   let description = [{
     This operation has no runtime effect and exists solely to propagate scoping level information
-    to lowering passes for emission of debug metadatra.
-    a variable name.
+    to lowering passes for emission of debug metadata.
   }];
 
   let arguments = (ins);

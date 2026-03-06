@@ -208,6 +208,7 @@ sub runone
     my $crc = verbose_system( $cmd );
     verbose_system("cat ${outdir}/$stem.compile.out");
 
+    verbose_system( qq(dwarfdump ${outdir}/${stem} > ${outdir}/${stem}.dd) );
     verbose_system( qq(objdump -dr --no-show-raw-insn ${outdir}/${stem}.o > ${outdir}/${stem}.s) );
 
     if ( $assembly )

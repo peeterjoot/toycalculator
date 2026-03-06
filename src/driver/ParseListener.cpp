@@ -432,7 +432,9 @@ namespace silly
             numElements = arraySize;
         }
 
+#if 0
         mlir::OpBuilder::InsertPoint savedIP = builder.saveInsertionPoint();
+#endif
 
         ParserPerFunctionState &f = funcState( currentFuncName );
 
@@ -444,6 +446,7 @@ namespace silly
             return;
         }
 
+#if 0
         if ( mlir::Operation *op = f.getLastDeclared() )
         {
             builder.setInsertionPointAfter( op );
@@ -465,6 +468,7 @@ namespace silly
             // (all DeclareOps should appear before any scf.if/scf.for)
             builder.setInsertionPointToStart( entryBlock );
         }
+#endif
 
         std::vector<mlir::Value> initializers;
 
@@ -543,7 +547,9 @@ namespace silly
 
         f.setLastDeclared( dcl.getOperation() );
 
+#if 0
         builder.restoreInsertionPoint( savedIP );
+#endif
 
         mlir::Value debugScopeOp = f.currentDebugScope();
 
@@ -1410,20 +1416,25 @@ namespace silly
 
         checkForReturnInScope( ctx->scopedStatements(), "FOR loop body" );
 
+        mlir::Location varLoc = getTerminalLocation( ctx->IDENTIFIER() );
+        // HACK: DISABLE SCOPEOP just for FOR for now.  induction var DI is MIA:
+        //mlir::Value scopeToken = silly::DebugScopeOp::create( builder, varLoc, typ.i1 ).getResult();
+        //f.pushScopeOp( scopeToken );
+        f.pushScopeOp( mlir::Value{} );
+
         mlir::scf::ForOp forOp = mlir::scf::ForOp::create( builder, loc, start, end, step );
         f.pushToInsertionPointStack( forOp.getOperation() );
 
         mlir::Block &loopBody = forOp.getRegion().front();
+        mlir::Value inductionVar = loopBody.getArgument( 0 );
+
         builder.setInsertionPointToStart( &loopBody );
 
-        mlir::Value inductionVar = loopBody.getArgument( 0 );
         f.pushInductionVariable( varName, inductionVar );
 
-        mlir::Location varLoc = getTerminalLocation( ctx->IDENTIFIER() );
-        mlir::Value scopeToken = silly::DebugScopeOp::create( builder, varLoc, typ.i1 ).getResult();
-        f.pushScopeOp( scopeToken );
-
-        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, scopeToken );
+        // HACK: DISABLE SCOPEOP just for FOR for now.  induction var DI is MIA:
+        //silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, scopeToken );
+        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, mlir::Value{} );
     }
 
     void ParseListener::exitForStatement( SillyParser::ForStatementContext *ctx )

@@ -1,0 +1,32 @@
+// Check that v has correct debug info
+// RUN: %ExeSilly -g %s -o %t.exe
+// RUN: dwarfdump %t.exe > %t.dd
+// RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
+// RUN: %FileCheck %s --input-file=%t.dd
+// EXEC: 1, 1
+// CHECK: DW_AT_name{{[[:space:]]+}}v
+// CHECK: DW_AT_decl_file{{.*}}glob-and-scope-declare.silly
+// CHECK: DW_AT_decl_line{{[[:space:]]+}}0x00000019
+// CHECK: DW_AT_name{{[[:space:]]+}}w
+// CHECK: DW_AT_decl_file{{.*}}glob-and-scope-declare.silly
+// CHECK: DW_AT_decl_line{{[[:space:]]+}}0x0000001d
+
+
+
+
+
+
+
+
+
+
+
+
+INT32 v{1}; // line 25
+
+IF ( 1 EQ 1 )
+{
+    INT32 w{1}; // line 29
+    PRINT v, ", ", w;
+};
+

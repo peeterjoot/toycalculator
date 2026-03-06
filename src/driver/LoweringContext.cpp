@@ -500,7 +500,6 @@ namespace silly
 
         mlir::LLVM::DIScopeAttr subOrLexicalBlock{};
 
-#if 0
         if ( mlir::Value scope = debugNameOp.getScope() )
         {
             silly::DebugScopeOp scopeOp = scope.getDefiningOp<silly::DebugScopeOp>();
@@ -508,7 +507,6 @@ namespace silly
             subOrLexicalBlock = f.scopeOpToAttr[scopeOp.getOperation()];
         }
         else
-#endif
         {
             subOrLexicalBlock = f.subProgramDI;
         }
