@@ -1,6 +1,6 @@
 // Current versions of clang w/cir don't crash when stdio.h is included
-// /usr/local/llvm-22.1.0/bin/clang -emit-cir for.c
-// /usr/local/llvm-22.1.0/bin/clang -emit-llvm for.c
+// mkcir for.c
+// mkll for.c
 #include <stdio.h>
 #include <stdlib.h>
 #define THRESH (RAND_MAX/2)

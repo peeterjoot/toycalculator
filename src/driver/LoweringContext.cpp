@@ -290,7 +290,13 @@ namespace silly
 
                 // This is the key to ensure that translateModuleToLLVMIR does not strip the location info (instead
                 // converts loc's into !dbg's)
-                funcOp->setLoc( builder.getFusedLoc( { mod.getLoc() }, sub ) );
+                llvm::SmallVector<mlir::Location, 4> locs{ mod.getLoc() };
+                mlir::FusedLoc fusedLoc = mlir::cast<mlir::FusedLoc>( funcOp->getLoc() );
+                for ( mlir::Location inner : fusedLoc.getLocations() )
+                {
+                    locs.push_back( inner );
+                }
+                funcOp->setLoc( builder.getFusedLoc( locs, sub ) );
 
                 funcState[funcName].subProgramDI = sub;
             }

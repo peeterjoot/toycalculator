@@ -108,8 +108,9 @@ namespace silly
                                                            rewriter.getI64IntegerAttr( elemSizeInBytes ) );
             }
 
+            mlir::Location uloc = rewriter.getUnknownLoc();
             mlir::LLVM::AllocaOp allocaOp =
-                mlir::LLVM::AllocaOp::create( rewriter, loc, lState.typ.ptr, elemType, sizeVal, alignment );
+                mlir::LLVM::AllocaOp::create( rewriter, uloc, lState.typ.ptr, elemType, sizeVal, alignment );
 
             auto init = declareOp.getInitializers();
             if ( init.size() )
@@ -473,9 +474,6 @@ namespace silly
                 baseFlags = flagOp.value();
             }
 
-            mlir::Location argLoc = loc;
-            // mlir::Location argLoc = rewriter.getUnknownLoc();
-
             for ( size_t i = 0; i < numArgs; ++i )
             {
                 bool isLast = ( i == numArgs - 1 );
@@ -487,23 +485,23 @@ namespace silly
                 }
 
                 mlir::Value argStruct;
-                if ( mlir::failed( lState.emitPrintArgStruct( argLoc, rewriter, op, inputs[i], pf, argStruct ) ) )
+                if ( mlir::failed( lState.emitPrintArgStruct( loc, rewriter, op, inputs[i], pf, argStruct ) ) )
                 {
                     return mlir::failure();
                 }
 
                 mlir::LLVM::ConstantOp indexVal =
-                    mlir::LLVM::ConstantOp::create( rewriter, argLoc, lState.typ.i64, rewriter.getI64IntegerAttr( i ) );
+                    mlir::LLVM::ConstantOp::create( rewriter, loc, lState.typ.i64, rewriter.getI64IntegerAttr( i ) );
                 mlir::LLVM::GEPOp slotPtr =
-                    mlir::LLVM::GEPOp::create( rewriter, argLoc, lState.typ.ptr, lState.printArgStructTy, arrayAlloca,
+                    mlir::LLVM::GEPOp::create( rewriter, loc, lState.typ.ptr, lState.printArgStructTy, arrayAlloca,
                                                mlir::ValueRange{ indexVal } );
 
-                mlir::LLVM::StoreOp::create( rewriter, argLoc, argStruct, slotPtr );
+                mlir::LLVM::StoreOp::create( rewriter, loc, argStruct, slotPtr );
             }
 
             // Final call
             mlir::LLVM::ConstantOp numArgsConst = mlir::LLVM::ConstantOp::create(
-                rewriter, argLoc, lState.typ.i32, rewriter.getI32IntegerAttr( numArgs ) );
+                rewriter, loc, lState.typ.i32, rewriter.getI32IntegerAttr( numArgs ) );
 
             mlir::func::CallOp::create( rewriter, loc, mlir::TypeRange{}, "__silly_print",
                                         mlir::ValueRange{ numArgsConst, arrayAlloca } );
@@ -1031,7 +1029,10 @@ namespace silly
             mlir::ModuleOp mod = getOperation();
             LLVM_DEBUG( {
                 llvm::dbgs() << "Starting SillyToLLVMLoweringPass on:\n";
-                mod->dump();
+                mlir::OpPrintingFlags flags;
+                flags.enableDebugInfo( true );
+                mod->print( llvm::dbgs(), flags );
+                llvm::dbgs() << '\n';
             } );
 
             LoweringContext lState( mod, *pDriverState );
@@ -1066,7 +1067,10 @@ namespace silly
 
             LLVM_DEBUG( {
                 llvm::dbgs() << "After createPerFuncState:\n";
-                mod->dump();
+                mlir::OpPrintingFlags flags;
+                flags.enableDebugInfo( true );
+                mod->print( llvm::dbgs(), flags );
+                llvm::dbgs() << '\n';
             } );
 
             // No longer two phase lowering... just one:
@@ -1103,7 +1107,10 @@ namespace silly
 
                 LLVM_DEBUG( {
                     llvm::dbgs() << "After silly ops lowered:\n";
-                    mod->dump();
+                    mlir::OpPrintingFlags flags;
+                    flags.enableDebugInfo( true );
+                    mod->print( llvm::dbgs(), flags );
+                    llvm::dbgs() << '\n';
                 } );
             }
 

@@ -4,10 +4,11 @@
 ----------------------------------
 
 #### Debug
-* fedoravm: branch: DebugScopeOp-no-type -- tried making DebugScopeOp not have a type.  Revisit this -- end up not knowing how to convert
-  to mlir::Value to be able to pass as arg to DebugNameOp::create.
-* fused-loc experimentation in branch: fused-loc-hacking -- need to tackle lexical scoping first.
-* implementing lexical block wasn't enough: different-scoped-vars.silly -- dwarfdump looks okay, but gdb lookup fails to find the right var!
+* Audit the places where I am passing both Location and LocationStack.  Do I need the first?
+* Now that I have the filename in the ModuleOp, don't have to pass that down to lowering with the DriverState hack.  Try using the ModuleOp location filename instead when building the DICompilationUnit.
+* fedoravm: branch: DebugScopeOp-no-type -- tried making DebugScopeOp not have a type.  Revisit this -- end up not knowing how to convert to mlir::Value to be able to pass as arg to DebugNameOp::create.
+* fused-loc experimentation in branch: fused-loc-hacking -- need to tackle lexical scoping first (that's now done, for all but induction variables.)
+* Implementing lexical block wasn't enough: different-scoped-vars.silly -- dwarfdump looks okay, but gdb lookup fails to find the right var!
 
 #### ctest/lit:
 

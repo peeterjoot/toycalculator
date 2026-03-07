@@ -6,13 +6,37 @@
 #include "helper.hpp"
 
 #include <format>
+#include <llvm/Support/Debug.h>
+
+#define DEBUG_TYPE "silly-helper"
 
 namespace silly
 {
     mlir::FileLineColLoc locationToFLCLoc( mlir::Location loc )
     {
-        // Cast Location to FileLineColLoc
-        mlir::FileLineColLoc fileLineLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc );
+        LLVM_DEBUG( {
+                llvm::dbgs() << "loc: " << loc << '\n';
+            } );
+
+        mlir::FileLineColLoc fileLineLoc{};
+
+        if ( mlir::FusedLoc fusedLoc = mlir::dyn_cast<mlir::FusedLoc>( loc ) )
+        {
+            for ( mlir::Location inner : fusedLoc.getLocations() )
+            {
+                if ( mlir::FileLineColLoc fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( inner ) )
+                {
+                    fileLineLoc = fileLoc;
+                    break;
+                }
+            }
+        }
+
+        if ( !fileLineLoc )
+        {
+            // Cast Location to FileLineColLoc
+            fileLineLoc = mlir::dyn_cast<mlir::FileLineColLoc>( loc );
+        }
         assert( fileLineLoc );
 
         return fileLineLoc;
@@ -60,6 +84,18 @@ namespace silly
         {
             return fileLoc.getFilename().str();
         }
+
+        if ( mlir::FusedLoc fusedLoc = mlir::dyn_cast<mlir::FusedLoc>( loc ) )
+        {
+            for ( mlir::Location inner : fusedLoc.getLocations() )
+            {
+                if ( mlir::FileLineColLoc fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( inner ) )
+                {
+                    return fileLoc.getFilename().str();
+                }
+            }
+        }
+
         return "";
     }
 

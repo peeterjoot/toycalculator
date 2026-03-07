@@ -13,6 +13,7 @@
 #include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinOps.h>
+#include <mlir/IR/Location.h>
 #include <mlir/IR/MLIRContext.h>
 
 #include <format>
@@ -108,7 +109,8 @@ namespace silly
         /// Any variables that had been declared in the current scope will no longer be visible.
         inline void endScope();
 
-        mlir::Value currentDebugScope() const {
+        mlir::Value currentDebugScope() const
+        {
             return debugScopeStack.empty() ? mlir::Value{} : debugScopeStack.back();
         }
 
@@ -117,7 +119,7 @@ namespace silly
             debugScopeStack.push_back( value );
         }
 
-      private:
+       private:
         /// The last silly::DeclareOp created for the current function.
         ///
         /// The next declaration in the function will be placed after this, and
@@ -155,6 +157,28 @@ namespace silly
     /// antlr4::tree::TerminalNode is a long winded expression
     using tNode = antlr4::tree::TerminalNode;
 
+    /// Location stack that should be fused for the current statement (declare, assignment, print, ...)
+    ///
+    /// Having the current-location state managed in an RAII fashion has the advantage of
+    /// allowing automatic cleanup in error codepaths.
+    ///
+    /// There should only be one instance of LocationStack active at any point in time.
+    class LocationStack
+    {
+       public:
+        inline LocationStack( mlir::OpBuilder &b, mlir::Location loc );
+
+        inline void push_back( mlir::Location loc );
+
+        inline mlir::Location fuseLocations( );
+
+       private:
+        mlir::OpBuilder &builder;
+
+        /// locations that should be fused when the current statement processing is complete.
+        llvm::SmallVector<mlir::Location, 4> locs{};
+    };
+
     /// ANTLR listener that constructs MLIR for the Silly language.
     ///
     /// Inherits from SillyBaseListener and BaseErrorListener to process parse tree
@@ -166,7 +190,7 @@ namespace silly
         /// Constructor.
         /// @param s [in] Owning SourceManager (used for IMPORT module lookup.)
         /// @param filename [in] Source filename for this module (used to construct Location info)
-        ParseListener( silly::SourceManager & s, const std::string &filename );
+        ParseListener( silly::SourceManager &s, const std::string &filename );
 
         /// Open the file stream, and walk the parse tree.
         ///
@@ -194,7 +218,7 @@ namespace silly
         void exitScopedStatements( SillyParser::ScopedStatementsContext *ctx ) override;
 
         /// Antlr4 entry hook for the ImportStatementContext rule.
-        void enterImportStatement( SillyParser::ImportStatementContext * ctx ) override;
+        void enterImportStatement( SillyParser::ImportStatementContext *ctx ) override;
 
         /// Antlr4 enter hook for an IF statement
         void enterIfStatement( SillyParser::IfStatementContext *ctx ) override;
@@ -259,7 +283,6 @@ namespace silly
         void enterExitStatement( SillyParser::ExitStatementContext *ctx ) override;
 
        private:
-
         /// back reference to the owning SourceManager (used for IMPORT module lookup)
         silly::SourceManager &sm;
 
@@ -338,23 +361,24 @@ namespace silly
 
         /// Create a silly::ArithBinOp
         inline mlir::Value createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty,
-                                              mlir::Value lhs, mlir::Value rhs );
+                                              mlir::Value lhs, mlir::Value rhs, LocationStack &ls );
 
         /// Create a silly::CmpBinOp
         inline mlir::Value createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs,
-                                            mlir::Value rhs );
+                                            mlir::Value rhs, LocationStack &ls );
 
         /// Lookup and validate a declareStatement variable name, and process the declaration.
         void enterDeclareHelper( mlir::Location loc, tNode *identifier,
                                  SillyParser::DeclareAssignmentExpressionContext *declareAssignmentExpression,
                                  const std::vector<SillyParser::ExpressionContext *> &expressions, tNode *hasInitList,
-                                 SillyParser::ArrayBoundsExpressionContext *arrayBoundsExpression, mlir::Type ty );
+                                 SillyParser::ArrayBoundsExpressionContext *arrayBoundsExpression, mlir::Type ty,
+                                 LocationStack &ls );
 
         /// Looks up DeclareOp for a variable.
         silly::DeclareOp lookupDeclareForVar( mlir::Location loc, const std::string &varName );
 
         /// Construct locations from the getStart() and getStop() tokens.
-        inline LocPairs getLocations( antlr4::ParserRuleContext *ctx );
+        inline LocPairs getLocations( antlr4::ParserRuleContext *ctx, bool unique = false );
 
         /// Computes start location from parser context.
         inline mlir::Location getStartLocation( antlr4::ParserRuleContext *ctx );
@@ -369,7 +393,7 @@ namespace silly
         inline mlir::Location getTerminalLocation( tNode *node );
 
         /// Strip double quotes off of a string, and build a string literal op for it
-        silly::StringLiteralOp buildStringLiteral( mlir::Location loc, const std::string &input );
+        silly::StringLiteralOp buildStringLiteral( mlir::Location loc, const std::string &input, LocationStack &ls );
 
         /// Initializes function state.
         ///
@@ -381,26 +405,27 @@ namespace silly
                           const std::string &funcName, const std::vector<std::string> &paramNames );
 
         /// Emits a CallOp for a function call.
-        mlir::Value handleCall( SillyParser::CallExpressionContext *ctx );
+        mlir::Value handleCall( SillyParser::CallExpressionContext *ctx, bool callStatement, LocationStack &ls );
 
         /// builder logic for print arguments (shared between PRINT and ERROR.)
         void handlePrint( mlir::Location loc, const std::vector<SillyParser::ExpressionContext *> &args,
-                          const std::string &errorContextString, PrintFlags flags );
+                          const std::string &errorContextString, PrintFlags flags, LocationStack & ls );
 
         /// Registers a variable declaration in the current scope.
         void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                   SillyParser::ArrayBoundsExpressionContext *arrayBounds,
                                   SillyParser::ExpressionContext *assignmentExpression,
-                                  const std::vector<SillyParser::ExpressionContext *> *expressions );
+                                  const std::vector<SillyParser::ExpressionContext *> *expressions, LocationStack &ls );
 
         /// Construct a Value for a TRUE or FALSE boolean literal string
-        inline mlir::Value parseBoolean( mlir::Location loc, const std::string &s );
+        inline mlir::Value parseBoolean( mlir::Location loc, const std::string &s, LocationStack &ls );
 
         /// Construct a Value for an integer literal string
-        inline mlir::Value parseInteger( mlir::Location loc, int width, const std::string &s );
+        inline mlir::Value parseInteger( mlir::Location loc, int width, const std::string &s, LocationStack &ls );
 
         /// Construct a Value for a floating point literal string
-        inline mlir::Value parseFloat( mlir::Location loc, mlir::FloatType ty, const std::string &s );
+        inline mlir::Value parseFloat( mlir::Location loc, mlir::FloatType ty, const std::string &s,
+                                       LocationStack &ls );
 
         /// Returns a reference to the functionStateMap entry for funcName.
         ///
@@ -416,13 +441,15 @@ namespace silly
         /// Casts value to desired type if needed.
         ///
         /// This is adapted from AssignOpLowering, but uses arith dialect operations instead of LLVM dialect.
-        mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType );
+        mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType,
+                                      LocationStack &ls );
 
         /// Casts index value to index type.
-        mlir::Value indexTypeCast( mlir::Location loc, mlir::Value val );
+        mlir::Value indexTypeCast( mlir::Location loc, mlir::Value val, LocationStack &ls );
 
         /// Emits silly::ReturnOp (or exit equivalent) with optional value.
-        void processReturnLike( mlir::Location loc, SillyParser::ExpressionContext *rvalueExpression );
+        void processReturnLike( mlir::Location loc, SillyParser::ExpressionContext *rvalueExpression,
+                                LocationStack &ls );
 
         /// For IF/ELIF, create an scf.if condition and set the insertion point to it's then region.
         ///
@@ -430,14 +457,14 @@ namespace silly
         /// @param predicate [in] The predicate for the IF or ELIF condition.
         /// @param saveIP [in] push the insertion point that is effectively after the if to insertionPointStack (use
         /// this for the initial if in an IF/ELIF/ELSE, but not for the internal IF created when processing an ELIF.
-        void createIf( mlir::Location loc, SillyParser::ExpressionContext *predicate, bool saveIP );
+        void createIf( mlir::Location loc, SillyParser::ExpressionContext *predicate, bool saveIP, LocationStack &ls );
 
         /// Find the current scf.if condition and set the insertion point to the else region for that if.
         void selectElseBlock( mlir::Location loc, const std::string &errorText );
 
         /// Handle assignment processing, given the current var-name and index (if appropriate.)
-        void processAssignment( mlir::Location loc, SillyParser::ExpressionContext *exprContext,
-                                const std::string &currentVarName, mlir::Value currentIndexExpr );
+        void processAssignment( SillyParser::ExpressionContext *exprContext,
+                                const std::string &currentVarName, mlir::Value currentIndexExpr, LocationStack &ls );
 
         /// Handle parsing of an expression (the top-level entry point for expressions).
         /// This function serves as the main entry point for parsing any rvalue expression.
@@ -445,10 +472,10 @@ namespace silly
         /// @param ctx The ExpressionContext from the parser (contains expression())
         /// @param ty Type override
         /// @return The MLIR Value representing the parsed expression
-        inline mlir::Value parseExpression( SillyParser::ExpressionContext *ctx, mlir::Type ty );
+        inline mlir::Value parseExpression( SillyParser::ExpressionContext *ctx, mlir::Type ty, LocationStack &ls );
 
         /// calls parseOr, first actual expression level in the hierarchy
-        inline mlir::Value parseLowest( antlr4::ParserRuleContext *ctx, mlir::Type ty );
+        inline mlir::Value parseLowest( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
 
         /// Parse the logical OR level (lowest precedence binary operator).
         /// Handles expressions of the form: expr OR expr OR expr ...
@@ -456,10 +483,10 @@ namespace silly
         /// @param ctx The ExpressionContext (usually ExprLowestContext)
         /// @param ty Type override
         /// @return The resulting Value (typically i1 for logical OR)
-        mlir::Value parseOr( antlr4::ParserRuleContext *ctx, mlir::Type ty );
+        mlir::Value parseOr( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
 
         /// Look for a XorExprContext, and handle it if found.
-        mlir::Value parseXor( antlr4::ParserRuleContext *ctx, mlir::Type ty );
+        mlir::Value parseXor( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
 
         /// Parse the logical AND level.
         /// Handles expressions of the form: term AND term AND term ...
@@ -467,7 +494,7 @@ namespace silly
         /// @param ctx BinaryExpressionAndContext from the parser
         /// @param ty type override
         /// @return The resulting Value (typically i1 for logical AND)
-        mlir::Value parseAnd( antlr4::ParserRuleContext *ctx, mlir::Type ty );
+        mlir::Value parseAnd( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
 
         /// Parse the equality/inequality level (== and != operators).
         /// Handles expressions of the form: cmp == cmp != cmp ...
@@ -475,7 +502,7 @@ namespace silly
         /// @param ctx BinaryExpressionCompareContext (may be EqNeExprContext when operators present)
         /// @param ty type override
         /// @return The resulting Value (typically i1 for comparisons)
-        mlir::Value parseEquality( antlr4::ParserRuleContext *ctx, mlir::Type ty );
+        mlir::Value parseEquality( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
 
         /// Parse the comparison level (< > <= >=).
         /// Handles expressions of the form: add < add > add <= add ...
@@ -483,7 +510,7 @@ namespace silly
         /// @param ctx BinaryExpressionCompareContext (CompareExprContext when operators present)
         /// @param ty type override
         /// @return The resulting Value (typically i1)
-        mlir::Value parseComparison( antlr4::ParserRuleContext *ctx, mlir::Type ty );
+        mlir::Value parseComparison( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
 
         /// Parse the additive level (+ and - operators).
         /// Handles expressions of the form: mul + mul - mul ...
@@ -491,7 +518,7 @@ namespace silly
         /// @param ctx BinaryExpressionAddSubContext
         /// @param ty type override
         /// @return The resulting Value
-        mlir::Value parseAdditive( antlr4::ParserRuleContext *ctx, mlir::Type ty );
+        mlir::Value parseAdditive( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
 
         /// Parse the multiplicative level (* and / operators).
         /// Handles expressions of the form: unary * unary / unary ...
@@ -499,7 +526,7 @@ namespace silly
         /// @param ctx BinaryExpressionMulDivContext
         /// @param ty type override
         /// @return The resulting Value
-        mlir::Value parseMultiplicative( antlr4::ParserRuleContext *ctx, mlir::Type ty );
+        mlir::Value parseMultiplicative( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
 
         /// Parse unary operators (negation, NOT, etc.).
         /// Handles expressions of the form: - unary, NOT unary, or primary.
@@ -507,7 +534,7 @@ namespace silly
         /// @param ctx UnaryExpressionContext
         /// @param ty type override
         /// @return The resulting Value
-        mlir::Value parseUnary( antlr4::ParserRuleContext *ctx, mlir::Type ty );
+        mlir::Value parseUnary( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
 
         /// Parse primary expressions (literals, variables, calls, parenthesized expressions).
         /// The leaves of the expression tree:
@@ -518,7 +545,7 @@ namespace silly
         /// @param ctx PrimaryExpressionContext
         /// @param ty type override
         /// @return The resulting Value
-        mlir::Value parsePrimary( antlr4::ParserRuleContext *ctx, mlir::Type ty );
+        mlir::Value parsePrimary( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
     };
 }    // namespace silly
 
