@@ -157,6 +157,28 @@ namespace silly
     /// antlr4::tree::TerminalNode is a long winded expression
     using tNode = antlr4::tree::TerminalNode;
 
+    /// Location stack that should be fused for the current statement (declare, assignment, print, ...)
+    ///
+    /// Having the current-location state managed in an RAII fashion has the advantage of
+    /// allowing automatic cleanup in error codepaths.
+    ///
+    /// There should only be one instance of LocationStack active at any point in time.
+    class LocationStack
+    {
+       public:
+        inline LocationStack( mlir::OpBuilder &b, mlir::Location loc );
+
+        inline void push_back( mlir::Location loc );
+
+        inline mlir::Location fuseLocations( );
+
+       private:
+        mlir::OpBuilder &builder;
+
+        /// locations that should be fused when the current statement processing is complete.
+        llvm::SmallVector<mlir::Location, 4> locs{};
+    };
+
     /// ANTLR listener that constructs MLIR for the Silly language.
     ///
     /// Inherits from SillyBaseListener and BaseErrorListener to process parse tree
@@ -259,30 +281,6 @@ namespace silly
 
         /// Antlr4 enter hook for an exitStatement rule.
         void enterExitStatement( SillyParser::ExitStatementContext *ctx ) override;
-
-        /// Location stack that should be fused for the current statement (declare, assignment, print, ...)
-        ///
-        /// Having the current-location state managed in an RAII fashion has the advantage of
-        /// allowing automatic cleanup in error codepaths.
-        ///
-        /// There should only be one instance of LocationStack active at any point in time.
-        class LocationStack
-        {
-           public:
-            LocationStack( mlir::OpBuilder &b ) : builder{ b }
-            {
-            }
-
-            inline void push_back( mlir::Location loc );
-
-            inline mlir::Location fuseLocations( mlir::Location loc );
-
-           private:
-            mlir::OpBuilder &builder;
-
-            /// locations that should be fused when the current statement processing is complete.
-            llvm::SmallVector<mlir::Location, 4> locs{};
-        };
 
        private:
         /// back reference to the owning SourceManager (used for IMPORT module lookup)
@@ -411,7 +409,7 @@ namespace silly
 
         /// builder logic for print arguments (shared between PRINT and ERROR.)
         void handlePrint( mlir::Location loc, const std::vector<SillyParser::ExpressionContext *> &args,
-                          const std::string &errorContextString, PrintFlags flags );
+                          const std::string &errorContextString, PrintFlags flags, LocationStack & ls );
 
         /// Registers a variable declaration in the current scope.
         void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,

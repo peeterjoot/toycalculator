@@ -34,19 +34,24 @@
 
 namespace silly
 {
-    inline void ParseListener::LocationStack::push_back( mlir::Location loc )
+    inline LocationStack::LocationStack( mlir::OpBuilder &b, mlir::Location loc ) : builder{ b }
     {
         locs.push_back( loc );
     }
 
-    inline mlir::Location ParseListener::LocationStack::fuseLocations( mlir::Location loc )
+    inline void LocationStack::push_back( mlir::Location loc )
     {
-        if ( !locs.size() )
-        {
-            return loc;
-        }
-
         locs.push_back( loc );
+    }
+
+    inline mlir::Location LocationStack::fuseLocations( )
+    {
+        assert( locs.size() );
+
+        if ( locs.size() == 1 )
+        {
+            return locs.back();
+        }
 
         return builder.getFusedLoc( locs );
     }
@@ -579,7 +584,7 @@ namespace silly
         silly::DeclareOp dcl{};
         if ( !assignmentExpression )
         {
-            mlir::Location fusedLoc = ls.fuseLocations( loc );
+            mlir::Location fusedLoc = ls.fuseLocations( );
             dcl = silly::DeclareOp::create( builder, fusedLoc, varType, initializers );
         }
         else
@@ -880,7 +885,7 @@ namespace silly
             value = mlir::arith::ConstantIntOp::create( builder, loc, 0, 32 );
         }
 
-        mlir::Location fused = ls.fuseLocations( loc );
+        mlir::Location fused = ls.fuseLocations( );
 
         if ( value )
         {
@@ -903,9 +908,9 @@ namespace silly
 
             if ( !ctx->exitStatement() )
             {
-                LocationStack ls( builder );
-
                 LocPairs locs = getLocations( ctx, true );
+
+                LocationStack ls( builder, locs.first );
 
                 processReturnLike( locs.second, nullptr, ls );
             }
@@ -1119,7 +1124,7 @@ namespace silly
         mlir::func::CallOp callOp;
         if ( callStatement )
         {
-            mlir::Location fusedLoc = ls.fuseLocations( loc );
+            mlir::Location fusedLoc = ls.fuseLocations( );
             callOp = mlir::func::CallOp::create( builder, fusedLoc, resultTypes, funcName, parameters );
         }
         else
@@ -1141,7 +1146,8 @@ namespace silly
     {
         assert( ctx );
 
-        LocationStack ls( builder );
+        mlir::Location loc = getStartLocation( ctx );
+        LocationStack ls( builder, loc );
 
         handleCall( ctx->callExpression(), true, ls );
     }
@@ -1185,9 +1191,9 @@ namespace silly
     {
         assert( ctx );
 
-        LocationStack ls( builder );
-
         mlir::Location loc = getStartLocation( ctx );
+        LocationStack ls( builder, loc );
+
         enterDeclareHelper( loc, ctx->IDENTIFIER(), ctx->declareAssignmentExpression(), ctx->expression(),
                             ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), typ.i1, ls );
     }
@@ -1223,10 +1229,10 @@ namespace silly
 
     void ParseListener::enterIntDeclareStatement( SillyParser::IntDeclareStatementContext *ctx )
     {
-        LocationStack ls( builder );
 
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
+        LocationStack ls( builder, loc );
 
         mlir::Type ty = integerDeclarationType( loc, ctx->intType() );
 
@@ -1236,11 +1242,11 @@ namespace silly
 
     void ParseListener::enterFloatDeclareStatement( SillyParser::FloatDeclareStatementContext *ctx )
     {
-        LocationStack ls( builder );
-
         assert( ctx );
-        mlir::Location loc = getStartLocation( ctx );
         mlir::Type ty;
+
+        mlir::Location loc = getStartLocation( ctx );
+        LocationStack ls( builder, loc );
 
         if ( ctx->FLOAT32_TOKEN() )
         {
@@ -1264,10 +1270,10 @@ namespace silly
 
     void ParseListener::enterStringDeclareStatement( SillyParser::StringDeclareStatementContext *ctx )
     {
-        LocationStack ls( builder );
-
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
+        LocationStack ls( builder, loc );
+
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
         SillyParser::ArrayBoundsExpressionContext *arrayBounds = ctx->arrayBoundsExpression();
@@ -1285,7 +1291,7 @@ namespace silly
             {
                 mlir::Value i{};
 
-                mlir::Location fusedLoc = ls.fuseLocations( loc );
+                mlir::Location fusedLoc = ls.fuseLocations( );
                 silly::AssignOp::create( builder, fusedLoc, var, i, stringLiteral );
             }
         }
@@ -1312,7 +1318,7 @@ namespace silly
             return;
         }
 
-        mlir::Location fusedLoc = ls.fuseLocations( loc );
+        mlir::Location fusedLoc = ls.fuseLocations( );
         mlir::scf::IfOp ifOp = mlir::scf::IfOp::create( builder, fusedLoc, conditionPredicate,
                                                         /*withElseRegion=*/true );
 
@@ -1328,10 +1334,10 @@ namespace silly
 
     void ParseListener::enterIfStatement( SillyParser::IfStatementContext *ctx )
     {
-        LocationStack ls( builder );
-
         assert( ctx );
+
         mlir::Location loc = getStartLocation( ctx );
+        LocationStack ls( builder, loc );
 
         checkForReturnInScope( ctx->scopedStatements(), "IF block" );
 
@@ -1375,10 +1381,9 @@ namespace silly
 
     void ParseListener::enterElifStatement( SillyParser::ElifStatementContext *ctx )
     {
-        LocationStack ls( builder );
-
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
+        LocationStack ls( builder, loc );
 
         checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
 
@@ -1411,9 +1416,9 @@ namespace silly
 
     void ParseListener::enterForStatement( SillyParser::ForStatementContext *ctx )
     {
-        LocationStack ls( builder );
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
+        LocationStack ls( builder, loc );
 
         LLVM_DEBUG( { llvm::errs() << llvm::formatv( "For: {0}\n", ctx->getText() ); } );
 
@@ -1518,7 +1523,7 @@ namespace silly
         mlir::Value scopeToken = silly::DebugScopeOp::create( builder, varLoc, typ.i1 ).getResult();
         f.pushScopeOp( scopeToken );
 
-        mlir::Location fusedLoc = ls.fuseLocations( loc );
+        mlir::Location fusedLoc = ls.fuseLocations( );
         mlir::scf::ForOp forOp = mlir::scf::ForOp::create( builder, fusedLoc, start, end, step );
         f.pushToInsertionPointStack( forOp.getOperation() );
 
@@ -1555,10 +1560,8 @@ namespace silly
     }
 
     void ParseListener::handlePrint( mlir::Location loc, const std::vector<SillyParser::ExpressionContext *> &args,
-                                     const std::string &errorContextString, PrintFlags pf )
+                                     const std::string &errorContextString, PrintFlags pf, LocationStack & ls )
     {
-        LocationStack ls( builder );
-
         std::vector<mlir::Value> vargs;
         for ( SillyParser::ExpressionContext *parg : args )
         {
@@ -1575,7 +1578,7 @@ namespace silly
         ls.push_back( loc );
         mlir::arith::ConstantIntOp constFlagOp = mlir::arith::ConstantIntOp::create( builder, loc, pf, 32 );
 
-        mlir::Location fusedLoc = ls.fuseLocations( loc );
+        mlir::Location fusedLoc = ls.fuseLocations( );
         silly::PrintOp::create( builder, fusedLoc, constFlagOp, vargs );
     }
 
@@ -1583,25 +1586,28 @@ namespace silly
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
+        LocationStack ls( builder, loc );
 
         int flags = PRINT_FLAGS_NONE;
         if ( ctx->CONTINUE_TOKEN() )
         {
             flags = PRINT_FLAGS_CONTINUE;
         }
-        handlePrint( loc, ctx->expression(), ctx->getText(), (PrintFlags)flags );
+        handlePrint( loc, ctx->expression(), ctx->getText(), (PrintFlags)flags, ls );
     }
 
     void ParseListener::enterErrorStatement( SillyParser::ErrorStatementContext *ctx )
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
+        LocationStack ls( builder, loc );
+
         int flags = PRINT_FLAGS_ERROR;
         if ( ctx->CONTINUE_TOKEN() )
         {
             flags |= PRINT_FLAGS_CONTINUE;
         }
-        handlePrint( loc, ctx->expression(), ctx->getText(), (PrintFlags)flags );
+        handlePrint( loc, ctx->expression(), ctx->getText(), (PrintFlags)flags, ls );
     }
 
     void ParseListener::enterAbortStatement( SillyParser::AbortStatementContext *ctx )
@@ -1616,8 +1622,7 @@ namespace silly
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
-
-        LocationStack ls( builder );
+        LocationStack ls( builder, loc );
 
         SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = ctx->scalarOrArrayElement();
         if ( scalarOrArrayElement )
@@ -1661,7 +1666,7 @@ namespace silly
             ls.push_back( loc );
             silly::GetOp resultValue = silly::GetOp::create( builder, loc, elemType );
 
-            mlir::Location fusedLoc = ls.fuseLocations( loc );
+            mlir::Location fusedLoc = ls.fuseLocations( );
             silly::AssignOp::create( builder, fusedLoc, var, optIndexValue, resultValue );
         }
         else
@@ -1749,20 +1754,18 @@ namespace silly
     {
         assert( ctx );
         LocPairs locs = getLocations( ctx );
+        LocationStack ls( builder, locs.first );
 
-        LocationStack ls( builder );
-
-        processReturnLike( locs.first, ctx->expression(), ls );
+        processReturnLike( locs.second, ctx->expression(), ls );
     }
 
     void ParseListener::enterExitStatement( SillyParser::ExitStatementContext *ctx )
     {
         assert( ctx );
         LocPairs locs = getLocations( ctx );
+        LocationStack ls( builder, locs.first );
 
-        LocationStack ls( builder );
-
-        processReturnLike( locs.first, ctx->expression(), ls );
+        processReturnLike( locs.second, ctx->expression(), ls );
     }
 
     void ParseListener::processAssignment( mlir::Location loc, SillyParser::ExpressionContext *exprContext,
@@ -1786,10 +1789,11 @@ namespace silly
         mlir::Operation *op = resultValue.getDefiningOp();
         mlir::Value i{};
 
+        mlir::Location fusedLoc = ls.fuseLocations( );
+
         // Don't check if it's a StringLiteralOp if it's an induction variable, since op will be nullptr
         if ( !ba && isa<silly::StringLiteralOp>( op ) )
         {
-            mlir::Location fusedLoc = ls.fuseLocations( loc );
             silly::AssignOp::create( builder, fusedLoc, var, i, resultValue );
         }
         else
@@ -1798,7 +1802,6 @@ namespace silly
             {
                 mlir::Value i = indexTypeCast( loc, currentIndexExpr, ls );
 
-                mlir::Location fusedLoc = ls.fuseLocations( loc );
                 silly::AssignOp assign = silly::AssignOp::create( builder, fusedLoc, var, i, resultValue );
 
                 LLVM_DEBUG( {
@@ -1811,7 +1814,6 @@ namespace silly
             }
             else
             {
-                mlir::Location fusedLoc = ls.fuseLocations( loc );
                 silly::AssignOp::create( builder, fusedLoc, var, i, resultValue );
             }
         }
@@ -1819,10 +1821,10 @@ namespace silly
 
     void ParseListener::enterAssignmentStatement( SillyParser::AssignmentStatementContext *ctx )
     {
-        LocationStack ls( builder );
-
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
+        LocationStack ls( builder, loc );
+
         SillyParser::ScalarOrArrayElementContext *lhs = ctx->scalarOrArrayElement();
         assert( lhs );
         assert( lhs->IDENTIFIER() );
