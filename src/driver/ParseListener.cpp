@@ -351,7 +351,7 @@ namespace silly
         return stringLiteral;
     }
 
-    inline LocPairs ParseListener::getLocations( antlr4::ParserRuleContext *ctx )
+    inline LocPairs ParseListener::getLocations( antlr4::ParserRuleContext *ctx, bool unique )
     {
         size_t startLine = 1;
         size_t startCol = 0;
@@ -367,6 +367,11 @@ namespace silly
             antlr4::Token *endToken = ctx->getStop();
             endLine = endToken->getLine();
             endCol = endToken->getCharPositionInLine();
+        }
+
+        if ( (startLine == endLine) and (startCol == endCol) and unique )
+        {
+            endCol++;
         }
 
         mlir::FileLineColLoc startLoc =
@@ -739,7 +744,7 @@ namespace silly
         assert( ctx );
         currentFuncName = ENTRY_SYMBOL_NAME;
 
-        LocPairs locs = getLocations( ctx );
+        LocPairs locs = getLocations( ctx, true );
 
         if ( ctx->MODULE_TOKEN() )
         {
@@ -748,7 +753,11 @@ namespace silly
         else
         {
             mlir::FunctionType funcType = builder.getFunctionType( {}, typ.i32 );
-            mlir::func::FuncOp funcOp = mlir::func::FuncOp::create( builder, locs.first, ENTRY_SYMBOL_NAME, funcType );
+
+            llvm::SmallVector<mlir::Location, 2> funcLocs{ locs.first, locs.second };
+            mlir::Location fLoc = builder.getFusedLoc( funcLocs );
+
+            mlir::func::FuncOp funcOp = mlir::func::FuncOp::create( builder, fLoc, ENTRY_SYMBOL_NAME, funcType );
 
             std::vector<std::string> paramNames;
             createScope( locs.first, locs.second, funcOp, ENTRY_SYMBOL_NAME, paramNames );
@@ -867,19 +876,26 @@ namespace silly
         }
         else if ( currentFuncName == ENTRY_SYMBOL_NAME )
         {
-            ls.push_back( loc );
             value = mlir::arith::ConstantIntOp::create( builder, loc, 0, 32 );
         }
 
-        mlir::Location fusedLoc = ls.fuseLocations( loc );
-        // Create ReturnOp with user specified value:
-        if ( value )
+        mlir::Location rLoc = loc;
+        if ( mlir::FusedLoc fusedLoc = mlir::dyn_cast<mlir::FusedLoc>( loc ) )
         {
-            mlir::func::ReturnOp::create( builder, fusedLoc, mlir::ValueRange{ value } );
         }
         else
         {
-            mlir::func::ReturnOp::create( builder, fusedLoc, mlir::ValueRange{} );
+            rLoc = ls.fuseLocations( loc );
+        }
+
+        if ( value )
+        {
+            // Create ReturnOp with user specified value:
+            mlir::func::ReturnOp::create( builder, rLoc, mlir::ValueRange{ value } );
+        }
+        else
+        {
+            mlir::func::ReturnOp::create( builder, rLoc, mlir::ValueRange{} );
         }
     }
 
@@ -893,11 +909,12 @@ namespace silly
 
             if ( !ctx->exitStatement() )
             {
-                mlir::Location loc = getStartLocation( ctx );
-
                 LocationStack ls( builder );
 
-                processReturnLike( loc, nullptr, ls );
+                ParserPerFunctionState &f = funcState( currentFuncName );
+                mlir::func::FuncOp funcOp = f.getFuncOp();
+
+                processReturnLike( funcOp.getLoc(), nullptr, ls );
             }
         }
 
@@ -912,7 +929,7 @@ namespace silly
     void ParseListener::enterFunctionStatement( SillyParser::FunctionStatementContext *ctx )
     {
         assert( ctx );
-        LocPairs locs = getLocations( ctx );
+        LocPairs locs = getLocations( ctx, true );
 
         LLVM_DEBUG( {
             llvm::errs() << llvm::formatv( "enterFunctionStatement: startLoc: {0}, endLoc: {1}:\n",
@@ -999,7 +1016,11 @@ namespace silly
                 mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
 
             mlir::FunctionType funcType = builder.getFunctionType( paramTypes, returns );
-            funcOp = mlir::func::FuncOp::create( builder, locs.first, funcName, funcType, attrs );
+
+            llvm::SmallVector<mlir::Location, 2> funcLocs{ locs.first, locs.second };
+            mlir::Location fLoc = builder.getFusedLoc( funcLocs );
+
+            funcOp = mlir::func::FuncOp::create( builder, fLoc, funcName, funcType, attrs );
         }
 
         if ( ctx->scopedStatements() )
@@ -1734,21 +1755,21 @@ namespace silly
     void ParseListener::enterReturnStatement( SillyParser::ReturnStatementContext *ctx )
     {
         assert( ctx );
-        mlir::Location loc = getStartLocation( ctx );
+        LocPairs locs = getLocations( ctx );
 
         LocationStack ls( builder );
 
-        processReturnLike( loc, ctx->expression(), ls );
+        processReturnLike( locs.first, ctx->expression(), ls );
     }
 
     void ParseListener::enterExitStatement( SillyParser::ExitStatementContext *ctx )
     {
         assert( ctx );
-        mlir::Location loc = getStartLocation( ctx );
+        LocPairs locs = getLocations( ctx );
 
         LocationStack ls( builder );
 
-        processReturnLike( loc, ctx->expression(), ls );
+        processReturnLike( locs.first, ctx->expression(), ls );
     }
 
     void ParseListener::processAssignment( mlir::Location loc, SillyParser::ExpressionContext *exprContext,

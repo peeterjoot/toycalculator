@@ -1,0 +1,68 @@
+#!/usr/bin/perl
+
+#-----------------------------------------------------------------------------
+# POD Format Documentation.  Read "perldoc perlpod" for an example.
+# When done, check syntax with "podchecker".
+
+=head1 NAME
+
+mkll - grab the LLVM-IR from a clang (C) compilation
+
+=head1 SYNOPSIS
+
+mkll [--help] [<options>]
+
+=head1 DESCRIPTION
+
+=head1 SUPPORTED PLATFORMS
+
+ Unix (Linux verified)
+
+=head1 SUPPORT
+
+ Send email to peeterjoot@pm.me
+
+=head1 AUTHORS
+
+ Peeter Joot
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+use strict ;
+use warnings ;
+use Getopt::Long ;
+use Pod::Usage ;
+
+# Suppress sourcing of users' .bashrc files in invoked shells
+delete $ENV{'ENV'} ;
+delete $ENV{'BASH_ENV'} ;
+
+# Set STDOUT and STDERR to unbuffered
+select STDERR ; $| = 1 ;
+select STDOUT ; $| = 1 ;
+
+my $myName = '' ;
+
+($myName = $0) =~ s@.*[/\\]@@ ;
+
+Getopt::Long::Configure( 'pass_through' ) ;
+GetOptions (
+   'help'               => sub { pod2usage(-verbose => 2) ; },
+) or pod2usage(-verbose => 0) ;
+
+# Validate/handle options, and everything else...
+
+my $n = scalar @ARGV;
+die if ($n ne 1);
+
+my $filename = "@ARGV";
+system(qq(/usr/local/llvm-22.1.0/bin/clang -emit-llvm -g -c $filename));
+
+my $bc = $filename;
+$bc =~ s/\.c/.bc/ or die;
+
+system(qq(/usr/local/llvm-22.1.0/bin/llvm-dis $bc -o -));
+
+# vim: et ts=3 sw=3

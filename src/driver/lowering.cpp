@@ -1031,7 +1031,10 @@ namespace silly
             mlir::ModuleOp mod = getOperation();
             LLVM_DEBUG( {
                 llvm::dbgs() << "Starting SillyToLLVMLoweringPass on:\n";
-                mod->dump();
+                mlir::OpPrintingFlags flags;
+                flags.enableDebugInfo( true );
+                mod->print( llvm::dbgs(), flags );
+                llvm::dbgs() << '\n';
             } );
 
             LoweringContext lState( mod, *pDriverState );
@@ -1066,7 +1069,10 @@ namespace silly
 
             LLVM_DEBUG( {
                 llvm::dbgs() << "After createPerFuncState:\n";
-                mod->dump();
+                mlir::OpPrintingFlags flags;
+                flags.enableDebugInfo( true );
+                mod->print( llvm::dbgs(), flags );
+                llvm::dbgs() << '\n';
             } );
 
             // No longer two phase lowering... just one:
@@ -1103,7 +1109,10 @@ namespace silly
 
                 LLVM_DEBUG( {
                     llvm::dbgs() << "After silly ops lowered:\n";
-                    mod->dump();
+                    mlir::OpPrintingFlags flags;
+                    flags.enableDebugInfo( true );
+                    mod->print( llvm::dbgs(), flags );
+                    llvm::dbgs() << '\n';
                 } );
             }
 

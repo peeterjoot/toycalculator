@@ -380,7 +380,7 @@ namespace silly
         silly::DeclareOp lookupDeclareForVar( mlir::Location loc, const std::string &varName );
 
         /// Construct locations from the getStart() and getStop() tokens.
-        inline LocPairs getLocations( antlr4::ParserRuleContext *ctx );
+        inline LocPairs getLocations( antlr4::ParserRuleContext *ctx, bool unique = false );
 
         /// Computes start location from parser context.
         inline mlir::Location getStartLocation( antlr4::ParserRuleContext *ctx );

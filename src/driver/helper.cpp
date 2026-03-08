@@ -84,6 +84,18 @@ namespace silly
         {
             return fileLoc.getFilename().str();
         }
+
+        if ( mlir::FusedLoc fusedLoc = mlir::dyn_cast<mlir::FusedLoc>( loc ) )
+        {
+            for ( mlir::Location inner : fusedLoc.getLocations() )
+            {
+                if ( mlir::FileLineColLoc fileLoc = mlir::dyn_cast<mlir::FileLineColLoc>( inner ) )
+                {
+                    return fileLoc.getFilename().str();
+                }
+            }
+        }
+
         return "";
     }
 
