@@ -838,6 +838,7 @@ namespace silly
     {
         mlir::Type returnType{};
         mlir::Value value{};
+        ls.push_back( loc );
 
         if ( currentFuncName == ENTRY_SYMBOL_NAME )
         {
@@ -879,23 +880,16 @@ namespace silly
             value = mlir::arith::ConstantIntOp::create( builder, loc, 0, 32 );
         }
 
-        mlir::Location rLoc = loc;
-        if ( mlir::FusedLoc fusedLoc = mlir::dyn_cast<mlir::FusedLoc>( loc ) )
-        {
-        }
-        else
-        {
-            rLoc = ls.fuseLocations( loc );
-        }
+        mlir::Location fused = ls.fuseLocations( loc );
 
         if ( value )
         {
             // Create ReturnOp with user specified value:
-            mlir::func::ReturnOp::create( builder, rLoc, mlir::ValueRange{ value } );
+            mlir::func::ReturnOp::create( builder, fused, mlir::ValueRange{ value } );
         }
         else
         {
-            mlir::func::ReturnOp::create( builder, rLoc, mlir::ValueRange{} );
+            mlir::func::ReturnOp::create( builder, fused, mlir::ValueRange{} );
         }
     }
 
@@ -911,10 +905,9 @@ namespace silly
             {
                 LocationStack ls( builder );
 
-                ParserPerFunctionState &f = funcState( currentFuncName );
-                mlir::func::FuncOp funcOp = f.getFuncOp();
+                LocPairs locs = getLocations( ctx, true );
 
-                processReturnLike( funcOp.getLoc(), nullptr, ls );
+                processReturnLike( locs.second, nullptr, ls );
             }
         }
 
