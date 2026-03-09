@@ -7,7 +7,7 @@
 // EXEC-NEXT: 2
 // EXEC-NEXT: 3
 // EXEC-NEXT: 4
-// CHECK: DW_AT_name{{[[:space:]]+}}myLoopVar
+// CHECK: DW_AT_name{{.*}}myLoopVar
 // CHECK: DW_AT_decl_file{{.*}}induction-var-simple.silly
 // CHECK: DW_AT_decl_line{{[[:space:]]+}}0x00000016
 

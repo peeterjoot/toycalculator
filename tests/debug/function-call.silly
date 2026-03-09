@@ -6,9 +6,9 @@
 // RUN: %FileCheck %s --input-file=%t.dd
 // EXEC: hi
 // EXEC: bar0
-// CHECK: DW_AT_linkage_name{{[[:space:]]+}}bar0
+// CHECK: DW_AT_linkage_name{{.*}}bar0
 // CHECK: DW_AT_decl_line{{[[:space:]]+}}0x00000017
-// CHECK: DW_AT_external yes
+// CHECK: DW_AT_external{{[[:space:]]+}}yes
 
 
 

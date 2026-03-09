@@ -15,7 +15,7 @@ namespace silly
     mlir::FileLineColLoc locationToFLCLoc( mlir::Location loc )
     {
         LLVM_DEBUG( {
-                llvm::dbgs() << "loc: " << loc << '\n';
+                llvm::dbgs() << "locationToFLCLoc: loc: " << loc << '\n';
             } );
 
         mlir::FileLineColLoc fileLineLoc{};
