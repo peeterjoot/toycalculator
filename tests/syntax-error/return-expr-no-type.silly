@@ -1,9 +1,9 @@
 // RUN: cd %S
 // RUN: %Not %ExeSilly -g return-expr-no-type.silly -o %t.exe 2>&1 | %FileCheck %s
 // CHECK: return-expr-no-type.silly: In function ‘foo’:
-// CHECK: return-expr-no-type.silly:10:5: error: return expression found '0', but no return type for function foo
+// CHECK: return-expr-no-type.silly:10:12: error: return expression found '0', but no return type for function foo
 // CHECK:    10 |     RETURN 0;
-// CHECK:       |     ^
+// CHECK:       |            ^
 
 FUNCTION foo(INT32 j)
 {
