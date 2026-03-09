@@ -463,7 +463,7 @@ namespace silly
         void selectElseBlock( mlir::Location loc, const std::string &errorText );
 
         /// Handle assignment processing, given the current var-name and index (if appropriate.)
-        void processAssignment( mlir::Location loc, SillyParser::ExpressionContext *exprContext,
+        void processAssignment( SillyParser::ExpressionContext *exprContext,
                                 const std::string &currentVarName, mlir::Value currentIndexExpr, LocationStack &ls );
 
         /// Handle parsing of an expression (the top-level entry point for expressions).

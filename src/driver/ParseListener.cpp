@@ -470,10 +470,6 @@ namespace silly
             numElements = arraySize;
         }
 
-#if 0
-        mlir::OpBuilder::InsertPoint savedIP = builder.saveInsertionPoint();
-#endif
-
         ParserPerFunctionState &f = funcState( currentFuncName );
 
         mlir::Value v = f.searchForVariable( varName );
@@ -483,30 +479,6 @@ namespace silly
             emitUserError( loc, std::format( "Variable {} already declared", varName ), currentFuncName );
             return;
         }
-
-#if 0
-        if ( mlir::Operation *op = f.getLastDeclared() )
-        {
-            builder.setInsertionPointAfter( op );
-        }
-        else
-        {
-            mlir::func::FuncOp funcOp = f.getFuncOp();
-
-            mlir::Region &funcRegion = funcOp.getBody();
-            if ( funcRegion.empty() )
-            {
-                emitInternalError( loc, __FILE__, __LINE__, __func__, "Function has empty body", currentFuncName );
-                return;
-            }
-
-            mlir::Block *entryBlock = &funcRegion.front();
-
-            // Insert declarations at the beginning of the entry block
-            // (all DeclareOps should appear before any scf.if/scf.for)
-            builder.setInsertionPointToStart( entryBlock );
-        }
-#endif
 
         std::vector<mlir::Value> initializers;
 
@@ -606,7 +578,9 @@ namespace silly
 
         if ( assignmentExpression )
         {
-            processAssignment( loc, assignmentExpression, varName, {}, ls );
+            processAssignment( assignmentExpression, varName, {}, ls );
+
+            dcl.getResult().setLoc( ls.fuseLocations() );
         }
     }
 
@@ -908,11 +882,15 @@ namespace silly
 
             if ( !ctx->exitStatement() )
             {
-                LocPairs locs = getLocations( ctx, true );
+                LocPairs locs = getLocations( ctx );
 
-                LocationStack ls( builder, locs.first );
+                LLVM_DEBUG( {
+                    llvm::errs() << llvm::formatv( "exitStartRule: implicit exit generation with location: {0}:\n",
+                                                   formatLocation( locs.second ) );
+                } );
 
-                processReturnLike( locs.second, nullptr, ls );
+                mlir::Value value = mlir::arith::ConstantIntOp::create( builder, locs.second, 0, 32 );
+                mlir::func::ReturnOp::create( builder, locs.second, mlir::ValueRange{ value } );
             }
         }
 
@@ -1768,14 +1746,14 @@ namespace silly
         processReturnLike( locs.second, ctx->expression(), ls );
     }
 
-    void ParseListener::processAssignment( mlir::Location loc, SillyParser::ExpressionContext *exprContext,
+    void ParseListener::processAssignment( SillyParser::ExpressionContext *exprContext,
                                            const std::string &currentVarName, mlir::Value currentIndexExpr,
                                            LocationStack &ls )
     {
         mlir::Value resultValue = parseExpression( exprContext, {}, ls );
+        mlir::Location loc = getStartLocation( exprContext );
         if ( !resultValue )
         {
-            mlir::Location loc = getStartLocation( exprContext );
             emitInternalError( loc, __FILE__, __LINE__, __func__, "no resultValue for expression", currentFuncName );
             return;
         }
@@ -1800,6 +1778,8 @@ namespace silly
         {
             if ( currentIndexExpr )
             {
+                mlir::Location loc = currentIndexExpr.getLoc();
+
                 mlir::Value i = indexTypeCast( loc, currentIndexExpr, ls );
 
                 silly::AssignOp assign = silly::AssignOp::create( builder, fusedLoc, var, i, resultValue );
@@ -1852,7 +1832,7 @@ namespace silly
             }
         }
 
-        processAssignment( loc, ctx->expression(), currentVarName, currentIndexExpr, ls );
+        processAssignment( ctx->expression(), currentVarName, currentIndexExpr, ls );
     }
 
     mlir::Value ParseListener::indexTypeCast( mlir::Location loc, mlir::Value val, LocationStack &ls )
