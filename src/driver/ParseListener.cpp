@@ -556,8 +556,8 @@ namespace silly
         silly::DeclareOp dcl{};
         if ( !assignmentExpression )
         {
-            mlir::Location fusedLoc = ls.fuseLocations( );
-            dcl = silly::DeclareOp::create( builder, fusedLoc, varType, initializers );
+            //mlir::Location fusedLoc = ls.fuseLocations( );
+            dcl = silly::DeclareOp::create( builder, loc, varType, initializers );
         }
         else
         {
@@ -580,7 +580,7 @@ namespace silly
         {
             processAssignment( assignmentExpression, varName, {}, ls );
 
-            dcl.getResult().setLoc( ls.fuseLocations() );
+            //dcl.getResult().setLoc( ls.fuseLocations() );
         }
     }
 
@@ -859,16 +859,16 @@ namespace silly
             value = mlir::arith::ConstantIntOp::create( builder, loc, 0, 32 );
         }
 
-        mlir::Location fused = ls.fuseLocations( );
+        //mlir::Location fused = ls.fuseLocations( );
 
         if ( value )
         {
             // Create ReturnOp with user specified value:
-            mlir::func::ReturnOp::create( builder, fused, mlir::ValueRange{ value } );
+            mlir::func::ReturnOp::create( builder, loc, mlir::ValueRange{ value } );
         }
         else
         {
-            mlir::func::ReturnOp::create( builder, fused, mlir::ValueRange{} );
+            mlir::func::ReturnOp::create( builder, loc, mlir::ValueRange{} );
         }
     }
 
@@ -1102,8 +1102,8 @@ namespace silly
         mlir::func::CallOp callOp;
         if ( callStatement )
         {
-            mlir::Location fusedLoc = ls.fuseLocations( );
-            callOp = mlir::func::CallOp::create( builder, fusedLoc, resultTypes, funcName, parameters );
+            //mlir::Location fusedLoc = ls.fuseLocations( );
+            callOp = mlir::func::CallOp::create( builder, loc, resultTypes, funcName, parameters );
         }
         else
         {
@@ -1269,8 +1269,8 @@ namespace silly
             {
                 mlir::Value i{};
 
-                mlir::Location fusedLoc = ls.fuseLocations( );
-                silly::AssignOp::create( builder, fusedLoc, var, i, stringLiteral );
+                //mlir::Location fusedLoc = ls.fuseLocations( );
+                silly::AssignOp::create( builder, loc, var, i, stringLiteral );
             }
         }
     }
@@ -1296,8 +1296,8 @@ namespace silly
             return;
         }
 
-        mlir::Location fusedLoc = ls.fuseLocations( );
-        mlir::scf::IfOp ifOp = mlir::scf::IfOp::create( builder, fusedLoc, conditionPredicate,
+        //mlir::Location fusedLoc = ls.fuseLocations( );
+        mlir::scf::IfOp ifOp = mlir::scf::IfOp::create( builder, loc, conditionPredicate,
                                                         /*withElseRegion=*/true );
 
         if ( saveIP )
@@ -1501,8 +1501,8 @@ namespace silly
         mlir::Value scopeToken = silly::DebugScopeOp::create( builder, varLoc, typ.i1 ).getResult();
         f.pushScopeOp( scopeToken );
 
-        mlir::Location fusedLoc = ls.fuseLocations( );
-        mlir::scf::ForOp forOp = mlir::scf::ForOp::create( builder, fusedLoc, start, end, step );
+        //mlir::Location fusedLoc = ls.fuseLocations( );
+        mlir::scf::ForOp forOp = mlir::scf::ForOp::create( builder, loc, start, end, step );
         f.pushToInsertionPointStack( forOp.getOperation() );
 
         mlir::Block &loopBody = forOp.getRegion().front();
@@ -1556,8 +1556,8 @@ namespace silly
         ls.push_back( loc );
         mlir::arith::ConstantIntOp constFlagOp = mlir::arith::ConstantIntOp::create( builder, loc, pf, 32 );
 
-        mlir::Location fusedLoc = ls.fuseLocations( );
-        silly::PrintOp::create( builder, fusedLoc, constFlagOp, vargs );
+        //mlir::Location fusedLoc = ls.fuseLocations( );
+        silly::PrintOp::create( builder, loc, constFlagOp, vargs );
     }
 
     void ParseListener::enterPrintStatement( SillyParser::PrintStatementContext *ctx )
@@ -1644,8 +1644,8 @@ namespace silly
             ls.push_back( loc );
             silly::GetOp resultValue = silly::GetOp::create( builder, loc, elemType );
 
-            mlir::Location fusedLoc = ls.fuseLocations( );
-            silly::AssignOp::create( builder, fusedLoc, var, optIndexValue, resultValue );
+            //mlir::Location fusedLoc = ls.fuseLocations( );
+            silly::AssignOp::create( builder, loc, var, optIndexValue, resultValue );
         }
         else
         {
@@ -1767,12 +1767,12 @@ namespace silly
         mlir::Operation *op = resultValue.getDefiningOp();
         mlir::Value i{};
 
-        mlir::Location fusedLoc = ls.fuseLocations( );
+        //mlir::Location fusedLoc = ls.fuseLocations( );
 
         // Don't check if it's a StringLiteralOp if it's an induction variable, since op will be nullptr
         if ( !ba && isa<silly::StringLiteralOp>( op ) )
         {
-            silly::AssignOp::create( builder, fusedLoc, var, i, resultValue );
+            silly::AssignOp::create( builder, loc, var, i, resultValue );
         }
         else
         {
@@ -1782,7 +1782,7 @@ namespace silly
 
                 mlir::Value i = indexTypeCast( loc, currentIndexExpr, ls );
 
-                silly::AssignOp assign = silly::AssignOp::create( builder, fusedLoc, var, i, resultValue );
+                silly::AssignOp assign = silly::AssignOp::create( builder, loc, var, i, resultValue );
 
                 LLVM_DEBUG( {
                     mlir::OpPrintingFlags flags;
@@ -1794,7 +1794,7 @@ namespace silly
             }
             else
             {
-                silly::AssignOp::create( builder, fusedLoc, var, i, resultValue );
+                silly::AssignOp::create( builder, loc, var, i, resultValue );
             }
         }
     }
