@@ -14,13 +14,13 @@
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/FileSystem.h>
+#include <llvm/Support/FormatVariadic.h>
 #include <llvm/Support/InitLLVM.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/Process.h>
 #include <llvm/Support/TargetSelect.h>
 #include <llvm/Target/TargetMachine.h>
 #include <llvm/TargetParser/Host.h>
-#include <llvm/Support/FormatVariadic.h>
 #include <mlir/Bytecode/BytecodeWriter.h>
 #include <mlir/Conversion/Passes.h>
 #include <mlir/IR/Verifier.h>
@@ -49,7 +49,8 @@
 namespace silly
 {
     CompilationUnit::CompilationUnit( silly::SourceManager& s )
-        : sm{ s }, ds{ sm.getDriverState() }, context{ sm.getContext() }
+        : sm{ s }, ds{ sm.getDriverState() }, context{ sm.getContext() },
+          targetTriple( llvm::sys::getProcessTriple() )
     {
         if ( ds.debugInfo )
         {
@@ -63,8 +64,9 @@ namespace silly
         if ( ity == InputType::Unknown )
         {
             // coverage: driver/bad-suffix-should-fail.silly
-            llvm::errs() << llvm::formatv(
-                COMPILER_NAME ": error: filename {0} extension is none of .silly, .mlir/.sir, or .o\n", sourceFileName );
+            llvm::errs() << llvm::formatv( COMPILER_NAME
+                                           ": error: filename {0} extension is none of .silly, .mlir/.sir, or .o\n",
+                                           sourceFileName );
             return ReturnCodes::badExtensionError;
         }
 
@@ -100,7 +102,7 @@ namespace silly
             if ( mlir::failed( mlir::verify( *rmod ) ) )
             {
                 llvm::errs() << COMPILER_NAME ": error: MLIR failed verification\n";
-                (*rmod).dump();
+                ( *rmod ).dump();
                 return ReturnCodes::verifyError;
             }
         }
@@ -171,6 +173,11 @@ namespace silly
             // ; ModuleID = 'LLVMDialectModule'
             // source_filename = "LLVMDialectModule"
             llvmModule = mlir::translateModuleToLLVMIR( mod, llvmContext, llvmSourceFilename );
+
+            if ( ds.debugInfo )
+            {
+                llvmModule->addModuleFlag( llvm::Module::Max, "Dwarf Version", 5 );
+            }
         }
 
         if ( !llvmModule )
@@ -180,21 +187,12 @@ namespace silly
             return ReturnCodes::loweringError;
         }
 
-        // Verify the module to ensure debug info is valid
-        if ( llvm::verifyModule( *llvmModule, &llvm::errs() ) )
-        {
-            // TODO: no coverage
-            llvm::errs() << COMPILER_NAME ": error: Invalid LLVM IR module\n";
-            return ReturnCodes::loweringError;
-        }
+#ifdef UBUNTU_PIC_REQUIRED
+        std::optional<llvm::Reloc::Model> RelocModel = llvm::Reloc::PIC_;
+#else
+        std::optional<llvm::Reloc::Model> RelocModel = std::nullopt;
+#endif
 
-        return ReturnCodes::success;
-    }
-
-    ReturnCodes CompilationUnit::runOptimizationPasses()
-    {
-        std::string targetTripleStr = llvm::sys::getProcessTriple();
-        llvm::Triple targetTriple( targetTripleStr );
         llvmModule->setTargetTriple( targetTriple );
 
         // Lookup the target
@@ -209,13 +207,7 @@ namespace silly
 
         // Create the target machine
         targetMachine.reset(
-            target->createTargetMachine( targetTriple, "generic", "", llvm::TargetOptions(),
-#ifdef UBUNTU_PIC_REQUIRED
-llvm::Reloc::PIC_
-#else
-std::nullopt
-#endif
-) );
+            target->createTargetMachine( targetTriple, "generic", "", llvm::TargetOptions(), RelocModel ) );
 
         if ( !targetMachine )
         {
@@ -224,9 +216,24 @@ std::nullopt
             return ReturnCodes::loweringError;
         }
 
+        llvmModule->setDataLayout( targetMachine->createDataLayout() );
+
+        // Verify the module to ensure debug info is valid
+        if ( llvm::verifyModule( *llvmModule, &llvm::errs() ) )
+        {
+            // TODO: no coverage
+            llvm::errs() << COMPILER_NAME ": error: Invalid LLVM IR module\n";
+            return ReturnCodes::loweringError;
+        }
+
+        return ReturnCodes::success;
+    }
+
+    ReturnCodes CompilationUnit::runOptimizationPasses()
+    {
         // Claude:
-        //   At O0, buildPerModuleDefaultPipeline returns a nearly empty pass pipeline — it's essentially a no-op in terms
-        //   of optimization. However it's not completely inert; it still runs a few mandatory passes:
+        //   At O0, buildPerModuleDefaultPipeline returns a nearly empty pass pipeline — it's essentially a no-op in
+        //   terms of optimization. However it's not completely inert; it still runs a few mandatory passes:
         //
         //   * Annotation-to-metadata lowering — converts LLVM IR annotations to metadata, required for correctness.
         //   * CoroEarly / CoroCleanup — coroutine lowering passes, which are structural rather than optimizing.
@@ -308,8 +315,8 @@ std::nullopt
             if ( EC )
             {
                 // coverage: driver/bad-mlir-output-path-should-fail.silly
-                llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Cannot open file {0}: {1}\n",
-                                               mlirOutputName, EC.message() );
+                llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Cannot open file {0}: {1}\n", mlirOutputName,
+                                               EC.message() );
                 return ReturnCodes::openError;
             }
 
@@ -325,13 +332,13 @@ std::nullopt
             }
             else
             {
-                (*rmod).print( out, flags );
+                ( *rmod ).print( out, flags );
                 out.close();
                 if ( out.has_error() )
                 {
                     // TODO: no coverage.  Trigger with quotas or small filesystem?
-                    llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Write error on '{0}': {1}\n",
-                                                   mlirOutputName, out.error().message() );
+                    llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Write error on '{0}': {1}\n", mlirOutputName,
+                                                   out.error().message() );
                     return ReturnCodes::ioError;
                 }
             }
@@ -354,8 +361,8 @@ std::nullopt
         if ( EC )
         {
             // coverage: driver/bad-llvm-ir-output-path-should-fail.silly
-            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Failed to open file '{0}': {1}\n",
-                                           llvmOuputFile, EC.message() );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Failed to open file '{0}': {1}\n", llvmOuputFile,
+                                           EC.message() );
             return ReturnCodes::openError;
         }
 
@@ -372,8 +379,8 @@ std::nullopt
         if ( out.has_error() )
         {
             // TODO: no coverage.  Trigger with quotas or small filesystem?
-            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Write error on '{0}': {1}\n",
-                                           llvmOuputFile, out.error().message() );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Write error on '{0}': {1}\n", llvmOuputFile,
+                                           out.error().message() );
             return ReturnCodes::openError;
         }
 
@@ -391,8 +398,6 @@ std::nullopt
                                            outputFilename, EC.message() );
             return ReturnCodes::openError;
         }
-
-        llvmModule->setDataLayout( targetMachine->createDataLayout() );
         llvm::legacy::PassManager codegenPM;
         if ( targetMachine->addPassesToEmitFile( codegenPM, dest, nullptr, llvm::CodeGenFileType::ObjectFile ) )
         {
@@ -441,8 +446,8 @@ std::nullopt
         if ( !llvmModule )
         {
             // TODO: no coverage.  driver/bad-llvm-ir.ll passes bad IR, but hits different error first.
-            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Failed to parse IR file '{0}': {1}\n", llvmSourceName,
-                                           err.getMessage().str() );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Failed to parse IR file '{0}': {1}\n",
+                                           llvmSourceName, err.getMessage().str() );
             return ReturnCodes::parseError;
         }
 

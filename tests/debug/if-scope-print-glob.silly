@@ -4,7 +4,7 @@
 // RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
 // RUN: %FileCheck %s --input-file=%t.dd
 // EXEC: 1
-// CHECK: DW_AT_name{{[[:space:]]+}}v
+// CHECK: DW_AT_name{{.*}}v
 // CHECK: DW_AT_decl_file{{.*}}if-scope-print-glob.silly
 // CHECK: DW_AT_decl_line{{[[:space:]]+}}0x00000016
 

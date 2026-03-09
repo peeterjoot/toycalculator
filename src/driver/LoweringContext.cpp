@@ -178,7 +178,7 @@ namespace silly
             mlir::DistinctAttr distinctAttr = mlir::DistinctAttr::create( builder.getUnitAttr() );
             compileUnitAttr = mlir::LLVM::DICompileUnitAttr::get(
                 distinctAttr, llvm::dwarf::DW_LANG_C, fileAttr, builder.getStringAttr( COMPILER_NAME ), false,
-                mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::Default );
+                mlir::LLVM::DIEmissionKind::Full, mlir::LLVM::DINameTableKind::None );
         }
 
         mod->setAttr( "llvm.ident", builder.getStringAttr( COMPILER_NAME COMPILER_VERSION ) );

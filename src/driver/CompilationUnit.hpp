@@ -125,6 +125,8 @@ namespace silly
         /// Target machine for code generation and optimization
         std::unique_ptr<llvm::TargetMachine> targetMachine;
 
+        llvm::Triple targetTriple;
+
         /// Determine the input type from a filename extension.
         ///
         /// @param filename The filename to examine

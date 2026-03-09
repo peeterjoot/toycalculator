@@ -11,10 +11,10 @@
 // EXEC-NEXT: 6
 // EXEC-NEXT: 4
 // EXEC-NEXT: 7
-// CHECK: DW_AT_name{{[[:space:]]+}}myLoopVar
+// CHECK: DW_AT_name{{.*}}myLoopVar
 // CHECK: DW_AT_decl_file{{.*}}induction-var-and-scope-decl.silly
 // CHECK: DW_AT_decl_line{{[[:space:]]+}}0x00000016
-// CHECK: DW_AT_name{{[[:space:]]+}}myScopeVar
+// CHECK: DW_AT_name{{.*}}myScopeVar
 // CHECK: DW_AT_decl_file{{.*}}induction-var-and-scope-decl.silly
 // CHECK: DW_AT_decl_line{{[[:space:]]+}}0x00000018
 
