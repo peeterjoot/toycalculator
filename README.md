@@ -372,17 +372,44 @@ sudo dnf -y install antlr4-runtime antlr4 antlr4-cpp-runtime antlr4-cpp-runtime-
 ### Building MLIR
 
 On both Ubuntu and Fedora, I needed a custom build of LLVM/MLIR, as I didn't find a package that included the MLIR TableGen files.
+
 As it turned out, a custom LLVM/MLIR build was also required to specifically enable RTTI, as ANTLR4 uses `dynamic_cast<>`.
 The `-fno-rtti` flag required by default to avoid typeinfo symbol link errors explicitly breaks the ANTLR4 header files.
 This could be avoided by separating the ANTLR4 listener class from the MLIR builder, but the MLIR builder effectively
 provides an AST, which I don't need to build separately if I construct it directly from the listener.
 
-Question: Does the llvm-project have a generic lexer/parser, or do Clang/Flang/etc. each roll their own?
-Having used ANTLR4 for previous prototyping (also generating C++ listeners), it made sense to use what I knew.
+If you attempt to include an MLIR file with `-frtti` specified, you'll get link errors like:
+
+```
+undefined reference to `typeinfo for mlir::ConversionPattern'
+```
+
+Conversely, if you attempt to use `-fno-rtti` and include an ANTLR4 header file, you'll get errors like:
+
+```
+In file included from /usr/include/antlr4-runtime/antlr4-runtime.h:30:
+In file included from /usr/include/antlr4-runtime/InterpreterRuleContext.h:8:
+In file included from /usr/include/antlr4-runtime/ParserRuleContext.h:9:
+/usr/include/antlr4-runtime/support/CPPUtils.h:58:11: error: use of typeid requires -frtti
+   58 |     ss << typeid(o).name() << "@" << std::hex << reinterpret_cast<uintptr_t>(&o);
+      |           ^
+```
+
+as well as specific errors whereever `dynamic_cast<>` is used.  Example:
+
+```
+/home/pjoot/toycalculator/build/src/grammar/SillyParser/SillyParser.cpp:1104:25: error: use of dynamic_cast requires -frtti
+ 1104 |   auto parserListener = dynamic_cast<SillyListener *>(listener);
+      |                         ^
+```
 
 See `bin/buildllvm` for how I built and deployed the LLVM+MLIR installation used for this project.
 
-Supported llvm-project versions:
+It doesn't appear that the llvm-project has any sort of generic lexer/parser.  Clang/Flang/etc., look like they each roll their own.
+Having used ANTLR4 for previous prototyping (also generating C++ listeners), it made sense to use what I knew, but this does
+not interoperate well with the LLVM ecosystem.
+
+### Supported llvm-project versions
 
 * V5,V6,V7,V8,V9 -- require llvm-project version >= 21.1.0-rc3, and llvm-project version < 22.1
 * V10+ -- requires llvm-project 22.1.0+

@@ -81,6 +81,8 @@ add_library(SillyDialect SHARED
   SillyPasses.cpp
 )
 
+#target_compile_options(SillyDialect PRIVATE -fno-rtti)
+
 #------------------------------------------------------------------------------
 
 #add_dependencies(SillyDialect GenerateANTLR SillyDialectIncGen SillyPassesIncGen SillyTypesIncGen)
