@@ -108,8 +108,9 @@ namespace silly
                                                            rewriter.getI64IntegerAttr( elemSizeInBytes ) );
             }
 
+            mlir::Location uloc = rewriter.getUnknownLoc();
             mlir::LLVM::AllocaOp allocaOp =
-                mlir::LLVM::AllocaOp::create( rewriter, loc, lState.typ.ptr, elemType, sizeVal, alignment );
+                mlir::LLVM::AllocaOp::create( rewriter, uloc, lState.typ.ptr, elemType, sizeVal, alignment );
 
             auto init = declareOp.getInitializers();
             if ( init.size() )
