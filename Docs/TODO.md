@@ -6,8 +6,7 @@
 #### Bison parser experiment.
 * If the module return from BisonParseListener::run is nullptr, there is no diagnostic message (but RC=11)
 * build llvm w/o RTTI on xpgn and toggle bin/build to detect that (but also allow as an option)
-* need range check for too big literals (bisonGrammar/foo.silly).  make an error test.
-* update reADme and changelog when this is done.
+* update README and changelog when this is done.
 
 #### Debug
 * Audit the places where I am passing both Location and LocationStack.  Do I need the first?

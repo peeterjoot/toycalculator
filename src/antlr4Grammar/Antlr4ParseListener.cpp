@@ -188,7 +188,19 @@ namespace silly
     inline mlir::Value Antlr4ParseListener::parseInteger( mlir::Location loc, int width, const std::string &s,
                                                           LocationStack &ls )
     {
-        int64_t val = std::stoll( s );
+        int64_t val{};
+
+        try
+        {
+            val = std::stoll( s );
+        }
+        catch ( std::exception &ex )
+        {
+            // coverage: syntax-error/toolong-int-literal.silly
+            emitUserError( loc, std::format( "Integer literal value {} is out of range or bad: {}", s, ex.what() ),
+                           currentFuncName );
+            return nullptr;
+        }
 
         ls.push_back( loc );
         return mlir::arith::ConstantIntOp::create( builder, loc, val, width );
@@ -199,21 +211,32 @@ namespace silly
     {
         ls.push_back( loc );
 
-        if ( ty == typ.f32 )
+        try
         {
-            float val = std::stof( s );
+            if ( ty == typ.f32 )
+            {
+                float val = std::stof( s );
 
-            llvm::APFloat apVal( val );
+                llvm::APFloat apVal( val );
 
-            return mlir::arith::ConstantFloatOp::create( builder, loc, typ.f32, apVal );
+                return mlir::arith::ConstantFloatOp::create( builder, loc, typ.f32, apVal );
+            }
+            else
+            {
+                double val = std::stod( s );
+
+                llvm::APFloat apVal( val );
+
+                return mlir::arith::ConstantFloatOp::create( builder, loc, typ.f64, apVal );
+            }
         }
-        else
+        catch ( std::exception &ex )
         {
-            double val = std::stod( s );
-
-            llvm::APFloat apVal( val );
-
-            return mlir::arith::ConstantFloatOp::create( builder, loc, typ.f64, apVal );
+            // coverage: syntax-error/toolong-float-literal.silly
+            emitUserError( loc,
+                           std::format( "Floating point literal value {} is out of range or bad: {}", s, ex.what() ),
+                           currentFuncName );
+            return nullptr;
         }
     }
 
@@ -2389,7 +2412,12 @@ namespace silly
             return value;
         }
 
-        assert( value );
+        if (!value)
+        {
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               std::format( "expression parse error: {}", ctx->getText() ), currentFuncName );
+            return value;
+        }
 
 #if 0
         LLVM_DEBUG( {

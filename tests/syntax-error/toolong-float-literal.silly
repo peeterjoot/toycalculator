@@ -1,0 +1,10 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g toolong-float-literal.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: toolong-float-literal.silly:10:7: error: Floating point literal value 123.3334E19171917911 is out of range or bad: stod
+// CHECK:    10 |     PRINT 123.3334E19171917911;
+// CHECK:       |           ^
+
+
+
+
+PRINT 123.3334E19171917911;

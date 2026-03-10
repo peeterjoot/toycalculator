@@ -115,6 +115,7 @@ Back in main again, rc = 42
 * Moved tests/endtoend/fatal to tests/lit/fatal (remove RunFailureTest.cmake)
 * Moved tests/lit/* to tests/, moved tests/endtoend/* to Samples/, generate lit wrappers for all the Samples/*/*silly
 * Did a systematic rename of all the tests/, using names that match the testing better, and removing redundancy.
+* Range check tests for too big int/float literal: `toolong-int-literal.silly`, `toolong-float-literal.silly` (also catching std::exception)
 
 ### Test Infrastructure Updates
 
