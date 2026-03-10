@@ -30,6 +30,7 @@
 %%
 
 "PRINT"             { return silly::BisonParser::token::PRINT_TOKEN; }
+";"                 { return silly::BisonParser::token::ENDOFSTATEMENT_TOKEN; }
 "ABORT"             { return silly::BisonParser::token::ABORT_TOKEN; }
 "]"                 { return silly::BisonParser::token::ARRAY_END_TOKEN; }
 "["                 { return silly::BisonParser::token::ARRAY_START_TOKEN; }

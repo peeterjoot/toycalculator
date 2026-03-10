@@ -66,9 +66,19 @@ endif()
 message(STATUS "Architecture is aarch64: ${IS_AARCH64}")
 message(STATUS "LLVM Architecture specific libraries: ${LLVM_ARCH_LIBS}")
 
+if(USE_BISON_GRAMMAR)
+    set(GRAMMAR_LIBRARIES
+      BisonGrammar
+    )
+else()
+    set(GRAMMAR_LIBRARIES
+      Antlr4Grammar
+      antlr4-runtime
+    )
+endif()
+
 target_link_libraries(silly
   PRIVATE
-  antlr4-runtime
   SillyDialect
   LLVMSupport
   LLVMMC # llvm::TargetRegistry::lookupTarget
@@ -92,8 +102,7 @@ target_link_libraries(silly
   MLIRMemRefToLLVM
   MLIRSCFToControlFlow
   MLIRTestIR
-  Antlr4Grammar
-  BisonGrammar
+  ${GRAMMAR_LIBRARIES}
 )
 
 # Create bin directory and symlink
@@ -104,4 +113,3 @@ add_custom_command(TARGET silly POST_BUILD
         ${CMAKE_BINARY_DIR}/bin/silly
     COMMENT "Creating symlink: ${CMAKE_BINARY_DIR}/bin/silly -> ${CMAKE_CURRENT_BINARY_DIR}/silly"
 )
-
