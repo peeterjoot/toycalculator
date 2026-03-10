@@ -29,7 +29,7 @@ namespace silly
     {
         FILEManager file;
         file.f = fopen( filename.c_str(), "r" );
-        if ( !f )
+        if ( !file.f )
         {
             fprintf( stderr, "cannot open %s\n", filename.c_str() );
             return false;

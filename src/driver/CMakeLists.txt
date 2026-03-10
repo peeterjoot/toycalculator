@@ -43,8 +43,10 @@ if(SILLY_ENABLE_INSTALL)
     )
 endif()
 
-# Ensure the ANTLR and TableGen generation runs before building the project
-add_dependencies(silly silly_runtime SillyDialect Antlr4Grammar BisonGrammar)
+# Ensure the TableGen generation and runtime runs before building the driver (runtime
+# doesn't have to be a dependency of silly per-se, but it won't run correctly if
+# it is not already built)
+add_dependencies(silly silly_runtime SillyDialect)
 
 target_compile_options(silly PRIVATE ${COMMON_COMPILE_OPTIONS})
 
