@@ -1,3 +1,8 @@
+///
+/// @file    silly_bison.l
+/// @author  Peeter Joot <peeterjoot@pm.me>
+/// @brief   Bison based experimental parse tree listener and MLIR builder (Grammar part.)
+///
 %require "3.2"
 %language "c++"
 %defines "silly_bison.tab.hh"
@@ -58,7 +63,7 @@ statement
 
 printStatement
     : PRINT_TOKEN INTEGER_PATTERN
-        { driver.emitPrint( $2, @2 ); }
+        { driver.emitPrint( $2, @1, @2 ); }
     ;
 
 %%

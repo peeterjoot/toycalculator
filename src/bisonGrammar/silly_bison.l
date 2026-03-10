@@ -1,3 +1,8 @@
+/**
+ * @file    silly_bison.l
+ * @author  Peeter Joot <peeterjoot@pm.me>
+ * @brief   Bison based experimental parse tree listener and MLIR builder (Lexer part.)
+ */
 %option noyywrap nounput noinput
 %option reentrant
 %option bison-bridge

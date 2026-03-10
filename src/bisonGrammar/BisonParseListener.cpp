@@ -1,3 +1,8 @@
+///
+/// @file    BisonParseListener.cpp
+/// @author  Peeter Joot <peeterjoot@pm.me>
+/// @brief   Bison based experimental parse tree listener and MLIR builder.
+///
 #include "BisonParseListener.hpp"
 #include "silly_bison.tab.hh"
 
@@ -28,10 +33,11 @@ namespace silly
         return result == 0 && errorCount == 0;
     }
 
-    void BisonParseListener::emitPrint( int value, const silly::BisonParser::location_type& loc )
+    void BisonParseListener::emitPrint( int value, const silly::BisonParser::location_type& printLoc,
+                                        const silly::BisonParser::location_type& valueLoc )
     {
-        printf( "%s:%d:%d:PRINT %d\n", filename.c_str(), loc.begin.line, loc.begin.column, value );
-        // Replace with your MLIR builder call
+        printf( "%s:%d:%d:PRINT %d (value at %d:%d)\n", filename.c_str(), printLoc.begin.line, printLoc.begin.column,
+                value, valueLoc.begin.line, valueLoc.begin.column );
     }
 
     void BisonParseListener::emitError( const silly::BisonParser::location_type& loc, const std::string& msg )
