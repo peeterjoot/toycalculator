@@ -5,9 +5,9 @@
 ///
 #include "BisonParseListener.hpp"
 #include "silly_bison.tab.hh"
+#include "DriverState.hpp"
 
-// Include the flex-generated header for the reentrant scanner
-#include "silly_bison.lex.hh"
+#include "silly_bison.lex.hh" // flex-generated reentrant scanner
 
 namespace silly
 {
@@ -25,14 +25,17 @@ namespace silly
         }
     };
 
-    bool BisonParseListener::parse()
+    mlir::OwningOpRef<mlir::ModuleOp> BisonParseListener::run()
     {
+        driverState.openFailed = false;
+
         FILEManager file;
-        file.f = fopen( filename.c_str(), "r" );
+        file.f = fopen( sourceFile.c_str(), "r" );
         if ( !file.f )
         {
-            fprintf( stderr, "cannot open %s\n", filename.c_str() );
-            return false;
+            driverState.openFailed = true;
+
+            return nullptr;
         }
 
         yylex_init( &scanner );
@@ -44,20 +47,32 @@ namespace silly
 
         yylex_destroy( scanner );
 
-        return result == 0 && errorCount == 0;
+        if ( ( result == 0 ) and ( errorCount == 0 ) )
+        {
+            return std::move( rmod );
+        }
+
+        return nullptr;
     }
 
     void BisonParseListener::emitPrint( int value, const silly::BisonParser::location_type& printLoc,
                                         const silly::BisonParser::location_type& valueLoc )
     {
-        printf( "%s:%d:%d:PRINT %d (value at %d:%d)\n", filename.c_str(), printLoc.begin.line, printLoc.begin.column,
+        printf( "%s:%d:%d:PRINT %d (value at %d:%d)\n", sourceFile.c_str(), printLoc.begin.line, printLoc.begin.column,
                 value, valueLoc.begin.line, valueLoc.begin.column );
     }
 
     void BisonParseListener::emitError( const silly::BisonParser::location_type& loc, const std::string& msg )
     {
-        fprintf( stderr, "%s:%d:%d: error: %s\n", filename.c_str(), loc.begin.line, loc.begin.column, msg.c_str() );
+        fprintf( stderr, "%s:%d:%d: error: %s\n", sourceFile.c_str(), loc.begin.line, loc.begin.column, msg.c_str() );
         errorCount++;
+    }
+
+    mlir::OwningOpRef<mlir::ModuleOp> runParseListener( silly::SourceManager& s, const std::string& filename )
+    {
+        BisonParseListener listener( s, filename );
+
+        return listener.run();
     }
 }    // namespace silly
 

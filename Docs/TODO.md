@@ -3,6 +3,9 @@
 ### running list of other issues and ideas, semi-randomly ordered
 ----------------------------------
 
+#### Bison parser experiment.
+* If the module return from BisonParseListener::run is nullptr, there is no diagnostic message (but RC=11)
+
 #### Debug
 * Audit the places where I am passing both Location and LocationStack.  Do I need the first?
 * Now that I have the filename in the ModuleOp, don't have to pass that down to lowering with the DriverState hack.  Try using the ModuleOp location filename instead when building the DICompilationUnit.

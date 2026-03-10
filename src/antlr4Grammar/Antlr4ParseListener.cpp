@@ -2403,12 +2403,14 @@ namespace silly
     }
 
     // Minimize -frtti dependencies:
+#if 0
     mlir::OwningOpRef<mlir::ModuleOp> runParseListener( silly::SourceManager &s, const std::string &filename )
     {
         Antlr4ParseListener listener( s, filename );
 
         return listener.run();
     }
+#endif
 }    // namespace silly
 
 // vim: et ts=4 sw=4
