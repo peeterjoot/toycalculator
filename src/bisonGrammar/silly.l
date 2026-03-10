@@ -1,5 +1,5 @@
 /**
- * @file    silly_bison.l
+ * @file    silly.l
  * @author  Peeter Joot <peeterjoot@pm.me>
  * @brief   Bison based experimental parse tree listener and MLIR builder (Lexer part.)
  */
@@ -10,7 +10,7 @@
 %option extra-type="silly::BisonParseListener*"
 
 %{
-#include "silly_bison.tab.hh"
+#include "silly.tab.hh"
 #include <climits>
 #include <cerrno>
 #include "BisonParseListener.hpp"

@@ -5,8 +5,8 @@
 ///
 #include "BisonParseListener.hpp"
 #include "DriverState.hpp"
-#include "silly_bison.lex.hh"    // flex-generated reentrant scanner
-#include "silly_bison.tab.hh"
+#include "silly.lex.hh"    // flex-generated reentrant scanner
+#include "silly.tab.hh"
 
 namespace silly
 {

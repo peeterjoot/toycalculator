@@ -10,7 +10,7 @@
 
 #include "Builder.hpp"
 #include "location.hh"
-#include "silly_bison.tab.hh"
+#include "silly.tab.hh"
 
 // Forward declare the flex scanner type
 typedef void* yyscan_t;

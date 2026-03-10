@@ -1,11 +1,11 @@
 ///
-/// @file    silly_bison.l
+/// @file    silly.l
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Bison based experimental parse tree listener and MLIR builder (Grammar part.)
 ///
 %require "3.2"
 %language "c++"
-%defines "silly_bison.tab.hh"
+%defines "silly.tab.hh"
 
 %define api.namespace {silly}
 %define api.parser.class {BisonParser}
@@ -31,7 +31,7 @@
 
 %code top {
     #include "BisonParseListener.hpp"
-    #include "silly_bison.lex.hh"
+    #include "silly.lex.hh"
 
     static int yylex( silly::BisonParser::value_type* yylval,
                       silly::BisonParser::location_type* yylloc,

@@ -1,14 +1,14 @@
 BISON_TARGET(Parser
-    ${CMAKE_CURRENT_SOURCE_DIR}/silly_bison.y
-    ${CMAKE_CURRENT_BINARY_DIR}/silly_bison.tab.cc
-    DEFINES_FILE ${CMAKE_CURRENT_BINARY_DIR}/silly_bison.tab.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/silly.y
+    ${CMAKE_CURRENT_BINARY_DIR}/silly.tab.cc
+    DEFINES_FILE ${CMAKE_CURRENT_BINARY_DIR}/silly.tab.hh
     COMPILE_FLAGS "--language=c++"
 )
 
 FLEX_TARGET(Lexer
-    ${CMAKE_CURRENT_SOURCE_DIR}/silly_bison.l
-    ${CMAKE_CURRENT_BINARY_DIR}/silly_bison.lex.cc
-    DEFINES_FILE ${CMAKE_CURRENT_BINARY_DIR}/silly_bison.lex.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}/silly.l
+    ${CMAKE_CURRENT_BINARY_DIR}/silly.lex.cc
+    DEFINES_FILE ${CMAKE_CURRENT_BINARY_DIR}/silly.lex.hh
 )
 
 ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
