@@ -54,7 +54,7 @@ namespace silly
        public:
         /// Construct a new module state for a compilation unit.
         ///
-        /// @param s [in] SourceManager to pass down to ParseListener for IMPORT lookup, DriverState, and context.
+        /// @param s [in] SourceManager to pass down to the parse listener for IMPORT lookup, DriverState, and context.
         CompilationUnit( silly::SourceManager & s );
 
         /// Parse the source file and build the MLIR module.

@@ -30,7 +30,7 @@ set_source_files_properties(
 
 set_source_files_properties(
   ${ANTLR_SOURCES}
-  ParseListener.cpp
+  Antlr4ParseListener.cpp
   PROPERTIES COMPILE_OPTIONS "-frtti"
 )
 
@@ -56,15 +56,15 @@ endif()
 add_executable(silly
   ${ANTLR_SOURCES}
   ${DRIVER_SOURCES}
-  ParseListener.cpp
+  Antlr4ParseListener.cpp
 )
 
-# Experiment to see what depends on RTTI (more than ParseListener.cpp?): answer:
+# Experiment to see what depends on RTTI (more than Antlr4ParseListener.cpp?): answer:
 #FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyListener.cpp.o
 #FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyBaseListener.cpp.o
 #FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyLexer.cpp.o
 #FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyParser.cpp.o
-#FAILED: src/driver/CMakeFiles/silly.dir/ParseListener.cpp.o
+#FAILED: src/driver/CMakeFiles/silly.dir/Antlr4ParseListener.cpp.o
 #target_compile_options(silly PRIVATE -fno-rtti)
 
 if(SILLY_ENABLE_INSTALL)

@@ -1,5 +1,5 @@
 ///
-/// @file ParseListener.hpp
+/// @file Antlr4ParseListener.hpp
 /// @author Peeter Joot <peeterjoot@pm.me>
 /// @brief Antlr4 based Listener and MLIR builder for the silly compiler.
 ///
@@ -184,13 +184,13 @@ namespace silly
     /// Inherits from SillyBaseListener and BaseErrorListener to process parse tree
     /// events and report syntax errors. Builds a ModuleOp containing FuncOps
     /// with Silly dialect operations.
-    class ParseListener : public SillyBaseListener, public antlr4::BaseErrorListener
+    class Antlr4ParseListener : public SillyBaseListener, public antlr4::BaseErrorListener
     {
        public:
         /// Constructor.
         /// @param s [in] Owning SourceManager (used for IMPORT module lookup.)
         /// @param filename [in] Source filename for this module (used to construct Location info)
-        ParseListener( silly::SourceManager &s, const std::string &filename );
+        Antlr4ParseListener( silly::SourceManager &s, const std::string &filename );
 
         /// Open the file stream, and walk the parse tree.
         ///
