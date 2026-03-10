@@ -1,37 +1,15 @@
-# Define the ANTLR generated source files
-set(ANTLR_SOURCES
-  ${ANTLR_OUTPUT_DIR}/SillyBaseListener.cpp
-  ${ANTLR_OUTPUT_DIR}/SillyListener.cpp
-  ${ANTLR_OUTPUT_DIR}/SillyParser.cpp
-  ${ANTLR_OUTPUT_DIR}/SillyLexer.cpp
-)
-
 set(DRIVER_SOURCES
+  Builder.cpp
   CompilationUnit.cpp
   DialectContext.cpp
   driver.cpp
   helper.cpp
+  LocationStack.cpp
   LoweringContext.cpp
   lowering.cpp
   MlirTypeCache.cpp
+  ParserPerFunctionState.cpp
   SourceManager.cpp
-)
-
-set_source_files_properties(
-  ${DRIVER_SOURCES}
-  PROPERTIES COMPILE_OPTIONS "-fno-rtti"
-)
-
-# Mark them as generated so CMake doesn't complain they don't exist yet
-set_source_files_properties(
-  ${ANTLR_SOURCES}
-  PROPERTIES GENERATED TRUE
-)
-
-set_source_files_properties(
-  ${ANTLR_SOURCES}
-  ParseListener.cpp
-  PROPERTIES COMPILE_OPTIONS "-frtti"
 )
 
 add_compile_definitions(
@@ -54,18 +32,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 add_executable(silly
-  ${ANTLR_SOURCES}
   ${DRIVER_SOURCES}
-  ParseListener.cpp
 )
-
-# Experiment to see what depends on RTTI (more than ParseListener.cpp?): answer:
-#FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyListener.cpp.o
-#FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyBaseListener.cpp.o
-#FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyLexer.cpp.o
-#FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyParser.cpp.o
-#FAILED: src/driver/CMakeFiles/silly.dir/ParseListener.cpp.o
-#target_compile_options(silly PRIVATE -fno-rtti)
 
 if(SILLY_ENABLE_INSTALL)
     # Set RPATH for installed binary
@@ -78,11 +46,10 @@ if(SILLY_ENABLE_INSTALL)
     )
 endif()
 
-# Include the output directory for header files
-target_include_directories(silly PRIVATE ${ANTLR_OUTPUT_DIR})
-
-# Ensure the ANTLR and TableGen generation runs before building the project
-add_dependencies(silly silly_runtime SillyDialect GenerateANTLR)
+# Ensure the TableGen generation and runtime runs before building the driver (runtime
+# doesn't have to be a dependency of silly per-se, but it won't run correctly if
+# it is not already built)
+add_dependencies(silly silly_runtime SillyDialect)
 
 target_compile_options(silly PRIVATE ${COMMON_COMPILE_OPTIONS})
 
@@ -99,9 +66,19 @@ endif()
 message(STATUS "Architecture is aarch64: ${IS_AARCH64}")
 message(STATUS "LLVM Architecture specific libraries: ${LLVM_ARCH_LIBS}")
 
+if(USE_BISON_GRAMMAR)
+    set(GRAMMAR_LIBRARIES
+      BisonGrammar
+    )
+else()
+    set(GRAMMAR_LIBRARIES
+      Antlr4Grammar
+      antlr4-runtime
+    )
+endif()
+
 target_link_libraries(silly
   PRIVATE
-  antlr4-runtime
   SillyDialect
   LLVMSupport
   LLVMMC # llvm::TargetRegistry::lookupTarget
@@ -125,6 +102,7 @@ target_link_libraries(silly
   MLIRMemRefToLLVM
   MLIRSCFToControlFlow
   MLIRTestIR
+  ${GRAMMAR_LIBRARIES}
 )
 
 # Create bin directory and symlink
@@ -135,4 +113,3 @@ add_custom_command(TARGET silly POST_BUILD
         ${CMAKE_BINARY_DIR}/bin/silly
     COMMENT "Creating symlink: ${CMAKE_BINARY_DIR}/bin/silly -> ${CMAKE_CURRENT_BINARY_DIR}/silly"
 )
-

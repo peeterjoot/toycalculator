@@ -262,12 +262,12 @@ Array `BOOL` values may use a packed bitmask representation in the future.
 
 ## Interesting Files
 
-* The [ANTLR4 grammar](src/grammar/Silly.g4) for the silly language.
+* The [ANTLR4 grammar](src/antlr4Grammar/Silly.g4) for the silly language.
 * Tablegen definition for the [silly MLIR dialect](src/dialect/silly.td).
 This is the compiler's internal view of all grammar elements.
 * The [Compiler driver](src/driver/driver.cpp).
 This parses and handles command-line options, opens output files, and orchestrates all lower-level actions (parse tree walk + MLIR builder, lowering to LLVM IR, assembly printing, and linker invocation.)
-* The [ANTLR4 parse tree walker and MLIR builder](src/driver/ParseListener.cpp).
+* The [ANTLR4 parse tree walker and MLIR builder](src/antlr4Grammar/Antlr4ParseListener.cpp).
 * The [LLVM IR lowering classes](src/driver/lowering.cpp) used to transform silly dialect operators to LLVM-IR.
 * Sample programs in `Samples/`. These serve both as samples, and as test cases.
 * A [build script](bin/build) that runs both cmake and ninja, setting various options.
@@ -362,6 +362,14 @@ Workaround:
 wget https://www.antlr.org/download/antlr-4.10-complete.jar
 ```
 
+### BISON/FLEX front end.
+
+As an experiment, I've implemented an incomplete Bison/Flex front end and grammar, factoring out just enough of `Antlr4ParseListener.cpp` into `Builder.cpp` so that this front end can create an empty "main() { return 0; }" type of program.  I'm not sure how far I'll take this.  Was just curious what a Bison grammar and walker would look like (and given the -fno-rtti requirement of a default LLVM build, is that a feasible replacement for ANTLR4).  A nice side effect of this experiment is that it thins out the ANTLR4 parser/builder, making the parse walker a much lighter weight entity -- that is probably worth doing even considering Antlr4ParseListener in isolation.
+
+The grammar only has support for 'PRINT integer-literal;' at the moment, but the builder for that is not implemented yet.
+
+To try building it, configure with `cmake -DUSE_BISON_GRAMMAR=1`.
+
 ### Installation Dependencies (Fedora)
 
 ```bash
@@ -398,7 +406,7 @@ In file included from /usr/include/antlr4-runtime/ParserRuleContext.h:9:
 as well as specific errors whereever `dynamic_cast<>` is used.  Example:
 
 ```
-/home/pjoot/toycalculator/build/src/grammar/SillyParser/SillyParser.cpp:1104:25: error: use of dynamic_cast requires -frtti
+/home/pjoot/toycalculator/build/src/antlr4Grammar/SillyParser/SillyParser.cpp:1104:25: error: use of dynamic_cast requires -frtti
  1104 |   auto parserListener = dynamic_cast<SillyListener *>(listener);
       |                         ^
 ```

@@ -157,3 +157,5 @@ extern "C"
         return v;
     }
 }
+
+// vim: et ts=4 sw=4

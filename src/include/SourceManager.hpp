@@ -106,3 +106,5 @@ namespace silly
         llvm::SmallString<128> defaultExecutablePath;
     };
 }    // namespace silly
+
+// vim: et ts=4 sw=4

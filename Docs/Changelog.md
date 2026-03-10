@@ -67,6 +67,9 @@ Back in main again, rc = 42
 
 ### Debug Information Architecture
 
+* Switched to DWARF5.  Now using fused locations for FuncOp's, and have infrastructure that allows for using them in other places (that is disabled, pending a for-sure use-case, since that results in columnar location info loss.)
+* LexicalBlockAttrDI implemented for IF, ELSE, ELIF (but not yet for FOR induction variables.)
+
 ## General Changes
 * Switched from std::format to llvm::formatv for most calls to llvm::errs(), dbgs(), outs().
 
@@ -80,12 +83,17 @@ Back in main again, rc = 42
 
 ## Grammar & Parser Changes
 
+* Remove the old DCL_TOKEN from the antlr4 grammar
+
+### Experimental BISON/FLEX front end and grammar.
+
+* Very incomplete.
+
 ### Grammar Enhancements
 
 ### Parser/builder Improvements
 * I didn't have a good reason to set the IP to beginning of function for declarations anymore, now that the
   symbol dependencies (old silly::ScopeOp) is gone.  Do them in place instead.
-* Introduced lexical scoping for FOR, IF, ELSE, ELIF (but not yet for induction variables yet.)  This is WIP.
 
 ## Lowering & Code Generation
 
@@ -115,6 +123,7 @@ Back in main again, rc = 42
 * Moved tests/endtoend/fatal to tests/lit/fatal (remove RunFailureTest.cmake)
 * Moved tests/lit/* to tests/, moved tests/endtoend/* to Samples/, generate lit wrappers for all the Samples/*/*silly
 * Did a systematic rename of all the tests/, using names that match the testing better, and removing redundancy.
+* Range check tests for too big int/float literal: `toolong-int-literal.silly`, `toolong-float-literal.silly` (also catching std::exception)
 
 ### Test Infrastructure Updates
 

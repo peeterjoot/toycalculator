@@ -45,3 +45,5 @@ namespace silly
         mlir::LLVM::LLVMVoidType voidT;
     };
 }
+
+// vim: et ts=4 sw=4

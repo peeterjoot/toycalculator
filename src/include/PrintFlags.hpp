@@ -35,3 +35,5 @@ namespace silly
         const char* ptr;     ///< only used for STRING.
     };
 }    // namespace silly
+
+// vim: et ts=4 sw=4

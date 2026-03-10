@@ -10,7 +10,7 @@ build - delete and recreate the build directory, run the cmake ninja generator a
 
 =head1 SYNOPSIS
 
-build [--help] [--serial]
+build [--help] [--serial] [--bison]
 [--[no-]cscope]
 [--[no-]ctags]
 [--[no-]doxygen]
@@ -56,6 +56,7 @@ my $dodoxygen = 0;
 my $dobuild = 1;
 my $serial = 0;
 my $hack = 0;
+my $bison = 0;
 my $ccache = 1;
 ($myName = $0) =~ s@.*[/\\]@@ ;
 
@@ -68,6 +69,7 @@ GetOptions (
    'build!'             => \$dobuild,
    'serial!'            => \$serial,
    'hack!'              => \$hack,
+   'bison!'             => \$bison,
    'ccache!'            => \$ccache,
 ) or pod2usage(-verbose => 0) ;
 
@@ -113,6 +115,11 @@ $flags .= '-DCMAKE_BUILD_TYPE=Debug ';
 if ( $hack )
 {
    $flags .= '-DHACK_BUILDER=1 ';
+}
+
+if ( $bison )
+{
+   $flags .= '-DUSE_BISON_GRAMMAR=1 ';
 }
 
 $flags .= '-DSILLY_ENABLE_INSTALL=ON ';

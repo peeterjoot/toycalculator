@@ -1,0 +1,10 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g toolong-int-literal.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: toolong-int-literal.silly:10:7: error: Integer literal value 333333333333333333333311111111111111111111 is out of range or bad: stoll
+// CHECK:    10 |     PRINT 333333333333333333333311111111111111111111;
+// CHECK:       |           ^
+
+
+
+
+PRINT 333333333333333333333311111111111111111111;

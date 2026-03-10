@@ -1,5 +1,5 @@
 ///
-/// @file ParseListener.hpp
+/// @file Antlr4ParseListener.hpp
 /// @author Peeter Joot <peeterjoot@pm.me>
 /// @brief Antlr4 based Listener and MLIR builder for the silly compiler.
 ///
@@ -9,188 +9,42 @@
 /// function calls, and built-in operations (print/get/exit/return).
 ///
 #pragma once
+
 #include <antlr4-runtime.h>
-#include <mlir/Dialect/Func/IR/FuncOps.h>
-#include <mlir/IR/Builders.h>
-#include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/Location.h>
 #include <mlir/IR/MLIRContext.h>
 
 #include <format>
 #include <map>
-#include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "Builder.hpp"
 #include "DriverState.hpp"
+#include "LocationStack.hpp"
 #include "MlirTypeCache.hpp"
+#include "ParserPerFunctionState.hpp"
 #include "PrintFlags.hpp"
 #include "SillyBaseListener.h"
 #include "SillyDialect.hpp"
 
 namespace silly
 {
-    class SourceManager;
-
-    /// Per-function state tracked during parsing.
-    class ParserPerFunctionState
-    {
-       public:
-        /// Default constructor
-        ParserPerFunctionState();
-
-        /// Getter for op, just to hide the casting
-        mlir::func::FuncOp getFuncOp()
-        {
-            mlir::func::FuncOp funcOp{};
-            if ( op )
-            {
-                funcOp = mlir::cast<mlir::func::FuncOp>( op );
-            }
-
-            return funcOp;
-        }
-
-        /// Setter for op, matching getFuncOp (which hides the casting)
-        void setFuncOp( mlir::Operation *funcOp )
-        {
-            op = funcOp;
-        }
-
-        /// Search the inductionVariables stack for the named variable.
-        ///
-        /// This variable is pushed in enterForStatement, and popped in exitForStatement.
-        inline mlir::Value searchForInduction( const std::string &varName );
-
-        /// Add the mlir::Value for a named FOR loop variable to inductionVariables stack.
-        inline void pushInductionVariable( const std::string &varName, mlir::Value i );
-
-        /// Remove the top-most name/value pair from the inductionVariables stack.
-        inline void popInductionVariable();
-
-        /// Search parameters for the named variable.
-        inline mlir::Value searchForParameter( const std::string &varName );
-
-        /// Search variables for the named variable.
-        inline mlir::Value searchForVariable( const std::string &varName );
-
-        /// Add the mlir::Value for a parameter variable to the parameter list.
-        inline void recordParameterValue( const std::string &varName, mlir::Value i );
-
-        /// Add the mlir::Value for a variable variable to the variable list.
-        inline void recordVariableValue( const std::string &varName, mlir::Value i );
-
-        /// Is there an insertion point stack yet for this function?
-        bool haveInsertionPointStack();
-
-        /// Add to the insertion point stack for this function.
-        void pushToInsertionPointStack( mlir::Operation *op );
-
-        /// Remove last insertion point from the stack for this function.
-        void popFromInsertionPointStack( mlir::OpBuilder &builder );
-
-        /// Location of the last declaration for this function
-        ///
-        /// Declarations will all be inserted back to back before the function body statements.
-        mlir::Operation *getLastDeclared()
-        {
-            return lastDeclareOp;
-        }
-
-        /// Set this operation (a declaration) as the last one for this function.
-        void setLastDeclared( mlir::Operation *op )
-        {
-            lastDeclareOp = op;
-        }
-
-        /// New variables will be visible only for this scope and later
-        inline void startScope( mlir::Value );
-
-        /// Any variables that had been declared in the current scope will no longer be visible.
-        inline void endScope();
-
-        mlir::Value currentDebugScope() const
-        {
-            return debugScopeStack.empty() ? mlir::Value{} : debugScopeStack.back();
-        }
-
-        void pushScopeOp( mlir::Value value )
-        {
-            debugScopeStack.push_back( value );
-        }
-
-       private:
-        /// The last silly::DeclareOp created for the current function.
-        ///
-        /// The next declaration in the function will be placed after this, and
-        /// this point updated accordingly.
-        mlir::Operation *lastDeclareOp;
-
-        /// Associated func::FuncOp.
-        mlir::Operation *op;
-
-        /// Induction variable name to Value mapping type
-        using ValueList = std::vector<std::pair<std::string, mlir::Value>>;
-
-        /// Variable and parameter name to Value mapping type
-        using ValueMap = std::unordered_map<std::string, mlir::Value>;
-
-        /// FOR loop variable stack containing all such variables that are in scope.
-        ValueList inductionVariables;
-
-        /// Parameter name/value pairs.
-        ValueMap parameters;
-
-        /// Variable name/value pairs.
-        std::vector<ValueMap> variables;
-
-        /// Stack for scf.if/scf.for blocks.
-        std::vector<mlir::Operation *> insertionPointStack;
-
-        /// null/empty = function scope
-        std::vector<mlir::Value> debugScopeStack;
-    };
-
-    /// Start and end locations associated with parser context.
-    using LocPairs = std::pair<mlir::Location, mlir::Location>;
-
     /// antlr4::tree::TerminalNode is a long winded expression
     using tNode = antlr4::tree::TerminalNode;
-
-    /// Location stack that should be fused for the current statement (declare, assignment, print, ...)
-    ///
-    /// Having the current-location state managed in an RAII fashion has the advantage of
-    /// allowing automatic cleanup in error codepaths.
-    ///
-    /// There should only be one instance of LocationStack active at any point in time.
-    class LocationStack
-    {
-       public:
-        inline LocationStack( mlir::OpBuilder &b, mlir::Location loc );
-
-        inline void push_back( mlir::Location loc );
-
-        inline mlir::Location fuseLocations( );
-
-       private:
-        mlir::OpBuilder &builder;
-
-        /// locations that should be fused when the current statement processing is complete.
-        llvm::SmallVector<mlir::Location, 4> locs{};
-    };
 
     /// ANTLR listener that constructs MLIR for the Silly language.
     ///
     /// Inherits from SillyBaseListener and BaseErrorListener to process parse tree
     /// events and report syntax errors. Builds a ModuleOp containing FuncOps
     /// with Silly dialect operations.
-    class ParseListener : public SillyBaseListener, public antlr4::BaseErrorListener
+    class Antlr4ParseListener : public Builder, SillyBaseListener, antlr4::BaseErrorListener
     {
        public:
         /// Constructor.
         /// @param s [in] Owning SourceManager (used for IMPORT module lookup.)
         /// @param filename [in] Source filename for this module (used to construct Location info)
-        ParseListener( silly::SourceManager &s, const std::string &filename );
+        Antlr4ParseListener( silly::SourceManager &s, const std::string &filename );
 
         /// Open the file stream, and walk the parse tree.
         ///
@@ -283,44 +137,6 @@ namespace silly
         void enterExitStatement( SillyParser::ExitStatementContext *ctx ) override;
 
        private:
-        /// back reference to the owning SourceManager (used for IMPORT module lookup)
-        silly::SourceManager &sm;
-
-        /// Compilation command line options and other stuff
-        DriverState &driverState;
-
-        /// The path to the source being processed.
-        const std::string &sourceFile;
-
-        /// Context for all the loaded dialects.
-        mlir::MLIRContext *ctx;
-
-        /// MLIR builder.
-        mlir::OpBuilder builder;
-
-        /// Top-level module.
-        mlir::OwningOpRef<mlir::ModuleOp> rmod;
-
-        /// mlir::Type values that will be used repeatedly
-        MlirTypeCache typ;
-
-        /// Saved insertion point for main.
-        mlir::OpBuilder::InsertPoint mainIP{};
-
-        /// Current function name.
-        std::string currentFuncName;
-
-        /// Per-function state map.
-        std::unordered_map<std::string, std::unique_ptr<ParserPerFunctionState>> functionStateMap;
-
-        /// Syntax errors detected.  Return a nullptr Module if this is non-zero.
-        int errorCount{};
-
-        /// By default silly programs have a main ('MAIN;' at start is implied.)  If, instead
-        /// of MAIN (implicit or explicit), a 'MODULE;' is specified, that source may have
-        /// only FUNCTIONs.
-        bool isModule{};
-
         ////////////////////////////////////////////////////////////////////////
         ///
         /// Helper functions
@@ -395,21 +211,12 @@ namespace silly
         /// Strip double quotes off of a string, and build a string literal op for it
         silly::StringLiteralOp buildStringLiteral( mlir::Location loc, const std::string &input, LocationStack &ls );
 
-        /// Initializes function state.
-        ///
-        /// - Records parameter Values, and creates each parameter DebugNameOp.
-        /// - set the current function name, and squirrel away the funcOp for lookup.
-        /// - Creates initial dummy DebugScopeOp placeholder.
-        ///
-        void createScope( mlir::Location startLoc, mlir::Location endLoc, mlir::func::FuncOp func,
-                          const std::string &funcName, const std::vector<std::string> &paramNames );
-
         /// Emits a CallOp for a function call.
         mlir::Value handleCall( SillyParser::CallExpressionContext *ctx, bool callStatement, LocationStack &ls );
 
         /// builder logic for print arguments (shared between PRINT and ERROR.)
         void handlePrint( mlir::Location loc, const std::vector<SillyParser::ExpressionContext *> &args,
-                          const std::string &errorContextString, PrintFlags flags, LocationStack & ls );
+                          const std::string &errorContextString, PrintFlags flags, LocationStack &ls );
 
         /// Registers a variable declaration in the current scope.
         void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
@@ -426,11 +233,6 @@ namespace silly
         /// Construct a Value for a floating point literal string
         inline mlir::Value parseFloat( mlir::Location loc, mlir::FloatType ty, const std::string &s,
                                        LocationStack &ls );
-
-        /// Returns a reference to the functionStateMap entry for funcName.
-        ///
-        /// Create that functionStateMap entry for funcName if it doesn't exist.
-        inline ParserPerFunctionState &funcState( const std::string &funcName );
 
         /// Map INT8_TOKEN, INT16_TOKEN, ... to a mlir::Type
         mlir::Type integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext *ctx );
@@ -463,8 +265,8 @@ namespace silly
         void selectElseBlock( mlir::Location loc, const std::string &errorText );
 
         /// Handle assignment processing, given the current var-name and index (if appropriate.)
-        void processAssignment( SillyParser::ExpressionContext *exprContext,
-                                const std::string &currentVarName, mlir::Value currentIndexExpr, LocationStack &ls );
+        void processAssignment( SillyParser::ExpressionContext *exprContext, const std::string &currentVarName,
+                                mlir::Value currentIndexExpr, LocationStack &ls );
 
         /// Handle parsing of an expression (the top-level entry point for expressions).
         /// This function serves as the main entry point for parsing any rvalue expression.

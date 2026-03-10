@@ -5,6 +5,14 @@ set(GRAMMAR_FILE "${CMAKE_CURRENT_SOURCE_DIR}/Silly.g4")
 # Ensure output directory exists
 file(MAKE_DIRECTORY ${ANTLR_OUTPUT_DIR})
 
+# Define the ANTLR generated source files
+set(ANTLR_SOURCES
+  ${ANTLR_OUTPUT_DIR}/SillyBaseListener.cpp
+  ${ANTLR_OUTPUT_DIR}/SillyListener.cpp
+  ${ANTLR_OUTPUT_DIR}/SillyParser.cpp
+  ${ANTLR_OUTPUT_DIR}/SillyLexer.cpp
+)
+
 # List all generated files (including headers!)
 set(ANTLR_GENERATED_FILES
     ${ANTLR_OUTPUT_DIR}/SillyBaseListener.cpp
@@ -63,3 +71,12 @@ set_source_files_properties(
     ${ANTLR_GENERATED_FILES}
     PROPERTIES GENERATED TRUE
 )
+
+add_library(Antlr4Grammar
+    ${ANTLR_SOURCES}
+    Antlr4ParseListener.cpp
+)
+
+target_include_directories(Antlr4Grammar PRIVATE ${ANTLR_OUTPUT_DIR})
+
+add_dependencies(Antlr4Grammar GenerateANTLR)

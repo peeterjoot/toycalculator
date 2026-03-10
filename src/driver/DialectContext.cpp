@@ -24,3 +24,5 @@ namespace silly
         context.getOrLoadDialect<mlir::scf::SCFDialect>();
     }
 }    // namespace silly
+
+// vim: et ts=4 sw=4

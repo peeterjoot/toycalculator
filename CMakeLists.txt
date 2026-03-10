@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.16)
 project(sillycompiler)
 
 #------------------------------------------------------------------------------
@@ -10,12 +10,21 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set(CMAKE_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/install" CACHE PATH "Installation prefix" FORCE)
 endif()
 
+option(USE_BISON_GRAMMAR "Use Bison/Flex grammar instead of ANTLR4" OFF)
+
 #------------------------------------------------------------------------------
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
+if(USE_BISON_GRAMMAR)
+    find_package(BISON 3.2 REQUIRED)
+    find_package(FLEX REQUIRED)
+else()
+    set(ANTLR_OUTPUT_DIR "${CMAKE_BINARY_DIR}/src/antlr4Grammar/SillyParser" CACHE INTERNAL "")
+    message(STATUS "ANTLR output directory: ${ANTLR_OUTPUT_DIR}")
+endif()
 find_package(LLVM REQUIRED CONFIG)
 find_package(MLIR REQUIRED CONFIG)
 
@@ -24,10 +33,6 @@ list(APPEND CMAKE_MODULE_PATH "${LLVM_CMAKE_DIR}")
 include(TableGen)
 include(AddLLVM)
 include(AddMLIR)
-
-set(ANTLR_OUTPUT_DIR "${CMAKE_BINARY_DIR}/src/grammar/SillyParser" CACHE INTERNAL "")
-
-message(STATUS "ANTLR output directory: ${ANTLR_OUTPUT_DIR}")
 
 #------------------------------------------------------------------------------
 # global include options for all components

@@ -3,6 +3,13 @@
 ### running list of other issues and ideas, semi-randomly ordered
 ----------------------------------
 
+#### Bison parser experiment.
+* get PRINT with single int literal working.
+* If the module return from BisonParseListener::run is nullptr, there is no diagnostic message (but RC=11)
+* why is empty.silly failing when run with lit, but not otherwise.
+* build llvm w/o RTTI on xpgn and toggle bin/build to detect that (but also allow as an option)
+* update README and changelog when this is done.
+
 #### Debug
 * Audit the places where I am passing both Location and LocationStack.  Do I need the first?
 * Now that I have the filename in the ModuleOp, don't have to pass that down to lowering with the DriverState hack.  Try using the ModuleOp location filename instead when building the DICompilationUnit.
