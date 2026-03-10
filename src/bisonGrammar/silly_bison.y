@@ -104,10 +104,13 @@
 
 startRule
     : statementList
+        { driver.exit(); }
     ;
 
 statementList
-    : /* empty */
+    :
+    /* empty */
+        { driver.enter(); }
     | statementList statement
     ;
 

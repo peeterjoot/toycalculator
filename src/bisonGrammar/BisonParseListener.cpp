@@ -25,6 +25,16 @@ namespace silly
         }
     };
 
+    void BisonParseListener::enter()
+    {
+        printf("enterStartRule\n");
+    }
+
+    void BisonParseListener::exit()
+    {
+        printf("exitStartRule\n");
+    }
+
     mlir::OwningOpRef<mlir::ModuleOp> BisonParseListener::run()
     {
         driverState.openFailed = false;

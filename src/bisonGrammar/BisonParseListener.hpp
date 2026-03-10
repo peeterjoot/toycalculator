@@ -35,6 +35,10 @@ namespace silly
         /// Called from parser on error
         void emitError( const silly::BisonParser::location_type& loc, const std::string& msg );
 
+        void enter();
+
+        void exit();
+
         /// Error count
         int errorCount{};
 
