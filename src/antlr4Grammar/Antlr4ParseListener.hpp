@@ -9,19 +9,19 @@
 /// function calls, and built-in operations (print/get/exit/return).
 ///
 #pragma once
-#include "LocationStack.hpp"
+
 #include <antlr4-runtime.h>
-#include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/Location.h>
 #include <mlir/IR/MLIRContext.h>
 
 #include <format>
 #include <map>
-#include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "Builder.hpp"
 #include "DriverState.hpp"
+#include "LocationStack.hpp"
 #include "MlirTypeCache.hpp"
 #include "ParserPerFunctionState.hpp"
 #include "PrintFlags.hpp"
@@ -30,8 +30,6 @@
 
 namespace silly
 {
-    class SourceManager;
-
     /// Start and end locations associated with parser context.
     using LocPairs = std::pair<mlir::Location, mlir::Location>;
 
@@ -43,7 +41,7 @@ namespace silly
     /// Inherits from SillyBaseListener and BaseErrorListener to process parse tree
     /// events and report syntax errors. Builds a ModuleOp containing FuncOps
     /// with Silly dialect operations.
-    class Antlr4ParseListener : public SillyBaseListener, public antlr4::BaseErrorListener
+    class Antlr4ParseListener : public Builder, SillyBaseListener, antlr4::BaseErrorListener
     {
        public:
         /// Constructor.
@@ -142,44 +140,6 @@ namespace silly
         void enterExitStatement( SillyParser::ExitStatementContext *ctx ) override;
 
        private:
-        /// back reference to the owning SourceManager (used for IMPORT module lookup)
-        silly::SourceManager &sm;
-
-        /// Compilation command line options and other stuff
-        DriverState &driverState;
-
-        /// The path to the source being processed.
-        const std::string &sourceFile;
-
-        /// Context for all the loaded dialects.
-        mlir::MLIRContext *ctx;
-
-        /// MLIR builder.
-        mlir::OpBuilder builder;
-
-        /// Top-level module.
-        mlir::OwningOpRef<mlir::ModuleOp> rmod;
-
-        /// mlir::Type values that will be used repeatedly
-        MlirTypeCache typ;
-
-        /// Saved insertion point for main.
-        mlir::OpBuilder::InsertPoint mainIP{};
-
-        /// Current function name.
-        std::string currentFuncName;
-
-        /// Per-function state map.
-        std::unordered_map<std::string, std::unique_ptr<ParserPerFunctionState>> functionStateMap;
-
-        /// Syntax errors detected.  Return a nullptr Module if this is non-zero.
-        int errorCount{};
-
-        /// By default silly programs have a main ('MAIN;' at start is implied.)  If, instead
-        /// of MAIN (implicit or explicit), a 'MODULE;' is specified, that source may have
-        /// only FUNCTIONs.
-        bool isModule{};
-
         ////////////////////////////////////////////////////////////////////////
         ///
         /// Helper functions

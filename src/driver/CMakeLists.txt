@@ -1,4 +1,5 @@
 set(DRIVER_SOURCES
+  Builder.cpp
   CompilationUnit.cpp
   DialectContext.cpp
   driver.cpp

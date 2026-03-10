@@ -39,18 +39,8 @@ namespace silly
     // Antlr4ParseListener members
     //
     Antlr4ParseListener::Antlr4ParseListener( silly::SourceManager &s, const std::string &filename )
-        : sm{ s },
-          driverState{ sm.getDriverState() },
-          sourceFile{ filename },
-          ctx{ sm.getContext() },
-          builder( ctx ),
-          rmod( mlir::ModuleOp::create( mlir::FileLineColLoc::get( builder.getStringAttr( filename ), 0, 0 ) ) ),
-          mainIP{},
-          currentFuncName{},
-          functionStateMap{}
+        : Builder( s, filename )
     {
-        builder.setInsertionPointToStart( rmod->getBody() );
-        typ.initialize( builder, ctx );
     }
 
     mlir::OwningOpRef<mlir::ModuleOp> Antlr4ParseListener::run()
