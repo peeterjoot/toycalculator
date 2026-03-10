@@ -5,6 +5,8 @@
 
 #### Bison parser experiment.
 * If the module return from BisonParseListener::run is nullptr, there is no diagnostic message (but RC=11)
+* Add a cmake switch for Bison vs. Antlr4 parser/grammar (doesn't make sense to use both).  Tweak top-cmake and src/cmake and driver/cmake accordingly.
+* build llvm w/o RTTI on xpgn and toggle bin/build to detect that (but also allow as an option)
 
 #### Debug
 * Audit the places where I am passing both Location and LocationStack.  Do I need the first?
