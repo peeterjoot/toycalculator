@@ -3,8 +3,12 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Bison based experimental parse tree listener and MLIR builder.
 ///
+#include <mlir/Dialect/Arith/IR/Arith.h>
+
 #include "BisonParseListener.hpp"
 #include "DriverState.hpp"
+#include "PrintFlags.hpp"
+#include "SillyDialect.hpp"
 #include "silly.lex.hh"    // flex-generated reentrant scanner
 #include "silly.tab.hh"
 
@@ -61,7 +65,7 @@ namespace silly
 
     void BisonParseListener::exit( const silly::BisonParser::location_type& bLoc )
     {
-        assert( !isModule ); // TODO
+        assert( !isModule );    // TODO
 
         LocPairs locs = getLocations( bLoc );
 
@@ -106,11 +110,34 @@ namespace silly
         return nullptr;
     }
 
-    void BisonParseListener::emitPrint( int value, const silly::BisonParser::location_type& printLoc,
+    void BisonParseListener::emitPrint( int value, const silly::BisonParser::location_type& bLoc,
                                         const silly::BisonParser::location_type& valueLoc )
     {
-        printf( "%s:%d:%d:PRINT %d (value at %d:%d)\n", sourceFile.c_str(), printLoc.begin.line, printLoc.begin.column,
-                value, valueLoc.begin.line, valueLoc.begin.column );
+        // printf( "%s:%d:%d:PRINT %d (value at %d:%d)\n", sourceFile.c_str(), bLoc.begin.line, bLoc.begin.column,
+        //         value, valueLoc.begin.line, valueLoc.begin.column );
+        mlir::Location loc = getLocation( bLoc );
+        PrintFlags pf = PRINT_FLAGS_NONE;
+        // LocationStack ls;
+        std::vector<mlir::Value> vargs;
+        // for ( SillyParser::ExpressionContext *parg : args )
+        {
+            // mlir::Value v = parseExpression( parg, {}, ls );
+            mlir::Location vLoc = getLocation( valueLoc );
+            mlir::Value v = mlir::arith::ConstantIntOp::create( builder, vLoc, value, 32 );
+            if ( !v )
+            {
+                emitError( bLoc, "mlir::arith::ConstantIntOp::create failed" );
+                // emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
+                return;
+            }
+
+            vargs.push_back( v );
+        }
+
+        // ls.push_back( loc );
+        mlir::arith::ConstantIntOp constFlagOp = mlir::arith::ConstantIntOp::create( builder, loc, pf, 32 );
+
+        silly::PrintOp::create( builder, loc, constFlagOp, vargs );
     }
 
     void BisonParseListener::emitError( const silly::BisonParser::location_type& loc, const std::string& msg )

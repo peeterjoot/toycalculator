@@ -364,9 +364,9 @@ wget https://www.antlr.org/download/antlr-4.10-complete.jar
 
 ### BISON/FLEX front end.
 
-As an experiment, I've implemented an incomplete Bison/Flex front end and grammar, factoring out just enough of `Antlr4ParseListener.cpp` into `Builder.cpp` so that this front end can create an empty "main() { return 0; }" type of program.  I'm not sure how far I'll take this.  Was just curious what a Bison grammar and walker would look like (and given the -fno-rtti requirement of a default LLVM build, is that a feasible replacement for ANTLR4).  A nice side effect of this experiment is that it thins out the ANTLR4 parser/builder, making the parse walker a much lighter weight entity -- that is probably worth doing even considering Antlr4ParseListener in isolation.
+As an experiment, I've implemented an incomplete Bison/Flex front end and grammar, factoring out just enough of `Antlr4ParseListener.cpp` into `Builder.cpp` so that this front end can handle `PRINT` statements with only integer literals.
 
-The grammar only has support for 'PRINT integer-literal;' at the moment, but the builder for that is not implemented yet.
+I'm not sure how far I'll take this.  Was just curious what a Bison grammar and walker would look like (and given the -fno-rtti requirement of a default LLVM build, is that a feasible replacement for ANTLR4).  A nice side effect of this experiment is that it thins out the ANTLR4 parser/builder, making the parse walker a much lighter weight entity -- that is probably worth doing even considering Antlr4ParseListener in isolation.
 
 To try building it, configure with `cmake -DUSE_BISON_GRAMMAR=1`.
 
