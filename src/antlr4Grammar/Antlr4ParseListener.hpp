@@ -10,7 +10,6 @@
 ///
 #pragma once
 #include <antlr4-runtime.h>
-#include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/Location.h>
@@ -24,6 +23,7 @@
 
 #include "DriverState.hpp"
 #include "MlirTypeCache.hpp"
+#include "ParserPerFunctionState.hpp"
 #include "PrintFlags.hpp"
 #include "SillyBaseListener.h"
 #include "SillyDialect.hpp"
@@ -31,125 +31,6 @@
 namespace silly
 {
     class SourceManager;
-
-    /// Per-function state tracked during parsing.
-    class ParserPerFunctionState
-    {
-       public:
-        /// Default constructor
-        ParserPerFunctionState();
-
-        /// Getter for op, just to hide the casting
-        mlir::func::FuncOp getFuncOp()
-        {
-            mlir::func::FuncOp funcOp{};
-            if ( op )
-            {
-                funcOp = mlir::cast<mlir::func::FuncOp>( op );
-            }
-
-            return funcOp;
-        }
-
-        /// Setter for op, matching getFuncOp (which hides the casting)
-        void setFuncOp( mlir::Operation *funcOp )
-        {
-            op = funcOp;
-        }
-
-        /// Search the inductionVariables stack for the named variable.
-        ///
-        /// This variable is pushed in enterForStatement, and popped in exitForStatement.
-        inline mlir::Value searchForInduction( const std::string &varName );
-
-        /// Add the mlir::Value for a named FOR loop variable to inductionVariables stack.
-        inline void pushInductionVariable( const std::string &varName, mlir::Value i );
-
-        /// Remove the top-most name/value pair from the inductionVariables stack.
-        inline void popInductionVariable();
-
-        /// Search parameters for the named variable.
-        inline mlir::Value searchForParameter( const std::string &varName );
-
-        /// Search variables for the named variable.
-        inline mlir::Value searchForVariable( const std::string &varName );
-
-        /// Add the mlir::Value for a parameter variable to the parameter list.
-        inline void recordParameterValue( const std::string &varName, mlir::Value i );
-
-        /// Add the mlir::Value for a variable variable to the variable list.
-        inline void recordVariableValue( const std::string &varName, mlir::Value i );
-
-        /// Is there an insertion point stack yet for this function?
-        bool haveInsertionPointStack();
-
-        /// Add to the insertion point stack for this function.
-        void pushToInsertionPointStack( mlir::Operation *op );
-
-        /// Remove last insertion point from the stack for this function.
-        void popFromInsertionPointStack( mlir::OpBuilder &builder );
-
-        /// Location of the last declaration for this function
-        ///
-        /// Declarations will all be inserted back to back before the function body statements.
-        mlir::Operation *getLastDeclared()
-        {
-            return lastDeclareOp;
-        }
-
-        /// Set this operation (a declaration) as the last one for this function.
-        void setLastDeclared( mlir::Operation *op )
-        {
-            lastDeclareOp = op;
-        }
-
-        /// New variables will be visible only for this scope and later
-        inline void startScope( mlir::Value );
-
-        /// Any variables that had been declared in the current scope will no longer be visible.
-        inline void endScope();
-
-        mlir::Value currentDebugScope() const
-        {
-            return debugScopeStack.empty() ? mlir::Value{} : debugScopeStack.back();
-        }
-
-        void pushScopeOp( mlir::Value value )
-        {
-            debugScopeStack.push_back( value );
-        }
-
-       private:
-        /// The last silly::DeclareOp created for the current function.
-        ///
-        /// The next declaration in the function will be placed after this, and
-        /// this point updated accordingly.
-        mlir::Operation *lastDeclareOp;
-
-        /// Associated func::FuncOp.
-        mlir::Operation *op;
-
-        /// Induction variable name to Value mapping type
-        using ValueList = std::vector<std::pair<std::string, mlir::Value>>;
-
-        /// Variable and parameter name to Value mapping type
-        using ValueMap = std::unordered_map<std::string, mlir::Value>;
-
-        /// FOR loop variable stack containing all such variables that are in scope.
-        ValueList inductionVariables;
-
-        /// Parameter name/value pairs.
-        ValueMap parameters;
-
-        /// Variable name/value pairs.
-        std::vector<ValueMap> variables;
-
-        /// Stack for scf.if/scf.for blocks.
-        std::vector<mlir::Operation *> insertionPointStack;
-
-        /// null/empty = function scope
-        std::vector<mlir::Value> debugScopeStack;
-    };
 
     /// Start and end locations associated with parser context.
     using LocPairs = std::pair<mlir::Location, mlir::Location>;
@@ -170,7 +51,7 @@ namespace silly
 
         inline void push_back( mlir::Location loc );
 
-        inline mlir::Location fuseLocations( );
+        inline mlir::Location fuseLocations();
 
        private:
         mlir::OpBuilder &builder;
@@ -409,7 +290,7 @@ namespace silly
 
         /// builder logic for print arguments (shared between PRINT and ERROR.)
         void handlePrint( mlir::Location loc, const std::vector<SillyParser::ExpressionContext *> &args,
-                          const std::string &errorContextString, PrintFlags flags, LocationStack & ls );
+                          const std::string &errorContextString, PrintFlags flags, LocationStack &ls );
 
         /// Registers a variable declaration in the current scope.
         void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
@@ -463,8 +344,8 @@ namespace silly
         void selectElseBlock( mlir::Location loc, const std::string &errorText );
 
         /// Handle assignment processing, given the current var-name and index (if appropriate.)
-        void processAssignment( SillyParser::ExpressionContext *exprContext,
-                                const std::string &currentVarName, mlir::Value currentIndexExpr, LocationStack &ls );
+        void processAssignment( SillyParser::ExpressionContext *exprContext, const std::string &currentVarName,
+                                mlir::Value currentIndexExpr, LocationStack &ls );
 
         /// Handle parsing of an expression (the top-level entry point for expressions).
         /// This function serves as the main entry point for parsing any rvalue expression.

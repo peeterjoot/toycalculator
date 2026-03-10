@@ -7,6 +7,7 @@ set(DRIVER_SOURCES
   lowering.cpp
   MlirTypeCache.cpp
   SourceManager.cpp
+  ParserPerFunctionState.cpp
 )
 
 add_compile_definitions(
