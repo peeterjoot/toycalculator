@@ -475,11 +475,6 @@ NOT_TOKEN
   : 'NOT'
   ;
 
-// Matches the 'DCL' keyword for declarations.
-DCL_TOKEN
-  : 'DCL'
-  ;
-
 // signed integers of various sizes, and ieee float/double types:
 INT8_TOKEN
   : 'INT8'
