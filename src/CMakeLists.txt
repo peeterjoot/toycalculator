@@ -1,4 +1,5 @@
 add_subdirectory(runtime)
 add_subdirectory(dialect)
-add_subdirectory(grammar)
+add_subdirectory(antlr4Grammar)
+add_subdirectory(bisonGrammar)
 add_subdirectory(driver)

@@ -1,11 +1,3 @@
-# Define the ANTLR generated source files
-set(ANTLR_SOURCES
-  ${ANTLR_OUTPUT_DIR}/SillyBaseListener.cpp
-  ${ANTLR_OUTPUT_DIR}/SillyListener.cpp
-  ${ANTLR_OUTPUT_DIR}/SillyParser.cpp
-  ${ANTLR_OUTPUT_DIR}/SillyLexer.cpp
-)
-
 set(DRIVER_SOURCES
   CompilationUnit.cpp
   DialectContext.cpp
@@ -15,23 +7,6 @@ set(DRIVER_SOURCES
   lowering.cpp
   MlirTypeCache.cpp
   SourceManager.cpp
-)
-
-set_source_files_properties(
-  ${DRIVER_SOURCES}
-  PROPERTIES COMPILE_OPTIONS "-fno-rtti"
-)
-
-# Mark them as generated so CMake doesn't complain they don't exist yet
-set_source_files_properties(
-  ${ANTLR_SOURCES}
-  PROPERTIES GENERATED TRUE
-)
-
-set_source_files_properties(
-  ${ANTLR_SOURCES}
-  Antlr4ParseListener.cpp
-  PROPERTIES COMPILE_OPTIONS "-frtti"
 )
 
 add_compile_definitions(
@@ -54,18 +29,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 add_executable(silly
-  ${ANTLR_SOURCES}
   ${DRIVER_SOURCES}
-  Antlr4ParseListener.cpp
 )
-
-# Experiment to see what depends on RTTI (more than Antlr4ParseListener.cpp?): answer:
-#FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyListener.cpp.o
-#FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyBaseListener.cpp.o
-#FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyLexer.cpp.o
-#FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyParser.cpp.o
-#FAILED: src/driver/CMakeFiles/silly.dir/Antlr4ParseListener.cpp.o
-#target_compile_options(silly PRIVATE -fno-rtti)
 
 if(SILLY_ENABLE_INSTALL)
     # Set RPATH for installed binary
@@ -78,11 +43,8 @@ if(SILLY_ENABLE_INSTALL)
     )
 endif()
 
-# Include the output directory for header files
-target_include_directories(silly PRIVATE ${ANTLR_OUTPUT_DIR})
-
 # Ensure the ANTLR and TableGen generation runs before building the project
-add_dependencies(silly silly_runtime SillyDialect GenerateANTLR)
+add_dependencies(silly silly_runtime SillyDialect Antlr4Grammar BisonGrammar)
 
 target_compile_options(silly PRIVATE ${COMMON_COMPILE_OPTIONS})
 
@@ -125,6 +87,8 @@ target_link_libraries(silly
   MLIRMemRefToLLVM
   MLIRSCFToControlFlow
   MLIRTestIR
+  Antlr4Grammar
+  BisonGrammar
 )
 
 # Create bin directory and symlink

@@ -1,9 +1,3 @@
-cmake_minimum_required(VERSION 3.16)
-project(SillyBison)
-
-find_package(BISON 3.2 REQUIRED)
-find_package(FLEX REQUIRED)
-
 BISON_TARGET(Parser
     ${CMAKE_CURRENT_SOURCE_DIR}/silly_bison.y
     ${CMAKE_CURRENT_BINARY_DIR}/silly_bison.tab.cc
@@ -19,13 +13,13 @@ FLEX_TARGET(Lexer
 
 ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 
-add_executable(silly_bison
+add_library(BisonGrammar
     BisonParseListener.cpp
     ${BISON_Parser_OUTPUTS}
     ${FLEX_Lexer_OUTPUTS}
 )
 
-target_include_directories(silly_bison PRIVATE
-    ${CMAKE_CURRENT_BINARY_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}
+target_include_directories(BisonGrammar PUBLIC
+    ${CMAKE_CURRENT_BINARY_DIR}   # for generated .tab.hh and .lex.hh
+    ${CMAKE_CURRENT_SOURCE_DIR}   # for BisonParseListener.hpp etc.
 )

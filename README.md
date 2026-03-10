@@ -262,7 +262,7 @@ Array `BOOL` values may use a packed bitmask representation in the future.
 
 ## Interesting Files
 
-* The [ANTLR4 grammar](src/grammar/Silly.g4) for the silly language.
+* The [ANTLR4 grammar](src/antlr4Grammar/Silly.g4) for the silly language.
 * Tablegen definition for the [silly MLIR dialect](src/dialect/silly.td).
 This is the compiler's internal view of all grammar elements.
 * The [Compiler driver](src/driver/driver.cpp).
@@ -398,7 +398,7 @@ In file included from /usr/include/antlr4-runtime/ParserRuleContext.h:9:
 as well as specific errors whereever `dynamic_cast<>` is used.  Example:
 
 ```
-/home/pjoot/toycalculator/build/src/grammar/SillyParser/SillyParser.cpp:1104:25: error: use of dynamic_cast requires -frtti
+/home/pjoot/toycalculator/build/src/antlr4Grammar/SillyParser/SillyParser.cpp:1104:25: error: use of dynamic_cast requires -frtti
  1104 |   auto parserListener = dynamic_cast<SillyListener *>(listener);
       |                         ^
 ```

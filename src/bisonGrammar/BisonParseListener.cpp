@@ -11,9 +11,24 @@
 
 namespace silly
 {
+    class FILEManager
+    {
+       public:
+        FILE* f{};
+
+        ~FILEManager()
+        {
+            if ( f )
+            {
+                fclose( f );
+            }
+        }
+    };
+
     bool BisonParseListener::parse()
     {
-        FILE* f = fopen( filename.c_str(), "r" );
+        FILEManager file;
+        file.f = fopen( filename.c_str(), "r" );
         if ( !f )
         {
             fprintf( stderr, "cannot open %s\n", filename.c_str() );
@@ -22,13 +37,12 @@ namespace silly
 
         yylex_init( &scanner );
         yyset_extra( this, scanner );
-        yyset_in( f, scanner );
+        yyset_in( file.f, scanner );
 
         silly::BisonParser parser( *this );
         int result = parser.parse();
 
         yylex_destroy( scanner );
-        fclose( f );
 
         return result == 0 && errorCount == 0;
     }
@@ -47,7 +61,7 @@ namespace silly
     }
 }    // namespace silly
 
-#if 1
+#if 0
 int main( int argc, char** argv )
 {
     silly::BisonParseListener dr( "foo.silly" );
