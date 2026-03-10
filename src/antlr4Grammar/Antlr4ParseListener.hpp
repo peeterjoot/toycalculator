@@ -9,8 +9,8 @@
 /// function calls, and built-in operations (print/get/exit/return).
 ///
 #pragma once
+#include "LocationStack.hpp"
 #include <antlr4-runtime.h>
-#include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/Location.h>
 #include <mlir/IR/MLIRContext.h>
@@ -37,28 +37,6 @@ namespace silly
 
     /// antlr4::tree::TerminalNode is a long winded expression
     using tNode = antlr4::tree::TerminalNode;
-
-    /// Location stack that should be fused for the current statement (declare, assignment, print, ...)
-    ///
-    /// Having the current-location state managed in an RAII fashion has the advantage of
-    /// allowing automatic cleanup in error codepaths.
-    ///
-    /// There should only be one instance of LocationStack active at any point in time.
-    class LocationStack
-    {
-       public:
-        inline LocationStack( mlir::OpBuilder &b, mlir::Location loc );
-
-        inline void push_back( mlir::Location loc );
-
-        inline mlir::Location fuseLocations();
-
-       private:
-        mlir::OpBuilder &builder;
-
-        /// locations that should be fused when the current statement processing is complete.
-        llvm::SmallVector<mlir::Location, 4> locs{};
-    };
 
     /// ANTLR listener that constructs MLIR for the Silly language.
     ///

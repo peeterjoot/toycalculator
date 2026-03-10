@@ -22,3 +22,5 @@ namespace silly
         ptr = mlir::LLVM::LLVMPointerType::get( ctx );
     }
 }
+
+// vim: et ts=4 sw=4

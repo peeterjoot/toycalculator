@@ -33,3 +33,5 @@ namespace silly
     /// While mlir::Type is streamable in << output, here's a little shim for use in string based dumps.
     std::string mlirTypeToString( mlir::Type t );
 }
+
+// vim: et ts=4 sw=4

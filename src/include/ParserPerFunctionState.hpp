@@ -129,3 +129,5 @@ namespace silly
         std::vector<mlir::Value> debugScopeStack;
     };
 }
+
+// vim: et ts=4 sw=4

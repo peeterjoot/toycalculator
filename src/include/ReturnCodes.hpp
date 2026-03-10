@@ -26,3 +26,5 @@ namespace silly
         LAST_ERROR_VALUE
     };
 }    // namespace silly
+
+// vim: et ts=4 sw=4

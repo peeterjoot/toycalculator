@@ -90,3 +90,5 @@ namespace silly
         debugScopeStack.pop_back();
     }
 }
+
+// vim: et ts=4 sw=4

@@ -416,3 +416,5 @@ namespace silly
         return ReturnCodes::success;
     }
 }    // namespace silly
+
+// vim: et ts=4 sw=4

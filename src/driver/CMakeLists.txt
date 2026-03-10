@@ -3,11 +3,12 @@ set(DRIVER_SOURCES
   DialectContext.cpp
   driver.cpp
   helper.cpp
+  LocationStack.cpp
   LoweringContext.cpp
   lowering.cpp
   MlirTypeCache.cpp
-  SourceManager.cpp
   ParserPerFunctionState.cpp
+  SourceManager.cpp
 )
 
 add_compile_definitions(

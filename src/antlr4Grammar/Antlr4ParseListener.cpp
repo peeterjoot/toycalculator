@@ -35,28 +35,6 @@
 
 namespace silly
 {
-    inline LocationStack::LocationStack( mlir::OpBuilder &b, mlir::Location loc ) : builder{ b }
-    {
-        locs.push_back( loc );
-    }
-
-    inline void LocationStack::push_back( mlir::Location loc )
-    {
-        locs.push_back( loc );
-    }
-
-    inline mlir::Location LocationStack::fuseLocations()
-    {
-        assert( locs.size() );
-
-        if ( locs.size() == 1 )
-        {
-            return locs.back();
-        }
-
-        return builder.getFusedLoc( locs );
-    }
-
     //--------------------------------------------------------------------------
     // Antlr4ParseListener members
     //

@@ -28,3 +28,5 @@ namespace silly
         mlir::OpBuilder::InsertionGuard guard;    ///< restores IP on destruction
     };
 }    // namespace silly
+
+// vim: et ts=4 sw=4

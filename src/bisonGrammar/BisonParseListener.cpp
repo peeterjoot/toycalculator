@@ -61,12 +61,4 @@ namespace silly
     }
 }    // namespace silly
 
-#if 0
-int main( int argc, char** argv )
-{
-    silly::BisonParseListener dr( "foo.silly" );
-    dr.parse();
-
-    return 0;
-}
-#endif
+// vim: et ts=4 sw=4
