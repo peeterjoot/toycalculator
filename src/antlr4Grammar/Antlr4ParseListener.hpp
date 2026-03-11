@@ -143,28 +143,6 @@ namespace silly
         ///
         ////////////////////////////////////////////////////////////////////////
 
-        /// Emit a user-friendly error message in GCC/Clang style
-        ///
-        /// (calls emitError)
-        void emitUserError( mlir::Location loc, const std::string &message, const std::string &funcName )
-        {
-            emitError( loc, message, funcName, false );
-        }
-
-        /// Emit an internal error message, including the location in the compiler source where the error occured.
-        ///
-        /// (calls emitError)
-        void emitInternalError( mlir::Location loc, const char *compilerfile, unsigned compilerline,
-                                const char *compilerfunc, const std::string &message,
-                                const std::string &programFuncName );
-
-        /// Internal parse listener error message output.
-        ///
-        /// Show the file:line:col: error: message (colorized if desired.)
-        ///
-        /// errorCount is incremented as a side effect.
-        void emitError( mlir::Location loc, const std::string &message, const std::string &funcName, bool internal );
-
         /// Lookup in per-function state, whether a variable has been declared
         bool isVariableDeclared( const std::string &varName );
 
@@ -208,9 +186,6 @@ namespace silly
         /// Build a Location for an antlr4 tNode
         inline mlir::Location getTerminalLocation( tNode *node );
 
-        /// Strip double quotes off of a string, and build a string literal op for it
-        silly::StringLiteralOp buildStringLiteral( mlir::Location loc, const std::string &input, LocationStack &ls );
-
         /// Emits a CallOp for a function call.
         mlir::Value handleCall( SillyParser::CallExpressionContext *ctx, bool callStatement, LocationStack &ls );
 
@@ -223,16 +198,6 @@ namespace silly
                                   SillyParser::ArrayBoundsExpressionContext *arrayBounds,
                                   SillyParser::ExpressionContext *assignmentExpression,
                                   const std::vector<SillyParser::ExpressionContext *> *expressions, LocationStack &ls );
-
-        /// Construct a Value for a TRUE or FALSE boolean literal string
-        inline mlir::Value parseBoolean( mlir::Location loc, const std::string &s, LocationStack &ls );
-
-        /// Construct a Value for an integer literal string
-        inline mlir::Value parseInteger( mlir::Location loc, int width, const std::string &s, LocationStack &ls );
-
-        /// Construct a Value for a floating point literal string
-        inline mlir::Value parseFloat( mlir::Location loc, mlir::FloatType ty, const std::string &s,
-                                       LocationStack &ls );
 
         /// Map INT8_TOKEN, INT16_TOKEN, ... to a mlir::Type
         mlir::Type integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext *ctx );

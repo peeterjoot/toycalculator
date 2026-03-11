@@ -27,19 +27,16 @@ namespace silly
         /// Parse the given file, and build the MLIR module for it
         mlir::OwningOpRef<mlir::ModuleOp> run();
 
+        void enterStartRule( const silly::BisonParser::location_type& loc );
+
+        void exitStartRule( const silly::BisonParser::location_type& loc );
+
         /// Called from parser action for PRINT statement
-        void emitPrint( int value, const silly::BisonParser::location_type& printLoc,
-                        const silly::BisonParser::location_type& valueLoc );
+        void enterPrintStatement( Literal value, const silly::BisonParser::location_type& printLoc,
+                                  const silly::BisonParser::location_type& valueLoc );
 
         /// Called from parser on error
-        void emitError( const silly::BisonParser::location_type& loc, const std::string& msg );
-
-        void enter( const silly::BisonParser::location_type& loc );
-
-        void exit( const silly::BisonParser::location_type& loc );
-
-        /// Error count
-        int errorCount{};
+        void emitParseError( const silly::BisonParser::location_type& loc, const std::string& msg );
 
         yyscan_t getScanner();
 

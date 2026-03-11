@@ -7,6 +7,7 @@
 
 #include "BisonParseListener.hpp"
 #include "DriverState.hpp"
+#include "LocationStack.hpp"
 #include "PrintFlags.hpp"
 #include "SillyDialect.hpp"
 #include "silly.lex.hh"    // flex-generated reentrant scanner
@@ -56,14 +57,14 @@ namespace silly
         return { startLoc, endLoc };
     }
 
-    void BisonParseListener::enter( const silly::BisonParser::location_type& bLoc )
+    void BisonParseListener::enterStartRule( const silly::BisonParser::location_type& bLoc )
     {
         mlir::Location loc = getLocation( bLoc );
 
         createMain( loc, loc );
     }
 
-    void BisonParseListener::exit( const silly::BisonParser::location_type& bLoc )
+    void BisonParseListener::exitStartRule( const silly::BisonParser::location_type& bLoc )
     {
         assert( !isModule );    // TODO
 
@@ -110,24 +111,40 @@ namespace silly
         return nullptr;
     }
 
-    void BisonParseListener::emitPrint( int value, const silly::BisonParser::location_type& bLoc,
+    void BisonParseListener::enterPrintStatement( Literal lit, const silly::BisonParser::location_type& bLoc,
                                         const silly::BisonParser::location_type& valueLoc )
     {
         // printf( "%s:%d:%d:PRINT %d (value at %d:%d)\n", sourceFile.c_str(), bLoc.begin.line, bLoc.begin.column,
         //         value, valueLoc.begin.line, valueLoc.begin.column );
         mlir::Location loc = getLocation( bLoc );
         PrintFlags pf = PRINT_FLAGS_NONE;
-        // LocationStack ls;
+        LocationStack ls( builder, loc );
         std::vector<mlir::Value> vargs;
         // for ( SillyParser::ExpressionContext *parg : args )
         {
             // mlir::Value v = parseExpression( parg, {}, ls );
             mlir::Location vLoc = getLocation( valueLoc );
-            mlir::Value v = mlir::arith::ConstantIntOp::create( builder, vLoc, value, 32 );
+            mlir::Value v;
+            switch ( lit.kind )
+            {
+                case Literal::Kind::Int:
+                    v = parseInteger( vLoc, 64, lit.sval, ls );
+                    break;
+                case Literal::Kind::Float:
+                    v = parseFloat( vLoc, typ.f64, lit.sval, ls );
+                    break;
+                case Literal::Kind::Bool:
+                    //v = parseInteger( vLoc, 1, lit.sval, ls );
+                    v = mlir::arith::ConstantIntOp::create( builder, vLoc, lit.bval, 1 );
+                    break;
+                case Literal::Kind::String:
+                    v = buildStringLiteral( vLoc, lit.sval, ls );
+                    break;
+            }
+
             if ( !v )
             {
-                emitError( bLoc, "mlir::arith::ConstantIntOp::create failed" );
-                // emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
                 return;
             }
 
@@ -140,10 +157,10 @@ namespace silly
         silly::PrintOp::create( builder, loc, constFlagOp, vargs );
     }
 
-    void BisonParseListener::emitError( const silly::BisonParser::location_type& loc, const std::string& msg )
+    void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )
     {
-        fprintf( stderr, "%s:%d:%d: error: %s\n", sourceFile.c_str(), loc.begin.line, loc.begin.column, msg.c_str() );
-        errorCount++;
+        mlir::Location loc = getLocation( bLoc );
+        emitInternalError( loc, __FILE__, __LINE__, __func__, msg, currentFuncName );
     }
 
     mlir::OwningOpRef<mlir::ModuleOp> runParseListener( silly::SourceManager& s, const std::string& filename )

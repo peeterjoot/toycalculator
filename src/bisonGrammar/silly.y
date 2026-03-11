@@ -1,12 +1,11 @@
 ///
-/// @file    silly.l
+/// @file    silly.y
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Bison based experimental parse tree listener and MLIR builder (Grammar part.)
 ///
 %require "3.2"
 %language "c++"
 %defines "silly.tab.hh"
-
 %define api.namespace {silly}
 %define api.parser.class {BisonParser}
 %define api.value.type variant
@@ -17,6 +16,37 @@
     #include <string>
     namespace silly {
         class BisonParseListener;
+
+        struct Literal
+        {
+            enum class Kind
+            {
+                Int,
+                Float,
+                String,
+                Bool
+            };
+            Kind kind;
+            std::string sval{}; /* int or float as string, or string content */
+            bool bval{};
+
+            static Literal makeInt( const std::string& s )
+            {
+                return { Kind::Int, s, false };
+            }
+            static Literal makeFloat( const std::string& s )
+            {
+                return { Kind::Float, s, false };
+            }
+            static Literal makeString( const std::string& s )
+            {
+                return { Kind::String, s, false };
+            }
+            static Literal makeBool( bool b )
+            {
+                return { Kind::Bool, {}, b };
+            }
+        };
     }
 }
 
@@ -32,7 +62,6 @@
 %code top {
     #include "BisonParseListener.hpp"
     #include "silly.lex.hh"
-
     static int yylex( silly::BisonParser::value_type* yylval,
                       silly::BisonParser::location_type* yylloc,
                       silly::BisonParseListener& driver )
@@ -56,10 +85,8 @@
 %token COLON_TOKEN
 %token COMMA_TOKEN
 %token CONTINUE_TOKEN
-%token DECIMALSEP_TOKEN
 %token DECLARE_TOKEN
 %token DIV_TOKEN
-%token DQUOTE_TOKEN
 %token ELIF_TOKEN
 %token ELSE_TOKEN
 %token ENDOFSTATEMENT_TOKEN
@@ -67,7 +94,6 @@
 %token EQUALS_TOKEN
 %token ERROR_TOKEN
 %token EXIT_TOKEN
-%token EXPONENT_TOKEN
 %token FALSE_LITERAL
 %token FLOAT32_TOKEN
 %token FLOAT64_TOKEN
@@ -98,19 +124,29 @@
 %token STRING_TOKEN
 %token TIMES_TOKEN
 %token TRUE_LITERAL
-%token <int> INTEGER_PATTERN
+
+/* Typed tokens */
+%token <std::string> INTEGER_PATTERN
+%token <std::string> FLOAT_PATTERN
+%token <std::string> STRING_PATTERN
+%token <std::string> IDENTIFIER
+
+/* Typed non-terminals */
+%type <silly::Literal> literal
+%type <std::string>    integerLiteral
+%type <std::string>    floatLiteral
+%type <std::string>    stringLiteral
 
 %%
 
 startRule
     : statementList
-        { driver.exit( @$ ); }
+        { driver.exitStartRule( @$ ); }
     ;
 
 statementList
-    :
-    /* empty */
-        { driver.enter( @$ ); }
+    : /* empty */
+        { driver.enterStartRule( @$ ); }
     | statementList statement
     ;
 
@@ -119,13 +155,41 @@ statement
     ;
 
 printStatement
-    : PRINT_TOKEN INTEGER_PATTERN
-        { driver.emitPrint( $2, @1, @2 ); }
+    : PRINT_TOKEN literal
+        { driver.enterPrintStatement( $2, @1, @2 ); }
+    ;
+
+literal
+    : integerLiteral
+        { $$ = silly::Literal::makeInt( $1 ); }
+    | floatLiteral
+        { $$ = silly::Literal::makeFloat( $1 ); }
+    | stringLiteral
+        { $$ = silly::Literal::makeString( $1 ); }
+    | TRUE_LITERAL
+        { $$ = silly::Literal::makeBool( true ); }
+    | FALSE_LITERAL
+        { $$ = silly::Literal::makeBool( false ); }
+    ;
+
+integerLiteral
+    : INTEGER_PATTERN
+        { $$ = $1; }
+    ;
+
+floatLiteral
+    : FLOAT_PATTERN
+        { $$ = $1; }
+    ;
+
+stringLiteral
+    : STRING_PATTERN
+        { $$ = $1; }
     ;
 
 %%
 
 void silly::BisonParser::error( const location_type& loc, const std::string& msg )
 {
-    driver.emitError( loc, msg );
+    driver.emitParseError( loc, msg );
 }

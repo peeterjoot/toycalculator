@@ -12,11 +12,13 @@
 
 #include "MlirTypeCache.hpp"
 #include "ParserPerFunctionState.hpp"
+#include "SillyDialect.hpp"
 
 namespace silly
 {
     class SourceManager;
     class DriverState;
+    class LocationStack;
 
     /// Start and end locations associated with parser context.
     using LocPairs = std::pair<mlir::Location, mlir::Location>;
@@ -30,8 +32,8 @@ namespace silly
         /// - set the current function name, and squirrel away the funcOp for lookup.
         /// - Creates initial dummy DebugScopeOp placeholder.
         ///
-        void createScope( mlir::Location startLoc, mlir::func::FuncOp funcOp,
-                          const std::string &funcName, const std::vector<std::string> &paramNames );
+        void createScope( mlir::Location startLoc, mlir::func::FuncOp funcOp, const std::string &funcName,
+                          const std::vector<std::string> &paramNames );
 
         /// Returns a reference to the functionStateMap entry for funcName.
         ///
@@ -43,6 +45,40 @@ namespace silly
         void createMain( mlir::Location floc, mlir::Location sloc1 );
 
         void createMainExit( mlir::Location loc );
+
+        /// Emit a user-friendly error message in GCC/Clang style
+        ///
+        /// (calls emitError)
+        void emitUserError( mlir::Location loc, const std::string &message, const std::string &funcName )
+        {
+            emitError( loc, message, funcName, false );
+        }
+
+        /// Emit an internal error message, including the location in the compiler source where the error occured.
+        ///
+        /// (calls emitError)
+        void emitInternalError( mlir::Location loc, const char *compilerfile, unsigned compilerline,
+                                const char *compilerfunc, const std::string &message,
+                                const std::string &programFuncName );
+
+        /// Internal parse listener error message output.
+        ///
+        /// Show the file:line:col: error: message (colorized if desired.)
+        ///
+        /// errorCount is incremented as a side effect.
+        void emitError( mlir::Location loc, const std::string &message, const std::string &funcName, bool internal );
+
+        /// Construct a Value for a TRUE or FALSE boolean literal string
+        mlir::Value parseBoolean( mlir::Location loc, const std::string &s, LocationStack &ls );
+
+        /// Construct a Value for an integer literal string
+        mlir::Value parseInteger( mlir::Location loc, int width, const std::string &s, LocationStack &ls );
+
+        /// Construct a Value for a floating point literal string
+        mlir::Value parseFloat( mlir::Location loc, mlir::FloatType ty, const std::string &s, LocationStack &ls );
+
+        /// Strip double quotes off of a string, and build a string literal op for it
+        silly::StringLiteralOp buildStringLiteral( mlir::Location loc, const std::string &input, LocationStack &ls );
 
        protected:
         Builder( silly::SourceManager &s, const std::string &filename );

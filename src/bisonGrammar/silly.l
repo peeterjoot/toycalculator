@@ -13,17 +13,18 @@
 #include "silly.tab.hh"
 #include <climits>
 #include <cerrno>
+#include <cstring>
 #include "BisonParseListener.hpp"
 
-#define YY_USER_ACTION                        \
-    yylloc->begin = yylloc->end;              \
-    for ( const char* c = yytext; *c; ++c ) { \
-        if ( *c == '\n' ) {                   \
-            yylloc->end.line++;               \
-            yylloc->end.column = 1;           \
-        } else {                              \
-            yylloc->end.column++;             \
-        }                                     \
+#define YY_USER_ACTION                         \
+    yylloc->begin = yylloc->end;               \
+    for ( const char* c = yytext; *c; ++c ) {  \
+        if ( *c == '\n' ) {                    \
+            yylloc->end.line++;                \
+            yylloc->end.column = 1;            \
+        } else {                               \
+            yylloc->end.column++;              \
+        }                                      \
     }
 %}
 
@@ -44,18 +45,14 @@
 ":"                 { return silly::BisonParser::token::COLON_TOKEN; }
 ","                 { return silly::BisonParser::token::COMMA_TOKEN; }
 "CONTINUE"          { return silly::BisonParser::token::CONTINUE_TOKEN; }
-"."                 { return silly::BisonParser::token::DECIMALSEP_TOKEN; }
 "DECLARE"           { return silly::BisonParser::token::DECLARE_TOKEN; }
 "/"                 { return silly::BisonParser::token::DIV_TOKEN; }
-"\""                { return silly::BisonParser::token::DQUOTE_TOKEN; }
 "ELIF"              { return silly::BisonParser::token::ELIF_TOKEN; }
 "ELSE"              { return silly::BisonParser::token::ELSE_TOKEN; }
 "EQ"                { return silly::BisonParser::token::EQUALITY_TOKEN; }
 "="                 { return silly::BisonParser::token::EQUALS_TOKEN; }
 "ERROR"             { return silly::BisonParser::token::ERROR_TOKEN; }
 "EXIT"              { return silly::BisonParser::token::EXIT_TOKEN; }
-"E"                 { return silly::BisonParser::token::EXPONENT_TOKEN; }
-"FALSE"             { return silly::BisonParser::token::FALSE_LITERAL; }
 "FLOAT32"           { return silly::BisonParser::token::FLOAT32_TOKEN; }
 "FLOAT64"           { return silly::BisonParser::token::FLOAT64_TOKEN; }
 "FOR"               { return silly::BisonParser::token::FOR_TOKEN; }
@@ -83,21 +80,36 @@
 "}"                 { return silly::BisonParser::token::RIGHT_CURLY_BRACKET_TOKEN; }
 "STRING"            { return silly::BisonParser::token::STRING_TOKEN; }
 "*"                 { return silly::BisonParser::token::TIMES_TOKEN; }
-"TRUE"              { return silly::BisonParser::token::TRUE_LITERAL; }
-[0-9]+  {
-    errno = 0;
-    char* end;
-    long val = std::strtol( yytext, &end, 10 );
 
-    if ( errno == ERANGE || val > INT_MAX || val < INT_MIN ) {
-        silly::BisonParseListener* driver = yyget_extra( yyscanner );
-        driver->emitError( *yylloc, "integer literal out of range" );
-        yylval->emplace<int>( 0 );  // recover with a dummy value
-    } else {
-        yylval->emplace<int>( static_cast<int>( val ) );
+"TRUE" {
+    return silly::BisonParser::token::TRUE_LITERAL;
+}
+
+"FALSE" {
+    return silly::BisonParser::token::FALSE_LITERAL;
+}
+
+[0-9]+("."[0-9]+)?("E""-"?[0-9]+)?  {
+    /* Float pattern: must be checked before INTEGER_PATTERN since it is a superset */
+    if ( strchr( yytext, '.' ) || strchr( yytext, 'E' ) ) {
+        yylval->emplace<std::string>( yytext );
+        return silly::BisonParser::token::FLOAT_PATTERN;
     }
+    yylval->emplace<std::string>( yytext );
     return silly::BisonParser::token::INTEGER_PATTERN;
 }
+
+\"[^\"]*\"  {
+    /* String literal: not stripping the surrounding quotes -- leave that for buildStringLiteral */
+    yylval->emplace<std::string>( std::string( yytext, yyleng ) );
+    return silly::BisonParser::token::STRING_PATTERN;
+}
+
+[a-zA-Z][a-zA-Z0-9_]*  {
+    yylval->emplace<std::string>( yytext );
+    return silly::BisonParser::token::IDENTIFIER;
+}
+
 [ \t\r\n]+          { /* skip whitespace */ }
 "//"[^\n]*          { /* skip comments */ }
 .                   { return yytext[0]; }
