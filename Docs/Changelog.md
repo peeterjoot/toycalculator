@@ -83,11 +83,11 @@ Back in main again, rc = 42
 
 ## Grammar & Parser Changes
 
-* Remove the old DCL_TOKEN from the antlr4 grammar
+* Remove the old `DCL_TOKEN` from the antlr4 grammar
 
 ### Experimental BISON/FLEX front end and grammar.
 
-* Very incomplete.
+* Very incomplete: See README.
 
 ### Grammar Enhancements
 
@@ -124,6 +124,7 @@ Back in main again, rc = 42
 * Moved tests/lit/* to tests/, moved tests/endtoend/* to Samples/, generate lit wrappers for all the Samples/*/*silly
 * Did a systematic rename of all the tests/, using names that match the testing better, and removing redundancy.
 * Range check tests for too big int/float literal: `toolong-int-literal.silly`, `toolong-float-literal.silly` (also catching std::exception)
+* Didn't catch stoi for array index expressions.  t/c: `too-big-array.silly`
 
 ### Test Infrastructure Updates
 

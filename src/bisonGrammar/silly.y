@@ -21,15 +21,20 @@
         {
             enum class Kind
             {
+                None,
                 Int,
                 Float,
                 String,
                 Bool
             };
-            Kind kind;
+            Kind kind{ Kind::None };
             std::string sval{}; /* int or float as string, or string content */
             bool bval{};
 
+            static Literal makeNone()
+            {
+                return { Kind::None, {}, false };
+            }
             static Literal makeInt( const std::string& s )
             {
                 return { Kind::Int, s, false };
@@ -136,6 +141,10 @@
 %type <std::string>    integerLiteral
 %type <std::string>    floatLiteral
 %type <std::string>    stringLiteral
+%type <std::string>    intType
+%type <std::string>    floatType
+%type <std::string>    arrayBoundsExpression
+%type <silly::Literal> optionalInitializer
 
 %%
 
@@ -152,6 +161,58 @@ statementList
 
 statement
     : printStatement ENDOFSTATEMENT_TOKEN
+    | declareStatement ENDOFSTATEMENT_TOKEN
+    ;
+
+declareStatement
+    : intDeclareStatement
+    | floatDeclareStatement
+    | boolDeclareStatement
+    ;
+
+intDeclareStatement
+    : intType IDENTIFIER arrayBoundsExpression optionalInitializer
+        { driver.enterIntDeclare( $1, $2, $3, $4, @1, @2, @3 ); }
+    ;
+
+floatDeclareStatement
+    : floatType IDENTIFIER arrayBoundsExpression optionalInitializer
+        { driver.enterFloatDeclare( $1, $2, $3, $4, @1, @2, @3 ); }
+    ;
+
+boolDeclareStatement
+    : BOOL_TOKEN IDENTIFIER arrayBoundsExpression optionalInitializer
+        { driver.enterBoolDeclare( $2, $3, $4, @1, @2, @3 ); }
+    ;
+
+intType
+    : INT8_TOKEN    { $$ = "INT8";  }
+    | INT16_TOKEN   { $$ = "INT16"; }
+    | INT32_TOKEN   { $$ = "INT32"; }
+    | INT64_TOKEN   { $$ = "INT64"; }
+    ;
+
+floatType
+    : FLOAT32_TOKEN { $$ = "FLOAT32"; }
+    | FLOAT64_TOKEN { $$ = "FLOAT64"; }
+    ;
+
+/* Returns -1 if no array bounds, otherwise the array size */
+arrayBoundsExpression
+    : /* empty */
+        { $$ = {}; }
+    | ARRAY_START_TOKEN INTEGER_PATTERN ARRAY_END_TOKEN
+        { $$ = $2; }
+    ;
+
+/* Returns a Literal with kind==Bool/bval==false as the "no initializer" sentinel */
+optionalInitializer
+    : /* empty */
+        { $$ = silly::Literal::makeNone(); }
+    | EQUALS_TOKEN literal
+        { $$ = $2; }
+    | LEFT_CURLY_BRACKET_TOKEN literal RIGHT_CURLY_BRACKET_TOKEN
+        { $$ = $2; }
     ;
 
 printStatement

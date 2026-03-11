@@ -174,136 +174,6 @@ namespace silly
         return value;
     }
 
-    void Antlr4ParseListener::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
-                                                   SillyParser::ArrayBoundsExpressionContext *arrayBounds,
-                                                   SillyParser::ExpressionContext *assignmentExpression,
-                                                   const std::vector<SillyParser::ExpressionContext *> *pExpressions,
-                                                   LocationStack &ls )
-    {
-        int64_t arraySize{};
-        size_t numElements{ 1 };
-        if ( arrayBounds )
-        {
-            tNode *index = arrayBounds->INTEGER_PATTERN();
-            assert( index );
-            arraySize = std::stoi( index->getText() );
-            numElements = arraySize;
-        }
-
-        ParserPerFunctionState &f = funcState( currentFuncName );
-
-        mlir::Value v = f.searchForVariable( varName );
-        if ( v )
-        {
-            // coverage: syntax-error/redeclare.silly
-            emitUserError( loc, std::format( "Variable {} already declared", varName ), currentFuncName );
-            return;
-        }
-
-        std::vector<mlir::Value> initializers;
-
-        if ( pExpressions )
-        {
-            mlir::Value fill{};
-
-            for ( SillyParser::ExpressionContext *e : *pExpressions )
-            {
-                mlir::Value init = parseExpression( e, ty, ls );
-                if ( !init )
-                {
-                    emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
-                    return;
-                }
-
-                initializers.push_back( init );
-            }
-
-            ssize_t remaining = numElements - initializers.size();
-
-            if ( remaining )
-            {
-                if ( ty == typ.i1 )
-                {
-                    fill = parseBoolean( loc, "FALSE", ls );
-                }
-                else if ( mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( ty ) )
-                {
-                    int width = ity.getWidth();
-                    fill = parseInteger( loc, width, "0", ls );
-                }
-                else if ( mlir::FloatType fty = mlir::dyn_cast<mlir::FloatType>( ty ) )
-                {
-                    fill = parseFloat( loc, fty, "0", ls );
-                }
-                else
-                {
-                    emitInternalError( loc, __FILE__, __LINE__, __func__, "unknown scalar type.", currentFuncName );
-                    return;
-                }
-            }
-
-            if ( initializers.size() > numElements )
-            {
-                // coverage: syntax-error/array-too-many-init.silly, syntax-error/init-list-mismatch.silly,
-                // syntax-error/init-list2.silly
-                emitUserError(
-                    loc,
-                    std::format( "For variable '{}', more initializers ({}) specified than number of elements ({}).",
-                                 varName, initializers.size(), numElements ),
-                    currentFuncName );
-                return;
-            }
-
-            for ( ssize_t i = 0; i < remaining; i++ )
-            {
-                assert( fill );
-                initializers.push_back( fill );
-            }
-        }
-
-        mlir::DenseI64ArrayAttr shapeAttr;
-        if ( arraySize )
-        {
-            shapeAttr = builder.getDenseI64ArrayAttr( { arraySize } );
-        }
-        else
-        {
-            shapeAttr = builder.getDenseI64ArrayAttr( {} );
-        }
-
-        silly::varType varType = builder.getType<silly::varType>( ty, shapeAttr );
-
-        silly::DeclareOp dcl{};
-        if ( !assignmentExpression )
-        {
-            // mlir::Location fusedLoc = ls.fuseLocations( );
-            dcl = silly::DeclareOp::create( builder, loc, varType, initializers );
-        }
-        else
-        {
-            ls.push_back( loc );
-            dcl = silly::DeclareOp::create( builder, loc, varType, initializers );
-        }
-        f.recordVariableValue( varName, dcl.getResult() );
-
-        f.setLastDeclared( dcl.getOperation() );
-
-#if 0
-        builder.restoreInsertionPoint( savedIP );
-#endif
-
-        mlir::Value debugScopeOp = f.currentDebugScope();
-
-        silly::DebugNameOp::create( builder, loc, dcl.getResult(), varName, debugScopeOp );
-
-        if ( assignmentExpression )
-        {
-            processAssignment( assignmentExpression, varName, {}, ls );
-
-            // dcl.getResult().setLoc( ls.fuseLocations() );
-        }
-    }
-
     inline mlir::Value Antlr4ParseListener::parseLowest( antlr4::ParserRuleContext *ctx, mlir::Type ty,
                                                          LocationStack &ls )
     {
@@ -832,8 +702,39 @@ namespace silly
             assignmentExpression = declareAssignmentExpression->expression();
         }
 
-        registerDeclaration( loc, varName, ty, arrayBoundsExpression, assignmentExpression, pExpressions, ls );
+        std::string arrayBoundsString;
+        mlir::Location aLoc = loc;
+        if ( arrayBoundsExpression )
+        {
+            tNode *index = arrayBoundsExpression->INTEGER_PATTERN();
+            arrayBoundsString = index->getText();
+            aLoc = getTerminalLocation( index );
+        }
 
+        std::vector<mlir::Value> initializers;
+        if ( pExpressions )
+        {
+            for ( SillyParser::ExpressionContext *e : *pExpressions )
+            {
+                mlir::Value init = parseExpression( e, ty, ls );
+                if ( !init )
+                {
+                    emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
+                    return;
+                }
+
+                initializers.push_back( init );
+            }
+        }
+
+        registerDeclaration( loc, varName, ty, aLoc, arrayBoundsString, pExpressions ? true : false, initializers, ls );
+
+        if ( assignmentExpression )
+        {
+            processAssignment( assignmentExpression, varName, {}, ls );
+
+            // dcl.getResult().setLoc( ls.fuseLocations() );
+        }
         // LLVM_DEBUG( { llvm::errs() << "enterDeclareHelper done: module dump:\n"; rmod->dump(); } );
     }
 
@@ -926,9 +827,12 @@ namespace silly
         assert( ctx->IDENTIFIER() );
         std::string varName = ctx->IDENTIFIER()->getText();
         SillyParser::ArrayBoundsExpressionContext *arrayBounds = ctx->arrayBoundsExpression();
-        assert( arrayBounds );
 
-        registerDeclaration( loc, varName, typ.i8, arrayBounds, nullptr, nullptr, ls );
+        tNode *index = arrayBounds->INTEGER_PATTERN();
+        const std::string arrayBoundsString = index->getText();
+        mlir::Location aloc = getTerminalLocation( index );
+        std::vector<mlir::Value> initializers;
+        registerDeclaration( loc, varName, typ.i8, aloc, arrayBoundsString, false, initializers, ls );
 
         if ( tNode *theString = ctx->STRING_PATTERN() )
         {
@@ -2176,7 +2080,7 @@ namespace silly
             return value;
         }
 
-        if (!value)
+        if ( !value )
         {
             emitInternalError( loc, __FILE__, __LINE__, __func__,
                                std::format( "expression parse error: {}", ctx->getText() ), currentFuncName );

@@ -1,0 +1,8 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g too-big-array.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: too-big-array.silly:8:11: error: Array bounds integer literal value 111111111111111111111111111111111111111111111 is out of range or bad: stoi
+// CHECK:     8 | FLOAT64 x[111111111111111111111111111111111111111111111];
+// CHECK:       |           ^
+
+
+FLOAT64 x[111111111111111111111111111111111111111111111];

@@ -80,6 +80,11 @@ namespace silly
         /// Strip double quotes off of a string, and build a string literal op for it
         silly::StringLiteralOp buildStringLiteral( mlir::Location loc, const std::string &input, LocationStack &ls );
 
+        /// Registers a variable declaration in the current scope.
+        void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
+                                  mlir::Location aLoc, const std::string & arrayBounds,
+                                  bool haveInitializers, std::vector<mlir::Value> & initializers,
+                                  LocationStack &ls );
        protected:
         Builder( silly::SourceManager &s, const std::string &filename );
 

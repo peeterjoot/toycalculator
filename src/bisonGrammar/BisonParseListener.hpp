@@ -35,6 +35,23 @@ namespace silly
         void enterPrintStatement( Literal value, const silly::BisonParser::location_type& printLoc,
                                   const silly::BisonParser::location_type& valueLoc );
 
+        void enterIntDeclare( const std::string& typeName, const std::string& varName,
+                              const std::string& arraySizeString, Literal initializer,
+                              const silly::BisonParser::location_type& typeLoc,
+                              const silly::BisonParser::location_type& nameLoc,
+                              const silly::BisonParser::location_type& arrayLoc );
+
+        void enterFloatDeclare( const std::string& typeName, const std::string& varName,
+                                const std::string& arraySizeString, Literal initializer,
+                                const silly::BisonParser::location_type& typeLoc,
+                                const silly::BisonParser::location_type& nameLoc,
+                                const silly::BisonParser::location_type& arrayLoc );
+
+        void enterBoolDeclare( const std::string& varName, const std::string& arraySizeString, Literal initializer,
+                               const silly::BisonParser::location_type& typeLoc,
+                               const silly::BisonParser::location_type& nameLoc,
+                               const silly::BisonParser::location_type& arrayLoc );
+
         /// Called from parser on error
         void emitParseError( const silly::BisonParser::location_type& loc, const std::string& msg );
 
@@ -45,6 +62,11 @@ namespace silly
 
         LocPairs getLocations( const silly::BisonParser::location_type& bloc );
 
+        mlir::Type integerDeclarationType( mlir::Location loc, const std::string& typeName );
+
+        void declarationHelper( mlir::Location tLoc, mlir::Location aLoc, const std::string& varName,
+                                   const std::string& arraySizeString, mlir::Type ty, Literal initializer,
+                                   LocationStack& ls );
         yyscan_t scanner{};
     };
 }    // namespace silly

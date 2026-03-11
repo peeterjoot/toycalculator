@@ -9,8 +9,8 @@
 
 #include "Builder.hpp"
 #include "DriverState.hpp"
-#include "SillyDialect.hpp"
 #include "LocationStack.hpp"
+#include "SillyDialect.hpp"
 #include "SourceManager.hpp"
 #include "helper.hpp"    // formatLocation
 
@@ -271,6 +271,109 @@ namespace silly
         stringLiteral = silly::StringLiteralOp::create( builder, loc, typ.ptr, strAttr );
 
         return stringLiteral;
+    }
+
+    void Builder::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
+                                       mlir::Location aLoc, const std::string &arrayBounds, bool haveInitializers,
+                                       std::vector<mlir::Value> &initializers, LocationStack &ls )
+    {
+        int64_t arraySize{};
+        size_t numElements{ 1 };
+        if ( !arrayBounds.empty() )
+        {
+            try
+            {
+                arraySize = std::stoi( arrayBounds );
+            }
+            catch ( std::exception &ex )
+            {
+                // coverage: syntax-error/too-big-array.silly
+                emitUserError( aLoc,
+                               std::format( "Array bounds integer literal value {} is out of range or bad: {}",
+                                            arrayBounds, ex.what() ),
+                               currentFuncName );
+                return;
+            }
+            numElements = arraySize;
+        }
+
+        ParserPerFunctionState &f = funcState( currentFuncName );
+
+        mlir::Value v = f.searchForVariable( varName );
+        if ( v )
+        {
+            // coverage: syntax-error/redeclare.silly
+            emitUserError( loc, std::format( "Variable {} already declared", varName ), currentFuncName );
+            return;
+        }
+
+        if ( haveInitializers )
+        {
+            mlir::Value fill{};
+
+            ssize_t remaining = numElements - initializers.size();
+
+            if ( remaining )
+            {
+                if ( ty == typ.i1 )
+                {
+                    fill = parseBoolean( loc, "FALSE", ls );
+                }
+                else if ( mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( ty ) )
+                {
+                    int width = ity.getWidth();
+                    fill = parseInteger( loc, width, "0", ls );
+                }
+                else if ( mlir::FloatType fty = mlir::dyn_cast<mlir::FloatType>( ty ) )
+                {
+                    fill = parseFloat( loc, fty, "0", ls );
+                }
+                else
+                {
+                    emitInternalError( loc, __FILE__, __LINE__, __func__, "unknown scalar type.", currentFuncName );
+                    return;
+                }
+            }
+
+            if ( initializers.size() > numElements )
+            {
+                // coverage: syntax-error/array-too-many-init.silly, syntax-error/init-list-mismatch.silly,
+                // syntax-error/init-list2.silly
+                emitUserError(
+                    loc,
+                    std::format( "For variable '{}', more initializers ({}) specified than number of elements ({}).",
+                                 varName, initializers.size(), numElements ),
+                    currentFuncName );
+                return;
+            }
+
+            for ( ssize_t i = 0; i < remaining; i++ )
+            {
+                assert( fill );
+                initializers.push_back( fill );
+            }
+        }
+
+        mlir::DenseI64ArrayAttr shapeAttr;
+        if ( arraySize )
+        {
+            shapeAttr = builder.getDenseI64ArrayAttr( { arraySize } );
+        }
+        else
+        {
+            shapeAttr = builder.getDenseI64ArrayAttr( {} );
+        }
+
+        silly::varType varType = builder.getType<silly::varType>( ty, shapeAttr );
+
+        silly::DeclareOp dcl = silly::DeclareOp::create( builder, loc, varType, initializers );
+        f.recordVariableValue( varName, dcl.getResult() );
+
+        f.setLastDeclared( dcl.getOperation() );
+
+        mlir::Value debugScopeOp = f.currentDebugScope();
+
+        silly::DebugNameOp::create( builder, loc, dcl.getResult(), varName, debugScopeOp );
     }
 }    // namespace silly
 

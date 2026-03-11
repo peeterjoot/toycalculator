@@ -193,12 +193,6 @@ namespace silly
         void handlePrint( mlir::Location loc, const std::vector<SillyParser::ExpressionContext *> &args,
                           const std::string &errorContextString, PrintFlags flags, LocationStack &ls );
 
-        /// Registers a variable declaration in the current scope.
-        void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
-                                  SillyParser::ArrayBoundsExpressionContext *arrayBounds,
-                                  SillyParser::ExpressionContext *assignmentExpression,
-                                  const std::vector<SillyParser::ExpressionContext *> *expressions, LocationStack &ls );
-
         /// Map INT8_TOKEN, INT16_TOKEN, ... to a mlir::Type
         mlir::Type integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext *ctx );
 

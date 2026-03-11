@@ -5,6 +5,8 @@
 ///
 #include <mlir/Dialect/Arith/IR/Arith.h>
 
+#include <format>
+
 #include "BisonParseListener.hpp"
 #include "DriverState.hpp"
 #include "LocationStack.hpp"
@@ -112,7 +114,7 @@ namespace silly
     }
 
     void BisonParseListener::enterPrintStatement( Literal lit, const silly::BisonParser::location_type& bLoc,
-                                        const silly::BisonParser::location_type& valueLoc )
+                                                  const silly::BisonParser::location_type& valueLoc )
     {
         // printf( "%s:%d:%d:PRINT %d (value at %d:%d)\n", sourceFile.c_str(), bLoc.begin.line, bLoc.begin.column,
         //         value, valueLoc.begin.line, valueLoc.begin.column );
@@ -127,6 +129,8 @@ namespace silly
             mlir::Value v;
             switch ( lit.kind )
             {
+                case Literal::Kind::None:
+                    break;
                 case Literal::Kind::Int:
                     v = parseInteger( vLoc, 64, lit.sval, ls );
                     break;
@@ -134,7 +138,7 @@ namespace silly
                     v = parseFloat( vLoc, typ.f64, lit.sval, ls );
                     break;
                 case Literal::Kind::Bool:
-                    //v = parseInteger( vLoc, 1, lit.sval, ls );
+                    // v = parseInteger( vLoc, 1, lit.sval, ls );
                     v = mlir::arith::ConstantIntOp::create( builder, vLoc, lit.bval, 1 );
                     break;
                 case Literal::Kind::String:
@@ -144,7 +148,8 @@ namespace silly
 
             if ( !v )
             {
-                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
+                emitInternalError( loc, __FILE__, __LINE__, __func__,
+                                   std::format( "parseExpression failed. Kind: {}", (int)lit.kind ), currentFuncName );
                 return;
             }
 
@@ -155,6 +160,136 @@ namespace silly
         mlir::arith::ConstantIntOp constFlagOp = mlir::arith::ConstantIntOp::create( builder, loc, pf, 32 );
 
         silly::PrintOp::create( builder, loc, constFlagOp, vargs );
+    }
+
+    mlir::Type BisonParseListener::integerDeclarationType( mlir::Location loc, const std::string& typeName )
+    {
+        mlir::Type ty{};
+
+        if ( typeName == "INT8" )
+        {
+            ty = typ.i8;
+        }
+        else if ( typeName == "INT16" )
+        {
+            ty = typ.i16;
+        }
+        else if ( typeName == "INT32" )
+        {
+            ty = typ.i32;
+        }
+        else if ( typeName == "INT64" )
+        {
+            ty = typ.i64;
+        }
+        else
+        {
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "Unsupported signed integer declaration size.",
+                               currentFuncName );
+        }
+
+        return ty;
+    }
+
+    void BisonParseListener::declarationHelper( mlir::Location tLoc, mlir::Location aLoc, const std::string& varName,
+                                                const std::string& arraySizeString, mlir::Type ty, Literal initializer,
+                                                LocationStack& ls )
+    {
+        bool haveInitializer{};
+        std::vector<mlir::Value> initializers;
+
+        if ( initializer.kind != Literal::Kind::None )
+        {
+            haveInitializer = true;
+            mlir::Value init;
+
+            // proper location for initializer?
+            if ( ty == typ.i1 )
+            {
+                init = mlir::arith::ConstantIntOp::create( builder, tLoc, initializer.bval, 1 );
+            }
+            else if ( mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( ty ) )
+            {
+                init = parseInteger( tLoc, ity.getWidth(), initializer.sval, ls );
+            }
+            else
+            {
+                mlir::FloatType fty = mlir::dyn_cast<mlir::FloatType>( ty );
+
+                init = parseFloat( tLoc, fty, initializer.sval, ls );
+            }
+
+            if ( !init )
+            {
+                emitInternalError( tLoc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
+                return;
+            }
+
+            initializers.push_back( init );
+        }
+
+        registerDeclaration( tLoc, varName, ty, aLoc, arraySizeString, haveInitializer, initializers, ls );
+    }
+
+    void BisonParseListener::enterIntDeclare( const std::string& typeName, const std::string& varName,
+                                              const std::string& arraySizeString, Literal initializer,
+                                              const silly::BisonParser::location_type& typeLoc,
+                                              const silly::BisonParser::location_type& nameLoc,
+                                              const silly::BisonParser::location_type& arrayLoc )
+    {
+        mlir::Location tLoc = getLocation( typeLoc );
+        mlir::Type ty = integerDeclarationType( tLoc, typeName );
+        if ( !ty )
+        {
+            return;
+        }
+        mlir::Location aLoc = getLocation( arrayLoc );
+        LocationStack ls( builder, tLoc );
+
+
+        declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initializer, ls );
+    }
+
+    void BisonParseListener::enterFloatDeclare( const std::string& typeName, const std::string& varName,
+                                                const std::string& arraySizeString, Literal initializer,
+                                                const silly::BisonParser::location_type& typeLoc,
+                                                const silly::BisonParser::location_type& nameLoc,
+                                                const silly::BisonParser::location_type& arrayLoc )
+    {
+        mlir::Location tLoc = getLocation( typeLoc );
+        mlir::Type ty;
+        if ( typeName == "FLOAT32" )
+        {
+            ty = typ.f32;
+        }
+        else if ( typeName == "FLOAT64" )
+        {
+            ty = typ.f64;
+        }
+        else
+        {
+            emitInternalError( tLoc, __FILE__, __LINE__, __func__, "Unsupported floating point declaration size.",
+                               currentFuncName );
+            return;
+        }
+
+        mlir::Location aLoc = getLocation( arrayLoc );
+        LocationStack ls( builder, tLoc );
+
+        declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initializer, ls );
+    }
+
+    void BisonParseListener::enterBoolDeclare( const std::string& varName, const std::string& arraySizeString,
+                                               Literal initializer, const silly::BisonParser::location_type& typeLoc,
+                                               const silly::BisonParser::location_type& nameLoc,
+                                               const silly::BisonParser::location_type& arrayLoc )
+    {
+        mlir::Location tLoc = getLocation( typeLoc );
+        mlir::Type ty = typ.i1;
+        mlir::Location aLoc = getLocation( arrayLoc );
+        LocationStack ls( builder, tLoc );
+
+        declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initializer, ls );
     }
 
     void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )
