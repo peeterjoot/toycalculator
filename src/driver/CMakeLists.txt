@@ -45,6 +45,14 @@ add_executable(silly
   ${ANTLR_SOURCES}
 )
 
+# Experiment to see what depends on RTTI (more than ParseListener.cpp?): answer:
+#FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyListener.cpp.o
+#FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyBaseListener.cpp.o
+#FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyLexer.cpp.o
+#FAILED: src/driver/CMakeFiles/silly.dir/__/grammar/SillyParser/SillyParser.cpp.o
+#FAILED: src/driver/CMakeFiles/silly.dir/ParseListener.cpp.o
+#target_compile_options(silly PRIVATE -fno-rtti)
+
 if(SILLY_ENABLE_INSTALL)
     # Set RPATH for installed binary
     set_target_properties(silly PROPERTIES

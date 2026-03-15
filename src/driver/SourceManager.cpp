@@ -8,9 +8,9 @@
 #include <fstream>
 
 #include "CompilationUnit.hpp"
-#include "ParseListener.hpp"
 #include "ReturnCodes.hpp"
 #include "SourceManager.hpp"
+#include "DriverState.hpp"
 
 #define DEBUG_TYPE "silly-sm"
 

@@ -2514,6 +2514,14 @@ namespace silly
 
         return value;
     }
+
+    // Minimize -frtti dependencies:
+    mlir::OwningOpRef<mlir::ModuleOp> runParseListener( silly::SourceManager &s, const std::string &filename )
+    {
+        silly::ParseListener listener( sm, sourceFileName );
+
+        return listener.run();
+    }
 }    // namespace silly
 
 // vim: et ts=4 sw=4

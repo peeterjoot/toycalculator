@@ -37,7 +37,6 @@
 #include "DialectContext.hpp"
 #include "DriverState.hpp"
 #include "OptLevel.hpp"
-#include "ParseListener.hpp"
 #include "ReturnCodes.hpp"
 #include "SillyDialect.hpp"
 #include "SillyPasses.hpp"
@@ -58,6 +57,8 @@ namespace silly
         }
     }
 
+    mlir::OwningOpRef<mlir::ModuleOp> runParseListener( silly::SourceManager &s, const std::string &filename );
+
     ReturnCodes CompilationUnit::processSourceFile( const std::string& sourceFileName )
     {
         ity = getInputType( sourceFileName );
@@ -72,9 +73,8 @@ namespace silly
 
         if ( ity == InputType::Silly )
         {
-            silly::ParseListener listener( sm, sourceFileName );
+            rmod = runParseListener( sm, sourceFileName );
 
-            rmod = listener.run();
             if ( ds.openFailed )
             {
                 // coverage: driver/bad-file-should-fail.silly
