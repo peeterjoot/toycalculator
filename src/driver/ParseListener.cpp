@@ -2518,7 +2518,7 @@ namespace silly
     // Minimize -frtti dependencies:
     mlir::OwningOpRef<mlir::ModuleOp> runParseListener( silly::SourceManager &s, const std::string &filename )
     {
-        silly::ParseListener listener( sm, sourceFileName );
+        silly::ParseListener listener( s, filename );
 
         return listener.run();
     }

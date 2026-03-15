@@ -6,10 +6,32 @@ set(ANTLR_SOURCES
   ${ANTLR_OUTPUT_DIR}/SillyLexer.cpp
 )
 
+set(DRIVER_SOURCES
+  CompilationUnit.cpp
+  DialectContext.cpp
+  driver.cpp
+  helper.cpp
+  LoweringContext.cpp
+  lowering.cpp
+  MlirTypeCache.cpp
+  SourceManager.cpp
+)
+
+set_source_files_properties(
+  ${DRIVER_SOURCES}
+  PROPERTIES COMPILE_OPTIONS "-fno-rtti"
+)
+
 # Mark them as generated so CMake doesn't complain they don't exist yet
 set_source_files_properties(
   ${ANTLR_SOURCES}
   PROPERTIES GENERATED TRUE
+)
+
+set_source_files_properties(
+  ${ANTLR_SOURCES}
+  ParseListener.cpp
+  PROPERTIES COMPILE_OPTIONS "-frtti"
 )
 
 add_compile_definitions(
@@ -32,17 +54,9 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
 endif()
 
 add_executable(silly
-  ${DRIVER_SOURCE_FILES}
-  driver.cpp
-  lowering.cpp
-  ParseListener.cpp
-  helper.cpp
-  LoweringContext.cpp
-  DialectContext.cpp
-  MlirTypeCache.cpp
-  CompilationUnit.cpp
-  SourceManager.cpp
   ${ANTLR_SOURCES}
+  ${DRIVER_SOURCES}
+  ParseListener.cpp
 )
 
 # Experiment to see what depends on RTTI (more than ParseListener.cpp?): answer:
