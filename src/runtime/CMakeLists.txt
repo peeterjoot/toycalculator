@@ -1,6 +1,8 @@
 # Add runtime library as a shared object
 add_library(silly_runtime SHARED Silly_runtime.cpp)
 
+add_common_compile_options(silly_runtime)
+
 set_target_properties(silly_runtime PROPERTIES OUTPUT_NAME "silly_runtime")
 
 target_link_options(silly_runtime PRIVATE -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/version_script.map)

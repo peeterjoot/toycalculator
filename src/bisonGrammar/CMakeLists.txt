@@ -19,7 +19,13 @@ add_library(BisonGrammar
     ${FLEX_Lexer_OUTPUTS}
 )
 
+add_common_compile_options(BisonGrammar)
+
 target_include_directories(BisonGrammar PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}   # for generated .tab.hh and .lex.hh
     ${CMAKE_CURRENT_SOURCE_DIR}   # for BisonParseListener.hpp etc.
 )
+
+#target_include_directories(BisonGrammar PRIVATE
+#    $<TARGET_PROPERTY:SillyDialect,INTERFACE_INCLUDE_DIRECTORIES>
+#)

@@ -9,6 +9,7 @@
 * why is empty.silly failing when run with lit, but not otherwise.
 * build llvm w/o RTTI on xpgn and toggle bin/build to detect that (but also allow as an option)
 * update README and changelog when this is done.
+* takes two ninja calls to build the project (seemingly related to timestamps for tablegen related files).  This appears to be a fine grain timestamp issue somewhat like https://peeterjoot.com/2015/02/25/why-does-touch-include-a-utimensat-syscall/ https://peeterjoot.com/2015/02/25/on-touchs-use-of-futimes-and-a-filesystem-bug/ -- to be investigated.
 
 #### Debug
 * Audit the places where I am passing both Location and LocationStack.  Do I need the first?

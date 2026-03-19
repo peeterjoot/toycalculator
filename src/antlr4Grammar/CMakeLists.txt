@@ -77,6 +77,8 @@ add_library(Antlr4Grammar
     Antlr4ParseListener.cpp
 )
 
+add_common_compile_options(Antlr4Grammar)
+
 target_include_directories(Antlr4Grammar PRIVATE ${ANTLR_OUTPUT_DIR})
 
 add_dependencies(Antlr4Grammar GenerateANTLR)

@@ -117,6 +117,12 @@ if ( $hack )
    $flags .= '-DHACK_BUILDER=1 ';
 }
 
+my $rtti = `$prefix/bin/llvm-config --has-rtti` ; chomp $rtti;
+if ( $rtti eq 'NO' )
+{
+   $bison = 1;
+}
+
 if ( $bison )
 {
    $flags .= '-DUSE_BISON_GRAMMAR=1 ';

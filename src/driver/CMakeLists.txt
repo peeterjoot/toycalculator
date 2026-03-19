@@ -35,6 +35,8 @@ add_executable(silly
   ${DRIVER_SOURCES}
 )
 
+add_common_compile_options(silly)
+
 if(SILLY_ENABLE_INSTALL)
     # Set RPATH for installed binary
     set_target_properties(silly PROPERTIES

@@ -81,7 +81,12 @@ add_library(SillyDialect SHARED
   SillyPasses.cpp
 )
 
-#target_compile_options(SillyDialect PRIVATE -fno-rtti)
+add_common_compile_options(SillyDialect)
+
+#target_include_directories(SillyDialect PUBLIC
+#    ${CMAKE_CURRENT_BINARY_DIR}
+#    ${CMAKE_CURRENT_SOURCE_DIR}
+#)
 
 #------------------------------------------------------------------------------
 
