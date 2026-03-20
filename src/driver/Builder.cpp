@@ -562,6 +562,65 @@ namespace silly
 
         return value;
     }
+
+    void Builder::processAssignment( mlir::Location loc, mlir::Value resultValue, const std::string &currentVarName,
+                                     mlir::Value currentIndexExpr, LocationStack &ls )
+    {
+        if ( !resultValue )
+        {
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "no resultValue for expression", currentFuncName );
+            return;
+        }
+
+        silly::DeclareOp declareOp = lookupDeclareForVar( loc, currentVarName );
+        mlir::Value var = declareOp.getResult();
+
+        assert( resultValue );
+
+        mlir::BlockArgument ba = mlir::dyn_cast<mlir::BlockArgument>( resultValue );
+        mlir::Operation *op = resultValue.getDefiningOp();
+        mlir::Value i{};
+
+        // mlir::Location fusedLoc = ls.fuseLocations( );
+
+        // Don't check if it's a StringLiteralOp if it's an induction variable, since op will be nullptr
+        if ( !ba && isa<silly::StringLiteralOp>( op ) )
+        {
+            silly::AssignOp::create( builder, loc, var, i, resultValue );
+        }
+        else
+        {
+            if ( currentIndexExpr )
+            {
+                mlir::Location loc = currentIndexExpr.getLoc();
+
+                mlir::Value i = indexTypeCast( loc, currentIndexExpr, ls );
+
+                silly::AssignOp assign = silly::AssignOp::create( builder, loc, var, i, resultValue );
+
+                LLVM_DEBUG( {
+                    mlir::OpPrintingFlags flags;
+                    flags.enableDebugInfo( true );
+
+                    assign->print( llvm::outs(), flags );
+                    llvm::outs() << "\n";
+                } );
+            }
+            else
+            {
+                silly::AssignOp::create( builder, loc, var, i, resultValue );
+            }
+        }
+    }
+
+    bool Builder::isVariableDeclared( const std::string &varName )
+    {
+        // Get the single scope
+        ParserPerFunctionState &f = funcState( currentFuncName );
+
+        mlir::Value v = f.searchForVariable( varName );
+        return ( v != nullptr ) ? true : false;
+    }
 }    // namespace silly
 
 // vim: et ts=4 sw=4

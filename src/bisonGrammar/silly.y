@@ -55,7 +55,7 @@
             }
         };
 
-        struct PrintContextArgument
+        struct LiteralOrVariable
         {
             enum class Kind
             {
@@ -66,11 +66,12 @@
             Literal lit{};      /* valid when kind == Literal  */
             std::string name{}; /* valid when kind == Variable */
 
-            static PrintContextArgument fromLiteral( const Literal& l )
+            static LiteralOrVariable fromLiteral( const Literal& l )
             {
                 return { Kind::Literal, l, {} };
             }
-            static PrintContextArgument fromVariable( const std::string& s )
+
+            static LiteralOrVariable fromVariable( const std::string& s )
             {
                 return { Kind::Variable, {}, s };
             }
@@ -160,18 +161,19 @@
 %token <std::string> IDENTIFIER
 
 /* Typed non-terminals */
-%type <silly::Literal>               literal
-%type <std::string>                  integerLiteral
-%type <std::string>                  floatLiteral
-%type <std::string>                  stringLiteral
-%type <std::string>                  intType
-%type <std::string>                  floatType
-%type <std::string>                  arrayBoundsExpression
-%type <silly::Literal>               optionalInitializer
-%type <std::string>                  importStatement
-%type <std::string>                  scalarType
-%type <silly::PrintContextArgument>              printArg
-%type <std::vector<silly::PrintContextArgument>> printArgList
+%type <silly::Literal>                          literal
+%type <std::string>                             integerLiteral
+%type <std::string>                             floatLiteral
+%type <std::string>                             stringLiteral
+%type <std::string>                             intType
+%type <std::string>                             floatType
+%type <std::string>                             arrayBoundsExpression
+%type <silly::Literal>                          optionalInitializer
+%type <std::string>                             importStatement
+%type <std::string>                             scalarType
+%type <silly::LiteralOrVariable>                printArg
+%type <std::vector<silly::LiteralOrVariable>>   printArgList
+%type <std::string>                             assignmentLHS
 
 %%
 
@@ -230,6 +232,19 @@ statement
     | declareStatement ENDOFSTATEMENT_TOKEN
     | importStatement ENDOFSTATEMENT_TOKEN
     | functionStatement ENDOFSTATEMENT_TOKEN
+    | assignmentStatement ENDOFSTATEMENT_TOKEN
+    ;
+
+assignmentStatement
+    : assignmentLHS EQUALS_TOKEN printArg
+        { driver.enterAssignment( $1, $3, @1, @3 ); }
+    ;
+
+assignmentLHS
+    : IDENTIFIER
+        { $$ = $1; }
+    | IDENTIFIER ARRAY_START_TOKEN INTEGER_PATTERN ARRAY_END_TOKEN
+        { $$ = $1; /* stub: index ignored for now */ }
     ;
 
 importStatement
@@ -334,16 +349,16 @@ errorStatement
 
 printArgList
     : printArg
-        { $$ = std::vector<silly::PrintContextArgument>{ $1 }; }
+        { $$ = std::vector<silly::LiteralOrVariable>{ $1 }; }
     | printArgList COMMA_TOKEN printArg
         { $1.push_back( $3 ); $$ = std::move( $1 ); }
     ;
 
 printArg
     : literal
-        { $$ = silly::PrintContextArgument::fromLiteral( $1 ); }
+        { $$ = silly::LiteralOrVariable::fromLiteral( $1 ); }
     | IDENTIFIER
-        { $$ = silly::PrintContextArgument::fromVariable( $1 ); }
+        { $$ = silly::LiteralOrVariable::fromVariable( $1 ); }
     ;
 
 optionalContinue

@@ -138,15 +138,6 @@ namespace silly
         return getTokenLocation( token );
     }
 
-    bool Antlr4ParseListener::isVariableDeclared( const std::string &varName )
-    {
-        // Get the single scope
-        ParserPerFunctionState &f = funcState( currentFuncName );
-
-        mlir::Value v = f.searchForVariable( varName );
-        return ( v != nullptr ) ? true : false;
-    }
-
     inline mlir::Value Antlr4ParseListener::parseExpression( SillyParser::ExpressionContext *ctx, mlir::Type ty,
                                                              LocationStack &ls )
     {
@@ -712,7 +703,9 @@ namespace silly
 
         if ( assignmentExpression )
         {
-            processAssignment( assignmentExpression, varName, {}, ls );
+            mlir::Location aLoc = getStartLocation( assignmentExpression );
+            mlir::Value resultValue = parseExpression( assignmentExpression, {}, ls );
+            processAssignment( aLoc, resultValue, varName, {}, ls );
 
             // dcl.getResult().setLoc( ls.fuseLocations() );
         }
@@ -1229,59 +1222,6 @@ namespace silly
         processReturnLike( locs.second, ctx->expression(), ls );
     }
 
-    void Antlr4ParseListener::processAssignment( SillyParser::ExpressionContext *exprContext,
-                                                 const std::string &currentVarName, mlir::Value currentIndexExpr,
-                                                 LocationStack &ls )
-    {
-        mlir::Value resultValue = parseExpression( exprContext, {}, ls );
-        mlir::Location loc = getStartLocation( exprContext );
-        if ( !resultValue )
-        {
-            emitInternalError( loc, __FILE__, __LINE__, __func__, "no resultValue for expression", currentFuncName );
-            return;
-        }
-
-        silly::DeclareOp declareOp = lookupDeclareForVar( loc, currentVarName );
-        mlir::Value var = declareOp.getResult();
-
-        assert( resultValue );
-
-        mlir::BlockArgument ba = mlir::dyn_cast<mlir::BlockArgument>( resultValue );
-        mlir::Operation *op = resultValue.getDefiningOp();
-        mlir::Value i{};
-
-        // mlir::Location fusedLoc = ls.fuseLocations( );
-
-        // Don't check if it's a StringLiteralOp if it's an induction variable, since op will be nullptr
-        if ( !ba && isa<silly::StringLiteralOp>( op ) )
-        {
-            silly::AssignOp::create( builder, loc, var, i, resultValue );
-        }
-        else
-        {
-            if ( currentIndexExpr )
-            {
-                mlir::Location loc = currentIndexExpr.getLoc();
-
-                mlir::Value i = indexTypeCast( loc, currentIndexExpr, ls );
-
-                silly::AssignOp assign = silly::AssignOp::create( builder, loc, var, i, resultValue );
-
-                LLVM_DEBUG( {
-                    mlir::OpPrintingFlags flags;
-                    flags.enableDebugInfo( true );
-
-                    assign->print( llvm::outs(), flags );
-                    llvm::outs() << "\n";
-                } );
-            }
-            else
-            {
-                silly::AssignOp::create( builder, loc, var, i, resultValue );
-            }
-        }
-    }
-
     void Antlr4ParseListener::enterAssignmentStatement( SillyParser::AssignmentStatementContext *ctx )
     {
         assert( ctx );
@@ -1315,7 +1255,10 @@ namespace silly
             }
         }
 
-        processAssignment( ctx->expression(), currentVarName, currentIndexExpr, ls );
+        SillyParser::ExpressionContext *exprContext = ctx->expression();
+        mlir::Location aLoc = getStartLocation( exprContext );
+        mlir::Value resultValue = parseExpression( exprContext, {}, ls );
+        processAssignment( aLoc, resultValue, currentVarName, currentIndexExpr, ls );
     }
 
     inline mlir::Value Antlr4ParseListener::createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what,

@@ -100,6 +100,13 @@ namespace silly
         mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType,
                                       LocationStack &ls );
 
+        /// Handle assignment processing, given the current var-name and index (if appropriate.)
+        void processAssignment( mlir::Location loc, mlir::Value resultValue, const std::string &currentVarName,
+                                mlir::Value currentIndexExpr, LocationStack &ls );
+
+        /// Lookup in per-function state, whether a variable has been declared
+        bool isVariableDeclared( const std::string &varName );
+
        protected:
         Builder( silly::SourceManager &s, const std::string &filename );
 

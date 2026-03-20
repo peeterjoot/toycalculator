@@ -143,9 +143,6 @@ namespace silly
         ///
         ////////////////////////////////////////////////////////////////////////
 
-        /// Lookup in per-function state, whether a variable has been declared
-        bool isVariableDeclared( const std::string &varName );
-
         /// @brief check for inappropriate RETURN
         ///
         /// Grammar now allows for RETURN in IF/ELIF/ELSE/FOR blocks, (as well as FUNCTION)
@@ -210,10 +207,6 @@ namespace silly
 
         /// Find the current scf.if condition and set the insertion point to the else region for that if.
         void selectElseBlock( mlir::Location loc, const std::string &errorText );
-
-        /// Handle assignment processing, given the current var-name and index (if appropriate.)
-        void processAssignment( SillyParser::ExpressionContext *exprContext, const std::string &currentVarName,
-                                mlir::Value currentIndexExpr, LocationStack &ls );
 
         /// Handle parsing of an expression (the top-level entry point for expressions).
         /// This function serves as the main entry point for parsing any rvalue expression.
