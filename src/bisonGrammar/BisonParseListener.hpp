@@ -57,6 +57,8 @@ namespace silly
 
         yyscan_t getScanner();
 
+        void setModule();
+
        private:
         mlir::Location getLocation( const silly::BisonParser::location_type& bloc );
 

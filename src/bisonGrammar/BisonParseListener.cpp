@@ -41,6 +41,11 @@ namespace silly
         return scanner;
     }
 
+    void BisonParseListener::setModule()
+    {
+        isModule = true;
+    }
+
     mlir::Location BisonParseListener::getLocation( const silly::BisonParser::location_type& bLoc )
     {
         mlir::FileLineColLoc startLoc =
@@ -61,26 +66,30 @@ namespace silly
 
     void BisonParseListener::enterStartRule( const silly::BisonParser::location_type& bLoc )
     {
-        mlir::Location loc = getLocation( bLoc );
+        if ( !isModule )
+        {
+            mlir::Location loc = getLocation( bLoc );
 
-        createMain( loc, loc );
+            createMain( loc, loc );
+        }
     }
 
     void BisonParseListener::exitStartRule( const silly::BisonParser::location_type& bLoc )
     {
-        assert( !isModule );    // TODO
+        if ( !isModule )
+        {
+            LocPairs locs = getLocations( bLoc );
 
-        LocPairs locs = getLocations( bLoc );
+            llvm::SmallVector<mlir::Location, 2> funcLocs{ locs.first, locs.second };
+            mlir::Location fLoc = builder.getFusedLoc( funcLocs );
 
-        llvm::SmallVector<mlir::Location, 2> funcLocs{ locs.first, locs.second };
-        mlir::Location fLoc = builder.getFusedLoc( funcLocs );
+            ParserPerFunctionState& f = funcState( currentFuncName );
+            mlir::func::FuncOp funcOp = f.getFuncOp();
+            funcOp->setLoc( fLoc );
 
-        ParserPerFunctionState& f = funcState( currentFuncName );
-        mlir::func::FuncOp funcOp = f.getFuncOp();
-        funcOp->setLoc( fLoc );
-
-        // HACK: unconditional:
-        createMainExit( locs.second );
+            // HACK: unconditional:
+            createMainExit( locs.second );
+        }
     }
 
     mlir::OwningOpRef<mlir::ModuleOp> BisonParseListener::run()

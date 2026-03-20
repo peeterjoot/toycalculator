@@ -145,23 +145,104 @@
 %type <std::string>    floatType
 %type <std::string>    arrayBoundsExpression
 %type <silly::Literal> optionalInitializer
+%type <std::string> importStatement
+%type <std::string> scalarType
 
 %%
 
 startRule
-    : statementList
+    : moduleProgram
         { driver.exitStartRule( @$ ); }
+    | mainProgram
+        { driver.exitStartRule( @$ ); }
+    ;
+
+moduleProgram
+    : MODULE_TOKEN ENDOFSTATEMENT_TOKEN
+        { driver.setModule(); driver.enterStartRule( @$ ); }
+      moduleStatementList
+    ;
+
+moduleStatementList
+    : /* empty */
+    | moduleStatementList moduleStatement ENDOFSTATEMENT_TOKEN
+    ;
+
+moduleStatement
+    : functionStatement
+    | importStatement
+    ;
+
+mainProgram
+    : MAIN_TOKEN ENDOFSTATEMENT_TOKEN
+        { driver.enterStartRule( @$ ); }
+      statementList optionalExitStatement
+    | /* no MAIN token */
+        { driver.enterStartRule( @$ ); }
+      statementList optionalExitStatement
+    ;
+
+optionalExitStatement
+    : /* empty */
+    | exitStatement ENDOFSTATEMENT_TOKEN
+    ;
+
+exitStatement
+    : EXIT_TOKEN literal
+        { /* stub */ }
+    | EXIT_TOKEN
+        { /* stub */ }
     ;
 
 statementList
     : /* empty */
-        { driver.enterStartRule( @$ ); }
     | statementList statement
     ;
 
 statement
     : printStatement ENDOFSTATEMENT_TOKEN
     | declareStatement ENDOFSTATEMENT_TOKEN
+    | importStatement ENDOFSTATEMENT_TOKEN
+    | functionStatement ENDOFSTATEMENT_TOKEN
+    ;
+
+importStatement
+    : IMPORT_TOKEN IDENTIFIER
+        { /* stub */ $$ = $2; }
+    ;
+
+functionStatement
+    : FUNCTION_TOKEN IDENTIFIER
+      BRACE_START_TOKEN optionalParamList BRACE_END_TOKEN
+      optionalReturnType
+      { /* stub */ }
+    ;
+
+optionalParamList
+    : /* empty */
+    | paramList
+    ;
+
+paramList
+    : variableTypeAndName
+    | paramList COMMA_TOKEN variableTypeAndName
+    ;
+
+variableTypeAndName
+    : scalarType IDENTIFIER
+        { /* stub */ }
+    ;
+
+optionalReturnType
+    : /* empty */
+    | COLON_TOKEN scalarType
+        { /* stub */ }
+    ;
+
+scalarType
+    : intType       { $$ = $1; }
+    | floatType     { $$ = $1; }
+    | BOOL_TOKEN    { $$ = "BOOL"; }
     ;
 
 declareStatement

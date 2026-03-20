@@ -1,5 +1,5 @@
 // RUN: %ExeSilly %s -o %t.exe
-// RUN: %t.exe || (test $? -eq 3 || { echo "Expected exit 3, got $?"; exit 1; })
+// RUN: %t.exe; RC=$?; if [ $RC -ne 3 ]; then echo "Expected exit 3, got $RC"; exit 1; fi
 
 FLOAT64 x = 3;
 EXIT x;

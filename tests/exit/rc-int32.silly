@@ -1,5 +1,5 @@
 // RUN: %ExeSilly %s -o %t.exe
-// RUN: %t.exe || (test $? -eq 1 || { echo "Expected exit 1, got $?"; exit 1; })
+// RUN: %t.exe; RC=$?; if [ $RC -ne 1 ]; then echo "Expected exit 1, got $RC"; exit 1; fi
 
 INT32 i1 = 1;
 INT32 i2 = 0;

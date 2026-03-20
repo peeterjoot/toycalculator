@@ -1,5 +1,5 @@
 // RUN: %ExeSilly %s -o %t.exe
-// RUN: %t.exe || (test $? -eq 42 || { echo "Expected exit 42, got $?"; exit 1; })
+// RUN: %t.exe; RC=$?; if [ $RC -ne 42 ]; then echo "Expected exit 42, got $RC"; exit 1; fi
 
 EXIT 40 + 2;
 // comments should be allowed after

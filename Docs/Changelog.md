@@ -125,6 +125,7 @@ Back in main again, rc = 42
 * Did a systematic rename of all the tests/, using names that match the testing better, and removing redundancy.
 * Range check tests for too big int/float literal: `toolong-int-literal.silly`, `toolong-float-literal.silly` (also catching std::exception)
 * Didn't catch stoi for array index expressions.  t/c: `too-big-array.silly`
+* rc-3 was unexpectedly successful, despite not implementing EXIT yet.  Fixed the test (and a few others like it.)
 
 ### Test Infrastructure Updates
 
