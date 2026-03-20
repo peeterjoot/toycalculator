@@ -64,7 +64,7 @@ include_directories(${MLIR_INCLUDE_DIRS})
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/src/dialect)
 include_directories(${CMAKE_SOURCE_DIR}/src/dialect)
 include_directories(${CMAKE_SOURCE_DIR}/src/include)
-if(USE_BISON_GRAMMAR)
+if(NOT USE_BISON_GRAMMAR)
     include_directories(/usr/include/antlr4-runtime)
 endif()
 
