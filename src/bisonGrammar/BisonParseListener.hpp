@@ -32,8 +32,8 @@ namespace silly
         void exitStartRule( const silly::BisonParser::location_type& loc );
 
         /// Called from parser action for PRINT statement
-        void enterPrintStatement( Literal value, const silly::BisonParser::location_type& printLoc,
-                                  const silly::BisonParser::location_type& valueLoc );
+        void enterPrintStatement( const std::vector<silly::PrintContextArgument>& args,
+                                  const silly::BisonParser::location_type& printLoc );
 
         void enterIntDeclare( const std::string& typeName, const std::string& varName,
                               const std::string& arraySizeString, Literal initializer,
@@ -59,6 +59,10 @@ namespace silly
 
         void setModule();
 
+        void setPrintContinue();
+        void setPrintError();
+        void setDeclarationAssignment();
+
        private:
         mlir::Location getLocation( const silly::BisonParser::location_type& bloc );
 
@@ -67,8 +71,12 @@ namespace silly
         mlir::Type integerDeclarationType( mlir::Location loc, const std::string& typeName );
 
         void declarationHelper( mlir::Location tLoc, mlir::Location aLoc, const std::string& varName,
-                                   const std::string& arraySizeString, mlir::Type ty, Literal initializer,
-                                   LocationStack& ls );
+                                const std::string& arraySizeString, mlir::Type ty, Literal initializer,
+                                LocationStack& ls );
         yyscan_t scanner{};
+
+        bool hasPrintContinue{};
+        bool hasPrintError{};
+        bool declarationAssignmentInitialization{};
     };
 }    // namespace silly

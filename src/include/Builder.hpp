@@ -81,10 +81,25 @@ namespace silly
         silly::StringLiteralOp buildStringLiteral( mlir::Location loc, const std::string &input, LocationStack &ls );
 
         /// Registers a variable declaration in the current scope.
-        void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
-                                  mlir::Location aLoc, const std::string & arrayBounds,
-                                  bool haveInitializers, std::vector<mlir::Value> & initializers,
-                                  LocationStack &ls );
+        void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty, mlir::Location aLoc,
+                                  const std::string &arrayBounds, bool haveInitializers,
+                                  std::vector<mlir::Value> &initializers, LocationStack &ls );
+
+        mlir::Value variableToValue( mlir::Location loc, const std::string &varName, mlir::Value iValue,
+                                     mlir::Location iLoc, LocationStack &ls );
+
+        /// Looks up DeclareOp for a variable.
+        silly::DeclareOp lookupDeclareForVar( mlir::Location loc, const std::string &varName );
+
+        /// Casts index value to index type.
+        mlir::Value indexTypeCast( mlir::Location loc, mlir::Value val, LocationStack &ls );
+
+        /// Casts value to desired type if needed.
+        ///
+        /// This is adapted from AssignOpLowering, but uses arith dialect operations instead of LLVM dialect.
+        mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType,
+                                      LocationStack &ls );
+
        protected:
         Builder( silly::SourceManager &s, const std::string &filename );
 

@@ -168,9 +168,6 @@ namespace silly
                                  SillyParser::ArrayBoundsExpressionContext *arrayBoundsExpression, mlir::Type ty,
                                  LocationStack &ls );
 
-        /// Looks up DeclareOp for a variable.
-        silly::DeclareOp lookupDeclareForVar( mlir::Location loc, const std::string &varName );
-
         /// Construct locations from the getStart() and getStop() tokens.
         inline LocPairs getLocations( antlr4::ParserRuleContext *ctx, bool unique = false );
 
@@ -198,15 +195,6 @@ namespace silly
 
         /// Parses scalar type string to MLIR type.
         mlir::Type parseScalarType( const std::string &ty );
-
-        /// Casts value to desired type if needed.
-        ///
-        /// This is adapted from AssignOpLowering, but uses arith dialect operations instead of LLVM dialect.
-        mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType,
-                                      LocationStack &ls );
-
-        /// Casts index value to index type.
-        mlir::Value indexTypeCast( mlir::Location loc, mlir::Value val, LocationStack &ls );
 
         /// Emits silly::ReturnOp (or exit equivalent) with optional value.
         void processReturnLike( mlir::Location loc, SillyParser::ExpressionContext *rvalueExpression,

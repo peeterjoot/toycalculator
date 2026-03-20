@@ -46,6 +46,21 @@ namespace silly
         isModule = true;
     }
 
+    void BisonParseListener::setPrintContinue()
+    {
+        hasPrintContinue = true;
+    }
+
+    void BisonParseListener::setPrintError()
+    {
+        hasPrintError = true;
+    }
+
+    void BisonParseListener::setDeclarationAssignment()
+    {
+        declarationAssignmentInitialization = true;
+    }
+
     mlir::Location BisonParseListener::getLocation( const silly::BisonParser::location_type& bLoc )
     {
         mlir::FileLineColLoc startLoc =
@@ -122,44 +137,60 @@ namespace silly
         return nullptr;
     }
 
-    void BisonParseListener::enterPrintStatement( Literal lit, const silly::BisonParser::location_type& bLoc,
-                                                  const silly::BisonParser::location_type& valueLoc )
+    void BisonParseListener::enterPrintStatement( const std::vector<silly::PrintContextArgument>& args,
+                                                  const silly::BisonParser::location_type& printLoc )
     {
-        // printf( "%s:%d:%d:PRINT %d (value at %d:%d)\n", sourceFile.c_str(), bLoc.begin.line, bLoc.begin.column,
-        //         value, valueLoc.begin.line, valueLoc.begin.column );
-        mlir::Location loc = getLocation( bLoc );
+        mlir::Location loc = getLocation( printLoc );
         PrintFlags pf = PRINT_FLAGS_NONE;
+        if ( hasPrintContinue )
+        {
+            pf = PRINT_FLAGS_CONTINUE;
+        }
+
+        if ( hasPrintError )
+        {
+            pf = (PrintFlags)( pf | PRINT_FLAGS_ERROR );
+        }
+
+        hasPrintContinue = false;
+        hasPrintError = false;
+
         LocationStack ls( builder, loc );
         std::vector<mlir::Value> vargs;
-        // for ( SillyParser::ExpressionContext *parg : args )
+        for ( const silly::PrintContextArgument& parg : args )
         {
-            // mlir::Value v = parseExpression( parg, {}, ls );
-            mlir::Location vLoc = getLocation( valueLoc );
+            mlir::Location vLoc = loc;    // per-argument location?
             mlir::Value v;
-            switch ( lit.kind )
+            if ( parg.kind == PrintContextArgument::Kind::Literal )
             {
-                case Literal::Kind::None:
-                    break;
-                case Literal::Kind::Int:
-                    v = parseInteger( vLoc, 64, lit.sval, ls );
-                    break;
-                case Literal::Kind::Float:
-                    v = parseFloat( vLoc, typ.f64, lit.sval, ls );
-                    break;
-                case Literal::Kind::Bool:
-                    // v = parseInteger( vLoc, 1, lit.sval, ls );
-                    v = mlir::arith::ConstantIntOp::create( builder, vLoc, lit.bval, 1 );
-                    break;
-                case Literal::Kind::String:
-                    v = buildStringLiteral( vLoc, lit.sval, ls );
-                    break;
+                switch ( parg.lit.kind )
+                {
+                    case Literal::Kind::None:
+                        break;
+                    case Literal::Kind::Int:
+                        v = parseInteger( vLoc, 64, parg.lit.sval, ls );
+                        break;
+                    case Literal::Kind::Float:
+                        v = parseFloat( vLoc, typ.f64, parg.lit.sval, ls );
+                        break;
+                    case Literal::Kind::Bool:
+                        v = mlir::arith::ConstantIntOp::create( builder, vLoc, parg.lit.bval, 1 );
+                        break;
+                    case Literal::Kind::String:
+                        v = buildStringLiteral( vLoc, parg.lit.sval, ls );
+                        break;
+                }
+                if ( !v )
+                {
+                    emitInternalError( loc, __FILE__, __LINE__, __func__,
+                                       std::format( "parseExpression failed. Kind: {}", (int)parg.lit.kind ),
+                                       currentFuncName );
+                    return;
+                }
             }
-
-            if ( !v )
+            else
             {
-                emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                   std::format( "parseExpression failed. Kind: {}", (int)lit.kind ), currentFuncName );
-                return;
+                v = variableToValue( loc, parg.name, {}, loc, ls );
             }
 
             vargs.push_back( v );
@@ -247,6 +278,8 @@ namespace silly
                                               const silly::BisonParser::location_type& arrayLoc )
     {
         mlir::Location tLoc = getLocation( typeLoc );
+        //bool initIsDeclare = declarationAssignmentInitialization;
+        //declarationAssignmentInitialization = false;
         mlir::Type ty = integerDeclarationType( tLoc, typeName );
         if ( !ty )
         {
@@ -266,6 +299,8 @@ namespace silly
                                                 const silly::BisonParser::location_type& arrayLoc )
     {
         mlir::Location tLoc = getLocation( typeLoc );
+        //bool initIsDeclare = declarationAssignmentInitialization;
+        //declarationAssignmentInitialization = false;
         mlir::Type ty;
         if ( typeName == "FLOAT32" )
         {
@@ -294,6 +329,8 @@ namespace silly
                                                const silly::BisonParser::location_type& arrayLoc )
     {
         mlir::Location tLoc = getLocation( typeLoc );
+        //bool initIsDeclare = declarationAssignmentInitialization;
+        //declarationAssignmentInitialization = false;
         mlir::Type ty = typ.i1;
         mlir::Location aLoc = getLocation( arrayLoc );
         LocationStack ls( builder, tLoc );

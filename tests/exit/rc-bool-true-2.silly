@@ -1,8 +1,9 @@
 // RUN: %ExeSilly %s -o %t.exe
-// RUN: %t.exe; RC=$?; if [ $RC -ne 1 ]; then echo "Expected exit 1, got $RC"; exit 1; fi
+// RUN: %t.exe > %t.out; RC=$?; if [ $RC -ne 1 ]; then echo "Expected exit 1, got $RC"; exit 1; fi
 // RUN: %FileCheck %s < %t.out
 // CHECK: 0
 // CHECK: 1.000000
+// CHECK: 1
 // CHECK: 1
 
 BOOL i1v = TRUE;
@@ -12,4 +13,5 @@ i2v = i1v;
 FLOAT64 f = i1v;
 PRINT f;
 PRINT i2v;
+PRINT i1v;
 EXIT i1v;

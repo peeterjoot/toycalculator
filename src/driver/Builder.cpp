@@ -3,6 +3,7 @@
 /// @brief   Grammar agnostic subset of the MLIR builder for the silly language.
 #include <llvm/Support/FormatVariadic.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
+#include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 
 #include <format>
 #include <fstream>
@@ -374,6 +375,192 @@ namespace silly
         mlir::Value debugScopeOp = f.currentDebugScope();
 
         silly::DebugNameOp::create( builder, loc, dcl.getResult(), varName, debugScopeOp );
+    }
+
+    silly::DeclareOp Builder::lookupDeclareForVar( mlir::Location loc, const std::string &varName )
+    {
+        silly::DeclareOp declareOp{};
+        ParserPerFunctionState &f = funcState( currentFuncName );
+
+        mlir::Value var = f.searchForVariable( varName );
+        if ( !var )
+        {
+            // coverage: syntax-error/induction-in-step.silly
+            emitUserError( loc, std::format( "Undeclared variable {}", varName ), currentFuncName );
+            return declareOp;
+        }
+
+        declareOp = var.getDefiningOp<silly::DeclareOp>();
+        assert( declareOp );    // not sure I could trigger NULL declareOp with user code.
+
+        return declareOp;
+    }
+
+    mlir::Value Builder::variableToValue( mlir::Location loc, const std::string &varName, mlir::Value iValue,
+                                          mlir::Location iLoc, LocationStack &ls )
+    {
+        mlir::Value value;
+        ParserPerFunctionState &f = funcState( currentFuncName );
+        mlir::Value iVar = f.searchForInduction( varName );
+        mlir::Value pVar = f.searchForParameter( varName );
+        if ( iVar )
+        {
+            value = iVar;
+        }
+        else if ( pVar )
+        {
+            value = pVar;
+        }
+        else
+        {
+            silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+            if ( !declareOp )
+            {
+                emitInternalError( loc, __FILE__, __LINE__, __func__,
+                                   std::format( "DeclareOp lookup for variable {} failed", varName ), currentFuncName );
+                return value;
+            }
+
+            mlir::Value var = declareOp.getResult();
+            silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
+            mlir::Type elemType = varTy.getElementType();
+            mlir::Value i{};
+
+            if ( iValue )
+            {
+                i = indexTypeCast( iLoc, iValue, ls );
+
+                ls.push_back( loc );
+                value = silly::LoadOp::create( builder, loc, mlir::TypeRange{ elemType }, var, i );
+            }
+            else
+            {
+                mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
+                llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
+
+                if ( !shape.empty() )
+                {
+                    if ( mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( elemType ) )
+                    {
+                        unsigned w = ity.getWidth();
+                        if ( w == 8 )
+                        {
+                            elemType = typ.ptr;    // HACK.  Assumes that the only use of INT8[] is for STRING.
+                        }
+                    }
+                }
+
+                ls.push_back( loc );
+                value = silly::LoadOp::create( builder, loc, mlir::TypeRange{ elemType }, var, i );
+            }
+        }
+
+        return value;
+    }
+
+    mlir::Value Builder::indexTypeCast( mlir::Location loc, mlir::Value val, LocationStack &ls )
+    {
+        mlir::IndexType indexTy = builder.getIndexType();
+        mlir::Type valTy = val.getType();
+
+        if ( valTy == indexTy )
+        {
+            return val;
+        }
+
+        if ( !valTy.isSignlessInteger( 64 ) && valTy.isInteger() )
+        {
+            val = castOpIfRequired( loc, val, typ.i64, ls );
+            valTy = typ.i64;
+        }
+
+        // Only support i64, or castable to i64, for now
+        if ( !valTy.isSignlessInteger( 64 ) )
+        {
+            // If it's a non-i64 IntegerType, we could cast up to i64, and then cast that to index.
+            emitInternalError(
+                loc, __FILE__, __LINE__, __func__,
+                std::format( "NYI: indexTypeCast from type {} is not supported.", mlirTypeToString( valTy ) ),
+                currentFuncName );
+            return mlir::Value{};
+        }
+
+        ls.push_back( loc );
+        return mlir::arith::IndexCastOp::create( builder, loc, indexTy, val );
+    }
+
+    mlir::Value Builder::castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType,
+                                           LocationStack &ls )
+    {
+        mlir::Value newValue{};
+
+        if ( value.getType() != desiredType )
+        {
+            mlir::Type valType = value.getType();
+
+            if ( valType.isF64() )
+            {
+                if ( mlir::isa<mlir::IntegerType>( desiredType ) )
+                {
+                    newValue = mlir::arith::FPToSIOp::create( builder, loc, desiredType, value );
+                }
+                else if ( desiredType.isF32() )
+                {
+                    newValue = mlir::LLVM::FPExtOp::create( builder, loc, desiredType, value );
+                }
+            }
+            else if ( valType.isF32() )
+            {
+                if ( mlir::isa<mlir::IntegerType>( desiredType ) )
+                {
+                    newValue = mlir::arith::FPToSIOp::create( builder, loc, desiredType, value );
+                }
+                else if ( desiredType.isF64() )
+                {
+                    newValue = mlir::LLVM::FPExtOp::create( builder, loc, desiredType, value );
+                }
+            }
+            else if ( mlir::IntegerType viType = mlir::cast<mlir::IntegerType>( valType ) )
+            {
+                unsigned vwidth = viType.getWidth();
+                if ( mlir::isa<mlir::FloatType>( desiredType ) )
+                {
+                    if ( vwidth == 1 )
+                    {
+                        newValue = mlir::arith::UIToFPOp::create( builder, loc, desiredType, value );
+                    }
+                    else
+                    {
+                        newValue = mlir::arith::SIToFPOp::create( builder, loc, desiredType, value );
+                    }
+                }
+                else if ( mlir::IntegerType miType = mlir::cast<mlir::IntegerType>( desiredType ) )
+                {
+                    unsigned mwidth = miType.getWidth();
+                    if ( ( vwidth == 1 ) && ( mwidth != 1 ) )
+                    {
+                        // widen bool to integer using unsigned extension:
+                        newValue = mlir::arith::ExtUIOp::create( builder, loc, desiredType, value );
+                    }
+                    else if ( vwidth > mwidth )
+                    {
+                        newValue = mlir::arith::TruncIOp::create( builder, loc, desiredType, value );
+                    }
+                    else if ( vwidth < mwidth )
+                    {
+                        newValue = mlir::arith::ExtSIOp::create( builder, loc, desiredType, value );
+                    }
+                }
+            }
+        }
+
+        if ( newValue )
+        {
+            ls.push_back( loc );
+            return newValue;
+        }
+
+        return value;
     }
 }    // namespace silly
 

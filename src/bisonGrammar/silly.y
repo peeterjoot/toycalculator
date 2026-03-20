@@ -14,6 +14,8 @@
 
 %code requires {
     #include <string>
+    #include <vector>
+
     namespace silly {
         class BisonParseListener;
 
@@ -50,6 +52,27 @@
             static Literal makeBool( bool b )
             {
                 return { Kind::Bool, {}, b };
+            }
+        };
+
+        struct PrintContextArgument
+        {
+            enum class Kind
+            {
+                Literal,
+                Variable
+            };
+            Kind kind;
+            Literal lit{};      /* valid when kind == Literal  */
+            std::string name{}; /* valid when kind == Variable */
+
+            static PrintContextArgument fromLiteral( const Literal& l )
+            {
+                return { Kind::Literal, l, {} };
+            }
+            static PrintContextArgument fromVariable( const std::string& s )
+            {
+                return { Kind::Variable, {}, s };
             }
         };
     }
@@ -137,16 +160,18 @@
 %token <std::string> IDENTIFIER
 
 /* Typed non-terminals */
-%type <silly::Literal> literal
-%type <std::string>    integerLiteral
-%type <std::string>    floatLiteral
-%type <std::string>    stringLiteral
-%type <std::string>    intType
-%type <std::string>    floatType
-%type <std::string>    arrayBoundsExpression
-%type <silly::Literal> optionalInitializer
-%type <std::string> importStatement
-%type <std::string> scalarType
+%type <silly::Literal>               literal
+%type <std::string>                  integerLiteral
+%type <std::string>                  floatLiteral
+%type <std::string>                  stringLiteral
+%type <std::string>                  intType
+%type <std::string>                  floatType
+%type <std::string>                  arrayBoundsExpression
+%type <silly::Literal>               optionalInitializer
+%type <std::string>                  importStatement
+%type <std::string>                  scalarType
+%type <silly::PrintContextArgument>              printArg
+%type <std::vector<silly::PrintContextArgument>> printArgList
 
 %%
 
@@ -201,6 +226,7 @@ statementList
 
 statement
     : printStatement ENDOFSTATEMENT_TOKEN
+    | errorStatement ENDOFSTATEMENT_TOKEN
     | declareStatement ENDOFSTATEMENT_TOKEN
     | importStatement ENDOFSTATEMENT_TOKEN
     | functionStatement ENDOFSTATEMENT_TOKEN
@@ -291,14 +317,39 @@ optionalInitializer
     : /* empty */
         { $$ = silly::Literal::makeNone(); }
     | EQUALS_TOKEN literal
-        { $$ = $2; }
+        { driver.setDeclarationAssignment(); $$ = $2; }
     | LEFT_CURLY_BRACKET_TOKEN literal RIGHT_CURLY_BRACKET_TOKEN
         { $$ = $2; }
     ;
 
 printStatement
-    : PRINT_TOKEN literal
-        { driver.enterPrintStatement( $2, @1, @2 ); }
+    : PRINT_TOKEN printArgList optionalContinue
+        { driver.enterPrintStatement( $2, @1 ); }
+    ;
+
+errorStatement
+    : ERROR_TOKEN printArgList optionalContinue
+        { driver.setPrintError(); driver.enterPrintStatement( $2, @1 ); }
+    ;
+
+printArgList
+    : printArg
+        { $$ = std::vector<silly::PrintContextArgument>{ $1 }; }
+    | printArgList COMMA_TOKEN printArg
+        { $1.push_back( $3 ); $$ = std::move( $1 ); }
+    ;
+
+printArg
+    : literal
+        { $$ = silly::PrintContextArgument::fromLiteral( $1 ); }
+    | IDENTIFIER
+        { $$ = silly::PrintContextArgument::fromVariable( $1 ); }
+    ;
+
+optionalContinue
+    : /* empty */
+    | CONTINUE_TOKEN
+        { driver.setPrintContinue(); }
     ;
 
 literal
