@@ -238,12 +238,102 @@ statementList
     ;
 
 statement
-    : printStatement ENDOFSTATEMENT_TOKEN
-    | errorStatement ENDOFSTATEMENT_TOKEN
-    | declareStatement ENDOFSTATEMENT_TOKEN
-    | importStatement ENDOFSTATEMENT_TOKEN
-    | functionStatement ENDOFSTATEMENT_TOKEN
+    : abortStatement ENDOFSTATEMENT_TOKEN
     | assignmentStatement ENDOFSTATEMENT_TOKEN
+    | callStatement ENDOFSTATEMENT_TOKEN
+    | declareStatement ENDOFSTATEMENT_TOKEN
+    | errorStatement ENDOFSTATEMENT_TOKEN
+    | forStatement ENDOFSTATEMENT_TOKEN
+    | functionStatement ENDOFSTATEMENT_TOKEN
+    | getStatement ENDOFSTATEMENT_TOKEN
+    | ifElifElseStatement ENDOFSTATEMENT_TOKEN
+    | importStatement ENDOFSTATEMENT_TOKEN
+    | printStatement ENDOFSTATEMENT_TOKEN
+    ;
+
+abortStatement
+    : ABORT_TOKEN
+        { /* stub */ }
+    ;
+
+callStatement
+    : CALL_TOKEN IDENTIFIER BRACE_START_TOKEN optionalCallArgList BRACE_END_TOKEN
+        { /* stub */ }
+    ;
+
+optionalCallArgList
+    : /* empty */
+    | callArgList
+    ;
+
+callArgList
+    : printArg
+    | callArgList COMMA_TOKEN printArg
+    ;
+
+getStatement
+    : GET_TOKEN IDENTIFIER
+        { /* stub */ }
+    | GET_TOKEN IDENTIFIER ARRAY_START_TOKEN INTEGER_PATTERN ARRAY_END_TOKEN
+        { /* stub */ }
+    ;
+
+forStatement
+    : FOR_TOKEN
+      BRACE_START_TOKEN intType IDENTIFIER COLON_TOKEN
+          BRACE_START_TOKEN
+              printArg COMMA_TOKEN printArg
+          BRACE_END_TOKEN
+      BRACE_END_TOKEN
+      scopedStatements
+        { /* stub */ }
+    | FOR_TOKEN
+      BRACE_START_TOKEN intType IDENTIFIER COLON_TOKEN
+          BRACE_START_TOKEN
+              printArg COMMA_TOKEN printArg COMMA_TOKEN printArg
+          BRACE_END_TOKEN
+      BRACE_END_TOKEN
+      scopedStatements
+        { /* stub */ }
+    ;
+
+ifElifElseStatement
+    : ifStatement elifStatementList optionalElseStatement
+        { /* stub */ }
+    ;
+
+ifStatement
+    : IF_TOKEN BRACE_START_TOKEN printArg BRACE_END_TOKEN scopedStatements
+        { /* stub */ }
+    ;
+
+elifStatementList
+    : /* empty */
+    | elifStatementList elifStatement
+    ;
+
+elifStatement
+    : ELIF_TOKEN BRACE_START_TOKEN printArg BRACE_END_TOKEN scopedStatements
+        { /* stub */ }
+    ;
+
+optionalElseStatement
+    : /* empty */
+    | ELSE_TOKEN scopedStatements
+        { /* stub */ }
+    ;
+
+scopedStatements
+    : LEFT_CURLY_BRACKET_TOKEN statementList optionalReturnStatement RIGHT_CURLY_BRACKET_TOKEN
+        { /* stub */ }
+    ;
+
+optionalReturnStatement
+    : /* empty */
+    | RETURN_TOKEN printArg ENDOFSTATEMENT_TOKEN
+        { /* stub */ }
+    | RETURN_TOKEN ENDOFSTATEMENT_TOKEN
+        { /* stub */ }
     ;
 
 assignmentStatement
