@@ -621,6 +621,55 @@ namespace silly
         mlir::Value v = f.searchForVariable( varName );
         return ( v != nullptr ) ? true : false;
     }
+
+    mlir::Type Builder::findReturnType( )
+    {
+        mlir::Type returnType{};
+        if ( currentFuncName == ENTRY_SYMBOL_NAME )
+        {
+            returnType = typ.i32;
+        }
+        else
+        {
+            ParserPerFunctionState &f = funcState( currentFuncName );
+            mlir::func::FuncOp funcOp = f.getFuncOp();
+            llvm::ArrayRef<mlir::Type> returnTypeArray = funcOp.getFunctionType().getResults();
+
+            if ( !returnTypeArray.empty() )
+            {
+                returnType = returnTypeArray[0];
+            }
+        }
+
+        return returnType;
+    }
+
+    void Builder::processReturnLike( mlir::Location loc, mlir::Value returnValue, LocationStack &ls )
+    {
+        mlir::Value value{};
+        ls.push_back( loc );
+
+        if ( returnValue )
+        {
+            value = returnValue;
+        }
+        else if ( currentFuncName == ENTRY_SYMBOL_NAME )
+        {
+            value = mlir::arith::ConstantIntOp::create( builder, loc, 0, 32 );
+        }
+
+        // mlir::Location fused = ls.fuseLocations( );
+
+        if ( value )
+        {
+            // Create ReturnOp with user specified value:
+            mlir::func::ReturnOp::create( builder, loc, mlir::ValueRange{ value } );
+        }
+        else
+        {
+            mlir::func::ReturnOp::create( builder, loc, mlir::ValueRange{} );
+        }
+    }
 }    // namespace silly
 
 // vim: et ts=4 sw=4

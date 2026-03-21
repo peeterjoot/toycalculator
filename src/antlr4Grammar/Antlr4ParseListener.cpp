@@ -337,31 +337,16 @@ namespace silly
         f.endScope();
     }
 
-    void Antlr4ParseListener::processReturnLike( mlir::Location loc, SillyParser::ExpressionContext *expression,
-                                                 LocationStack &ls )
+    mlir::Value Antlr4ParseListener::parseReturnExpression( mlir::Location loc,
+                                                            SillyParser::ExpressionContext *expression,
+                                                            LocationStack &ls )
     {
-        mlir::Type returnType{};
         mlir::Value value{};
-        ls.push_back( loc );
-
-        if ( currentFuncName == ENTRY_SYMBOL_NAME )
-        {
-            returnType = typ.i32;
-        }
-        else
-        {
-            ParserPerFunctionState &f = funcState( currentFuncName );
-            mlir::func::FuncOp funcOp = f.getFuncOp();
-            llvm::ArrayRef<mlir::Type> returnTypeArray = funcOp.getFunctionType().getResults();
-
-            if ( !returnTypeArray.empty() )
-            {
-                returnType = returnTypeArray[0];
-            }
-        }
 
         if ( expression )
         {
+            mlir::Type returnType = findReturnType();
+
             if ( !returnType )
             {
                 // coverage: syntax-error/return-expr-no-type.silly
@@ -369,32 +354,18 @@ namespace silly
                                std::format( "return expression found '{}', but no return type for function {}",
                                             expression->getText(), currentFuncName ),
                                currentFuncName );
-                return;
+                return value;
             }
 
             value = parseExpression( expression, returnType, ls );
             if ( !value )
             {
                 emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
-                return;
+                return value;
             }
         }
-        else if ( currentFuncName == ENTRY_SYMBOL_NAME )
-        {
-            value = mlir::arith::ConstantIntOp::create( builder, loc, 0, 32 );
-        }
 
-        // mlir::Location fused = ls.fuseLocations( );
-
-        if ( value )
-        {
-            // Create ReturnOp with user specified value:
-            mlir::func::ReturnOp::create( builder, loc, mlir::ValueRange{ value } );
-        }
-        else
-        {
-            mlir::func::ReturnOp::create( builder, loc, mlir::ValueRange{} );
-        }
+        return value;
     }
 
     void Antlr4ParseListener::exitStartRule( SillyParser::StartRuleContext *ctx )
@@ -1210,7 +1181,8 @@ namespace silly
         LocPairs locs = getLocations( ctx );
         LocationStack ls( builder, locs.first );
 
-        processReturnLike( locs.second, ctx->expression(), ls );
+        mlir::Value value = parseReturnExpression( locs.second, ctx->expression(), ls );
+        processReturnLike( locs.second, value, ls );
     }
 
     void Antlr4ParseListener::enterExitStatement( SillyParser::ExitStatementContext *ctx )
@@ -1219,7 +1191,8 @@ namespace silly
         LocPairs locs = getLocations( ctx );
         LocationStack ls( builder, locs.first );
 
-        processReturnLike( locs.second, ctx->expression(), ls );
+        mlir::Value value = parseReturnExpression( locs.second, ctx->expression(), ls );
+        processReturnLike( locs.second, value, ls );
     }
 
     void Antlr4ParseListener::enterAssignmentStatement( SillyParser::AssignmentStatementContext *ctx )
@@ -1820,8 +1793,7 @@ namespace silly
                 iValue = parseExpression( indexExpr->expression(), {}, ls );
                 if ( !iValue )
                 {
-                    emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed",
-                                       currentFuncName );
+                    emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
                     return value;
                 }
 

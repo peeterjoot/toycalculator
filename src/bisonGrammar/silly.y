@@ -226,10 +226,10 @@ optionalExitStatement
     ;
 
 exitStatement
-    : EXIT_TOKEN literal
-        { /* stub */ }
+    : EXIT_TOKEN printArg
+        { driver.enterExitStatement( @2, $2 ); }
     | EXIT_TOKEN
-        { /* stub */ }
+        { driver.enterExitStatement( @1 ); }
     ;
 
 statementList
@@ -248,7 +248,7 @@ statement
 
 assignmentStatement
     : assignmentLHS EQUALS_TOKEN printArg
-        { driver.enterAssignment( $1, $3, @1, @3 ); }
+        { driver.enterAssignmentStatement( $1, $3, @1, @3 ); }
     ;
 
 assignmentLHS
@@ -305,17 +305,17 @@ declareStatement
 
 intDeclareStatement
     : intType IDENTIFIER arrayBoundsExpression optionalInitializer
-        { driver.enterIntDeclare( $1, $2, $3, $4, @1, @2, @3 ); }
+        { driver.enterIntDeclareStatement( $1, $2, $3, $4, @1, @2, @3 ); }
     ;
 
 floatDeclareStatement
     : floatType IDENTIFIER arrayBoundsExpression optionalInitializer
-        { driver.enterFloatDeclare( $1, $2, $3, $4, @1, @2, @3 ); }
+        { driver.enterFloatDeclareStatement( $1, $2, $3, $4, @1, @2, @3 ); }
     ;
 
 boolDeclareStatement
     : BOOL_TOKEN IDENTIFIER arrayBoundsExpression optionalInitializer
-        { driver.enterBoolDeclare( $2, $3, $4, @1, @2, @3 ); }
+        { driver.enterBoolDeclareStatement( $2, $3, $4, @1, @2, @3 ); }
     ;
 
 intType

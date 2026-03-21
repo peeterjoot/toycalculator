@@ -102,9 +102,34 @@ namespace silly
             mlir::func::FuncOp funcOp = f.getFuncOp();
             funcOp->setLoc( fLoc );
 
-            // HACK: unconditional:
-            createMainExit( locs.second );
+            if ( !hasExplicitExit )
+            {
+                createMainExit( locs.second );
+            }
         }
+    }
+
+    void BisonParseListener::enterExitStatement( const silly::BisonParser::location_type& exitLoc,
+                                                 const silly::LiteralOrVariable& var )
+    {
+        hasExplicitExit = true;
+
+        mlir::Location loc = getLocation( exitLoc );
+        LocationStack ls( builder, loc );
+
+        mlir::Type returnType = findReturnType();
+        mlir::Value value = parsePrintArg( loc, returnType, var, ls );
+        processReturnLike( loc, value, ls );
+    }
+
+    void BisonParseListener::enterExitStatement( const silly::BisonParser::location_type& exitLoc )
+    {
+        hasExplicitExit = true;
+
+        mlir::Location loc = getLocation( exitLoc );
+        LocationStack ls( builder, loc );
+
+        processReturnLike( loc, {}, ls );
     }
 
     mlir::OwningOpRef<mlir::ModuleOp> BisonParseListener::run()
@@ -138,7 +163,8 @@ namespace silly
     }
 
     // eventually: parseExpression
-    mlir::Value BisonParseListener::parsePrintArg( mlir::Location vLoc, const silly::LiteralOrVariable& parg, LocationStack &ls )
+    mlir::Value BisonParseListener::parsePrintArg( mlir::Location vLoc, mlir::Type ty,
+                                                   const silly::LiteralOrVariable& parg, LocationStack& ls )
     {
         mlir::Value v;
         if ( parg.kind == LiteralOrVariable::Kind::Literal )
@@ -148,17 +174,36 @@ namespace silly
                 case Literal::Kind::None:
                     break;
                 case Literal::Kind::Int:
-                    v = parseInteger( vLoc, 64, parg.lit.sval, ls );
+                {
+                    int width{ 64 };
+                    if ( ty )
+                    {
+                        mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( ty );
+                        width = ity.getWidth();
+                    }
+                    v = parseInteger( vLoc, width, parg.lit.sval, ls );
                     break;
+                }
                 case Literal::Kind::Float:
-                    v = parseFloat( vLoc, typ.f64, parg.lit.sval, ls );
+                {
+                    mlir::FloatType fty = typ.f64;
+                    if ( ty )
+                    {
+                        fty = mlir::cast<mlir::FloatType>( ty );
+                    }
+                    v = parseFloat( vLoc, fty, parg.lit.sval, ls );
                     break;
+                }
                 case Literal::Kind::Bool:
+                {
                     v = mlir::arith::ConstantIntOp::create( builder, vLoc, parg.lit.bval, 1 );
                     break;
+                }
                 case Literal::Kind::String:
+                {
                     v = buildStringLiteral( vLoc, parg.lit.sval, ls );
                     break;
+                }
             }
             if ( !v )
             {
@@ -205,7 +250,7 @@ namespace silly
         for ( const silly::LiteralOrVariable& parg : args )
         {
             mlir::Location vLoc = loc;    // per-argument location?
-            mlir::Value v = parsePrintArg( vLoc, parg, ls );
+            mlir::Value v = parsePrintArg( vLoc, {}, parg, ls );
             if ( !v )
             {
                 return;
@@ -289,11 +334,11 @@ namespace silly
         registerDeclaration( tLoc, varName, ty, aLoc, arraySizeString, haveInitializer, initializers, ls );
     }
 
-    void BisonParseListener::enterIntDeclare( const std::string& typeName, const std::string& varName,
-                                              const std::string& arraySizeString, Literal initializer,
-                                              const silly::BisonParser::location_type& typeLoc,
-                                              const silly::BisonParser::location_type& nameLoc,
-                                              const silly::BisonParser::location_type& arrayLoc )
+    void BisonParseListener::enterIntDeclareStatement( const std::string& typeName, const std::string& varName,
+                                                       const std::string& arraySizeString, Literal initializer,
+                                                       const silly::BisonParser::location_type& typeLoc,
+                                                       const silly::BisonParser::location_type& nameLoc,
+                                                       const silly::BisonParser::location_type& arrayLoc )
     {
         mlir::Location tLoc = getLocation( typeLoc );
         // bool initIsDeclare = declarationAssignmentInitialization;
@@ -310,11 +355,11 @@ namespace silly
         declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initializer, ls );
     }
 
-    void BisonParseListener::enterFloatDeclare( const std::string& typeName, const std::string& varName,
-                                                const std::string& arraySizeString, Literal initializer,
-                                                const silly::BisonParser::location_type& typeLoc,
-                                                const silly::BisonParser::location_type& nameLoc,
-                                                const silly::BisonParser::location_type& arrayLoc )
+    void BisonParseListener::enterFloatDeclareStatement( const std::string& typeName, const std::string& varName,
+                                                         const std::string& arraySizeString, Literal initializer,
+                                                         const silly::BisonParser::location_type& typeLoc,
+                                                         const silly::BisonParser::location_type& nameLoc,
+                                                         const silly::BisonParser::location_type& arrayLoc )
     {
         mlir::Location tLoc = getLocation( typeLoc );
         // bool initIsDeclare = declarationAssignmentInitialization;
@@ -341,10 +386,11 @@ namespace silly
         declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initializer, ls );
     }
 
-    void BisonParseListener::enterBoolDeclare( const std::string& varName, const std::string& arraySizeString,
-                                               Literal initializer, const silly::BisonParser::location_type& typeLoc,
-                                               const silly::BisonParser::location_type& nameLoc,
-                                               const silly::BisonParser::location_type& arrayLoc )
+    void BisonParseListener::enterBoolDeclareStatement( const std::string& varName, const std::string& arraySizeString,
+                                                        Literal initializer,
+                                                        const silly::BisonParser::location_type& typeLoc,
+                                                        const silly::BisonParser::location_type& nameLoc,
+                                                        const silly::BisonParser::location_type& arrayLoc )
     {
         mlir::Location tLoc = getLocation( typeLoc );
         // bool initIsDeclare = declarationAssignmentInitialization;
@@ -356,9 +402,10 @@ namespace silly
         declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initializer, ls );
     }
 
-    void BisonParseListener::enterAssignment( const silly::LiteralOrVariable& var, const silly::LiteralOrVariable& rhs,
-                                              const silly::BisonParser::location_type& lhsLoc,
-                                              const silly::BisonParser::location_type& rhsLoc )
+    void BisonParseListener::enterAssignmentStatement( const silly::LiteralOrVariable& var,
+                                                       const silly::LiteralOrVariable& rhs,
+                                                       const silly::BisonParser::location_type& lhsLoc,
+                                                       const silly::BisonParser::location_type& rhsLoc )
     {
         mlir::Location loc = getLocation( lhsLoc );
         LocationStack ls( builder, loc );
@@ -385,7 +432,7 @@ namespace silly
         }
 
         mlir::Location aLoc = getLocation( rhsLoc );
-        mlir::Value resultValue = parsePrintArg( aLoc, rhs, ls );
+        mlir::Value resultValue = parsePrintArg( aLoc, {}, rhs, ls );
         if ( !resultValue )
         {
             return;

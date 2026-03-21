@@ -35,27 +35,30 @@ namespace silly
         void enterPrintStatement( const std::vector<silly::LiteralOrVariable>& args,
                                   const silly::BisonParser::location_type& printLoc );
 
-        void enterIntDeclare( const std::string& typeName, const std::string& varName,
-                              const std::string& arraySizeString, Literal initializer,
-                              const silly::BisonParser::location_type& typeLoc,
-                              const silly::BisonParser::location_type& nameLoc,
-                              const silly::BisonParser::location_type& arrayLoc );
+        void enterIntDeclareStatement( const std::string& typeName, const std::string& varName,
+                                       const std::string& arraySizeString, Literal initializer,
+                                       const silly::BisonParser::location_type& typeLoc,
+                                       const silly::BisonParser::location_type& nameLoc,
+                                       const silly::BisonParser::location_type& arrayLoc );
 
-        void enterFloatDeclare( const std::string& typeName, const std::string& varName,
-                                const std::string& arraySizeString, Literal initializer,
-                                const silly::BisonParser::location_type& typeLoc,
-                                const silly::BisonParser::location_type& nameLoc,
-                                const silly::BisonParser::location_type& arrayLoc );
+        void enterFloatDeclareStatement( const std::string& typeName, const std::string& varName,
+                                         const std::string& arraySizeString, Literal initializer,
+                                         const silly::BisonParser::location_type& typeLoc,
+                                         const silly::BisonParser::location_type& nameLoc,
+                                         const silly::BisonParser::location_type& arrayLoc );
 
-        void enterBoolDeclare( const std::string& varName, const std::string& arraySizeString, Literal initializer,
-                               const silly::BisonParser::location_type& typeLoc,
-                               const silly::BisonParser::location_type& nameLoc,
-                               const silly::BisonParser::location_type& arrayLoc );
+        void enterBoolDeclareStatement( const std::string& varName, const std::string& arraySizeString,
+                                        Literal initializer, const silly::BisonParser::location_type& typeLoc,
+                                        const silly::BisonParser::location_type& nameLoc,
+                                        const silly::BisonParser::location_type& arrayLoc );
 
-        void enterAssignment( const silly::LiteralOrVariable& var,
-                              const silly::LiteralOrVariable& rhs,
-                              const silly::BisonParser::location_type& lhsLoc,
-                              const silly::BisonParser::location_type& rhsLoc );
+        void enterAssignmentStatement( const silly::LiteralOrVariable& var, const silly::LiteralOrVariable& rhs,
+                                       const silly::BisonParser::location_type& lhsLoc,
+                                       const silly::BisonParser::location_type& rhsLoc );
+
+        void enterExitStatement( const silly::BisonParser::location_type& loc, const silly::LiteralOrVariable& var );
+
+        void enterExitStatement( const silly::BisonParser::location_type& loc );
 
         /// Called from parser on error
         void emitParseError( const silly::BisonParser::location_type& loc, const std::string& msg );
@@ -79,10 +82,12 @@ namespace silly
                                 const std::string& arraySizeString, mlir::Type ty, Literal initializer,
                                 LocationStack& ls );
 
-        mlir::Value parsePrintArg( mlir::Location vLoc, const silly::LiteralOrVariable& parg, LocationStack &ls );
+        mlir::Value parsePrintArg( mlir::Location vLoc, mlir::Type ty, const silly::LiteralOrVariable& parg,
+                                   LocationStack& ls );
 
         yyscan_t scanner{};
 
+        bool hasExplicitExit{};
         bool hasPrintContinue{};
         bool hasPrintError{};
         bool declarationAssignmentInitialization{};

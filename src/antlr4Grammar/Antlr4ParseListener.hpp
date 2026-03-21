@@ -143,6 +143,9 @@ namespace silly
         ///
         ////////////////////////////////////////////////////////////////////////
 
+        mlir::Value parseReturnExpression( mlir::Location loc, SillyParser::ExpressionContext *expression,
+                                           LocationStack &ls );
+
         /// @brief check for inappropriate RETURN
         ///
         /// Grammar now allows for RETURN in IF/ELIF/ELSE/FOR blocks, (as well as FUNCTION)
@@ -192,10 +195,6 @@ namespace silly
 
         /// Parses scalar type string to MLIR type.
         mlir::Type parseScalarType( const std::string &ty );
-
-        /// Emits silly::ReturnOp (or exit equivalent) with optional value.
-        void processReturnLike( mlir::Location loc, SillyParser::ExpressionContext *rvalueExpression,
-                                LocationStack &ls );
 
         /// For IF/ELIF, create an scf.if condition and set the insertion point to it's then region.
         ///

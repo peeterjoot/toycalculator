@@ -107,6 +107,12 @@ namespace silly
         /// Lookup in per-function state, whether a variable has been declared
         bool isVariableDeclared( const std::string &varName );
 
+        /// Emits silly::ReturnOp (or exit equivalent) with optional value.
+        void processReturnLike( mlir::Location loc, mlir::Value returnValue,
+                                LocationStack &ls );
+
+        mlir::Type findReturnType( );
+
        protected:
         Builder( silly::SourceManager &s, const std::string &filename );
 
