@@ -670,6 +670,27 @@ namespace silly
             mlir::func::ReturnOp::create( builder, loc, mlir::ValueRange{} );
         }
     }
+
+    mlir::Value Builder::createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what,
+                                                               mlir::Type ty, mlir::Value lhs, mlir::Value rhs,
+                                                               LocationStack &ls )
+    {
+        ls.push_back( loc );
+
+        return silly::ArithBinOp::create( builder, loc, ty, silly::ArithBinOpKindAttr::get( this->ctx, what ), lhs,
+                                          rhs )
+            .getResult();
+    }
+
+    mlir::Value Builder::createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what,
+                                                             mlir::Value lhs, mlir::Value rhs, LocationStack &ls )
+    {
+        ls.push_back( loc );
+
+        return silly::CmpBinOp::create( builder, loc, typ.i1, silly::CmpBinOpKindAttr::get( this->ctx, what ), lhs,
+                                        rhs )
+            .getResult();
+    }
 }    // namespace silly
 
 // vim: et ts=4 sw=4

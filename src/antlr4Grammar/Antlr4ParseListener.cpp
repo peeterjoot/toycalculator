@@ -1234,27 +1234,6 @@ namespace silly
         processAssignment( aLoc, resultValue, currentVarName, currentIndexExpr, ls );
     }
 
-    inline mlir::Value Antlr4ParseListener::createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what,
-                                                               mlir::Type ty, mlir::Value lhs, mlir::Value rhs,
-                                                               LocationStack &ls )
-    {
-        ls.push_back( loc );
-
-        return silly::ArithBinOp::create( builder, loc, ty, silly::ArithBinOpKindAttr::get( this->ctx, what ), lhs,
-                                          rhs )
-            .getResult();
-    }
-
-    inline mlir::Value Antlr4ParseListener::createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what,
-                                                             mlir::Value lhs, mlir::Value rhs, LocationStack &ls )
-    {
-        ls.push_back( loc );
-
-        return silly::CmpBinOp::create( builder, loc, typ.i1, silly::CmpBinOpKindAttr::get( this->ctx, what ), lhs,
-                                        rhs )
-            .getResult();
-    }
-
     mlir::Value Antlr4ParseListener::parseOr( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls )
     {
         assert( ctx );

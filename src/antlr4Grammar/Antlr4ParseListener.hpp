@@ -153,14 +153,6 @@ namespace silly
         /// instead of just letting this fail mysteriously in lowering.
         void checkForReturnInScope( SillyParser::ScopedStatementsContext *scope, const char *what );
 
-        /// Create a silly::ArithBinOp
-        inline mlir::Value createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty,
-                                              mlir::Value lhs, mlir::Value rhs, LocationStack &ls );
-
-        /// Create a silly::CmpBinOp
-        inline mlir::Value createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs,
-                                            mlir::Value rhs, LocationStack &ls );
-
         /// Lookup and validate a declareStatement variable name, and process the declaration.
         void enterDeclareHelper( mlir::Location loc, tNode *identifier,
                                  SillyParser::DeclareAssignmentExpressionContext *declareAssignmentExpression,

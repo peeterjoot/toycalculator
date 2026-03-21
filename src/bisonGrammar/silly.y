@@ -20,6 +20,28 @@
     namespace silly {
         class BisonParseListener;
 
+        enum class ExprOp : uint32_t
+        {
+            None,
+            Mul,
+            Div,
+            Mod,
+            Add,
+            Sub,
+            Or,
+            And,
+            Xor,
+            Less,
+            LessEqual,
+            Greater,
+            GreaterEqual,
+            Equal,
+            NotEqual,
+            Minus,
+            Plus,
+            Not,
+        };
+
         struct Literal
         {
             enum class Kind
@@ -75,7 +97,7 @@
             Kind kind;
             Literal lit{};
             std::string name{};
-            std::string op{};
+            ExprOp op{ExprOp::None};
             std::string index{};           /* for ArrayVariable, as string */
             std::shared_ptr<Expr> left{};  /* for UnaryOp: operand; BinaryOp: lhs */
             std::shared_ptr<Expr> right{}; /* for BinaryOp: rhs */
@@ -95,12 +117,12 @@
                 return { Kind::ArrayVariable, {}, s, {}, {}, std::make_shared<Expr>( idx ) };
             }
 
-            static Expr makeUnaryOp( const std::string& op, const Expr& operand )
+            static Expr makeUnaryOp( const ExprOp & op, const Expr& operand )
             {
                 return { Kind::UnaryOp, {}, {}, op, {}, std::make_shared<Expr>( operand ) };
             }
 
-            static Expr makeBinaryOp( const std::string& op, const Expr& l, const Expr& r )
+            static Expr makeBinaryOp( const ExprOp& op, const Expr& l, const Expr& r )
             {
                 return { Kind::BinaryOp, {}, {}, op, {}, std::make_shared<Expr>( l ), std::make_shared<Expr>( r ) };
             }
@@ -489,39 +511,39 @@ printArgList
 
 expression
     : expression BOOLEANOR_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( "OR",  $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Or,  $1, $3 ); }
     | expression BOOLEANXOR_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( "XOR", $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Xor, $1, $3 ); }
     | expression BOOLEANAND_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( "AND", $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::And, $1, $3 ); }
     | expression EQUALITY_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( "EQ",  $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Equal,  $1, $3 ); }
     | expression NOTEQUAL_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( "NE",  $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::NotEqual,  $1, $3 ); }
     | expression LESSTHAN_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( "<",   $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Less,   $1, $3 ); }
     | expression LESSEQUAL_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( "<=",  $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::LessEqual,  $1, $3 ); }
     | expression GREATERTHAN_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ">",   $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Greater,   $1, $3 ); }
     | expression GREATEREQUAL_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ">=",  $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::GreaterEqual,  $1, $3 ); }
     | expression PLUSCHAR_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( "+",   $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Plus,   $1, $3 ); }
     | expression MINUS_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( "-",   $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Minus,   $1, $3 ); }
     | expression TIMES_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( "*",   $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Mul, $1, $3 ); }
     | expression DIV_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( "/",   $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Div,   $1, $3 ); }
     | expression MOD_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( "%",   $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Mod,   $1, $3 ); }
     | MINUS_TOKEN expression %prec UMINUS
-        { $$ = silly::Expr::makeUnaryOp( "-", $2 ); }
+        { $$ = silly::Expr::makeUnaryOp( ExprOp::Minus, $2 ); }
     | PLUSCHAR_TOKEN expression %prec UPLUS
-        { $$ = silly::Expr::makeUnaryOp( "+", $2 ); }
+        { $$ = silly::Expr::makeUnaryOp( ExprOp::Plus, $2 ); }
     | NOT_TOKEN expression %prec UNOT
-        { $$ = silly::Expr::makeUnaryOp( "NOT", $2 ); }
+        { $$ = silly::Expr::makeUnaryOp( ExprOp::Not, $2 ); }
     | BRACE_START_TOKEN expression BRACE_END_TOKEN
         { $$ = $2; }
     | literal
