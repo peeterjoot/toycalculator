@@ -37,18 +37,22 @@
             {
                 return { Kind::None, {}, false };
             }
+
             static Literal makeInt( const std::string& s )
             {
                 return { Kind::Int, s, false };
             }
+
             static Literal makeFloat( const std::string& s )
             {
                 return { Kind::Float, s, false };
             }
+
             static Literal makeString( const std::string& s )
             {
                 return { Kind::String, s, false };
             }
+
             static Literal makeBool( bool b )
             {
                 return { Kind::Bool, {}, b };
@@ -60,20 +64,27 @@
             enum class Kind
             {
                 Literal,
-                Variable
+                Variable,
+                ArrayVariable
             };
             Kind kind;
             Literal lit{};      /* valid when kind == Literal  */
             std::string name{}; /* valid when kind == Variable */
+            std::string index{};
 
             static LiteralOrVariable fromLiteral( const Literal& l )
             {
-                return { Kind::Literal, l, {} };
+                return { Kind::Literal, l, {}, {} };
             }
 
             static LiteralOrVariable fromVariable( const std::string& s )
             {
-                return { Kind::Variable, {}, s };
+                return { Kind::Variable, {}, s, {} };
+            }
+
+            static LiteralOrVariable fromArrayVariable( const std::string& s, const std::string & i )
+            {
+                return { Kind::ArrayVariable, {}, s, i };
             }
         };
     }
@@ -173,7 +184,7 @@
 %type <std::string>                             scalarType
 %type <silly::LiteralOrVariable>                printArg
 %type <std::vector<silly::LiteralOrVariable>>   printArgList
-%type <std::string>                             assignmentLHS
+%type <silly::LiteralOrVariable>                assignmentLHS
 
 %%
 
@@ -242,9 +253,9 @@ assignmentStatement
 
 assignmentLHS
     : IDENTIFIER
-        { $$ = $1; }
+        { $$ = silly::LiteralOrVariable::fromVariable( $1 ); }
     | IDENTIFIER ARRAY_START_TOKEN INTEGER_PATTERN ARRAY_END_TOKEN
-        { $$ = $1; /* stub: index ignored for now */ }
+        { $$ = silly::LiteralOrVariable::fromArrayVariable( $1, $3 ); }
     ;
 
 importStatement
@@ -359,6 +370,8 @@ printArg
         { $$ = silly::LiteralOrVariable::fromLiteral( $1 ); }
     | IDENTIFIER
         { $$ = silly::LiteralOrVariable::fromVariable( $1 ); }
+    | IDENTIFIER ARRAY_START_TOKEN INTEGER_PATTERN ARRAY_END_TOKEN
+        { $$ = silly::LiteralOrVariable::fromArrayVariable( $1, $3 ); }
     ;
 
 optionalContinue

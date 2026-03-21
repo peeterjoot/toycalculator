@@ -52,7 +52,7 @@ namespace silly
                                const silly::BisonParser::location_type& nameLoc,
                                const silly::BisonParser::location_type& arrayLoc );
 
-        void enterAssignment( const std::string& varName,
+        void enterAssignment( const silly::LiteralOrVariable& var,
                               const silly::LiteralOrVariable& rhs,
                               const silly::BisonParser::location_type& lhsLoc,
                               const silly::BisonParser::location_type& rhsLoc );

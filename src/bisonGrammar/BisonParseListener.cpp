@@ -170,7 +170,13 @@ namespace silly
         }
         else
         {
-            v = variableToValue( vLoc, parg.name, {}, vLoc, ls );
+            mlir::Value index;
+            if ( parg.kind == LiteralOrVariable::Kind::ArrayVariable )
+            {
+                index = parseInteger( vLoc, 64, parg.index, ls );
+            }
+
+            v = variableToValue( vLoc, parg.name, index, vLoc, ls );
         }
 
         return v;
@@ -350,36 +356,33 @@ namespace silly
         declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initializer, ls );
     }
 
-    void BisonParseListener::enterAssignment( const std::string& varName, const silly::LiteralOrVariable& rhs,
+    void BisonParseListener::enterAssignment( const silly::LiteralOrVariable& var, const silly::LiteralOrVariable& rhs,
                                               const silly::BisonParser::location_type& lhsLoc,
                                               const silly::BisonParser::location_type& rhsLoc )
     {
         mlir::Location loc = getLocation( lhsLoc );
         LocationStack ls( builder, loc );
 
-        // SillyParser::IndexExpressionContext *indexExpr = lhs->indexExpression();
-        mlir::Value currentIndexExpr = mlir::Value{};
-
-        bool declared = isVariableDeclared( varName );
+        bool declared = isVariableDeclared( var.name );
         if ( !declared )
         {
             // coverage: syntax-error/undeclared-var.silly
-            emitUserError( loc, std::format( "Attempt to assign to undeclared variable: {}", varName ),
+            emitUserError( loc, std::format( "Attempt to assign to undeclared variable: {}", var.name ),
                            currentFuncName );
             return;
         }
 
-#if 0
-        if ( indexExpr )
+        mlir::Value indexValue = mlir::Value{};
+        if ( var.kind == LiteralOrVariable::Kind::ArrayVariable )
         {
-            currentIndexExpr = parseExpression( indexExpr->expression(), {}, ls );
-            if ( !currentIndexExpr )
+            mlir::Location rLoc = getLocation( rhsLoc );
+            indexValue = parseInteger( rLoc, 64, var.index, ls );
+            if ( !indexValue )
             {
                 emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
                 return;
             }
         }
-#endif
 
         mlir::Location aLoc = getLocation( rhsLoc );
         mlir::Value resultValue = parsePrintArg( aLoc, rhs, ls );
@@ -388,7 +391,7 @@ namespace silly
             return;
         }
 
-        processAssignment( aLoc, resultValue, varName, currentIndexExpr, ls );
+        processAssignment( aLoc, resultValue, var.name, indexValue, ls );
     }
 
     void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )
