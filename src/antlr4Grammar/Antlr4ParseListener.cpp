@@ -1234,27 +1234,6 @@ namespace silly
         processAssignment( aLoc, resultValue, currentVarName, currentIndexExpr, ls );
     }
 
-    inline mlir::Value Antlr4ParseListener::createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what,
-                                                               mlir::Type ty, mlir::Value lhs, mlir::Value rhs,
-                                                               LocationStack &ls )
-    {
-        ls.push_back( loc );
-
-        return silly::ArithBinOp::create( builder, loc, ty, silly::ArithBinOpKindAttr::get( this->ctx, what ), lhs,
-                                          rhs )
-            .getResult();
-    }
-
-    inline mlir::Value Antlr4ParseListener::createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what,
-                                                             mlir::Value lhs, mlir::Value rhs, LocationStack &ls )
-    {
-        ls.push_back( loc );
-
-        return silly::CmpBinOp::create( builder, loc, typ.i1, silly::CmpBinOpKindAttr::get( this->ctx, what ), lhs,
-                                        rhs )
-            .getResult();
-    }
-
     mlir::Value Antlr4ParseListener::parseOr( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls )
     {
         assert( ctx );
@@ -1656,35 +1635,16 @@ namespace silly
 
             ls.push_back( loc );
 
+            UnaryOp op{UnaryOp::Plus};
             if ( opText == "-" )
             {
-                // Negation
-                value = silly::NegOp::create( builder, loc, value.getType(), value ).getResult();
-            }
-            else if ( opText == "+" )
-            {
-                // Unary plus: identity (no-op)
+                op = UnaryOp::Negate;
             }
             else if ( opText == "NOT" )
             {
-                if ( !value.getType().isInteger() )
-                {
-                    // coverage: syntax-error/not-float.silly
-                    emitUserError( loc, "NOT on non-integer type", currentFuncName );
-                    return mlir::Value{};
-                }
-
-                // NOT x: (x == 0)
-                mlir::Value zero =
-                    mlir::arith::ConstantIntOp::create( builder, loc, 0, value.getType().getIntOrFloatBitWidth() );
-                value = createBinaryCmp( loc, silly::CmpBinOpKind::Equal, value, zero, ls );
+                op = UnaryOp::Not;
             }
-            else
-            {
-                emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                   std::format( "unknown unary operator: {}", opText ), currentFuncName );
-                return value;
-            }
+            value = makeUnaryExpression( loc, value, op, ls );
         }
         else if ( SillyParser::PrimaryContext *primaryCtx = dynamic_cast<SillyParser::PrimaryContext *>( ctx ) )
         {

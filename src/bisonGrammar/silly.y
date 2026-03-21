@@ -15,9 +15,32 @@
 %code requires {
     #include <string>
     #include <vector>
+    #include <memory>
 
     namespace silly {
         class BisonParseListener;
+
+        enum class ExprOp : uint32_t
+        {
+            None,
+            Mul,
+            Div,
+            Mod,
+            Add,
+            Sub,
+            Or,
+            And,
+            Xor,
+            Less,
+            LessEqual,
+            Greater,
+            GreaterEqual,
+            Equal,
+            NotEqual,
+            Minus,
+            Plus,
+            Not,
+        };
 
         struct Literal
         {
@@ -59,32 +82,54 @@
             }
         };
 
-        struct LiteralOrVariable
+        struct Expr
         {
             enum class Kind
             {
                 Literal,
                 Variable,
-                ArrayVariable
+                ArrayVariable,
+                UnaryOp,
+                BinaryOp,
+                Call,
             };
+
             Kind kind;
-            Literal lit{};      /* valid when kind == Literal  */
-            std::string name{}; /* valid when kind == Variable */
-            std::string index{};
+            Literal lit{};
+            std::string name{};
+            ExprOp op{ExprOp::None};
+            std::string index{};           /* for ArrayVariable, as string */
+            std::shared_ptr<Expr> left{};  /* for UnaryOp: operand; BinaryOp: lhs */
+            std::shared_ptr<Expr> right{}; /* for BinaryOp: rhs */
 
-            static LiteralOrVariable fromLiteral( const Literal& l )
+            static Expr fromLiteral( const Literal& l )
             {
-                return { Kind::Literal, l, {}, {} };
+                return { Kind::Literal, l };
             }
 
-            static LiteralOrVariable fromVariable( const std::string& s )
+            static Expr fromVariable( const std::string& s )
             {
-                return { Kind::Variable, {}, s, {} };
+                return { Kind::Variable, {}, s };
             }
 
-            static LiteralOrVariable fromArrayVariable( const std::string& s, const std::string & i )
+            static Expr fromArrayVariable( const std::string& s, const Expr& idx )
             {
-                return { Kind::ArrayVariable, {}, s, i };
+                return { Kind::ArrayVariable, {}, s, {}, {}, std::make_shared<Expr>( idx ) };
+            }
+
+            static Expr makeUnaryOp( const ExprOp & op, const Expr& operand )
+            {
+                return { Kind::UnaryOp, {}, {}, op, {}, std::make_shared<Expr>( operand ) };
+            }
+
+            static Expr makeBinaryOp( const ExprOp& op, const Expr& l, const Expr& r )
+            {
+                return { Kind::BinaryOp, {}, {}, op, {}, std::make_shared<Expr>( l ), std::make_shared<Expr>( r ) };
+            }
+
+            static Expr makeCall( const std::string& name )
+            {
+                return { Kind::Call, {}, name };
             }
         };
     }
@@ -172,19 +217,28 @@
 %token <std::string> IDENTIFIER
 
 /* Typed non-terminals */
-%type <silly::Literal>                          literal
-%type <std::string>                             integerLiteral
-%type <std::string>                             floatLiteral
-%type <std::string>                             stringLiteral
-%type <std::string>                             intType
-%type <std::string>                             floatType
-%type <std::string>                             arrayBoundsExpression
-%type <silly::Literal>                          optionalInitializer
-%type <std::string>                             importStatement
-%type <std::string>                             scalarType
-%type <silly::LiteralOrVariable>                printArg
-%type <std::vector<silly::LiteralOrVariable>>   printArgList
-%type <silly::LiteralOrVariable>                assignmentLHS
+%type <silly::Literal>             literal
+%type <std::string>                integerLiteral
+%type <std::string>                floatLiteral
+%type <std::string>                stringLiteral
+%type <std::string>                intType
+%type <std::string>                floatType
+%type <std::string>                arrayBoundsExpression
+%type <silly::Literal>             optionalInitializer
+%type <std::string>                importStatement
+%type <std::string>                scalarType
+%type <std::vector<silly::Expr>>   printArgList
+%type <silly::Expr>                assignmentLHS
+%type <silly::Expr>                expression
+
+%left BOOLEANOR_TOKEN
+%left BOOLEANXOR_TOKEN
+%left BOOLEANAND_TOKEN
+%nonassoc EQUALITY_TOKEN NOTEQUAL_TOKEN
+%nonassoc LESSTHAN_TOKEN LESSEQUAL_TOKEN GREATERTHAN_TOKEN GREATEREQUAL_TOKEN
+%left PLUSCHAR_TOKEN MINUS_TOKEN
+%left TIMES_TOKEN DIV_TOKEN MOD_TOKEN
+%right UMINUS UPLUS UNOT       /* pseudo-tokens for unary precedence */
 
 %%
 
@@ -226,7 +280,7 @@ optionalExitStatement
     ;
 
 exitStatement
-    : EXIT_TOKEN printArg
+    : EXIT_TOKEN expression
         { driver.enterExitStatement( @2, $2 ); }
     | EXIT_TOKEN
         { driver.enterExitStatement( @1 ); }
@@ -267,8 +321,8 @@ optionalCallArgList
     ;
 
 callArgList
-    : printArg
-    | callArgList COMMA_TOKEN printArg
+    : expression
+    | callArgList COMMA_TOKEN expression
     ;
 
 getStatement
@@ -282,7 +336,7 @@ forStatement
     : FOR_TOKEN
       BRACE_START_TOKEN intType IDENTIFIER COLON_TOKEN
           BRACE_START_TOKEN
-              printArg COMMA_TOKEN printArg
+              expression COMMA_TOKEN expression
           BRACE_END_TOKEN
       BRACE_END_TOKEN
       scopedStatements
@@ -290,7 +344,7 @@ forStatement
     | FOR_TOKEN
       BRACE_START_TOKEN intType IDENTIFIER COLON_TOKEN
           BRACE_START_TOKEN
-              printArg COMMA_TOKEN printArg COMMA_TOKEN printArg
+              expression COMMA_TOKEN expression COMMA_TOKEN expression
           BRACE_END_TOKEN
       BRACE_END_TOKEN
       scopedStatements
@@ -303,7 +357,7 @@ ifElifElseStatement
     ;
 
 ifStatement
-    : IF_TOKEN BRACE_START_TOKEN printArg BRACE_END_TOKEN scopedStatements
+    : IF_TOKEN BRACE_START_TOKEN expression BRACE_END_TOKEN scopedStatements
         { /* stub */ }
     ;
 
@@ -313,7 +367,7 @@ elifStatementList
     ;
 
 elifStatement
-    : ELIF_TOKEN BRACE_START_TOKEN printArg BRACE_END_TOKEN scopedStatements
+    : ELIF_TOKEN BRACE_START_TOKEN expression BRACE_END_TOKEN scopedStatements
         { /* stub */ }
     ;
 
@@ -330,22 +384,22 @@ scopedStatements
 
 optionalReturnStatement
     : /* empty */
-    | RETURN_TOKEN printArg ENDOFSTATEMENT_TOKEN
+    | RETURN_TOKEN expression ENDOFSTATEMENT_TOKEN
         { /* stub */ }
     | RETURN_TOKEN ENDOFSTATEMENT_TOKEN
         { /* stub */ }
     ;
 
 assignmentStatement
-    : assignmentLHS EQUALS_TOKEN printArg
+    : assignmentLHS EQUALS_TOKEN expression
         { driver.enterAssignmentStatement( $1, $3, @1, @3 ); }
     ;
 
 assignmentLHS
     : IDENTIFIER
-        { $$ = silly::LiteralOrVariable::fromVariable( $1 ); }
-    | IDENTIFIER ARRAY_START_TOKEN INTEGER_PATTERN ARRAY_END_TOKEN
-        { $$ = silly::LiteralOrVariable::fromArrayVariable( $1, $3 ); }
+        { $$ = silly::Expr::fromVariable( $1 ); }
+    | IDENTIFIER ARRAY_START_TOKEN expression ARRAY_END_TOKEN
+        { $$ = silly::Expr::fromArrayVariable( $1, $3 ); }
     ;
 
 importStatement
@@ -449,19 +503,57 @@ errorStatement
     ;
 
 printArgList
-    : printArg
-        { $$ = std::vector<silly::LiteralOrVariable>{ $1 }; }
-    | printArgList COMMA_TOKEN printArg
+    : expression
+        { $$ = std::vector<silly::Expr>{ $1 }; }
+    | printArgList COMMA_TOKEN expression
         { $1.push_back( $3 ); $$ = std::move( $1 ); }
     ;
 
-printArg
-    : literal
-        { $$ = silly::LiteralOrVariable::fromLiteral( $1 ); }
+expression
+    : expression BOOLEANOR_TOKEN expression
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Or,  $1, $3 ); }
+    | expression BOOLEANXOR_TOKEN expression
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Xor, $1, $3 ); }
+    | expression BOOLEANAND_TOKEN expression
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::And, $1, $3 ); }
+    | expression EQUALITY_TOKEN expression
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Equal, $1, $3 ); }
+    | expression NOTEQUAL_TOKEN expression
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::NotEqual, $1, $3 ); }
+    | expression LESSTHAN_TOKEN expression
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Less, $1, $3 ); }
+    | expression LESSEQUAL_TOKEN expression
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::LessEqual, $1, $3 ); }
+    | expression GREATERTHAN_TOKEN expression
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Greater, $1, $3 ); }
+    | expression GREATEREQUAL_TOKEN expression
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::GreaterEqual, $1, $3 ); }
+    | expression PLUSCHAR_TOKEN expression
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Plus, $1, $3 ); }
+    | expression MINUS_TOKEN expression
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Minus, $1, $3 ); }
+    | expression TIMES_TOKEN expression
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Mul, $1, $3 ); }
+    | expression DIV_TOKEN expression
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Div, $1, $3 ); }
+    | expression MOD_TOKEN expression
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Mod, $1, $3 ); }
+    | MINUS_TOKEN expression %prec UMINUS
+        { $$ = silly::Expr::makeUnaryOp( ExprOp::Minus, $2 ); }
+    | PLUSCHAR_TOKEN expression %prec UPLUS
+        { $$ = silly::Expr::makeUnaryOp( ExprOp::Plus, $2 ); }
+    | NOT_TOKEN expression %prec UNOT
+        { $$ = silly::Expr::makeUnaryOp( ExprOp::Not, $2 ); }
+    | BRACE_START_TOKEN expression BRACE_END_TOKEN
+        { $$ = $2; }
+    | literal
+        { $$ = silly::Expr::fromLiteral( $1 ); }
     | IDENTIFIER
-        { $$ = silly::LiteralOrVariable::fromVariable( $1 ); }
-    | IDENTIFIER ARRAY_START_TOKEN INTEGER_PATTERN ARRAY_END_TOKEN
-        { $$ = silly::LiteralOrVariable::fromArrayVariable( $1, $3 ); }
+        { $$ = silly::Expr::fromVariable( $1 ); }
+    | IDENTIFIER ARRAY_START_TOKEN expression ARRAY_END_TOKEN
+        { $$ = silly::Expr::fromArrayVariable( $1, $3 ); }
+    | CALL_TOKEN IDENTIFIER BRACE_START_TOKEN optionalCallArgList BRACE_END_TOKEN
+        { $$ = silly::Expr::makeCall( $2 ); /* stub */ }
     ;
 
 optionalContinue

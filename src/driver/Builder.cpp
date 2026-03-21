@@ -622,7 +622,7 @@ namespace silly
         return ( v != nullptr ) ? true : false;
     }
 
-    mlir::Type Builder::findReturnType( )
+    mlir::Type Builder::findReturnType()
     {
         mlir::Type returnType{};
         if ( currentFuncName == ENTRY_SYMBOL_NAME )
@@ -669,6 +669,68 @@ namespace silly
         {
             mlir::func::ReturnOp::create( builder, loc, mlir::ValueRange{} );
         }
+    }
+
+    mlir::Value Builder::createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty,
+                                            mlir::Value lhs, mlir::Value rhs, LocationStack &ls )
+    {
+        ls.push_back( loc );
+
+        return silly::ArithBinOp::create( builder, loc, ty, silly::ArithBinOpKindAttr::get( this->ctx, what ), lhs,
+                                          rhs )
+            .getResult();
+    }
+
+    mlir::Value Builder::createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs,
+                                          mlir::Value rhs, LocationStack &ls )
+    {
+        ls.push_back( loc );
+
+        return silly::CmpBinOp::create( builder, loc, typ.i1, silly::CmpBinOpKindAttr::get( this->ctx, what ), lhs,
+                                        rhs )
+            .getResult();
+    }
+
+    mlir::Value Builder::makeUnaryExpression( mlir::Location loc, mlir::Value value, UnaryOp op, LocationStack &ls )
+    {
+        mlir::Value v;
+
+        switch ( op )
+        {
+            case UnaryOp::Negate:
+            {
+                // Negation
+                v = silly::NegOp::create( builder, loc, value.getType(), value ).getResult();
+                break;
+            }
+            case UnaryOp::Not:
+            {
+                if ( !value.getType().isInteger() )
+                {
+                    // coverage: syntax-error/not-float.silly
+                    emitUserError( loc, "NOT on non-integer type", currentFuncName );
+                    return v;
+                }
+
+                // NOT x: (x == 0)
+                mlir::Value zero =
+                    mlir::arith::ConstantIntOp::create( builder, loc, 0, value.getType().getIntOrFloatBitWidth() );
+                v = createBinaryCmp( loc, silly::CmpBinOpKind::Equal, value, zero, ls );
+                break;
+            }
+            case UnaryOp::Plus:
+            {
+                v = value;
+                break;
+            }
+            default:
+            {
+                emitInternalError( loc, __FILE__, __LINE__, __func__,
+                                   std::format( "unknown unary operator: {}", (int)op ), currentFuncName );
+            }
+        }
+
+        return v;
     }
 }    // namespace silly
 

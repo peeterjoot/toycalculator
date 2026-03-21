@@ -12,6 +12,7 @@
 #include "LocationStack.hpp"
 #include "PrintFlags.hpp"
 #include "SillyDialect.hpp"
+#include "helper.hpp"
 #include "silly.lex.hh"    // flex-generated reentrant scanner
 #include "silly.tab.hh"
 
@@ -110,7 +111,7 @@ namespace silly
     }
 
     void BisonParseListener::enterExitStatement( const silly::BisonParser::location_type& exitLoc,
-                                                 const silly::LiteralOrVariable& var )
+                                                 const silly::Expr& var )
     {
         hasExplicitExit = true;
 
@@ -118,7 +119,7 @@ namespace silly
         LocationStack ls( builder, loc );
 
         mlir::Type returnType = findReturnType();
-        mlir::Value value = parsePrintArg( loc, returnType, var, ls );
+        mlir::Value value = parseExpression( loc, returnType, var, ls );
         processReturnLike( loc, value, ls );
     }
 
@@ -163,11 +164,11 @@ namespace silly
     }
 
     // eventually: parseExpression
-    mlir::Value BisonParseListener::parsePrintArg( mlir::Location vLoc, mlir::Type ty,
-                                                   const silly::LiteralOrVariable& parg, LocationStack& ls )
+    mlir::Value BisonParseListener::parseExpression( mlir::Location vLoc, mlir::Type ty, const silly::Expr& parg,
+                                                     LocationStack& ls )
     {
         mlir::Value v;
-        if ( parg.kind == LiteralOrVariable::Kind::Literal )
+        if ( parg.kind == Expr::Kind::Literal )
         {
             switch ( parg.lit.kind )
             {
@@ -213,10 +214,131 @@ namespace silly
                 return v;
             }
         }
+        else if ( parg.kind == Expr::Kind::UnaryOp )
+        {
+            mlir::Value left = parseExpression( vLoc, ty, *parg.left, ls );
+            UnaryOp uop = UnaryOp::Undefined;
+            switch ( parg.op )
+            {
+                case ExprOp::Minus:
+                {
+                    uop = UnaryOp::Negate;
+                    break;
+                }
+                case ExprOp::Plus:
+                {
+                    uop = UnaryOp::Plus;
+                    break;
+                }
+                case ExprOp::Not:
+                {
+                    uop = UnaryOp::Not;
+                    break;
+                }
+                default:
+                {
+                    emitInternalError( vLoc, __FILE__, __LINE__, __func__,
+                                       std::format( "parseExpression failed. Unknown unary op: {}", (int)parg.kind ),
+                                       currentFuncName );
+                }
+            }
+
+            if ( uop != UnaryOp::Undefined )
+            {
+                v = makeUnaryExpression( vLoc, left, uop, ls );
+            }
+        }
+        else if ( parg.kind == Expr::Kind::BinaryOp )
+        {
+            mlir::Value left = parseExpression( vLoc, ty, *parg.left, ls );
+            mlir::Value right = parseExpression( vLoc, ty, *parg.right, ls );
+            mlir::Type bty = biggestTypeOf( left.getType(), right.getType() );
+            switch ( parg.op )
+            {
+                case ExprOp::Mul:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Mul, bty, left, right, ls );
+                    break;
+                }
+                case ExprOp::Div:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Div, bty, left, right, ls );
+                    break;
+                }
+                case ExprOp::Mod:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Mod, bty, left, right, ls );
+                    break;
+                }
+                case ExprOp::Plus:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Add, bty, left, right, ls );
+                    break;
+                }
+                case ExprOp::Minus:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Sub, bty, left, right, ls );
+                    break;
+                }
+                case ExprOp::Or:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Or, bty, left, right, ls );
+                    break;
+                }
+                case ExprOp::And:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::And, bty, left, right, ls );
+                    break;
+                }
+                case ExprOp::Xor:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Xor, bty, left, right, ls );
+                    break;
+                }
+                case ExprOp::Equal:
+                {
+                    v = createBinaryCmp( vLoc, silly::CmpBinOpKind::Equal, left, right, ls );
+                    break;
+                }
+                case ExprOp::NotEqual:
+                {
+                    v = createBinaryCmp( vLoc, silly::CmpBinOpKind::NotEqual, left, right, ls );
+                    break;
+                }
+                case ExprOp::Less:
+                {
+                    v = createBinaryCmp( vLoc, silly::CmpBinOpKind::Less, left, right, ls );
+                    break;
+                }
+                case ExprOp::LessEqual:
+                {
+                    v = createBinaryCmp( vLoc, silly::CmpBinOpKind::LessEq, left, right, ls );
+                    break;
+                }
+                case ExprOp::Greater:
+                {
+                    v = createBinaryCmp( vLoc, silly::CmpBinOpKind::Less, right, left, ls );
+                    break;
+                }
+                case ExprOp::GreaterEqual:
+                {
+                    v = createBinaryCmp( vLoc, silly::CmpBinOpKind::LessEq, right, left, ls );
+                    break;
+                }
+                default:
+                    emitInternalError( vLoc, __FILE__, __LINE__, __func__,
+                                       std::format( "parseExpression failed. Unknown binary op: {}", (int)parg.kind ),
+                                       currentFuncName );
+            }
+        }
+        else if ( parg.kind == Expr::Kind::Call )
+        {
+            assert( 0 and "NYI" );
+        }
         else
         {
             mlir::Value index;
-            if ( parg.kind == LiteralOrVariable::Kind::ArrayVariable )
+            if ( parg.kind == Expr::Kind::ArrayVariable )
             {
                 index = parseInteger( vLoc, 64, parg.index, ls );
             }
@@ -227,7 +349,7 @@ namespace silly
         return v;
     }
 
-    void BisonParseListener::enterPrintStatement( const std::vector<silly::LiteralOrVariable>& args,
+    void BisonParseListener::enterPrintStatement( const std::vector<silly::Expr>& args,
                                                   const silly::BisonParser::location_type& printLoc )
     {
         mlir::Location loc = getLocation( printLoc );
@@ -247,10 +369,10 @@ namespace silly
 
         LocationStack ls( builder, loc );
         std::vector<mlir::Value> vargs;
-        for ( const silly::LiteralOrVariable& parg : args )
+        for ( const silly::Expr& parg : args )
         {
             mlir::Location vLoc = loc;    // per-argument location?
-            mlir::Value v = parsePrintArg( vLoc, {}, parg, ls );
+            mlir::Value v = parseExpression( vLoc, {}, parg, ls );
             if ( !v )
             {
                 return;
@@ -402,8 +524,7 @@ namespace silly
         declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initializer, ls );
     }
 
-    void BisonParseListener::enterAssignmentStatement( const silly::LiteralOrVariable& var,
-                                                       const silly::LiteralOrVariable& rhs,
+    void BisonParseListener::enterAssignmentStatement( const silly::Expr& var, const silly::Expr& rhs,
                                                        const silly::BisonParser::location_type& lhsLoc,
                                                        const silly::BisonParser::location_type& rhsLoc )
     {
@@ -420,7 +541,7 @@ namespace silly
         }
 
         mlir::Value indexValue = mlir::Value{};
-        if ( var.kind == LiteralOrVariable::Kind::ArrayVariable )
+        if ( var.kind == Expr::Kind::ArrayVariable )
         {
             mlir::Location rLoc = getLocation( rhsLoc );
             indexValue = parseInteger( rLoc, 64, var.index, ls );
@@ -432,7 +553,7 @@ namespace silly
         }
 
         mlir::Location aLoc = getLocation( rhsLoc );
-        mlir::Value resultValue = parsePrintArg( aLoc, {}, rhs, ls );
+        mlir::Value resultValue = parseExpression( aLoc, {}, rhs, ls );
         if ( !resultValue )
         {
             return;
