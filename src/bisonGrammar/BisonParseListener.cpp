@@ -110,7 +110,7 @@ namespace silly
     }
 
     void BisonParseListener::enterExitStatement( const silly::BisonParser::location_type& exitLoc,
-                                                 const silly::LiteralOrVariable& var )
+                                                 const silly::Expr& var )
     {
         hasExplicitExit = true;
 
@@ -164,10 +164,10 @@ namespace silly
 
     // eventually: parseExpression
     mlir::Value BisonParseListener::parsePrintArg( mlir::Location vLoc, mlir::Type ty,
-                                                   const silly::LiteralOrVariable& parg, LocationStack& ls )
+                                                   const silly::Expr& parg, LocationStack& ls )
     {
         mlir::Value v;
-        if ( parg.kind == LiteralOrVariable::Kind::Literal )
+        if ( parg.kind == Expr::Kind::Literal )
         {
             switch ( parg.lit.kind )
             {
@@ -216,7 +216,7 @@ namespace silly
         else
         {
             mlir::Value index;
-            if ( parg.kind == LiteralOrVariable::Kind::ArrayVariable )
+            if ( parg.kind == Expr::Kind::ArrayVariable )
             {
                 index = parseInteger( vLoc, 64, parg.index, ls );
             }
@@ -227,7 +227,7 @@ namespace silly
         return v;
     }
 
-    void BisonParseListener::enterPrintStatement( const std::vector<silly::LiteralOrVariable>& args,
+    void BisonParseListener::enterPrintStatement( const std::vector<silly::Expr>& args,
                                                   const silly::BisonParser::location_type& printLoc )
     {
         mlir::Location loc = getLocation( printLoc );
@@ -247,7 +247,7 @@ namespace silly
 
         LocationStack ls( builder, loc );
         std::vector<mlir::Value> vargs;
-        for ( const silly::LiteralOrVariable& parg : args )
+        for ( const silly::Expr& parg : args )
         {
             mlir::Location vLoc = loc;    // per-argument location?
             mlir::Value v = parsePrintArg( vLoc, {}, parg, ls );
@@ -402,8 +402,8 @@ namespace silly
         declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initializer, ls );
     }
 
-    void BisonParseListener::enterAssignmentStatement( const silly::LiteralOrVariable& var,
-                                                       const silly::LiteralOrVariable& rhs,
+    void BisonParseListener::enterAssignmentStatement( const silly::Expr& var,
+                                                       const silly::Expr& rhs,
                                                        const silly::BisonParser::location_type& lhsLoc,
                                                        const silly::BisonParser::location_type& rhsLoc )
     {
@@ -420,7 +420,7 @@ namespace silly
         }
 
         mlir::Value indexValue = mlir::Value{};
-        if ( var.kind == LiteralOrVariable::Kind::ArrayVariable )
+        if ( var.kind == Expr::Kind::ArrayVariable )
         {
             mlir::Location rLoc = getLocation( rhsLoc );
             indexValue = parseInteger( rLoc, 64, var.index, ls );

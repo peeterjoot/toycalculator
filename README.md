@@ -367,12 +367,30 @@ wget https://www.antlr.org/download/antlr-4.10-complete.jar
 As an experiment, I've implemented an incomplete Bison/Flex front end and grammar, factoring out just enough of `Antlr4ParseListener.cpp` into `Builder.cpp` so that this front end can handle some rudimentary operations.
 
 So far, just:
-- `PRINT` statements with any number of boolean, integer, float, and string literals, and scalar variables (CONTINUE/ERROR also supported.)
+- `PRINT`/`ERROR` statements with any number of boolean, integer, float, and string literals, and scalar and array element variables (CONTINUE flag also supported.)
+- `EXIT`
+- `MAIN` (easy -- ignore it.)
 - BOOL, integer, and float declarations, scalar and arrays.  Initializer lists can only be a single element.
+- Assignment of scalar and array element variables.
+
+What doesn't work:
+- IF/ELIF/ELSE
+- FOR
+- FUNCTION
+- CALL
+- MODULE
+- IMPORT
+- GET
+- unary and binary expressions.
+- initializer lists with more than one element.
+- debugging
+- proper location info.
+- multiple source files.
 
 I'm not sure how far I'll take this.  Was just curious what a Bison grammar and walker would look like (and given the -fno-rtti requirement of a default LLVM build, is that a feasible replacement for ANTLR4).  A nice side effect of this experiment is that it thins out the ANTLR4 parser/builder, making the parse walker a much lighter weight entity -- that is probably worth doing even considering Antlr4ParseListener in isolation.
 
-To try building it, configure with `cmake -DUSE_BISON_GRAMMAR=1`.
+To build it, configure with `cmake -DUSE_BISON_GRAMMAR=1`.
+
 
 ### Installation Dependencies (Fedora)
 

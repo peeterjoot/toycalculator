@@ -32,7 +32,7 @@ namespace silly
         void exitStartRule( const silly::BisonParser::location_type& loc );
 
         /// Called from parser action for PRINT statement
-        void enterPrintStatement( const std::vector<silly::LiteralOrVariable>& args,
+        void enterPrintStatement( const std::vector<silly::Expr>& args,
                                   const silly::BisonParser::location_type& printLoc );
 
         void enterIntDeclareStatement( const std::string& typeName, const std::string& varName,
@@ -52,11 +52,11 @@ namespace silly
                                         const silly::BisonParser::location_type& nameLoc,
                                         const silly::BisonParser::location_type& arrayLoc );
 
-        void enterAssignmentStatement( const silly::LiteralOrVariable& var, const silly::LiteralOrVariable& rhs,
+        void enterAssignmentStatement( const silly::Expr& var, const silly::Expr& rhs,
                                        const silly::BisonParser::location_type& lhsLoc,
                                        const silly::BisonParser::location_type& rhsLoc );
 
-        void enterExitStatement( const silly::BisonParser::location_type& loc, const silly::LiteralOrVariable& var );
+        void enterExitStatement( const silly::BisonParser::location_type& loc, const silly::Expr& var );
 
         void enterExitStatement( const silly::BisonParser::location_type& loc );
 
@@ -82,7 +82,7 @@ namespace silly
                                 const std::string& arraySizeString, mlir::Type ty, Literal initializer,
                                 LocationStack& ls );
 
-        mlir::Value parsePrintArg( mlir::Location vLoc, mlir::Type ty, const silly::LiteralOrVariable& parg,
+        mlir::Value parsePrintArg( mlir::Location vLoc, mlir::Type ty, const silly::Expr& parg,
                                    LocationStack& ls );
 
         yyscan_t scanner{};
