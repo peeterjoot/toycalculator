@@ -121,6 +121,15 @@ namespace silly
         inline mlir::Value createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs,
                                             mlir::Value rhs, LocationStack &ls );
 
+        enum class UnaryOp : uint32_t
+        {
+            Negate,
+            Plus,
+            Not
+        };
+
+        mlir::Value makeUnaryExpression( mlir::Location loc, mlir::Value value, UnaryOp op, LocationStack & ls );
+
        protected:
         Builder( silly::SourceManager &s, const std::string &filename );
 

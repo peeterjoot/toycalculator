@@ -1635,35 +1635,16 @@ namespace silly
 
             ls.push_back( loc );
 
+            UnaryOp op{UnaryOp::Plus};
             if ( opText == "-" )
             {
-                // Negation
-                value = silly::NegOp::create( builder, loc, value.getType(), value ).getResult();
-            }
-            else if ( opText == "+" )
-            {
-                // Unary plus: identity (no-op)
+                op = UnaryOp::Negate;
             }
             else if ( opText == "NOT" )
             {
-                if ( !value.getType().isInteger() )
-                {
-                    // coverage: syntax-error/not-float.silly
-                    emitUserError( loc, "NOT on non-integer type", currentFuncName );
-                    return mlir::Value{};
-                }
-
-                // NOT x: (x == 0)
-                mlir::Value zero =
-                    mlir::arith::ConstantIntOp::create( builder, loc, 0, value.getType().getIntOrFloatBitWidth() );
-                value = createBinaryCmp( loc, silly::CmpBinOpKind::Equal, value, zero, ls );
+                op = UnaryOp::Not;
             }
-            else
-            {
-                emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                   std::format( "unknown unary operator: {}", opText ), currentFuncName );
-                return value;
-            }
+            value = makeUnaryExpression( loc, value, op, ls );
         }
         else if ( SillyParser::PrimaryContext *primaryCtx = dynamic_cast<SillyParser::PrimaryContext *>( ctx ) )
         {

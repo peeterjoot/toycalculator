@@ -215,22 +215,22 @@ namespace silly
         }
         else if ( parg.kind == Expr::Kind::UnaryOp )
         {
-            mlir::Value right = parseExpression( vLoc, ty, *parg.right, ls );
+            mlir::Value left = parseExpression( vLoc, ty, *parg.left, ls );
             switch ( parg.op )
             {
                 case ExprOp::Minus:
                 {
-                    assert( 0 and "NYI" );
+                    v = makeUnaryExpression( vLoc, left, UnaryOp::Negate, ls );
                     break;
                 }
                 case ExprOp::Plus:
                 {
-                    v = right;
+                    v = makeUnaryExpression( vLoc, left, UnaryOp::Plus, ls );
                     break;
                 }
                 case ExprOp::Not:
                 {
-                    assert( 0 and "NYI" );
+                    v = makeUnaryExpression( vLoc, left, UnaryOp::Not, ls );
                     break;
                 }
                 default:
