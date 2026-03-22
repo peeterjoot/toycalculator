@@ -12,6 +12,7 @@
 #include "LocationStack.hpp"
 #include "PrintFlags.hpp"
 #include "SillyDialect.hpp"
+#include "helper.hpp"
 #include "silly.lex.hh"    // flex-generated reentrant scanner
 #include "silly.tab.hh"
 
@@ -251,59 +252,84 @@ namespace silly
         {
             mlir::Value left = parseExpression( vLoc, ty, *parg.left, ls );
             mlir::Value right = parseExpression( vLoc, ty, *parg.right, ls );
+            mlir::Type bty = biggestTypeOf( left.getType(), right.getType() );
             switch ( parg.op )
             {
                 case ExprOp::Mul:
                 {
-                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Mul, ty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Mul, bty, left, right, ls );
                     break;
                 }
                 case ExprOp::Div:
                 {
-                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Div, ty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Div, bty, left, right, ls );
                     break;
                 }
                 case ExprOp::Mod:
                 {
-                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Mod, ty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Mod, bty, left, right, ls );
                     break;
                 }
                 case ExprOp::Plus:
                 {
-                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Add, ty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Add, bty, left, right, ls );
                     break;
                 }
                 case ExprOp::Minus:
                 {
-                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Sub, ty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Sub, bty, left, right, ls );
                     break;
                 }
                 case ExprOp::Or:
                 {
-                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Or, ty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Or, bty, left, right, ls );
                     break;
                 }
                 case ExprOp::And:
                 {
-                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::And, ty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::And, bty, left, right, ls );
                     break;
                 }
                 case ExprOp::Xor:
                 {
-                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Xor, ty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Xor, bty, left, right, ls );
+                    break;
+                }
+                case ExprOp::Equal:
+                {
+                    v = createBinaryCmp( vLoc, silly::CmpBinOpKind::Equal, left, right, ls );
+                    break;
+                }
+                case ExprOp::NotEqual:
+                {
+                    v = createBinaryCmp( vLoc, silly::CmpBinOpKind::NotEqual, left, right, ls );
+                    break;
+                }
+                case ExprOp::Less:
+                {
+                    v = createBinaryCmp( vLoc, silly::CmpBinOpKind::Less, left, right, ls );
+                    break;
+                }
+                case ExprOp::LessEqual:
+                {
+                    v = createBinaryCmp( vLoc, silly::CmpBinOpKind::LessEq, left, right, ls );
+                    break;
+                }
+                case ExprOp::Greater:
+                {
+                    v = createBinaryCmp( vLoc, silly::CmpBinOpKind::Less, right, left, ls );
+                    break;
+                }
+                case ExprOp::GreaterEqual:
+                {
+                    v = createBinaryCmp( vLoc, silly::CmpBinOpKind::LessEq, right, left, ls );
                     break;
                 }
                 default:
-                    assert( 0 and "NYI" );
+                    emitInternalError( vLoc, __FILE__, __LINE__, __func__,
+                                       std::format( "parseExpression failed. Unknown binary op: {}", (int)parg.kind ),
+                                       currentFuncName );
             }
-
-
-            // ExprOp::Equal
-            // ExprOp::NotEqual
-            // ExprOp::Less
-            // ExprOp::LessEqual
-            // ExprOp::Greater
-            // ExprOp::GreaterEqual
         }
         else if ( parg.kind == Expr::Kind::Call )
         {
