@@ -700,7 +700,7 @@ namespace silly
             case UnaryOp::Negate:
             {
                 // Negation
-                value = silly::NegOp::create( builder, loc, value.getType(), value ).getResult();
+                v = silly::NegOp::create( builder, loc, value.getType(), value ).getResult();
                 break;
             }
             case UnaryOp::Not:
