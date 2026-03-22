@@ -114,12 +114,12 @@ namespace silly
         mlir::Type findReturnType( );
 
         /// Create a silly::ArithBinOp
-        inline mlir::Value createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty,
-                                              mlir::Value lhs, mlir::Value rhs, LocationStack &ls );
+        mlir::Value createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty,
+                                       mlir::Value lhs, mlir::Value rhs, LocationStack &ls );
 
         /// Create a silly::CmpBinOp
-        inline mlir::Value createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs,
-                                            mlir::Value rhs, LocationStack &ls );
+        mlir::Value createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs,
+                                     mlir::Value rhs, LocationStack &ls );
 
         enum class UnaryOp : uint32_t
         {
