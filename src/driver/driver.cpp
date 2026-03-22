@@ -135,10 +135,10 @@ static void llvmInitialization( int argc, char** argv )
     llvm::cl::ParseCommandLineOptions( argc, argv, "Calculator compiler\n" );
 }
 
-////////////////////////////////////////////////////////////////////////////////////////
-//
-// The driver entry point:
-//
+/////////////////////////////////////////////////////////////////////////////////////////
+///
+/// The driver entry point:
+///
 int main( int argc, char** argv )
 {
     static_assert( (int)silly::ReturnCodes::LAST_ERROR_VALUE < 256 ); // Unix rc semantics.

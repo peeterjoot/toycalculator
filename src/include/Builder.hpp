@@ -23,6 +23,7 @@ namespace silly
     /// Start and end locations associated with parser context.
     using LocPairs = std::pair<mlir::Location, mlir::Location>;
 
+    /// This class implements basic MLIR builder helper functions that are frontend agnostic.
     class Builder
     {
        public:
@@ -44,6 +45,7 @@ namespace silly
         /// @param sloc1 DebugNameOp location for parameters.
         void createMain( mlir::Location floc, mlir::Location sloc1 );
 
+        /// Emit an implicit return 0 for the silly program's main.
         void createMainExit( mlir::Location loc );
 
         /// Emit a user-friendly error message in GCC/Clang style
@@ -85,6 +87,7 @@ namespace silly
                                   const std::string &arrayBounds, bool haveInitializers,
                                   std::vector<mlir::Value> &initializers, LocationStack &ls );
 
+        /// lookup for silly::DeclareOp for a variable, or the Op for a parameter or induction variable.
         mlir::Value variableToValue( mlir::Location loc, const std::string &varName, mlir::Value iValue,
                                      mlir::Location iLoc, LocationStack &ls );
 
@@ -111,6 +114,7 @@ namespace silly
         void processReturnLike( mlir::Location loc, mlir::Value returnValue,
                                 LocationStack &ls );
 
+        /// Lookup the type for a FUNCTION return.
         mlir::Type findReturnType( );
 
         /// Create a silly::ArithBinOp
@@ -121,6 +125,7 @@ namespace silly
         mlir::Value createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs,
                                      mlir::Value rhs, LocationStack &ls );
 
+        /// All the supported unary operations for the silly dialect.
         enum class UnaryOp : uint32_t
         {
             Undefined,
@@ -129,9 +134,11 @@ namespace silly
             Not
         };
 
+        /// mlir builder helper for a unary expression (i.e.: negation or NOT operation)
         mlir::Value makeUnaryExpression( mlir::Location loc, mlir::Value value, UnaryOp op, LocationStack & ls );
 
        protected:
+        /// construct state for creation of a silly dialect ModuleOp
         Builder( silly::SourceManager &s, const std::string &filename );
 
         /// back reference to the owning SourceManager (used for IMPORT module lookup)

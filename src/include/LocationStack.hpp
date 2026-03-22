@@ -15,13 +15,17 @@ namespace silly
     class LocationStack
     {
        public:
+        /// Construct a location stack
         LocationStack( mlir::OpBuilder &b, mlir::Location loc );
 
+        /// Push another location to the back of the location stack
         void push_back( mlir::Location loc );
 
+        /// Fuse multiple locations or return a single location unchanged.
         mlir::Location fuseLocations();
 
        private:
+        /// Cached reference to the builder that we need to fuse locations.
         mlir::OpBuilder &builder;
 
         /// locations that should be fused when the current statement processing is complete.

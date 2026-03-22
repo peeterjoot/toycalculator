@@ -125,6 +125,7 @@ namespace silly
         /// Target machine for code generation and optimization
         std::unique_ptr<llvm::TargetMachine> targetMachine;
 
+        /// cached copy of the triple that we tag the LLVM-IR with.
         llvm::Triple targetTriple;
 
         /// Determine the input type from a filename extension.

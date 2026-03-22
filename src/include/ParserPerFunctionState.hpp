@@ -87,11 +87,13 @@ namespace silly
         /// Any variables that had been declared in the current scope will no longer be visible.
         void endScope();
 
+        /// Get the last pushed scope Op
         mlir::Value currentDebugScope() const
         {
             return debugScopeStack.empty() ? mlir::Value{} : debugScopeStack.back();
         }
 
+        /// Push one more scope Op for later use.
         void pushScopeOp( mlir::Value value )
         {
             debugScopeStack.push_back( value );

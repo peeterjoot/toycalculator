@@ -20,12 +20,14 @@
 
 namespace silly
 {
+    /// function pointer type for main.
     using DriverMainFn = int(int, char**);
 
     /// State to pass from the driver to CompilationUnit, parser/builder, lowering
     class DriverState
     {
        public:
+        /// Construct a DriverState object, passing in argv[0] and &main for later lookup.
         DriverState( const char * a, DriverMainFn m ) : argv0{a}, mainSymbol{m} {
         }
 

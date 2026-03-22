@@ -1802,7 +1802,6 @@ namespace silly
         return value;
     }
 
-    // Minimize -frtti dependencies:
     mlir::OwningOpRef<mlir::ModuleOp> runParseListener( silly::SourceManager &s, const std::string &filename )
     {
         Antlr4ParseListener listener( s, filename );

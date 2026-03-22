@@ -34,6 +34,7 @@ namespace silly
         /// Map from DeclareOp to AllocaOp for local variables.
         std::unordered_map<mlir::Operation*, mlir::Operation*> declareToAlloca;
 
+        /// Map a ScopeOp to a DILexicalBlockAttr
         std::unordered_map<mlir::Operation*, mlir::LLVM::DILexicalBlockAttr> scopeOpToAttr;
     };
 

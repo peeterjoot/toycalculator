@@ -41,6 +41,7 @@
 #include "SillyDialect.hpp"
 #include "SillyPasses.hpp"
 #include "SourceManager.hpp"
+#include "helper.hpp"
 #include "createSillyToLLVMLoweringPass.hpp"
 
 #define DEBUG_TYPE "silly-cu"
@@ -56,8 +57,6 @@ namespace silly
             flags.enableDebugInfo( true );
         }
     }
-
-    mlir::OwningOpRef<mlir::ModuleOp> runParseListener( silly::SourceManager &s, const std::string &filename );
 
     ReturnCodes CompilationUnit::processSourceFile( const std::string& sourceFileName )
     {

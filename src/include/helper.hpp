@@ -32,6 +32,11 @@ namespace silly
 
     /// While mlir::Type is streamable in << output, here's a little shim for use in string based dumps.
     std::string mlirTypeToString( mlir::Type t );
+
+    class SourceManager;
+
+    /// Run the parser, returning an MLIR ModuleOp if the parse/build was successful.
+    mlir::OwningOpRef<mlir::ModuleOp> runParseListener( silly::SourceManager &s, const std::string &filename );
 }
 
 // vim: et ts=4 sw=4
