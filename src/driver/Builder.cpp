@@ -732,6 +732,40 @@ namespace silly
 
         return v;
     }
+
+    void Builder::handleGet( mlir::Location loc, const std::string & varName, mlir::Value indexValue, mlir::Location iloc, LocationStack & ls )
+    {
+        silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+        silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
+        mlir::Type elemType = varTy.getElementType();
+        mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
+        llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
+
+        mlir::Value optIndexValue{};
+
+        if ( indexValue )
+        {
+            optIndexValue = indexTypeCast( iloc, indexValue, ls );
+        }
+        else if ( !shape.empty() )
+        {
+            // coverage: syntax-error/get-string.silly
+            emitUserError( loc, std::format( "Attempted GET to string literal or array?" ), currentFuncName );
+            return;
+        }
+        else
+        {
+            // Scalar: load the value
+        }
+
+        mlir::Value var = declareOp.getResult();
+
+        ls.push_back( loc );
+        silly::GetOp resultValue = silly::GetOp::create( builder, loc, elemType );
+
+        // mlir::Location fusedLoc = ls.fuseLocations( );
+        silly::AssignOp::create( builder, loc, var, optIndexValue, resultValue );
+    }
 }    // namespace silly
 
 // vim: et ts=4 sw=4

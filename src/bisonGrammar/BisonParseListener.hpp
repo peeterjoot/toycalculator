@@ -60,6 +60,12 @@ namespace silly
 
         void enterExitStatement( const silly::BisonParser::location_type& loc );
 
+        void enterAbortStatement( const silly::BisonParser::location_type& loc );
+
+        void enterGetStatement( const silly::BisonParser::location_type& bLoc, const std::string& varName );
+
+        void enterGetStatement( const silly::BisonParser::location_type& bLoc, const std::string& varName, const silly::Expr& indexExpr );
+
         /// Called from parser on error
         void emitParseError( const silly::BisonParser::location_type& loc, const std::string& msg );
 

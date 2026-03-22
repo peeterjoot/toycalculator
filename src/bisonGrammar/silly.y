@@ -307,7 +307,7 @@ statement
 
 abortStatement
     : ABORT_TOKEN
-        { /* stub */ }
+        { driver.enterAbortStatement( @1 ); }
     ;
 
 callStatement
@@ -327,9 +327,9 @@ callArgList
 
 getStatement
     : GET_TOKEN IDENTIFIER
-        { /* stub */ }
-    | GET_TOKEN IDENTIFIER ARRAY_START_TOKEN INTEGER_PATTERN ARRAY_END_TOKEN
-        { /* stub */ }
+        { driver.enterGetStatement( @2, $2 ); }
+    | GET_TOKEN IDENTIFIER ARRAY_START_TOKEN expression ARRAY_END_TOKEN
+        { driver.enterGetStatement( @2, $2, $4 ); }
     ;
 
 forStatement

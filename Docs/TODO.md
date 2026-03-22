@@ -4,14 +4,21 @@
 ----------------------------------
 
 #### Bison parser experiment.
-* get PRINT with single int literal working.
 * If the module return from BisonParseListener::run is nullptr, there is no diagnostic message (but RC=11)
-* why is empty.silly failing when run with lit, but not otherwise.
-* build llvm w/o RTTI on xpgn and toggle bin/build to detect that (but also allow as an option)
-* update README and changelog when this is done.
+* why is empty.silly failing when run with lit, but not otherwise. -- still?
 * takes two ninja calls to build the project (seemingly related to timestamps for tablegen related files).  This appears to be a fine grain timestamp issue somewhat like https://peeterjoot.com/2015/02/25/why-does-touch-include-a-utimensat-syscall/ https://peeterjoot.com/2015/02/25/on-touchs-use-of-futimes-and-a-filesystem-bug/ -- to be investigated.
-* have a state variable for declaration w/ assignment now (getting ready for list init implementation, and -init-fill handling.)
-* Fix location info for parseExpression
+* Function names in Builder are a bit of a random hodge podge.  Review and make more consistent.
+* TODO:
+- [ ] Fix location info for parseExpression
+- [ ] Initializer lists for arrays and -init-fill support: have a state variable for declaration w/ assignment now (getting ready for list init implementation, and -init-fill handling.)
+- [ ] scopes
+- [ ] FOR
+- [ ] IF/ELSE/ELIF
+- [ ] FUNCTION
+- [ ] RETURN
+- [ ] CALL
+- [ ] IMPORT
+- [ ] MODULE
 
 #### Debug
 * Audit the places where I am passing both Location and LocationStack.  Do I need the first?

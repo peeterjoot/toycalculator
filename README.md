@@ -367,21 +367,22 @@ wget https://www.antlr.org/download/antlr-4.10-complete.jar
 As an experiment, I've implemented an incomplete Bison/Flex front end and grammar, factoring out just enough of `Antlr4ParseListener.cpp` into `Builder.cpp` so that this front end can handle some rudimentary operations.
 
 So far, just:
-- `PRINT`/`ERROR` statements with any number of boolean, integer, float, and string literals, and scalar and array element variables (CONTINUE flag also supported.)
+- `ABORT`
+- `ERROR`
 - `EXIT`
-- `MAIN` (easy -- ignore it.)
-- BOOL, integer, and float declarations, scalar and arrays.  Initializer lists can only be a single element.
-- Assignment of scalar and array element variables.
+- `GET`
+- `MAIN`
+- `PRINT`
+- Declarations and assignments.  Initializer lists can only be a single element.
 - Unary and Binary expressions.
 
 What doesn't work:
-- IF/ELIF/ELSE
-- FOR
-- FUNCTION
-- CALL
-- MODULE
-- IMPORT
-- GET
+- `IF/ELIF/ELSE`
+- `FOR`
+- `FUNCTION`
+- `CALL`
+- `MODULE`
+- `IMPORT`
 - initializer lists with more than one element.
 - debugging
 - proper location info.

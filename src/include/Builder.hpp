@@ -137,6 +137,9 @@ namespace silly
         /// mlir builder helper for a unary expression (i.e.: negation or NOT operation)
         mlir::Value makeUnaryExpression( mlir::Location loc, mlir::Value value, UnaryOp op, LocationStack & ls );
 
+        /// mlir builder helper for GET
+        void handleGet( mlir::Location loc, const std::string & varName, mlir::Value indexValue, mlir::Location iloc, LocationStack & ls );
+
        protected:
         /// construct state for creation of a silly dialect ModuleOp
         Builder( silly::SourceManager &s, const std::string &filename );

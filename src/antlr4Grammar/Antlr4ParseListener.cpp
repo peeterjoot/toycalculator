@@ -1123,56 +1123,35 @@ namespace silly
         mlir::Location loc = getStartLocation( ctx );
         LocationStack ls( builder, loc );
 
+        std::string varName;
+        mlir::Value indexValue;
+        mlir::Location iloc = loc;
         SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = ctx->scalarOrArrayElement();
+
         if ( scalarOrArrayElement )
         {
             tNode *varNameObject = scalarOrArrayElement->IDENTIFIER();
             assert( varNameObject );
-            std::string varName = varNameObject->getText();
+            varName = varNameObject->getText();
 
-            silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
-            silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
-            mlir::Type elemType = varTy.getElementType();
-            mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
-            llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
-
-            mlir::Value optIndexValue{};
             if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
             {
-                mlir::Value indexValue = parseExpression( indexExpr->expression(), {}, ls );
+                iloc = getStartLocation( indexExpr->expression() );
+                indexValue = parseExpression( indexExpr->expression(), {}, ls );
                 if ( !indexValue )
                 {
                     emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
                     return;
                 }
-
-                mlir::Location iloc = getStartLocation( indexExpr->expression() );
-                optIndexValue = indexTypeCast( iloc, indexValue, ls );
             }
-            else if ( !shape.empty() )
-            {
-                // coverage: syntax-error/get-string.silly
-                emitUserError( loc, std::format( "Attempted GET to string literal or array?" ), currentFuncName );
-                return;
-            }
-            else
-            {
-                // Scalar: load the value
-            }
-
-            mlir::Value var = declareOp.getResult();
-
-            ls.push_back( loc );
-            silly::GetOp resultValue = silly::GetOp::create( builder, loc, elemType );
-
-            // mlir::Location fusedLoc = ls.fuseLocations( );
-            silly::AssignOp::create( builder, loc, var, optIndexValue, resultValue );
         }
         else
         {
             emitInternalError( loc, __FILE__, __LINE__, __func__,
                                std::format( "unexpected get context {}", ctx->getText() ), currentFuncName );
         }
+
+        handleGet( loc, varName, indexValue, iloc, ls );
     }
 
     void Antlr4ParseListener::enterReturnStatement( SillyParser::ReturnStatementContext *ctx )

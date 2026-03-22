@@ -133,6 +133,13 @@ namespace silly
         processReturnLike( loc, {}, ls );
     }
 
+    void BisonParseListener::enterAbortStatement( const silly::BisonParser::location_type& bLoc )
+    {
+        mlir::Location loc = getLocation( bLoc );
+
+        silly::AbortOp::create( builder, loc );
+    }
+
     mlir::OwningOpRef<mlir::ModuleOp> BisonParseListener::run()
     {
         driverState.openFailed = false;
@@ -560,6 +567,26 @@ namespace silly
         }
 
         processAssignment( aLoc, resultValue, var.name, indexValue, ls );
+    }
+
+    void BisonParseListener::enterGetStatement( const silly::BisonParser::location_type& bLoc,
+                                                const std::string& varName )
+    {
+        mlir::Location loc = getLocation( bLoc );
+        LocationStack ls( builder, loc );
+
+        handleGet( loc, varName, {}, loc, ls );
+    }
+
+    void BisonParseListener::enterGetStatement( const silly::BisonParser::location_type& bLoc,
+                                                const std::string& varName, const silly::Expr& indexExpr )
+    {
+        mlir::Location loc = getLocation( bLoc );
+        LocationStack ls( builder, loc );
+
+        mlir::Location iloc = loc; // FIXME.
+        mlir::Value idx = parseExpression( loc, {}, indexExpr, ls );
+        handleGet( loc, varName, idx, iloc, ls );
     }
 
     void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )
