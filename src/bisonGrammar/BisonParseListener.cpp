@@ -347,7 +347,7 @@ namespace silly
             mlir::Value index;
             if ( parg.kind == Expr::Kind::ArrayVariable )
             {
-                index = parseInteger( vLoc, 64, parg.index, ls );
+                index = parseExpression( vLoc, {}, *parg.left, ls );
             }
 
             v = variableToValue( vLoc, parg.name, index, vLoc, ls );
@@ -424,14 +424,17 @@ namespace silly
     }
 
     void BisonParseListener::declarationHelper( mlir::Location tLoc, mlir::Location aLoc, const std::string& varName,
-                                                const std::string& arraySizeString, mlir::Type ty, Literal initializer,
+                                                const std::string& arraySizeString, mlir::Type ty,
+                                                bool initIsDeclare, const std::vector<silly::Literal>& initializerLiterals,
                                                 LocationStack& ls )
     {
         bool haveInitializer{};
         std::vector<mlir::Value> initializers;
 
-        if ( initializer.kind != Literal::Kind::None )
+        for ( const silly::Literal & initializer : initializerLiterals )
         {
+            assert( initializer.kind != Literal::Kind::None );
+
             haveInitializer = true;
             mlir::Value init;
 
@@ -464,14 +467,15 @@ namespace silly
     }
 
     void BisonParseListener::enterIntDeclareStatement( const std::string& typeName, const std::string& varName,
-                                                       const std::string& arraySizeString, Literal initializer,
+                                                       const std::string& arraySizeString,
+                                                       const std::vector<silly::Literal>& initializers,
                                                        const silly::BisonParser::location_type& typeLoc,
                                                        const silly::BisonParser::location_type& nameLoc,
                                                        const silly::BisonParser::location_type& arrayLoc )
     {
         mlir::Location tLoc = getLocation( typeLoc );
-        // bool initIsDeclare = declarationAssignmentInitialization;
-        // declarationAssignmentInitialization = false;
+        bool initIsDeclare = declarationAssignmentInitialization;
+        declarationAssignmentInitialization = false;
         mlir::Type ty = integerDeclarationType( tLoc, typeName );
         if ( !ty )
         {
@@ -480,19 +484,19 @@ namespace silly
         mlir::Location aLoc = getLocation( arrayLoc );
         LocationStack ls( builder, tLoc );
 
-
-        declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initializer, ls );
+        declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initIsDeclare, initializers, ls );
     }
 
     void BisonParseListener::enterFloatDeclareStatement( const std::string& typeName, const std::string& varName,
-                                                         const std::string& arraySizeString, Literal initializer,
+                                                         const std::string& arraySizeString,
+                                                         const std::vector<silly::Literal>& initializers,
                                                          const silly::BisonParser::location_type& typeLoc,
                                                          const silly::BisonParser::location_type& nameLoc,
                                                          const silly::BisonParser::location_type& arrayLoc )
     {
         mlir::Location tLoc = getLocation( typeLoc );
-        // bool initIsDeclare = declarationAssignmentInitialization;
-        // declarationAssignmentInitialization = false;
+        bool initIsDeclare = declarationAssignmentInitialization;
+        declarationAssignmentInitialization = false;
         mlir::Type ty;
         if ( typeName == "FLOAT32" )
         {
@@ -512,23 +516,23 @@ namespace silly
         mlir::Location aLoc = getLocation( arrayLoc );
         LocationStack ls( builder, tLoc );
 
-        declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initializer, ls );
+        declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initIsDeclare, initializers, ls );
     }
 
     void BisonParseListener::enterBoolDeclareStatement( const std::string& varName, const std::string& arraySizeString,
-                                                        Literal initializer,
+                                                        const std::vector<silly::Literal>& initializers,
                                                         const silly::BisonParser::location_type& typeLoc,
                                                         const silly::BisonParser::location_type& nameLoc,
                                                         const silly::BisonParser::location_type& arrayLoc )
     {
         mlir::Location tLoc = getLocation( typeLoc );
-        // bool initIsDeclare = declarationAssignmentInitialization;
-        // declarationAssignmentInitialization = false;
+        bool initIsDeclare = declarationAssignmentInitialization;
+        declarationAssignmentInitialization = false;
         mlir::Type ty = typ.i1;
         mlir::Location aLoc = getLocation( arrayLoc );
         LocationStack ls( builder, tLoc );
 
-        declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initializer, ls );
+        declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initIsDeclare, initializers, ls );
     }
 
     void BisonParseListener::enterAssignmentStatement( const silly::Expr& var, const silly::Expr& rhs,
@@ -551,7 +555,7 @@ namespace silly
         if ( var.kind == Expr::Kind::ArrayVariable )
         {
             mlir::Location rLoc = getLocation( rhsLoc );
-            indexValue = parseInteger( rLoc, 64, var.index, ls );
+            indexValue = parseExpression( rLoc, {}, *var.left, ls );
             if ( !indexValue )
             {
                 emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
@@ -584,9 +588,17 @@ namespace silly
         mlir::Location loc = getLocation( bLoc );
         LocationStack ls( builder, loc );
 
-        mlir::Location iloc = loc; // FIXME.
+        mlir::Location iloc = loc;    // FIXME.
         mlir::Value idx = parseExpression( loc, {}, indexExpr, ls );
         handleGet( loc, varName, idx, iloc, ls );
+    }
+
+    void BisonParseListener::enterImportStatement( const silly::BisonParser::location_type& bLoc,
+                                                   const std::string& modName )
+    {
+        mlir::Location loc = getLocation( bLoc );
+
+        handleImport( loc, modName );
     }
 
     void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )

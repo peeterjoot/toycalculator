@@ -270,47 +270,12 @@ namespace silly
 
     void Antlr4ParseListener::enterImportStatement( SillyParser::ImportStatementContext *ctx )
     {
+        mlir::Location loc = getStartLocation( ctx );
         assert( ctx );
         assert( ctx->IDENTIFIER() );
         std::string modname = ctx->IDENTIFIER()->getText();
 
-        LLVM_DEBUG( { llvm::errs() << llvm::formatv( "enterImportStatement: import: {0}\n", modname ); } );
-
-        mlir::ModuleOp importMod = sm.findMOD( modname );
-        if ( !importMod )
-        {
-            // coverage: driver/module-not-found.silly
-            mlir::Location loc = getStartLocation( ctx );
-            emitUserError(
-                loc,
-                std::format( "Failed to process IMPORT {}.  All module imports must be named with --imports", modname ),
-                currentFuncName );
-            return;
-        }
-
-        std::vector<mlir::NamedAttribute> attrs;
-        attrs.push_back(
-            mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
-
-        mlir::ModuleOp mod = rmod.get();
-        silly::ModuleInsertionPointGuard ip( mod, builder );
-
-        for ( mlir::func::FuncOp srcFuncOp : importMod.getBodyRegion().getOps<mlir::func::FuncOp>() )
-        {
-            // only import defined functions, not decls
-            if ( !srcFuncOp.isDeclaration() )
-            {
-                std::string funcName = srcFuncOp.getSymName().str();
-                ParserPerFunctionState &f = funcState( funcName );
-                if ( !f.getFuncOp() )    // treat declarations as idempotent.
-                {
-                    mlir::func::FuncOp proto = mlir::func::FuncOp::create(
-                        builder, srcFuncOp.getLoc(), srcFuncOp.getSymName(), srcFuncOp.getFunctionType(), attrs );
-
-                    f.setFuncOp( proto );
-                }
-            }
-        }
+        handleImport( loc, modname );
     }
 
     void Antlr4ParseListener::enterScopedStatements( SillyParser::ScopedStatementsContext *ctx )

@@ -140,6 +140,9 @@ namespace silly
         /// mlir builder helper for GET
         void handleGet( mlir::Location loc, const std::string & varName, mlir::Value indexValue, mlir::Location iloc, LocationStack & ls );
 
+        /// mlir builder helper for GET
+        void handleImport( mlir::Location loc, const std::string & modname );
+
        protected:
         /// construct state for creation of a silly dialect ModuleOp
         Builder( silly::SourceManager &s, const std::string &filename );

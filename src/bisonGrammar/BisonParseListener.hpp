@@ -36,19 +36,22 @@ namespace silly
                                   const silly::BisonParser::location_type& printLoc );
 
         void enterIntDeclareStatement( const std::string& typeName, const std::string& varName,
-                                       const std::string& arraySizeString, Literal initializer,
+                                       const std::string& arraySizeString,
+                                       const std::vector<silly::Literal>& initializers,
                                        const silly::BisonParser::location_type& typeLoc,
                                        const silly::BisonParser::location_type& nameLoc,
                                        const silly::BisonParser::location_type& arrayLoc );
 
         void enterFloatDeclareStatement( const std::string& typeName, const std::string& varName,
-                                         const std::string& arraySizeString, Literal initializer,
+                                         const std::string& arraySizeString,
+                                         const std::vector<silly::Literal>& initializers,
                                          const silly::BisonParser::location_type& typeLoc,
                                          const silly::BisonParser::location_type& nameLoc,
                                          const silly::BisonParser::location_type& arrayLoc );
 
         void enterBoolDeclareStatement( const std::string& varName, const std::string& arraySizeString,
-                                        Literal initializer, const silly::BisonParser::location_type& typeLoc,
+                                        const std::vector<silly::Literal>& initializers,
+                                        const silly::BisonParser::location_type& typeLoc,
                                         const silly::BisonParser::location_type& nameLoc,
                                         const silly::BisonParser::location_type& arrayLoc );
 
@@ -64,7 +67,10 @@ namespace silly
 
         void enterGetStatement( const silly::BisonParser::location_type& bLoc, const std::string& varName );
 
-        void enterGetStatement( const silly::BisonParser::location_type& bLoc, const std::string& varName, const silly::Expr& indexExpr );
+        void enterGetStatement( const silly::BisonParser::location_type& bLoc, const std::string& varName,
+                                const silly::Expr& indexExpr );
+
+        void enterImportStatement( const silly::BisonParser::location_type& bLoc, const std::string& modName );
 
         /// Called from parser on error
         void emitParseError( const silly::BisonParser::location_type& loc, const std::string& msg );
@@ -85,11 +91,11 @@ namespace silly
         mlir::Type integerDeclarationType( mlir::Location loc, const std::string& typeName );
 
         void declarationHelper( mlir::Location tLoc, mlir::Location aLoc, const std::string& varName,
-                                const std::string& arraySizeString, mlir::Type ty, Literal initializer,
+                                const std::string& arraySizeString, mlir::Type ty,
+                                bool initIsDeclare, const std::vector<silly::Literal>& initializerLiterals,
                                 LocationStack& ls );
 
-        mlir::Value parseExpression( mlir::Location vLoc, mlir::Type ty, const silly::Expr& parg,
-                                     LocationStack& ls );
+        mlir::Value parseExpression( mlir::Location vLoc, mlir::Type ty, const silly::Expr& parg, LocationStack& ls );
 
         yyscan_t scanner{};
 

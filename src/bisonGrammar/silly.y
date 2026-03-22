@@ -98,8 +98,7 @@
             Literal lit{};
             std::string name{};
             ExprOp op{ExprOp::None};
-            std::string index{};           /* for ArrayVariable, as string */
-            std::shared_ptr<Expr> left{};  /* for UnaryOp: operand; BinaryOp: lhs */
+            std::shared_ptr<Expr> left{};  /* for UnaryOp: operand; BinaryOp: lhs, also index expressions */
             std::shared_ptr<Expr> right{}; /* for BinaryOp: rhs */
 
             static Expr fromLiteral( const Literal& l )
@@ -114,17 +113,17 @@
 
             static Expr fromArrayVariable( const std::string& s, const Expr& idx )
             {
-                return { Kind::ArrayVariable, {}, s, {}, {}, std::make_shared<Expr>( idx ) };
+                return { Kind::ArrayVariable, {}, s, ExprOp::None, std::make_shared<Expr>( idx ) };
             }
 
             static Expr makeUnaryOp( const ExprOp & op, const Expr& operand )
             {
-                return { Kind::UnaryOp, {}, {}, op, {}, std::make_shared<Expr>( operand ) };
+                return { Kind::UnaryOp, {}, {}, op, std::make_shared<Expr>( operand ) };
             }
 
             static Expr makeBinaryOp( const ExprOp& op, const Expr& l, const Expr& r )
             {
-                return { Kind::BinaryOp, {}, {}, op, {}, std::make_shared<Expr>( l ), std::make_shared<Expr>( r ) };
+                return { Kind::BinaryOp, {}, {}, op, std::make_shared<Expr>( l ), std::make_shared<Expr>( r ) };
             }
 
             static Expr makeCall( const std::string& name )
@@ -217,19 +216,20 @@
 %token <std::string> IDENTIFIER
 
 /* Typed non-terminals */
-%type <silly::Literal>             literal
-%type <std::string>                integerLiteral
-%type <std::string>                floatLiteral
-%type <std::string>                stringLiteral
-%type <std::string>                intType
-%type <std::string>                floatType
-%type <std::string>                arrayBoundsExpression
-%type <silly::Literal>             optionalInitializer
-%type <std::string>                importStatement
-%type <std::string>                scalarType
-%type <std::vector<silly::Expr>>   printArgList
-%type <silly::Expr>                assignmentLHS
-%type <silly::Expr>                expression
+%type <silly::Literal>                  literal
+%type <std::string>                     integerLiteral
+%type <std::string>                     floatLiteral
+%type <std::string>                     stringLiteral
+%type <std::string>                     intType
+%type <std::string>                     floatType
+%type <std::string>                     arrayBoundsExpression
+%type <std::vector<silly::Literal>>     optionalInitializer
+%type <std::vector<silly::Literal>>     initializerList
+%type <std::string>                     importStatement
+%type <std::string>                     scalarType
+%type <std::vector<silly::Expr>>        printArgList
+%type <silly::Expr>                     assignmentLHS
+%type <silly::Expr>                     expression
 
 %left BOOLEANOR_TOKEN
 %left BOOLEANXOR_TOKEN
@@ -404,7 +404,7 @@ assignmentLHS
 
 importStatement
     : IMPORT_TOKEN IDENTIFIER
-        { /* stub */ $$ = $2; }
+        { driver.enterImportStatement( @2, $2 ); }
     ;
 
 functionStatement
@@ -482,14 +482,20 @@ arrayBoundsExpression
         { $$ = $2; }
     ;
 
-/* Returns a Literal with kind==Bool/bval==false as the "no initializer" sentinel */
 optionalInitializer
     : /* empty */
-        { $$ = silly::Literal::makeNone(); }
+        { $$ = {}; }
     | EQUALS_TOKEN literal
-        { driver.setDeclarationAssignment(); $$ = $2; }
-    | LEFT_CURLY_BRACKET_TOKEN literal RIGHT_CURLY_BRACKET_TOKEN
-        { $$ = $2; }
+        { driver.setDeclarationAssignment(); $$ = std::vector<silly::Literal>{ $2 }; }
+    | LEFT_CURLY_BRACKET_TOKEN initializerList RIGHT_CURLY_BRACKET_TOKEN
+        { $$ = std::move( $2 ); }
+    ;
+
+initializerList
+    : literal
+        { $$ = std::vector<silly::Literal>{ $1 }; }
+    | initializerList COMMA_TOKEN literal
+        { $1.push_back( $3 ); $$ = std::move( $1 ); }
     ;
 
 printStatement
