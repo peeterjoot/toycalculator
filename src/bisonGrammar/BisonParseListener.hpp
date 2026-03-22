@@ -82,8 +82,8 @@ namespace silly
                                 const std::string& arraySizeString, mlir::Type ty, Literal initializer,
                                 LocationStack& ls );
 
-        mlir::Value parsePrintArg( mlir::Location vLoc, mlir::Type ty, const silly::Expr& parg,
-                                   LocationStack& ls );
+        mlir::Value parseExpression( mlir::Location vLoc, mlir::Type ty, const silly::Expr& parg,
+                                     LocationStack& ls );
 
         yyscan_t scanner{};
 

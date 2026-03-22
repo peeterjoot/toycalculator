@@ -118,7 +118,7 @@ namespace silly
         LocationStack ls( builder, loc );
 
         mlir::Type returnType = findReturnType();
-        mlir::Value value = parsePrintArg( loc, returnType, var, ls );
+        mlir::Value value = parseExpression( loc, returnType, var, ls );
         processReturnLike( loc, value, ls );
     }
 
@@ -163,8 +163,8 @@ namespace silly
     }
 
     // eventually: parseExpression
-    mlir::Value BisonParseListener::parsePrintArg( mlir::Location vLoc, mlir::Type ty,
-                                                   const silly::Expr& parg, LocationStack& ls )
+    mlir::Value BisonParseListener::parseExpression( mlir::Location vLoc, mlir::Type ty, const silly::Expr& parg,
+                                                     LocationStack& ls )
     {
         mlir::Value v;
         if ( parg.kind == Expr::Kind::Literal )
@@ -213,6 +213,42 @@ namespace silly
                 return v;
             }
         }
+        else if ( parg.kind == Expr::Kind::UnaryOp )
+        {
+            mlir::Value right = parseExpression( vLoc, ty, *parg.right, ls );
+            switch ( parg.op )
+            {
+                case ExprOp::Minus:
+                {
+                    assert( 0 and "NYI" );
+                    break;
+                }
+                case ExprOp::Plus:
+                {
+                    v = right;
+                    break;
+                }
+                case ExprOp::Not:
+                {
+                    assert( 0 and "NYI" );
+                    break;
+                }
+                default:
+                    emitInternalError( vLoc, __FILE__, __LINE__, __func__,
+                                       std::format( "parseExpression failed. Unknown unary op: {}", (int)parg.kind ),
+                                       currentFuncName );
+            }
+        }
+        else if ( parg.kind == Expr::Kind::BinaryOp )
+        {
+            mlir::Value left = parseExpression( vLoc, ty, *parg.left, ls );
+            mlir::Value right = parseExpression( vLoc, ty, *parg.right, ls );
+            assert( 0 and "NYI" );
+        }
+        else if ( parg.kind == Expr::Kind::Call )
+        {
+            assert( 0 and "NYI" );
+        }
         else
         {
             mlir::Value index;
@@ -221,53 +257,6 @@ namespace silly
                 index = parseInteger( vLoc, 64, parg.index, ls );
             }
 
-#if 0
-            // FIXME: this is where things now go bad when I have expressions.
-
-fedoravm:/home/peeter/toycalculator/src/bisonGrammar> gdb `which silly`
-Reading symbols from /home/peeter/toycalculator/build/bin/silly...
-Breakpoint 1 at 0x4304d0
-Breakpoint 2 at 0x42fc10
-Breakpoint 3 at 0x43391c: file /home/peeter/toycalculator/src/driver/Builder.cpp, line 382.
-Downloading separate debug info for system-supplied DSO at 0xfffff7ffa000
-[Thread debugging using libthread_db enabled]
-Using host libthread_db library "/lib64/libthread_db.so.1".
-
-Breakpoint 3, silly::Builder::lookupDeclareForVar (this=0xffffffffdf88, loc=..., varName=...)
-    at /home/peeter/toycalculator/src/driver/Builder.cpp:382
-382             silly::DeclareOp declareOp{};
-(gdb) n
-383             ParserPerFunctionState &f = funcState( currentFuncName );
-(gdb) p currentFuncName
-$1 = "main"
-(gdb) p varName
-$2 = ""
-(gdb) up
-#1  0x0000000000433b00 in silly::Builder::variableToValue (this=0xffffffffdf88, loc=..., varName="", iValue=..., iLoc=..., ls=...)
-    at /home/peeter/toycalculator/src/driver/Builder.cpp:416
-416                 silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
-(gdb) up
-#2  0x00000000004c7850 in silly::BisonParseListener::parsePrintArg (this=0xffffffffdf88, vLoc=..., ty=..., parg=..., ls=...)
-    at /home/peeter/toycalculator/src/bisonGrammar/BisonParseListener.cpp:224
-224                 v = variableToValue( vLoc, parg.name, index, vLoc, ls );
-(gdb) p parg
-$3 = (const silly::Expr &) @0x60d400: {kind = silly::Expr::Kind::BinaryOp, lit = {kind = silly::Literal::Kind::None, sval = "",
-    bval = false}, name = "", op = "+", index = "", left = std::shared_ptr<silly::Expr> (use count 1, weak count 0) = {get() = 0x58b810},
-  right = std::shared_ptr<silly::Expr> (use count 1, weak count 0) = {get() = 0x58ba00}}
-
-
-(gdb) bt
-#0  silly::Builder::lookupDeclareForVar (this=0xffffffffdf88, loc=..., varName="") at /home/peeter/toycalculator/src/driver/Builder.cpp:382
-#1  0x0000000000433b00 in silly::Builder::variableToValue (this=0xffffffffdf88, loc=..., varName="", iValue=..., iLoc=..., ls=...)
-    at /home/peeter/toycalculator/src/driver/Builder.cpp:416
-#2  0x00000000004c7850 in silly::BisonParseListener::parsePrintArg (this=0xffffffffdf88, vLoc=..., ty=..., parg=..., ls=...)
-    at /home/peeter/toycalculator/src/bisonGrammar/BisonParseListener.cpp:224
-#3  0x00000000004c8a1c in silly::BisonParseListener::enterAssignmentStatement (this=0xffffffffdf88, var=..., rhs=..., lhsLoc=..., rhsLoc=...)
-    at /home/peeter/toycalculator/src/bisonGrammar/BisonParseListener.cpp:435
-#4  0x00000000004ca3d0 in silly::BisonParser::parse (this=0xffffffffdf00) at /home/peeter/toycalculator/src/bisonGrammar/silly.y:373
-#5  0x00000000004c7a1c in silly::BisonParseListener::run (this=0xffffffffdf88)
-
-#endif
             v = variableToValue( vLoc, parg.name, index, vLoc, ls );
         }
 
@@ -297,7 +286,7 @@ $3 = (const silly::Expr &) @0x60d400: {kind = silly::Expr::Kind::BinaryOp, lit =
         for ( const silly::Expr& parg : args )
         {
             mlir::Location vLoc = loc;    // per-argument location?
-            mlir::Value v = parsePrintArg( vLoc, {}, parg, ls );
+            mlir::Value v = parseExpression( vLoc, {}, parg, ls );
             if ( !v )
             {
                 return;
@@ -449,8 +438,7 @@ $3 = (const silly::Expr &) @0x60d400: {kind = silly::Expr::Kind::BinaryOp, lit =
         declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initializer, ls );
     }
 
-    void BisonParseListener::enterAssignmentStatement( const silly::Expr& var,
-                                                       const silly::Expr& rhs,
+    void BisonParseListener::enterAssignmentStatement( const silly::Expr& var, const silly::Expr& rhs,
                                                        const silly::BisonParser::location_type& lhsLoc,
                                                        const silly::BisonParser::location_type& rhsLoc )
     {
@@ -479,7 +467,7 @@ $3 = (const silly::Expr &) @0x60d400: {kind = silly::Expr::Kind::BinaryOp, lit =
         }
 
         mlir::Location aLoc = getLocation( rhsLoc );
-        mlir::Value resultValue = parsePrintArg( aLoc, {}, rhs, ls );
+        mlir::Value resultValue = parseExpression( aLoc, {}, rhs, ls );
         if ( !resultValue )
         {
             return;
