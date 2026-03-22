@@ -517,27 +517,27 @@ expression
     | expression BOOLEANAND_TOKEN expression
         { $$ = silly::Expr::makeBinaryOp( ExprOp::And, $1, $3 ); }
     | expression EQUALITY_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Equal,  $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Equal, $1, $3 ); }
     | expression NOTEQUAL_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::NotEqual,  $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::NotEqual, $1, $3 ); }
     | expression LESSTHAN_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Less,   $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Less, $1, $3 ); }
     | expression LESSEQUAL_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::LessEqual,  $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::LessEqual, $1, $3 ); }
     | expression GREATERTHAN_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Greater,   $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Greater, $1, $3 ); }
     | expression GREATEREQUAL_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::GreaterEqual,  $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::GreaterEqual, $1, $3 ); }
     | expression PLUSCHAR_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Plus,   $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Plus, $1, $3 ); }
     | expression MINUS_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Minus,   $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Minus, $1, $3 ); }
     | expression TIMES_TOKEN expression
         { $$ = silly::Expr::makeBinaryOp( ExprOp::Mul, $1, $3 ); }
     | expression DIV_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Div,   $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Div, $1, $3 ); }
     | expression MOD_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Mod,   $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Mod, $1, $3 ); }
     | MINUS_TOKEN expression %prec UMINUS
         { $$ = silly::Expr::makeUnaryOp( ExprOp::Minus, $2 ); }
     | PLUSCHAR_TOKEN expression %prec UPLUS

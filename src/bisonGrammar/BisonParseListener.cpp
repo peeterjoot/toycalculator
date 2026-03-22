@@ -216,34 +216,94 @@ namespace silly
         else if ( parg.kind == Expr::Kind::UnaryOp )
         {
             mlir::Value left = parseExpression( vLoc, ty, *parg.left, ls );
+            UnaryOp uop = UnaryOp::Undefined;
             switch ( parg.op )
             {
                 case ExprOp::Minus:
                 {
-                    v = makeUnaryExpression( vLoc, left, UnaryOp::Negate, ls );
+                    uop = UnaryOp::Negate;
                     break;
                 }
                 case ExprOp::Plus:
                 {
-                    v = makeUnaryExpression( vLoc, left, UnaryOp::Plus, ls );
+                    uop = UnaryOp::Plus;
                     break;
                 }
                 case ExprOp::Not:
                 {
-                    v = makeUnaryExpression( vLoc, left, UnaryOp::Not, ls );
+                    uop = UnaryOp::Not;
                     break;
                 }
                 default:
+                {
                     emitInternalError( vLoc, __FILE__, __LINE__, __func__,
                                        std::format( "parseExpression failed. Unknown unary op: {}", (int)parg.kind ),
                                        currentFuncName );
+                }
+            }
+
+            if ( uop != UnaryOp::Undefined )
+            {
+                v = makeUnaryExpression( vLoc, left, uop, ls );
             }
         }
         else if ( parg.kind == Expr::Kind::BinaryOp )
         {
             mlir::Value left = parseExpression( vLoc, ty, *parg.left, ls );
             mlir::Value right = parseExpression( vLoc, ty, *parg.right, ls );
-            assert( 0 and "NYI" );
+            switch ( parg.op )
+            {
+                case ExprOp::Mul:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Mul, ty, left, right, ls );
+                    break;
+                }
+                case ExprOp::Div:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Div, ty, left, right, ls );
+                    break;
+                }
+                case ExprOp::Mod:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Mod, ty, left, right, ls );
+                    break;
+                }
+                case ExprOp::Plus:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Add, ty, left, right, ls );
+                    break;
+                }
+                case ExprOp::Minus:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Sub, ty, left, right, ls );
+                    break;
+                }
+                case ExprOp::Or:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Or, ty, left, right, ls );
+                    break;
+                }
+                case ExprOp::And:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::And, ty, left, right, ls );
+                    break;
+                }
+                case ExprOp::Xor:
+                {
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Xor, ty, left, right, ls );
+                    break;
+                }
+                default:
+                    assert( 0 and "NYI" );
+            }
+
+
+            // ExprOp::Equal
+            // ExprOp::NotEqual
+            // ExprOp::Less
+            // ExprOp::LessEqual
+            // ExprOp::Greater
+            // ExprOp::GreaterEqual
         }
         else if ( parg.kind == Expr::Kind::Call )
         {

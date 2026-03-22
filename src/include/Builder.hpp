@@ -123,6 +123,7 @@ namespace silly
 
         enum class UnaryOp : uint32_t
         {
+            Undefined,
             Negate,
             Plus,
             Not
