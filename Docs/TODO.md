@@ -9,7 +9,7 @@
 * takes two ninja calls to build the project (seemingly related to timestamps for tablegen related files).  This appears to be a fine grain timestamp issue somewhat like https://peeterjoot.com/2015/02/25/why-does-touch-include-a-utimensat-syscall/ https://peeterjoot.com/2015/02/25/on-touchs-use-of-futimes-and-a-filesystem-bug/ -- to be investigated.
 * Function names in Builder are a bit of a random hodge podge.  Review and make more consistent.
 * TODO:
-- [ ] CALL
+- [ ] CALL expressions.  Can simplify things if I generalize declaration initializer lists (both grammars) to arbitrary expressions.  Then can use the expression codepath in both assignment and declaration (with init-list or assignment-init) uniformly.
 - [ ] Fix location info for parseExpression (and index expressions, ...)
 - [ ] Suspect that I don't have the -init-fill support right: have a couple state variable for declaration w/ assignment and declaration with init -- step into that and see if it's doing the right thing.
 - [ ] scopes

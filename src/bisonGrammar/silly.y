@@ -120,6 +120,7 @@
             ExprOp op{ExprOp::None};
             std::shared_ptr<Expr> left{};  /* for UnaryOp: operand; BinaryOp: lhs, also index expressions */
             std::shared_ptr<Expr> right{}; /* for BinaryOp: rhs */
+            std::vector<std::shared_ptr<Expr>> params{};  /* for Call: argument list */
 
             static Expr fromLiteral( const Literal& l )
             {
@@ -146,9 +147,12 @@
                 return { Kind::BinaryOp, {}, {}, op, std::make_shared<Expr>( l ), std::make_shared<Expr>( r ) };
             }
 
-            static Expr makeCall( const std::string& name )
+            static Expr makeCall( const std::string& name, const std::vector<Expr>& args )
             {
-                return { Kind::Call, {}, name };
+                Expr e{ Kind::Call, {}, name };
+                for ( const auto& a : args )
+                    e.params.push_back( std::make_shared<Expr>( a ) );
+                return e;
             }
         };
     }
@@ -255,6 +259,8 @@
 %type <std::vector<silly::TypeAndName>>     paramList
 %type <std::vector<silly::TypeAndName>>     optionalParamList
 %type <silly::TypeAndName>                  variableTypeAndName
+%type <std::vector<silly::Expr>>            callArgList
+%type <std::vector<silly::Expr>>            optionalCallArgList
 
 %left BOOLEANOR_TOKEN
 %left BOOLEANXOR_TOKEN
@@ -337,17 +343,21 @@ abortStatement
 
 callStatement
     : CALL_TOKEN IDENTIFIER BRACE_START_TOKEN optionalCallArgList BRACE_END_TOKEN
-        { /* stub */ }
+        { driver.enterCallStatement( $2, $4, @1 ); }
     ;
 
 optionalCallArgList
     : /* empty */
+        { $$ = {}; }
     | callArgList
+        { $$ = std::move( $1 ); }
     ;
 
 callArgList
     : expression
+        { $$ = std::vector<silly::Expr>{ $1 }; }
     | callArgList COMMA_TOKEN expression
+        { $1.push_back( $3 ); $$ = std::move( $1 ); }
     ;
 
 getStatement
@@ -601,7 +611,7 @@ expression
     | IDENTIFIER ARRAY_START_TOKEN expression ARRAY_END_TOKEN
         { $$ = silly::Expr::fromArrayVariable( $1, $3 ); }
     | CALL_TOKEN IDENTIFIER BRACE_START_TOKEN optionalCallArgList BRACE_END_TOKEN
-        { $$ = silly::Expr::makeCall( $2 ); /* stub */ }
+        { $$ = silly::Expr::makeCall( $2, $4 ); }
     ;
 
 optionalContinue

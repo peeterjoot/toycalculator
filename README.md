@@ -368,22 +368,22 @@ As an experiment, I've implemented an incomplete Bison/Flex front end and gramma
 
 So far, just:
 - `ABORT`
+- `CALL` statements
 - `ERROR`
 - `EXIT`
 - `FUNCTION`
 - `GET`
 - `MAIN`
 - `PRINT`
-- Declarations and assignments.  Initializer lists can only be a single element.
+- Declarations and assignments.
 - Unary and Binary expressions.
 
 What doesn't work:
 - `IF/ELIF/ELSE`
 - `FOR`
-- `CALL`
+- `CALL` expressions
 - `MODULE`
 - `IMPORT`
-- initializer lists with more than one element.
 - debugging
 - proper location info.
 - multiple source files.

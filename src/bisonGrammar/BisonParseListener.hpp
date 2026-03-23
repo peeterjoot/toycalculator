@@ -17,6 +17,7 @@ typedef void* yyscan_t;
 
 namespace silly
 {
+    /// Bison grammar parse tree walker for the silly language (incomplete.)
     class BisonParseListener : public Builder
     {
        public:
@@ -81,10 +82,12 @@ namespace silly
 
         void exitFunctionDefinition();
 
-        void enterReturnStatement( const silly::BisonParser::location_type& bLoc,
-                                   const silly::Expr& expr );
+        void enterReturnStatement( const silly::BisonParser::location_type& bLoc, const silly::Expr& expr );
 
         void enterReturnStatement( const silly::BisonParser::location_type& bLoc );
+
+        void enterCallStatement( const std::string& name, const std::vector<silly::Expr>& args,
+                                 const silly::BisonParser::location_type& bLoc );
 
         /// Called from parser on error
         void emitParseError( const silly::BisonParser::location_type& loc, const std::string& msg );
@@ -114,6 +117,9 @@ namespace silly
                              bool isDeclaration );
 
         mlir::Value parseExpression( mlir::Location vLoc, mlir::Type ty, const silly::Expr& parg, LocationStack& ls );
+
+        void generateCall( const std::string& name, const std::vector<silly::Expr>& args,
+                           const silly::BisonParser::location_type& bLoc, bool isCallStatement );
 
         yyscan_t scanner{};
 

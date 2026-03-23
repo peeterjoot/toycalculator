@@ -144,9 +144,13 @@ namespace silly
         void handleImport( mlir::Location loc, const std::string &modname );
 
         void handleEnterFunction( LocPairs locs, const std::string &funcName, bool isDeclaration, mlir::Type returnType,
-                             std::vector<mlir::Type> &paramTypes, const std::vector<std::string> &paramNames );
+                                  std::vector<mlir::Type> &paramTypes, const std::vector<std::string> &paramNames );
 
-        void handleExitFunction( );
+        void handleExitFunction();
+
+        mlir::Value handleCall( mlir::Location loc, const std::string &funcName, mlir::func::FuncOp funcOp,
+                                mlir::FunctionType funcType, bool callStatement, std::vector<mlir::Value> &parameters,
+                                LocationStack &ls );
 
        protected:
         /// construct state for creation of a silly dialect ModuleOp

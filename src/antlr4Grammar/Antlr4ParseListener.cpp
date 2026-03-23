@@ -407,25 +407,24 @@ namespace silly
         handleExitFunction();
     }
 
-    mlir::Value Antlr4ParseListener::handleCall( SillyParser::CallExpressionContext *ctx, bool callStatement,
-                                                 LocationStack &ls )
+    mlir::Value Antlr4ParseListener::parseCallStatementOrExpr( SillyParser::CallExpressionContext *ctx,
+                                                               bool callStatement, LocationStack &ls )
     {
-        mlir::Value ret{};
+        mlir::Value value{};
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
         tNode *id = ctx->IDENTIFIER();
-        assert( id );
         std::string funcName = id->getText();
         ParserPerFunctionState &f = funcState( funcName );
         mlir::func::FuncOp funcOp = f.getFuncOp();
         if ( !funcOp )
         {
-            emitInternalError( loc, __FILE__, __LINE__, __func__, std::format( "no FuncOp found for {}", funcName ),
+            emitInternalError( loc, __FILE__, __LINE__, __func__, std::format( "null FuncOp for {}", funcName ),
                                currentFuncName );
-            return ret;
+            return value;
         }
-
         mlir::FunctionType funcType = funcOp.getFunctionType();
+
         std::vector<mlir::Value> parameters;
 
         if ( SillyParser::ParameterListContext *params = ctx->parameterList() )
@@ -433,19 +432,6 @@ namespace silly
             int i = 0;
 
             assert( params );
-            size_t psz = params->parameterExpression().size();
-            size_t fsz = funcType.getInputs().size();
-            if ( psz != fsz )
-            {
-                // coverage: syntax-error/call-wrong-params.silly
-                emitUserError(
-                    loc,
-                    std::format( "Mismatched number of arguments to call of function {}.  Passing: {}, required: {}.",
-                                 funcName, psz, fsz ),
-                    currentFuncName );
-                return ret;
-            }
-
             for ( SillyParser::ParameterExpressionContext *e : params->parameterExpression() )
             {
                 SillyParser::ExpressionContext *p = e->expression();
@@ -456,7 +442,7 @@ namespace silly
                 // );
 
                 mlir::Type ty = funcType.getInputs()[i];
-                mlir::Value value = parseExpression( p, ty, ls );
+                value = parseExpression( p, ty, ls );
                 if ( !value )
                 {
                     emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
@@ -468,27 +454,7 @@ namespace silly
             }
         }
 
-        mlir::TypeRange resultTypes = funcType.getResults();
-
-        mlir::func::CallOp callOp;
-        if ( callStatement )
-        {
-            // mlir::Location fusedLoc = ls.fuseLocations( );
-            callOp = mlir::func::CallOp::create( builder, loc, resultTypes, funcName, parameters );
-        }
-        else
-        {
-            ls.push_back( loc );
-            callOp = mlir::func::CallOp::create( builder, loc, resultTypes, funcName, parameters );
-        }
-
-        // Return the first result (or null for void calls)
-        if ( !resultTypes.empty() )
-        {
-            ret = callOp.getResults()[0];
-        }
-
-        return ret;
+        return handleCall( loc, funcName, funcOp, funcType, callStatement, parameters, ls );
     }
 
     void Antlr4ParseListener::enterCallStatement( SillyParser::CallStatementContext *ctx )
@@ -498,7 +464,7 @@ namespace silly
         mlir::Location loc = getStartLocation( ctx );
         LocationStack ls( builder, loc );
 
-        handleCall( ctx->callExpression(), true, ls );
+        parseCallStatementOrExpr( ctx->callExpression(), true, ls );
     }
 
     void Antlr4ParseListener::enterDeclareHelper(
@@ -1500,7 +1466,7 @@ namespace silly
 
             ls.push_back( loc );
 
-            UnaryOp op{UnaryOp::Plus};
+            UnaryOp op{ UnaryOp::Plus };
             if ( opText == "-" )
             {
                 op = UnaryOp::Negate;
@@ -1630,7 +1596,7 @@ namespace silly
         else if ( SillyParser::CallPrimaryContext *callCtx = dynamic_cast<SillyParser::CallPrimaryContext *>( ctx ) )
         {
             // Function call (# callPrimary)
-            value = handleCall( callCtx->callExpression(), false, ls );
+            value = parseCallStatementOrExpr( callCtx->callExpression(), false, ls );
         }
         else if ( SillyParser::ParenExprContext *parenCtx = dynamic_cast<SillyParser::ParenExprContext *>( ctx ) )
         {

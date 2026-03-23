@@ -176,7 +176,8 @@ namespace silly
         inline mlir::Location getTerminalLocation( tNode *node );
 
         /// Emits a CallOp for a function call.
-        mlir::Value handleCall( SillyParser::CallExpressionContext *ctx, bool callStatement, LocationStack &ls );
+        mlir::Value parseCallStatementOrExpr( SillyParser::CallExpressionContext *ctx, bool callStatement,
+                                              LocationStack &ls );
 
         /// builder logic for print arguments (shared between PRINT and ERROR.)
         void handlePrint( mlir::Location loc, const std::vector<SillyParser::ExpressionContext *> &args,

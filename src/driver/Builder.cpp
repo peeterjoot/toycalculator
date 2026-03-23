@@ -809,8 +809,9 @@ namespace silly
         }
     }
 
-    void Builder::handleEnterFunction( LocPairs locs, const std::string &funcName, bool isDeclaration, mlir::Type returnType,
-                                  std::vector<mlir::Type> &paramTypes, const std::vector<std::string> & paramNames )
+    void Builder::handleEnterFunction( LocPairs locs, const std::string &funcName, bool isDeclaration,
+                                       mlir::Type returnType, std::vector<mlir::Type> &paramTypes,
+                                       const std::vector<std::string> &paramNames )
     {
         LLVM_DEBUG( {
             llvm::errs() << llvm::formatv( "enterFunctionStatement: startLoc: {0}, endLoc: {1}:\n",
@@ -894,11 +895,59 @@ namespace silly
         }
     }
 
-    void Builder::handleExitFunction( )
+    void Builder::handleExitFunction()
     {
         builder.restoreInsertionPoint( mainIP );
 
         currentFuncName = ENTRY_SYMBOL_NAME;
+    }
+
+    mlir::Value Builder::handleCall( mlir::Location loc, const std::string &funcName, mlir::func::FuncOp funcOp,
+                                     mlir::FunctionType funcType, bool callStatement,
+                                     std::vector<mlir::Value> &parameters, LocationStack &ls )
+    {
+        mlir::Value ret{};
+        if ( !funcOp )
+        {
+            emitInternalError( loc, __FILE__, __LINE__, __func__, std::format( "no FuncOp found for {}", funcName ),
+                               currentFuncName );
+            return ret;
+        }
+
+        size_t psz = parameters.size();
+        size_t fsz = funcType.getInputs().size();
+        if ( psz != fsz )
+        {
+            // coverage: syntax-error/call-wrong-params.silly
+            emitUserError(
+                loc,
+                std::format( "Mismatched number of arguments to call of function {}.  Passing: {}, required: {}.",
+                             funcName, psz, fsz ),
+                currentFuncName );
+            return ret;
+        }
+
+        mlir::TypeRange resultTypes = funcType.getResults();
+
+        mlir::func::CallOp callOp;
+        if ( callStatement )
+        {
+            // mlir::Location fusedLoc = ls.fuseLocations( );
+            callOp = mlir::func::CallOp::create( builder, loc, resultTypes, funcName, parameters );
+        }
+        else
+        {
+            ls.push_back( loc );
+            callOp = mlir::func::CallOp::create( builder, loc, resultTypes, funcName, parameters );
+        }
+
+        // Return the first result (or null for void calls)
+        if ( !resultTypes.empty() )
+        {
+            ret = callOp.getResults()[0];
+        }
+
+        return ret;
     }
 }    // namespace silly
 

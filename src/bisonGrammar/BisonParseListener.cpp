@@ -345,6 +345,8 @@ namespace silly
         }
         else if ( parg.kind == Expr::Kind::Call )
         {
+            //void BisonParseListener::generateCall( const std::string& name, const std::vector<silly::Expr>& args,
+            //                               const silly::BisonParser::location_type& bLoc, bool isCallStatement )
             assert( 0 and "NYI" );
         }
         else
@@ -670,7 +672,7 @@ namespace silly
     {
         LocPairs locs = getLocations( bLoc );
         LocationStack ls( builder, locs.first );
-        
+
         mlir::Value value = parseExpression( locs.first, {}, expr, ls );
 
         processReturnLike( locs.second, value, ls );
@@ -680,8 +682,44 @@ namespace silly
     {
         LocPairs locs = getLocations( bLoc );
         LocationStack ls( builder, locs.first );
-        
+
         processReturnLike( locs.second, {}, ls );
+    }
+
+    void BisonParseListener::generateCall( const std::string& name, const std::vector<silly::Expr>& args,
+                                           const silly::BisonParser::location_type& bLoc, bool isCallStatement )
+    {
+        mlir::Location loc = getLocation( bLoc );
+        LocationStack ls( builder, loc );
+        ParserPerFunctionState& f = funcState( name );
+        mlir::func::FuncOp funcOp = f.getFuncOp();
+        mlir::FunctionType funcType = funcOp.getFunctionType();
+
+        std::vector<mlir::Value> parameters;
+
+        int i = 0;
+
+        for ( const silly::Expr& e : args )
+        {
+            mlir::Type ty = funcType.getInputs()[i];
+            mlir::Value value = parseExpression( loc, ty, e, ls );
+            if ( !value )
+            {
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
+                return;
+            }
+
+            parameters.push_back( value );
+            i++;
+        }
+
+        handleCall( loc, name, funcOp, funcType, isCallStatement, parameters, ls );
+    }
+
+    void BisonParseListener::enterCallStatement( const std::string& name, const std::vector<silly::Expr>& args,
+                                                 const silly::BisonParser::location_type& bLoc )
+    {
+        generateCall( name, args, bLoc, true );
     }
 
     void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )
