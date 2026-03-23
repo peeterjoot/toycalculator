@@ -111,19 +111,18 @@ namespace silly
         bool isVariableDeclared( const std::string &varName );
 
         /// Emits silly::ReturnOp (or exit equivalent) with optional value.
-        void processReturnLike( mlir::Location loc, mlir::Value returnValue,
-                                LocationStack &ls );
+        void processReturnLike( mlir::Location loc, mlir::Value returnValue, LocationStack &ls );
 
         /// Lookup the type for a FUNCTION return.
-        mlir::Type findReturnType( );
+        mlir::Type findReturnType();
 
         /// Create a silly::ArithBinOp
-        mlir::Value createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty,
-                                       mlir::Value lhs, mlir::Value rhs, LocationStack &ls );
+        mlir::Value createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty, mlir::Value lhs,
+                                       mlir::Value rhs, LocationStack &ls );
 
         /// Create a silly::CmpBinOp
-        mlir::Value createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs,
-                                     mlir::Value rhs, LocationStack &ls );
+        mlir::Value createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs, mlir::Value rhs,
+                                     LocationStack &ls );
 
         /// All the supported unary operations for the silly dialect.
         enum class UnaryOp : uint32_t
@@ -135,13 +134,19 @@ namespace silly
         };
 
         /// mlir builder helper for a unary expression (i.e.: negation or NOT operation)
-        mlir::Value makeUnaryExpression( mlir::Location loc, mlir::Value value, UnaryOp op, LocationStack & ls );
+        mlir::Value makeUnaryExpression( mlir::Location loc, mlir::Value value, UnaryOp op, LocationStack &ls );
 
         /// mlir builder helper for GET
-        void handleGet( mlir::Location loc, const std::string & varName, mlir::Value indexValue, mlir::Location iloc, LocationStack & ls );
+        void handleGet( mlir::Location loc, const std::string &varName, mlir::Value indexValue, mlir::Location iloc,
+                        LocationStack &ls );
 
         /// mlir builder helper for GET
-        void handleImport( mlir::Location loc, const std::string & modname );
+        void handleImport( mlir::Location loc, const std::string &modname );
+
+        void handleEnterFunction( LocPairs locs, const std::string &funcName, bool isDeclaration, mlir::Type returnType,
+                             std::vector<mlir::Type> &paramTypes, const std::vector<std::string> &paramNames );
+
+        void handleExitFunction( );
 
        protected:
         /// construct state for creation of a silly dialect ModuleOp

@@ -11,9 +11,9 @@
 #include "Builder.hpp"
 #include "DriverState.hpp"
 #include "LocationStack.hpp"
+#include "ModuleInsertionPointGuard.hpp"
 #include "SillyDialect.hpp"
 #include "SourceManager.hpp"
-#include "ModuleInsertionPointGuard.hpp"
 #include "helper.hpp"    // formatLocation
 
 /// --debug- class for the builder
@@ -734,7 +734,8 @@ namespace silly
         return v;
     }
 
-    void Builder::handleGet( mlir::Location loc, const std::string & varName, mlir::Value indexValue, mlir::Location iloc, LocationStack & ls )
+    void Builder::handleGet( mlir::Location loc, const std::string &varName, mlir::Value indexValue,
+                             mlir::Location iloc, LocationStack &ls )
     {
         silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
         silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
@@ -768,7 +769,7 @@ namespace silly
         silly::AssignOp::create( builder, loc, var, optIndexValue, resultValue );
     }
 
-    void Builder::handleImport( mlir::Location loc, const std::string & modname )
+    void Builder::handleImport( mlir::Location loc, const std::string &modname )
     {
         LLVM_DEBUG( { llvm::errs() << llvm::formatv( "enterImportStatement: import: {0}\n", modname ); } );
 
@@ -806,6 +807,98 @@ namespace silly
                 }
             }
         }
+    }
+
+    void Builder::handleEnterFunction( LocPairs locs, const std::string &funcName, bool isDeclaration, mlir::Type returnType,
+                                  std::vector<mlir::Type> &paramTypes, const std::vector<std::string> & paramNames )
+    {
+        LLVM_DEBUG( {
+            llvm::errs() << llvm::formatv( "enterFunctionStatement: startLoc: {0}, endLoc: {1}:\n",
+                                           formatLocation( locs.first ), formatLocation( locs.second ) );
+        } );
+
+        if ( currentFuncName != ENTRY_SYMBOL_NAME )
+        {
+            // coverage: syntax-error/nested.silly
+            //
+            // To support this, exitFor would have to pop an insertion point and current-function-name,
+            // and we'd have to push an insertion-point/function-name instead of just assuming that
+            // we started in main and will return to there.
+            emitUserError( locs.first, std::format( "Nested functions are not currently supported." ),
+                           currentFuncName );
+            return;
+        }
+
+        ParserPerFunctionState &f = funcState( funcName );
+        mlir::func::FuncOp funcOp = f.getFuncOp();
+
+        if ( funcOp )
+        {
+            if ( !funcOp.isDeclaration() )
+            {
+                // coverage: syntax-error/function-redefine.silly
+                emitUserError( locs.first, std::format( "Attempt to define function {} more than once", funcName ),
+                               currentFuncName );
+                return;
+            }
+
+            if ( isDeclaration )
+            {
+                // coverage: syntax-error/function-redeclare.silly
+                emitUserError( locs.first, std::format( "Attempt to declare function {} more than once", funcName ),
+                               currentFuncName );
+                return;
+            }
+
+            mainIP = builder.saveInsertionPoint();
+
+            // fall through to createScope, which will set the IP.
+        }
+        else
+        {
+            mainIP = builder.saveInsertionPoint();
+
+            builder.setInsertionPointToStart( rmod->getBody() );
+
+            std::vector<mlir::Type> returns;
+            if ( returnType )
+            {
+                returns.push_back( returnType );
+            }
+
+            std::vector<mlir::NamedAttribute> attrs;
+            // not sure exactly why I need private.  If I omit it (for extern functions), the lowering
+            // to LLVM-IR ends up the same.
+            //
+            // However, in simple/external/callext.silly that resulted in a verifier error,
+            // stating that public was not allowed.  For now, just use private always.
+            attrs.push_back(
+                mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
+
+            mlir::FunctionType funcType = builder.getFunctionType( paramTypes, returns );
+
+            llvm::SmallVector<mlir::Location, 2> funcLocs{ locs.first, locs.second };
+            mlir::Location fLoc = builder.getFusedLoc( funcLocs );
+
+            funcOp = mlir::func::FuncOp::create( builder, fLoc, funcName, funcType, attrs );
+        }
+
+        if ( isDeclaration )
+        {
+            currentFuncName = funcName;
+            f.setFuncOp( funcOp );
+        }
+        else
+        {
+            createScope( locs.first, funcOp, funcName, paramNames );
+        }
+    }
+
+    void Builder::handleExitFunction( )
+    {
+        builder.restoreInsertionPoint( mainIP );
+
+        currentFuncName = ENTRY_SYMBOL_NAME;
     }
 }    // namespace silly
 

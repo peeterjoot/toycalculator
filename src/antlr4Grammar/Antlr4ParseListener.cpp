@@ -357,122 +357,43 @@ namespace silly
         assert( ctx );
         LocPairs locs = getLocations( ctx, true );
 
-        LLVM_DEBUG( {
-            llvm::errs() << llvm::formatv( "enterFunctionStatement: startLoc: {0}, endLoc: {1}:\n",
-                                           formatLocation( locs.first ), formatLocation( locs.second ) );
-        } );
-
-        if ( currentFuncName != ENTRY_SYMBOL_NAME )
-        {
-            // coverage: syntax-error/nested.silly
-            //
-            // To support this, exitFor would have to pop an insertion point and current-function-name,
-            // and we'd have to push an insertion-point/function-name instead of just assuming that
-            // we started in main and will return to there.
-            emitUserError( locs.first, std::format( "Nested functions are not currently supported." ),
-                           currentFuncName );
-            return;
-        }
-
         assert( ctx->IDENTIFIER() );
         std::string funcName = ctx->IDENTIFIER()->getText();
-        ParserPerFunctionState &f = funcState( funcName );
-        mlir::func::FuncOp funcOp = f.getFuncOp();
 
-        if ( funcOp )
+        mlir::Type returnType;
+        if ( SillyParser::ScalarTypeContext *rt = ctx->scalarType() )
         {
-            if ( !funcOp.isDeclaration() )
+            returnType = parseScalarType( rt->getText() );
+            if ( !returnType )
             {
-                // coverage: syntax-error/function-redefine.silly
-                emitUserError( locs.first, std::format( "Attempt to define function {} more than once", funcName ),
-                               currentFuncName );
+                mlir::Location loc = getStartLocation( ctx );
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "no returnType", currentFuncName );
                 return;
             }
-
-            if ( !ctx->scopedStatements() )
-            {
-                // coverage: syntax-error/function-syntax-error/redeclare.silly
-                emitUserError( locs.first, std::format( "Attempt to declare function {} more than once", funcName ),
-                               currentFuncName );
-                return;
-            }
-
-            mainIP = builder.saveInsertionPoint();
-
-            // fall through to createScope, which will set the IP.
         }
-        else
+
+        std::vector<mlir::Type> paramTypes;
+        for ( SillyParser::VariableTypeAndNameContext *paramCtx : ctx->variableTypeAndName() )
         {
-            mainIP = builder.saveInsertionPoint();
-
-            builder.setInsertionPointToStart( rmod->getBody() );
-
-            std::vector<mlir::Type> returns;
-            if ( SillyParser::ScalarTypeContext *rt = ctx->scalarType() )
-            {
-                mlir::Type returnType = parseScalarType( rt->getText() );
-
-                if ( returnType )
-                {
-                    returns.push_back( returnType );
-                }
-                else
-                {
-                    mlir::Location loc = getStartLocation( ctx );
-                    emitInternalError( loc, __FILE__, __LINE__, __func__, "no returnType", currentFuncName );
-                    return;
-                }
-            }
-
-            std::vector<mlir::Type> paramTypes;
-            for ( SillyParser::VariableTypeAndNameContext *paramCtx : ctx->variableTypeAndName() )
-            {
-                assert( paramCtx->scalarType() );
-                mlir::Type paramType = parseScalarType( paramCtx->scalarType()->getText() );
-                paramTypes.push_back( paramType );
-            }
-
-            std::vector<mlir::NamedAttribute> attrs;
-            // not sure exactly why I need private.  If I omit it (for extern functions), the lowering
-            // to LLVM-IR ends up the same.
-            //
-            // However, in simple/external/callext.silly that resulted in a verifier error,
-            // stating that public was not allowed.  For now, just use private always.
-            attrs.push_back(
-                mlir::NamedAttribute( builder.getStringAttr( "sym_visibility" ), builder.getStringAttr( "private" ) ) );
-
-            mlir::FunctionType funcType = builder.getFunctionType( paramTypes, returns );
-
-            llvm::SmallVector<mlir::Location, 2> funcLocs{ locs.first, locs.second };
-            mlir::Location fLoc = builder.getFusedLoc( funcLocs );
-
-            funcOp = mlir::func::FuncOp::create( builder, fLoc, funcName, funcType, attrs );
+            assert( paramCtx->scalarType() );
+            mlir::Type paramType = parseScalarType( paramCtx->scalarType()->getText() );
+            paramTypes.push_back( paramType );
         }
 
-        if ( ctx->scopedStatements() )
+        std::vector<std::string> paramNames;
+        for ( SillyParser::VariableTypeAndNameContext *paramCtx : ctx->variableTypeAndName() )
         {
-            std::vector<std::string> paramNames;
-            for ( SillyParser::VariableTypeAndNameContext *paramCtx : ctx->variableTypeAndName() )
-            {
-                assert( paramCtx->IDENTIFIER() );
-                std::string paramName = paramCtx->IDENTIFIER()->getText();
-                paramNames.push_back( paramName );
-            }
+            assert( paramCtx->IDENTIFIER() );
+            std::string paramName = paramCtx->IDENTIFIER()->getText();
+            paramNames.push_back( paramName );
+        }
 
-            createScope( locs.first, funcOp, funcName, paramNames );
-        }
-        else
-        {
-            currentFuncName = funcName;
-            f.setFuncOp( funcOp );
-        }
+        handleEnterFunction( locs, funcName, !ctx->scopedStatements(), returnType, paramTypes, paramNames );
     }
 
     void Antlr4ParseListener::exitFunctionStatement( SillyParser::FunctionStatementContext *ctx )
     {
         assert( ctx );
-
-        builder.restoreInsertionPoint( mainIP );
 
         if ( SillyParser::ScopedStatementsContext *scope = ctx->scopedStatements() )
         {
@@ -483,7 +404,7 @@ namespace silly
             }
         }
 
-        currentFuncName = ENTRY_SYMBOL_NAME;
+        handleExitFunction();
     }
 
     mlir::Value Antlr4ParseListener::handleCall( SillyParser::CallExpressionContext *ctx, bool callStatement,

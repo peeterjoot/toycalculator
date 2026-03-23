@@ -16,6 +16,7 @@
     #include <string>
     #include <vector>
     #include <memory>
+    #include "location.hh"   /* for silly::location */
 
     namespace silly {
         class BisonParseListener;
@@ -40,6 +41,25 @@
             Minus,
             Plus,
             Not,
+        };
+
+        enum class Types : uint32_t
+        {
+            None,
+            Boolean,
+            Int8,
+            Int16,
+            Int32,
+            Int64,
+            Float32,
+            Float64
+        };
+
+        struct TypeAndName
+        {
+            Types typ{};
+            std::string name{};
+            silly::location loc{};
         };
 
         struct Literal
@@ -216,20 +236,25 @@
 %token <std::string> IDENTIFIER
 
 /* Typed non-terminals */
-%type <silly::Literal>                  literal
-%type <std::string>                     integerLiteral
-%type <std::string>                     floatLiteral
-%type <std::string>                     stringLiteral
-%type <std::string>                     intType
-%type <std::string>                     floatType
-%type <std::string>                     arrayBoundsExpression
-%type <std::vector<silly::Literal>>     optionalInitializer
-%type <std::vector<silly::Literal>>     initializerList
-%type <std::string>                     importStatement
-%type <std::string>                     scalarType
-%type <std::vector<silly::Expr>>        printArgList
-%type <silly::Expr>                     assignmentLHS
-%type <silly::Expr>                     expression
+%type <silly::Literal>                      literal
+%type <std::string>                         integerLiteral
+%type <std::string>                         floatLiteral
+%type <std::string>                         stringLiteral
+%type <silly::Types>                        boolType
+%type <silly::Types>                        intType
+%type <silly::Types>                        floatType
+%type <std::string>                         arrayBoundsExpression
+%type <std::vector<silly::Literal>>         optionalInitializer
+%type <std::vector<silly::Literal>>         initializerList
+%type <std::string>                         importStatement
+%type <silly::Types>                        scalarType
+%type <std::vector<silly::Expr>>            printArgList
+%type <silly::Expr>                         assignmentLHS
+%type <silly::Expr>                         expression
+%type <silly::Types>                        optionalReturnType
+%type <std::vector<silly::TypeAndName>>     paramList
+%type <std::vector<silly::TypeAndName>>     optionalParamList
+%type <silly::TypeAndName>                  variableTypeAndName
 
 %left BOOLEANOR_TOKEN
 %left BOOLEANXOR_TOKEN
@@ -411,34 +436,44 @@ functionStatement
     : FUNCTION_TOKEN IDENTIFIER
       BRACE_START_TOKEN optionalParamList BRACE_END_TOKEN
       optionalReturnType
-      { /* stub */ }
+        { driver.enterFunctionPrototype( $2, $4, $6, @1, @2 ); }
+    | FUNCTION_TOKEN IDENTIFIER
+      BRACE_START_TOKEN optionalParamList BRACE_END_TOKEN
+      optionalReturnType
+      scopedStatements
+        { driver.enterFunctionDefinition( $2, $4, $6, @1, @2 ); }
     ;
 
 optionalParamList
     : /* empty */
+        { $$ = {}; }
     | paramList
+        { $$ = std::move( $1 ); }
     ;
 
 paramList
     : variableTypeAndName
+        { $$ = std::vector<silly::TypeAndName>{ $1 }; }
     | paramList COMMA_TOKEN variableTypeAndName
+        { $1.push_back( $3 ); $$ = std::move( $1 ); }
     ;
 
 variableTypeAndName
     : scalarType IDENTIFIER
-        { /* stub */ }
+        { $$ = { $1, $2, @2 }; }
     ;
 
 optionalReturnType
     : /* empty */
+        { $$ = silly::Types::None; }
     | COLON_TOKEN scalarType
-        { /* stub */ }
+        { $$ = $2; }
     ;
 
 scalarType
     : intType       { $$ = $1; }
     | floatType     { $$ = $1; }
-    | BOOL_TOKEN    { $$ = "BOOL"; }
+    | boolType      { $$ = $1; }
     ;
 
 declareStatement
@@ -458,20 +493,24 @@ floatDeclareStatement
     ;
 
 boolDeclareStatement
-    : BOOL_TOKEN IDENTIFIER arrayBoundsExpression optionalInitializer
+    : boolType IDENTIFIER arrayBoundsExpression optionalInitializer
         { driver.enterBoolDeclareStatement( $2, $3, $4, @1, @2, @3 ); }
     ;
 
 intType
-    : INT8_TOKEN    { $$ = "INT8";  }
-    | INT16_TOKEN   { $$ = "INT16"; }
-    | INT32_TOKEN   { $$ = "INT32"; }
-    | INT64_TOKEN   { $$ = "INT64"; }
+    : INT8_TOKEN    { $$ = silly::Types::Int8;  }
+    | INT16_TOKEN   { $$ = silly::Types::Int16; }
+    | INT32_TOKEN   { $$ = silly::Types::Int32; }
+    | INT64_TOKEN   { $$ = silly::Types::Int64; }
+    ;
+
+boolType
+    : BOOL_TOKEN    { $$ = silly::Types::Boolean;  }
     ;
 
 floatType
-    : FLOAT32_TOKEN { $$ = "FLOAT32"; }
-    | FLOAT64_TOKEN { $$ = "FLOAT64"; }
+    : FLOAT32_TOKEN { $$ = silly::Types::Float32; }
+    | FLOAT64_TOKEN { $$ = silly::Types::Float64; }
     ;
 
 /* Returns -1 if no array bounds, otherwise the array size */

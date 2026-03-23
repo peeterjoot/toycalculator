@@ -399,44 +399,68 @@ namespace silly
         silly::PrintOp::create( builder, loc, constFlagOp, vargs );
     }
 
-    mlir::Type BisonParseListener::integerDeclarationType( mlir::Location loc, const std::string& typeName )
+    mlir::Type BisonParseListener::declarationType( mlir::Location loc, const Types type )
     {
         mlir::Type ty{};
 
-        if ( typeName == "INT8" )
+        switch ( type )
         {
-            ty = typ.i8;
-        }
-        else if ( typeName == "INT16" )
-        {
-            ty = typ.i16;
-        }
-        else if ( typeName == "INT32" )
-        {
-            ty = typ.i32;
-        }
-        else if ( typeName == "INT64" )
-        {
-            ty = typ.i64;
-        }
-        else
-        {
-            emitInternalError( loc, __FILE__, __LINE__, __func__, "Unsupported signed integer declaration size.",
-                               currentFuncName );
+            case Types::Boolean:
+            {
+                ty = typ.i1;
+                break;
+            }
+            case Types::Int8:
+            {
+                ty = typ.i8;
+                break;
+            }
+            case Types::Int16:
+            {
+                ty = typ.i16;
+                break;
+            }
+            case Types::Int32:
+            {
+                ty = typ.i32;
+                break;
+            }
+            case Types::Int64:
+            {
+                ty = typ.i64;
+                break;
+            }
+            case Types::Float32:
+            {
+                ty = typ.f32;
+                break;
+            }
+            case Types::Float64:
+            {
+                ty = typ.f64;
+                break;
+            }
+            case Types::None:
+            {
+                break;
+            }
+            default:
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "Unsupported declaration type.",
+                                   currentFuncName );
         }
 
         return ty;
     }
 
     void BisonParseListener::declarationHelper( mlir::Location tLoc, mlir::Location aLoc, const std::string& varName,
-                                                const std::string& arraySizeString, mlir::Type ty,
-                                                bool initIsDeclare, bool hasInit, const std::vector<silly::Literal>& initializerLiterals,
+                                                const std::string& arraySizeString, mlir::Type ty, bool initIsDeclare,
+                                                bool hasInit, const std::vector<silly::Literal>& initializerLiterals,
                                                 LocationStack& ls )
     {
         bool haveInitializer{};
         std::vector<mlir::Value> initializers;
 
-        for ( const silly::Literal & initializer : initializerLiterals )
+        for ( const silly::Literal& initializer : initializerLiterals )
         {
             assert( initializer.kind != Literal::Kind::None );
 
@@ -471,7 +495,7 @@ namespace silly
         registerDeclaration( tLoc, varName, ty, aLoc, arraySizeString, haveInitializer, initializers, ls );
     }
 
-    void BisonParseListener::enterIntDeclareStatement( const std::string& typeName, const std::string& varName,
+    void BisonParseListener::enterIntDeclareStatement( const silly::Types& type, const std::string& varName,
                                                        const std::string& arraySizeString,
                                                        const std::vector<silly::Literal>& initializers,
                                                        const silly::BisonParser::location_type& typeLoc,
@@ -483,7 +507,7 @@ namespace silly
         declarationAssignmentInitialization = false;
         bool hasInit = declarationHasInitializer;
         declarationHasInitializer = false;
-        mlir::Type ty = integerDeclarationType( tLoc, typeName );
+        mlir::Type ty = declarationType( tLoc, type );
         if ( !ty )
         {
             return;
@@ -494,7 +518,7 @@ namespace silly
         declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initIsDeclare, hasInit, initializers, ls );
     }
 
-    void BisonParseListener::enterFloatDeclareStatement( const std::string& typeName, const std::string& varName,
+    void BisonParseListener::enterFloatDeclareStatement( const silly::Types& type, const std::string& varName,
                                                          const std::string& arraySizeString,
                                                          const std::vector<silly::Literal>& initializers,
                                                          const silly::BisonParser::location_type& typeLoc,
@@ -506,21 +530,7 @@ namespace silly
         declarationAssignmentInitialization = false;
         bool hasInit = declarationHasInitializer;
         declarationHasInitializer = false;
-        mlir::Type ty;
-        if ( typeName == "FLOAT32" )
-        {
-            ty = typ.f32;
-        }
-        else if ( typeName == "FLOAT64" )
-        {
-            ty = typ.f64;
-        }
-        else
-        {
-            emitInternalError( tLoc, __FILE__, __LINE__, __func__, "Unsupported floating point declaration size.",
-                               currentFuncName );
-            return;
-        }
+        mlir::Type ty = declarationType( tLoc, type );
 
         mlir::Location aLoc = getLocation( arrayLoc );
         LocationStack ls( builder, tLoc );
@@ -610,6 +620,39 @@ namespace silly
         mlir::Location loc = getLocation( bLoc );
 
         handleImport( loc, modName );
+    }
+
+    void BisonParseListener::enterFunctionPrototype( const std::string& name,
+                                                     const std::vector<silly::TypeAndName>& params,
+                                                     const silly::Types& returnType,
+                                                     const silly::BisonParser::location_type& funcLoc,
+                                                     const silly::BisonParser::location_type& nameLoc )
+    {
+        LocPairs locs = getLocations( funcLoc );
+
+        mlir::Type rt = declarationType( locs.first, returnType );
+
+        std::vector<mlir::Type> paramTypes;
+        std::vector<std::string> paramNames;
+        for ( const silly::TypeAndName& tn : params )
+        {
+            mlir::Type paramType = declarationType( locs.first, tn.typ );
+            paramTypes.push_back( paramType );
+            paramNames.push_back( tn.name );
+        }
+
+        handleEnterFunction( locs, name, true, rt, paramTypes, paramNames );
+
+        handleExitFunction();
+    }
+
+    void BisonParseListener::enterFunctionDefinition( const std::string& name,
+                                                      const std::vector<silly::TypeAndName>& params,
+                                                      const silly::Types& returnType,
+                                                      const silly::BisonParser::location_type& funcLoc,
+                                                      const silly::BisonParser::location_type& nameLoc )
+    {
+        assert( 0 and "NYI" );
     }
 
     void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )

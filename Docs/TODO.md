@@ -15,7 +15,7 @@
 - [ ] scopes
 - [ ] FOR
 - [ ] IF/ELSE/ELIF
-- [ ] FUNCTION
+- [ ] FUNCTION definition.
 - [ ] RETURN
 - [ ] CALL
 - [ ] MODULE

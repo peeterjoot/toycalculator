@@ -370,6 +370,7 @@ So far, just:
 - `ABORT`
 - `ERROR`
 - `EXIT`
+- `FUNCTION` declaration
 - `GET`
 - `MAIN`
 - `PRINT`
@@ -379,7 +380,7 @@ So far, just:
 What doesn't work:
 - `IF/ELIF/ELSE`
 - `FOR`
-- `FUNCTION`
+- `FUNCTION` definition
 - `CALL`
 - `MODULE`
 - `IMPORT`
