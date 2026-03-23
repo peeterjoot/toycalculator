@@ -11,7 +11,7 @@
 * TODO:
 - [ ] empty init list doesn't parse.
 - [ ] Fix location info for parseExpression (and index expressions, ...)
-- [ ] Suspect that I don't have the -init-fill support right: have a state variable for declaration w/ assignment -- step into that and see if it's doing the right thing.
+- [ ] Suspect that I don't have the -init-fill support right: have a couple state variable for declaration w/ assignment and declaration with init -- step into that and see if it's doing the right thing.
 - [ ] scopes
 - [ ] FOR
 - [ ] IF/ELSE/ELIF

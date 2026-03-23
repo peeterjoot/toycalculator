@@ -62,6 +62,11 @@ namespace silly
         declarationAssignmentInitialization = true;
     }
 
+    void BisonParseListener::hasDeclarationHasInitializer()
+    {
+        declarationHasInitializer = true;
+    }
+
     mlir::Location BisonParseListener::getLocation( const silly::BisonParser::location_type& bLoc )
     {
         mlir::FileLineColLoc startLoc =
@@ -425,7 +430,7 @@ namespace silly
 
     void BisonParseListener::declarationHelper( mlir::Location tLoc, mlir::Location aLoc, const std::string& varName,
                                                 const std::string& arraySizeString, mlir::Type ty,
-                                                bool initIsDeclare, const std::vector<silly::Literal>& initializerLiterals,
+                                                bool initIsDeclare, bool hasInit, const std::vector<silly::Literal>& initializerLiterals,
                                                 LocationStack& ls )
     {
         bool haveInitializer{};
@@ -476,6 +481,8 @@ namespace silly
         mlir::Location tLoc = getLocation( typeLoc );
         bool initIsDeclare = declarationAssignmentInitialization;
         declarationAssignmentInitialization = false;
+        bool hasInit = declarationHasInitializer;
+        declarationHasInitializer = false;
         mlir::Type ty = integerDeclarationType( tLoc, typeName );
         if ( !ty )
         {
@@ -484,7 +491,7 @@ namespace silly
         mlir::Location aLoc = getLocation( arrayLoc );
         LocationStack ls( builder, tLoc );
 
-        declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initIsDeclare, initializers, ls );
+        declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initIsDeclare, hasInit, initializers, ls );
     }
 
     void BisonParseListener::enterFloatDeclareStatement( const std::string& typeName, const std::string& varName,
@@ -497,6 +504,8 @@ namespace silly
         mlir::Location tLoc = getLocation( typeLoc );
         bool initIsDeclare = declarationAssignmentInitialization;
         declarationAssignmentInitialization = false;
+        bool hasInit = declarationHasInitializer;
+        declarationHasInitializer = false;
         mlir::Type ty;
         if ( typeName == "FLOAT32" )
         {
@@ -516,7 +525,7 @@ namespace silly
         mlir::Location aLoc = getLocation( arrayLoc );
         LocationStack ls( builder, tLoc );
 
-        declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initIsDeclare, initializers, ls );
+        declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initIsDeclare, hasInit, initializers, ls );
     }
 
     void BisonParseListener::enterBoolDeclareStatement( const std::string& varName, const std::string& arraySizeString,
@@ -528,11 +537,13 @@ namespace silly
         mlir::Location tLoc = getLocation( typeLoc );
         bool initIsDeclare = declarationAssignmentInitialization;
         declarationAssignmentInitialization = false;
+        bool hasInit = declarationHasInitializer;
+        declarationHasInitializer = false;
         mlir::Type ty = typ.i1;
         mlir::Location aLoc = getLocation( arrayLoc );
         LocationStack ls( builder, tLoc );
 
-        declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initIsDeclare, initializers, ls );
+        declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, initIsDeclare, hasInit, initializers, ls );
     }
 
     void BisonParseListener::enterAssignmentStatement( const silly::Expr& var, const silly::Expr& rhs,

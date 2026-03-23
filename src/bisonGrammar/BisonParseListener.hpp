@@ -82,6 +82,7 @@ namespace silly
         void setPrintContinue();
         void setPrintError();
         void setDeclarationAssignment();
+        void hasDeclarationHasInitializer();
 
        private:
         mlir::Location getLocation( const silly::BisonParser::location_type& bloc );
@@ -92,7 +93,7 @@ namespace silly
 
         void declarationHelper( mlir::Location tLoc, mlir::Location aLoc, const std::string& varName,
                                 const std::string& arraySizeString, mlir::Type ty,
-                                bool initIsDeclare, const std::vector<silly::Literal>& initializerLiterals,
+                                bool initIsDeclare, bool hasInit, const std::vector<silly::Literal>& initializerLiterals,
                                 LocationStack& ls );
 
         mlir::Value parseExpression( mlir::Location vLoc, mlir::Type ty, const silly::Expr& parg, LocationStack& ls );
@@ -103,5 +104,6 @@ namespace silly
         bool hasPrintContinue{};
         bool hasPrintError{};
         bool declarationAssignmentInitialization{};
+        bool declarationHasInitializer{};
     };
 }    // namespace silly

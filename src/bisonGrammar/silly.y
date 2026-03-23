@@ -487,8 +487,10 @@ optionalInitializer
         { $$ = {}; }
     | EQUALS_TOKEN literal
         { driver.setDeclarationAssignment(); $$ = std::vector<silly::Literal>{ $2 }; }
+    | LEFT_CURLY_BRACKET_TOKEN RIGHT_CURLY_BRACKET_TOKEN
+        { driver.hasDeclarationHasInitializer(); $$ = {}; }
     | LEFT_CURLY_BRACKET_TOKEN initializerList RIGHT_CURLY_BRACKET_TOKEN
-        { $$ = std::move( $2 ); }
+        { driver.hasDeclarationHasInitializer(); $$ = std::move( $2 ); }
     ;
 
 initializerList
