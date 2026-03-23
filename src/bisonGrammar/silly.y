@@ -410,9 +410,9 @@ scopedStatements
 optionalReturnStatement
     : /* empty */
     | RETURN_TOKEN expression ENDOFSTATEMENT_TOKEN
-        { /* stub */ }
+        { driver.enterReturnStatement( @2, $2 ); }
     | RETURN_TOKEN ENDOFSTATEMENT_TOKEN
-        { /* stub */ }
+        { driver.enterReturnStatement( @1 ); }
     ;
 
 assignmentStatement
@@ -436,12 +436,13 @@ functionStatement
     : FUNCTION_TOKEN IDENTIFIER
       BRACE_START_TOKEN optionalParamList BRACE_END_TOKEN
       optionalReturnType
-        { driver.enterFunctionPrototype( $2, $4, $6, @1, @2 ); }
+        { driver.enterFunctionPrototype( $2, $4, $6, @1 ); }
     | FUNCTION_TOKEN IDENTIFIER
       BRACE_START_TOKEN optionalParamList BRACE_END_TOKEN
       optionalReturnType
+        { driver.enterFunctionDefinition( $2, $4, $6, @1 ); }
       scopedStatements
-        { driver.enterFunctionDefinition( $2, $4, $6, @1, @2 ); }
+        { driver.exitFunctionDefinition( ); }
     ;
 
 optionalParamList

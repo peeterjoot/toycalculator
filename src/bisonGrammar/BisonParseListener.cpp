@@ -622,11 +622,9 @@ namespace silly
         handleImport( loc, modName );
     }
 
-    void BisonParseListener::enterFunctionPrototype( const std::string& name,
-                                                     const std::vector<silly::TypeAndName>& params,
-                                                     const silly::Types& returnType,
-                                                     const silly::BisonParser::location_type& funcLoc,
-                                                     const silly::BisonParser::location_type& nameLoc )
+    void BisonParseListener::functionHelper( const std::string& name, const std::vector<silly::TypeAndName>& params,
+                                             const silly::Types& returnType,
+                                             const silly::BisonParser::location_type& funcLoc, bool isDeclaration )
     {
         LocPairs locs = getLocations( funcLoc );
 
@@ -641,7 +639,15 @@ namespace silly
             paramNames.push_back( tn.name );
         }
 
-        handleEnterFunction( locs, name, true, rt, paramTypes, paramNames );
+        handleEnterFunction( locs, name, isDeclaration, rt, paramTypes, paramNames );
+    }
+
+    void BisonParseListener::enterFunctionPrototype( const std::string& name,
+                                                     const std::vector<silly::TypeAndName>& params,
+                                                     const silly::Types& returnType,
+                                                     const silly::BisonParser::location_type& funcLoc )
+    {
+        functionHelper( name, params, returnType, funcLoc, true );
 
         handleExitFunction();
     }
@@ -649,10 +655,33 @@ namespace silly
     void BisonParseListener::enterFunctionDefinition( const std::string& name,
                                                       const std::vector<silly::TypeAndName>& params,
                                                       const silly::Types& returnType,
-                                                      const silly::BisonParser::location_type& funcLoc,
-                                                      const silly::BisonParser::location_type& nameLoc )
+                                                      const silly::BisonParser::location_type& funcLoc )
     {
-        assert( 0 and "NYI" );
+        functionHelper( name, params, returnType, funcLoc, false );
+    }
+
+    void BisonParseListener::exitFunctionDefinition()
+    {
+        handleExitFunction();
+    }
+
+    void BisonParseListener::enterReturnStatement( const silly::BisonParser::location_type& bLoc,
+                                                   const silly::Expr& expr )
+    {
+        LocPairs locs = getLocations( bLoc );
+        LocationStack ls( builder, locs.first );
+        
+        mlir::Value value = parseExpression( locs.first, {}, expr, ls );
+
+        processReturnLike( locs.second, value, ls );
+    }
+
+    void BisonParseListener::enterReturnStatement( const silly::BisonParser::location_type& bLoc )
+    {
+        LocPairs locs = getLocations( bLoc );
+        LocationStack ls( builder, locs.first );
+        
+        processReturnLike( locs.second, {}, ls );
     }
 
     void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )

@@ -72,17 +72,19 @@ namespace silly
 
         void enterImportStatement( const silly::BisonParser::location_type& bLoc, const std::string& modName );
 
-        void enterFunctionPrototype( const std::string& name,
-                                     const std::vector<silly::TypeAndName>& params,
-                                     const silly::Types& returnType,
-                                     const silly::BisonParser::location_type& funcLoc,
-                                     const silly::BisonParser::location_type& nameLoc );
+        void enterFunctionPrototype( const std::string& name, const std::vector<silly::TypeAndName>& params,
+                                     const silly::Types& returnType, const silly::BisonParser::location_type& funcLoc );
 
-        void enterFunctionDefinition( const std::string& name,
-                                      const std::vector<silly::TypeAndName>& params,
+        void enterFunctionDefinition( const std::string& name, const std::vector<silly::TypeAndName>& params,
                                       const silly::Types& returnType,
-                                      const silly::BisonParser::location_type& funcLoc,
-                                      const silly::BisonParser::location_type& nameLoc );
+                                      const silly::BisonParser::location_type& funcLoc );
+
+        void exitFunctionDefinition();
+
+        void enterReturnStatement( const silly::BisonParser::location_type& bLoc,
+                                   const silly::Expr& expr );
+
+        void enterReturnStatement( const silly::BisonParser::location_type& bLoc );
 
         /// Called from parser on error
         void emitParseError( const silly::BisonParser::location_type& loc, const std::string& msg );
@@ -104,9 +106,12 @@ namespace silly
         mlir::Type declarationType( mlir::Location loc, const Types type );
 
         void declarationHelper( mlir::Location tLoc, mlir::Location aLoc, const std::string& varName,
-                                const std::string& arraySizeString, mlir::Type ty,
-                                bool initIsDeclare, bool hasInit, const std::vector<silly::Literal>& initializerLiterals,
-                                LocationStack& ls );
+                                const std::string& arraySizeString, mlir::Type ty, bool initIsDeclare, bool hasInit,
+                                const std::vector<silly::Literal>& initializerLiterals, LocationStack& ls );
+
+        void functionHelper( const std::string& name, const std::vector<silly::TypeAndName>& params,
+                             const silly::Types& returnType, const silly::BisonParser::location_type& funcLoc,
+                             bool isDeclaration );
 
         mlir::Value parseExpression( mlir::Location vLoc, mlir::Type ty, const silly::Expr& parg, LocationStack& ls );
 
