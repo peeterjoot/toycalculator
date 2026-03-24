@@ -10,7 +10,6 @@
 * This template parameterization in generateCall is a hack.  Should probably switch to std::shared_ptr<silly::Expr> uniformly
 * TODO:
 - [ ] Fix location info for parseExpression (and index expressions, ...)
-- [ ] FOR
 - [ ] IF/ELSE/ELIF
 - [ ] MODULE
 

@@ -164,8 +164,8 @@ namespace silly
 
         mlir::Location loc = builder.getUnknownLoc();
         // shouldn't see this if there was a non-internal error logged:
-        emitInternalError( loc, __FILE__, __LINE__, __func__, "Catastrophic compilation failure: Failed to generate MLIR module",
-                           currentFuncName );
+        emitInternalError( loc, __FILE__, __LINE__, __func__,
+                           "Catastrophic compilation failure: Failed to generate MLIR module", currentFuncName );
         return nullptr;
     }
 
@@ -352,6 +352,35 @@ namespace silly
         }
 
         return v;
+    }
+
+    void BisonParseListener::enterForStatement( const silly::BisonParser::location_type& bForLoc,
+                                                const silly::Types& intType,
+                                                const silly::BisonParser::location_type& bVarLoc,
+                                                const std::string& varName, const silly::Expr& start,
+                                                const silly::Expr& stop, const silly::Expr& step )
+    {
+
+        mlir::Location loc = getLocation( bForLoc );
+        mlir::Location varLoc = getLocation( bVarLoc );
+        mlir::Type elemType = declarationType( loc, intType );
+        LocationStack ls( builder, loc );
+        mlir::Value vstart = parseExpression( varLoc, elemType, start, ls );
+        mlir::Value vstop = parseExpression( varLoc, elemType, stop, ls );
+        mlir::Value vstep;
+        if ( step.kind != silly::Expr::Kind::None )
+        {
+            vstep = parseExpression( varLoc, elemType, step, ls );
+        }
+
+        handleForStatement( loc, varName, elemType, varLoc, vstart, vstop, vstep, ls );
+    }
+
+    void BisonParseListener::exitForStatement( const silly::BisonParser::location_type& bForLoc )
+    {
+        mlir::Location loc = getLocation( bForLoc );
+
+        finishHandleFor( loc );
     }
 
     void BisonParseListener::enterPrintStatement( const std::vector<silly::Expr>& args,

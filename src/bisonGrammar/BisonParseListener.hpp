@@ -43,10 +43,10 @@ namespace silly
                                     const silly::BisonParser::location_type& arrayLoc );
 
         void enterDeclareStatementWithEmptyInit( const silly::Types& type, const std::string& varName,
-                                    const std::string& arraySizeString,
-                                    const silly::BisonParser::location_type& typeLoc,
-                                    const silly::BisonParser::location_type& nameLoc,
-                                    const silly::BisonParser::location_type& arrayLoc );
+                                                 const std::string& arraySizeString,
+                                                 const silly::BisonParser::location_type& typeLoc,
+                                                 const silly::BisonParser::location_type& nameLoc,
+                                                 const silly::BisonParser::location_type& arrayLoc );
 
         void enterDeclareStatement( const silly::Types& type, const std::string& varName,
                                     const std::string& arraySizeString,
@@ -86,6 +86,12 @@ namespace silly
 
         void enterCallStatement( const std::string& name, const std::vector<silly::Expr>& args,
                                  const silly::BisonParser::location_type& bLoc );
+
+        void enterForStatement( const silly::BisonParser::location_type& bForLoc, const silly::Types& intType,
+                                const silly::BisonParser::location_type& bVarLoc, const std::string& varName,
+                                const silly::Expr& start, const silly::Expr& stop, const silly::Expr& step );
+
+        void exitForStatement( const silly::BisonParser::location_type& bForLoc );
 
         /// Called from parser on error
         void emitParseError( const silly::BisonParser::location_type& loc, const std::string& msg );

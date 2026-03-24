@@ -89,6 +89,22 @@ namespace silly
 
         debugScopeStack.pop_back();
     }
+
+    void ParserPerFunctionState::pushToInsertionPointStack( mlir::Operation *op )
+    {
+        insertionPointStack.push_back( op );
+    }
+
+    void ParserPerFunctionState::popFromInsertionPointStack( mlir::OpBuilder &builder )
+    {
+        builder.setInsertionPointAfter( insertionPointStack.back() );
+        insertionPointStack.pop_back();
+    }
+
+    bool ParserPerFunctionState::haveInsertionPointStack()
+    {
+        return ( insertionPointStack.size() != 0 );
+    }
 }
 
 // vim: et ts=4 sw=4

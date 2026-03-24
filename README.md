@@ -442,18 +442,18 @@ So far:
 - `CALL`
 - `ERROR`
 - `EXIT`
+- `FOR`
 - `FUNCTION`
 - `GET`
 - `IMPORT`
 - `MAIN`
+- `MODULE`
 - `PRINT`
 - Declarations and assignments.
 - Unary and Binary expressions.
 
 What doesn't work:
 - `IF/ELIF/ELSE`
-- `FOR`
-- `MODULE`
 - proper location info (esp. for Expr, but lots needs review.)
 - debugging
 - multiple source files.

@@ -106,6 +106,7 @@
         {
             enum class Kind
             {
+                None,
                 Literal,
                 Variable,
                 ArrayVariable,
@@ -121,6 +122,11 @@
             std::shared_ptr<Expr> left{};  /* for UnaryOp: operand; BinaryOp: lhs, also index expressions */
             std::shared_ptr<Expr> right{}; /* for BinaryOp: rhs */
             std::vector<std::shared_ptr<Expr>> params{};  /* for Call: argument list */
+
+            static Expr makeDummy( )
+            {
+                return { Kind::None };
+            }
 
             static Expr fromLiteral( const Literal& l )
             {
@@ -378,16 +384,18 @@ forStatement
               expression COMMA_TOKEN expression
           BRACE_END_TOKEN
       BRACE_END_TOKEN
+        { driver.enterForStatement( @1, $3, @4, $4, $7, $9, silly::Expr::makeDummy( ) ); }
       scopedStatements
-        { /* stub */ }
+        { driver.exitForStatement( @1 ); }
     | FOR_TOKEN
       BRACE_START_TOKEN intType IDENTIFIER COLON_TOKEN
           BRACE_START_TOKEN
               expression COMMA_TOKEN expression COMMA_TOKEN expression
           BRACE_END_TOKEN
       BRACE_END_TOKEN
+        { driver.enterForStatement( @1, $3, @4, $4, $7, $9, $11 ); }
       scopedStatements
-        { /* stub */ }
+        { driver.exitForStatement( @1 ); }
     ;
 
 ifElifElseStatement

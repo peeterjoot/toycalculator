@@ -722,22 +722,6 @@ namespace silly
         createIf( loc, ctx->expression(), false, ls );
     }
 
-    void ParserPerFunctionState::pushToInsertionPointStack( mlir::Operation *op )
-    {
-        insertionPointStack.push_back( op );
-    }
-
-    void ParserPerFunctionState::popFromInsertionPointStack( mlir::OpBuilder &builder )
-    {
-        builder.setInsertionPointAfter( insertionPointStack.back() );
-        insertionPointStack.pop_back();
-    }
-
-    bool ParserPerFunctionState::haveInsertionPointStack()
-    {
-        return ( insertionPointStack.size() != 0 );
-    }
-
     void Antlr4ParseListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx )
     {
         ParserPerFunctionState &f = funcState( currentFuncName );
@@ -771,25 +755,6 @@ namespace silly
         mlir::Value start;
         mlir::Value end;
         mlir::Value step;
-
-        bool declared = isVariableDeclared( varName );
-        if ( declared )
-        {
-            // coverage: syntax-error/shadow-induction.silly
-            emitUserError( loc, std::format( "Induction variable {} clashes with declared variable", varName ),
-                           currentFuncName );
-            return;
-        }
-
-        ParserPerFunctionState &f = funcState( currentFuncName );
-        mlir::Value p = f.searchForInduction( varName );
-        if ( p )
-        {
-            // coverage: syntax-error/triple-for-shadow.silly syntax-error/nested-induction-conflict.silly
-            emitUserError( loc, std::format( "Induction variable {} used by enclosing FOR", varName ),
-                           currentFuncName );
-            return;
-        }
 
         mlir::Type elemType = integerDeclarationType( loc, ctx->intType() );
 
@@ -835,58 +800,20 @@ namespace silly
                 return;
             }
         }
-        else
-        {
-            mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( elemType );
-            unsigned width = ity.getWidth();
-
-            ls.push_back( loc );
-
-            //'scf.for' op failed to verify that all of {lowerBound, upperBound, step} have same type
-            step = mlir::arith::ConstantIntOp::create( builder, loc, 1, width );
-            step = castOpIfRequired( loc, step, elemType, ls );
-        }
 
         checkForReturnInScope( ctx->scopedStatements(), "FOR loop body" );
 
         mlir::Location varLoc = getTerminalLocation( ctx->IDENTIFIER() );
-        mlir::Value scopeToken = silly::DebugScopeOp::create( builder, varLoc, typ.i1 ).getResult();
-        f.pushScopeOp( scopeToken );
 
-        // mlir::Location fusedLoc = ls.fuseLocations( );
-        mlir::scf::ForOp forOp = mlir::scf::ForOp::create( builder, loc, start, end, step );
-        f.pushToInsertionPointStack( forOp.getOperation() );
-
-        mlir::Block &loopBody = forOp.getRegion().front();
-        mlir::Value inductionVar = loopBody.getArgument( 0 );
-
-        builder.setInsertionPointToStart( &loopBody );
-
-        f.pushInductionVariable( varName, inductionVar );
-
-        // HACK: DISABLE SCOPEOP just for FOR induction-variables for now (induction var DI is MIA after
-        // LLVM-IR lowering -- perhaps a dominance issue.)
-#if 0
-        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, scopeToken );
-#else
-        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, mlir::Value{} );
-#endif
+        handleForStatement( loc, varName, elemType, varLoc, start, end, step, ls );
     }
 
     void Antlr4ParseListener::exitForStatement( SillyParser::ForStatementContext *ctx )
     {
         assert( ctx );
-        ParserPerFunctionState &f = funcState( currentFuncName );
-        if ( f.haveInsertionPointStack() )
-        {
-            f.popFromInsertionPointStack( builder );
-            f.popInductionVariable();
-        }
-        else
-        {
-            mlir::Location loc = getStartLocation( ctx );
-            emitInternalError( loc, __FILE__, __LINE__, __func__, "empty insertionPointStack", currentFuncName );
-        }
+        mlir::Location loc = getStartLocation( ctx );
+
+        finishHandleFor( loc );
     }
 
     void Antlr4ParseListener::handlePrint( mlir::Location loc,

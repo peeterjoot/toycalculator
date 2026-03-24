@@ -4,6 +4,7 @@
 #include <llvm/Support/FormatVariadic.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
+#include <mlir/Dialect/SCF/IR/SCF.h>
 
 #include <format>
 #include <fstream>
@@ -950,6 +951,80 @@ namespace silly
         }
 
         return ret;
+    }
+
+    void Builder::handleForStatement( mlir::Location loc, const std::string &varName, mlir::Type elemType,
+                                      mlir::Location varLoc, mlir::Value start, mlir::Value end, mlir::Value step,
+                                      LocationStack &ls )
+    {
+        bool declared = isVariableDeclared( varName );
+        if ( declared )
+        {
+            // coverage: syntax-error/shadow-induction.silly
+            emitUserError( loc, std::format( "Induction variable {} clashes with declared variable", varName ),
+                           currentFuncName );
+            return;
+        }
+
+        ParserPerFunctionState &f = funcState( currentFuncName );
+        mlir::Value p = f.searchForInduction( varName );
+        if ( p )
+        {
+            // coverage: syntax-error/triple-for-shadow.silly syntax-error/nested-induction-conflict.silly
+            emitUserError( loc, std::format( "Induction variable {} used by enclosing FOR", varName ),
+                           currentFuncName );
+            return;
+        }
+
+        std::string s;
+
+        if ( !step )
+        {
+            mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( elemType );
+            unsigned width = ity.getWidth();
+
+            ls.push_back( loc );
+
+            //'scf.for' op failed to verify that all of {lowerBound, upperBound, step} have same type
+            step = mlir::arith::ConstantIntOp::create( builder, loc, 1, width );
+            step = castOpIfRequired( loc, step, elemType, ls );
+        }
+
+        mlir::Value scopeToken = silly::DebugScopeOp::create( builder, varLoc, typ.i1 ).getResult();
+        f.pushScopeOp( scopeToken );
+
+        // mlir::Location fusedLoc = ls.fuseLocations( );
+        mlir::scf::ForOp forOp = mlir::scf::ForOp::create( builder, loc, start, end, step );
+        f.pushToInsertionPointStack( forOp.getOperation() );
+
+        mlir::Block &loopBody = forOp.getRegion().front();
+        mlir::Value inductionVar = loopBody.getArgument( 0 );
+
+        builder.setInsertionPointToStart( &loopBody );
+
+        f.pushInductionVariable( varName, inductionVar );
+
+        // HACK: DISABLE SCOPEOP just for FOR induction-variables for now (induction var DI is MIA after
+        // LLVM-IR lowering -- perhaps a dominance issue.)
+#if 0
+        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, scopeToken );
+#else
+        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, mlir::Value{} );
+#endif
+    }
+
+    void Builder::finishHandleFor( mlir::Location loc )
+    {
+        ParserPerFunctionState &f = funcState( currentFuncName );
+        if ( f.haveInsertionPointStack() )
+        {
+            f.popFromInsertionPointStack( builder );
+            f.popInductionVariable();
+        }
+        else
+        {
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "empty insertionPointStack", currentFuncName );
+        }
     }
 }    // namespace silly
 
