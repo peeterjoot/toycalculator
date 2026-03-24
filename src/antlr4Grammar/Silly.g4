@@ -66,7 +66,7 @@ functionStatement
 boolDeclareStatement
   : BOOL_TOKEN
     IDENTIFIER (arrayBoundsExpression)?
-    ((EQUALS_TOKEN declareAssignmentExpression) |
+    ((EQUALS_TOKEN expression) |
      (LEFT_CURLY_BRACKET_TOKEN (expression (COMMA_TOKEN expression)*)? RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
@@ -77,22 +77,15 @@ variableTypeAndName
 intDeclareStatement
   : intType
     IDENTIFIER (arrayBoundsExpression)?
-    ((EQUALS_TOKEN declareAssignmentExpression) |
+    ((EQUALS_TOKEN expression) |
      (LEFT_CURLY_BRACKET_TOKEN (expression (COMMA_TOKEN expression)*)? RIGHT_CURLY_BRACKET_TOKEN))?
   ;
 
 floatDeclareStatement
   : (FLOAT32_TOKEN | FLOAT64_TOKEN)
     IDENTIFIER (arrayBoundsExpression)?
-    ((EQUALS_TOKEN declareAssignmentExpression) |
+    ((EQUALS_TOKEN expression) |
      (LEFT_CURLY_BRACKET_TOKEN (expression (COMMA_TOKEN expression)*)? RIGHT_CURLY_BRACKET_TOKEN))?
-  ;
-
-// This is so that we can distinguish initialization-list expressions from assignment expressions.
-// initialization-list expressions must be evaluatable at the point of declaration, so they can be expressions
-// based on constants or parameters.  See the README for some examples.
-declareAssignmentExpression
-  : expression
   ;
 
 stringDeclareStatement

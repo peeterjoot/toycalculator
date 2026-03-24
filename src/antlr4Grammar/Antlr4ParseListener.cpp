@@ -467,11 +467,10 @@ namespace silly
         parseCallStatementOrExpr( ctx->callExpression(), true, ls );
     }
 
-    void Antlr4ParseListener::enterDeclareHelper(
-        mlir::Location loc, tNode *identifier,
-        SillyParser::DeclareAssignmentExpressionContext *declareAssignmentExpression,
-        const std::vector<SillyParser::ExpressionContext *> &expressions, tNode *hasInitList,
-        SillyParser::ArrayBoundsExpressionContext *arrayBoundsExpression, mlir::Type ty, LocationStack &ls )
+    void Antlr4ParseListener::enterDeclareHelper( mlir::Location loc, tNode *identifier, bool hasInitializer,
+                                                  const std::vector<SillyParser::ExpressionContext *> &expressions,
+                                                  SillyParser::ArrayBoundsExpressionContext *arrayBoundsExpression,
+                                                  mlir::Type ty, LocationStack &ls )
     {
         if ( !identifier )
         {
@@ -482,19 +481,10 @@ namespace silly
         std::string varName = identifier->getText();
 
         const std::vector<SillyParser::ExpressionContext *> *pExpressions{};
-        SillyParser::ExpressionContext *assignmentExpression{};
 
-        if ( hasInitList || expressions.size() )
+        if ( hasInitializer || expressions.size() )
         {
-            // coverage: syntax-error/init-assign.silly tries to trigger this, but the grammar prohibits this.
-            // Explicit, unreachable seeming, user-error removed -- switched to assert only.
-            assert( !declareAssignmentExpression );
-
             pExpressions = &expressions;
-        }
-        else if ( declareAssignmentExpression )
-        {
-            assignmentExpression = declareAssignmentExpression->expression();
         }
 
         std::string arrayBoundsString;
@@ -523,16 +513,6 @@ namespace silly
         }
 
         registerDeclaration( loc, varName, ty, aLoc, arrayBoundsString, pExpressions ? true : false, initializers, ls );
-
-        if ( assignmentExpression )
-        {
-            mlir::Location aLoc = getStartLocation( assignmentExpression );
-            mlir::Value resultValue = parseExpression( assignmentExpression, {}, ls );
-            processAssignment( aLoc, resultValue, varName, {}, ls );
-
-            // dcl.getResult().setLoc( ls.fuseLocations() );
-        }
-        // LLVM_DEBUG( { llvm::errs() << "enterDeclareHelper done: module dump:\n"; rmod->dump(); } );
     }
 
     void Antlr4ParseListener::enterBoolDeclareStatement( SillyParser::BoolDeclareStatementContext *ctx )
@@ -542,8 +522,8 @@ namespace silly
         mlir::Location loc = getStartLocation( ctx );
         LocationStack ls( builder, loc );
 
-        enterDeclareHelper( loc, ctx->IDENTIFIER(), ctx->declareAssignmentExpression(), ctx->expression(),
-                            ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), typ.i1, ls );
+        enterDeclareHelper( loc, ctx->IDENTIFIER(), ctx->EQUALS_TOKEN() || ctx->LEFT_CURLY_BRACKET_TOKEN(),
+                            ctx->expression(), ctx->arrayBoundsExpression(), typ.i1, ls );
     }
 
     mlir::Type Antlr4ParseListener::integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext *ctx )
@@ -583,8 +563,8 @@ namespace silly
 
         mlir::Type ty = integerDeclarationType( loc, ctx->intType() );
 
-        enterDeclareHelper( loc, ctx->IDENTIFIER(), ctx->declareAssignmentExpression(), ctx->expression(),
-                            ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), ty, ls );
+        enterDeclareHelper( loc, ctx->IDENTIFIER(), ctx->EQUALS_TOKEN() || ctx->LEFT_CURLY_BRACKET_TOKEN(),
+                            ctx->expression(), ctx->arrayBoundsExpression(), ty, ls );
     }
 
     void Antlr4ParseListener::enterFloatDeclareStatement( SillyParser::FloatDeclareStatementContext *ctx )
@@ -611,8 +591,8 @@ namespace silly
             return;
         }
 
-        enterDeclareHelper( loc, ctx->IDENTIFIER(), ctx->declareAssignmentExpression(), ctx->expression(),
-                            ctx->LEFT_CURLY_BRACKET_TOKEN(), ctx->arrayBoundsExpression(), ty, ls );
+        enterDeclareHelper( loc, ctx->IDENTIFIER(), ctx->EQUALS_TOKEN() || ctx->LEFT_CURLY_BRACKET_TOKEN(),
+                            ctx->expression(), ctx->arrayBoundsExpression(), ty, ls );
     }
 
     void Antlr4ParseListener::enterStringDeclareStatement( SillyParser::StringDeclareStatementContext *ctx )

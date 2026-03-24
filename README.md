@@ -600,8 +600,6 @@ TYPE name[size]{val1, val2, ...};
 
 - **Arrays** must have a compile-time constant size
 - **Initializer lists** can be shorter than the array (rest are explicitly zero-initialized, and do not use the `--init-fill` value.)
-- **Initializer expressions** must be constant expressions.
-Initializers that references variables have undefined behaviour.
 - **Excess initializers** are an error
 
 ### Supported Types

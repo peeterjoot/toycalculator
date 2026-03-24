@@ -154,9 +154,8 @@ namespace silly
         void checkForReturnInScope( SillyParser::ScopedStatementsContext *scope, const char *what );
 
         /// Lookup and validate a declareStatement variable name, and process the declaration.
-        void enterDeclareHelper( mlir::Location loc, tNode *identifier,
-                                 SillyParser::DeclareAssignmentExpressionContext *declareAssignmentExpression,
-                                 const std::vector<SillyParser::ExpressionContext *> &expressions, tNode *hasInitList,
+        void enterDeclareHelper( mlir::Location loc, tNode *identifier, bool hasInitializer,
+                                 const std::vector<SillyParser::ExpressionContext *> &expressions,
                                  SillyParser::ArrayBoundsExpressionContext *arrayBoundsExpression, mlir::Type ty,
                                  LocationStack &ls );
 
