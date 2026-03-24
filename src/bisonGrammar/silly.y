@@ -248,8 +248,8 @@
 %type <silly::Types>                        intType
 %type <silly::Types>                        floatType
 %type <std::string>                         arrayBoundsExpression
-%type <std::vector<silly::Literal>>         optionalInitializer
-%type <std::vector<silly::Literal>>         initializerList
+%type <std::vector<silly::Expr>>            optionalInitializer
+%type <std::vector<silly::Expr>>            initializerList
 %type <std::string>                         importStatement
 %type <silly::Types>                        scalarType
 %type <std::vector<silly::Expr>>            printArgList
@@ -481,31 +481,17 @@ optionalReturnType
         { $$ = $2; }
     ;
 
+declareStatement
+    : scalarType IDENTIFIER arrayBoundsExpression
+        { driver.enterDeclareStatement( $1, $2, $3, @1, @2, @3 ); }
+    | scalarType IDENTIFIER arrayBoundsExpression optionalInitializer
+        { driver.enterDeclareStatement( $1, $2, $3, $4, @1, @2, @3 ); }
+    ;
+
 scalarType
     : intType       { $$ = $1; }
     | floatType     { $$ = $1; }
     | boolType      { $$ = $1; }
-    ;
-
-declareStatement
-    : intDeclareStatement
-    | floatDeclareStatement
-    | boolDeclareStatement
-    ;
-
-intDeclareStatement
-    : intType IDENTIFIER arrayBoundsExpression optionalInitializer
-        { driver.enterIntDeclareStatement( $1, $2, $3, $4, @1, @2, @3 ); }
-    ;
-
-floatDeclareStatement
-    : floatType IDENTIFIER arrayBoundsExpression optionalInitializer
-        { driver.enterFloatDeclareStatement( $1, $2, $3, $4, @1, @2, @3 ); }
-    ;
-
-boolDeclareStatement
-    : boolType IDENTIFIER arrayBoundsExpression optionalInitializer
-        { driver.enterBoolDeclareStatement( $2, $3, $4, @1, @2, @3 ); }
     ;
 
 intType
@@ -535,18 +521,18 @@ arrayBoundsExpression
 optionalInitializer
     : /* empty */
         { $$ = {}; }
-    | EQUALS_TOKEN literal
-        { driver.setDeclarationAssignment(); $$ = std::vector<silly::Literal>{ $2 }; }
+    | EQUALS_TOKEN expression
+        { $$ = std::vector<silly::Expr>{ $2 }; }
     | LEFT_CURLY_BRACKET_TOKEN RIGHT_CURLY_BRACKET_TOKEN
-        { driver.hasDeclarationHasInitializer(); $$ = {}; }
+        { $$ = {}; }
     | LEFT_CURLY_BRACKET_TOKEN initializerList RIGHT_CURLY_BRACKET_TOKEN
-        { driver.hasDeclarationHasInitializer(); $$ = std::move( $2 ); }
+        { $$ = std::move( $2 ); }
     ;
 
 initializerList
-    : literal
-        { $$ = std::vector<silly::Literal>{ $1 }; }
-    | initializerList COMMA_TOKEN literal
+    : expression
+        { $$ = std::vector<silly::Expr>{ $1 }; }
+    | initializerList COMMA_TOKEN expression
         { $1.push_back( $3 ); $$ = std::move( $1 ); }
     ;
 

@@ -362,36 +362,6 @@ Workaround:
 wget https://www.antlr.org/download/antlr-4.10-complete.jar
 ```
 
-### BISON/FLEX front end.
-
-As an experiment, I've implemented an incomplete Bison/Flex front end and grammar, factoring out just enough of `Antlr4ParseListener.cpp` into `Builder.cpp` so that this front end can handle some rudimentary operations.
-
-So far, just:
-- `ABORT`
-- `CALL` statements
-- `ERROR`
-- `EXIT`
-- `FUNCTION`
-- `GET`
-- `MAIN`
-- `PRINT`
-- Declarations and assignments.
-- Unary and Binary expressions.
-
-What doesn't work:
-- `IF/ELIF/ELSE`
-- `FOR`
-- `CALL` expressions
-- `MODULE`
-- `IMPORT`
-- debugging
-- proper location info.
-- multiple source files.
-
-I'm not sure how far I'll take this.  Was just curious what a Bison grammar and walker would look like (and given the -fno-rtti requirement of a default LLVM build, is that a feasible replacement for ANTLR4).  A nice side effect of this experiment is that it thins out the ANTLR4 parser/builder, making the parse walker a much lighter weight entity -- that is probably worth doing even considering Antlr4ParseListener in isolation.
-
-To build it, configure with `cmake -DUSE_BISON_GRAMMAR=1`.
-
 ### Installation Dependencies (Fedora)
 
 ```bash
@@ -462,6 +432,40 @@ This project has been built in a few (Linux-only) configurations:
 
 and currently requires LLVM 22.1.0+.
 The V9 tag (aka: V0.9.0) was last built on LLVM 21.1.8.
+
+### BISON/FLEX front end.
+
+As an experiment, I've implemented an incomplete Bison/Flex front end and grammar, factoring out just enough of `Antlr4ParseListener.cpp` into `Builder.cpp` so that this front end can handle some rudimentary operations.
+
+So far:
+- `ABORT`
+- `CALL`
+- `ERROR`
+- `EXIT`
+- `FUNCTION`
+- `GET`
+- `IMPORT`
+- `MAIN`
+- `PRINT`
+- Declarations and assignments.
+- Unary and Binary expressions.
+
+What doesn't work:
+- `IF/ELIF/ELSE`
+- `FOR`
+- `MODULE`
+- proper location info (esp. for Expr, but lots needs review.)
+- debugging
+- multiple source files.
+
+I'm not sure how far I'll take this.
+I was able to minimize the locations where I required -frtti for ANTLR4, but that still clashes with the LLVM (default) requirement for -fno-rtti in a few key locations (i.e.: the Listener class.)
+This inspired me to look at other grammar/parser combinations, and explore just closely I'd coupled this project with ANTLR4.
+It turns out that it was possible to logically separate out a lot of the MLIR/silly-dialect specific builder code,
+making the thinning out the ANTLR4 parser/builder, and making it a much lighter weight entity.
+This refactoring is desirable, even if I end up throwing out or abandoning the Bison front end.
+
+To build with Bison instead of ANTLR4, configure with `cmake -DUSE_BISON_GRAMMAR=1`.
 
 ### Testing
 

@@ -94,6 +94,7 @@ Back in main again, rc = 42
 ### Parser/builder Improvements
 * I didn't have a good reason to set the IP to beginning of function for declarations anymore, now that the
   symbol dependencies (old silly::ScopeOp) is gone.  Do them in place instead.
+* That let's me remove the documented constant requirement for initializer lists, as things are now properly ordered.  Unify the initializer-list and assignment expression logic in declaration.  Either now avoids the -init-fill codepath, and can take arbitrary expressions.
 
 ## Lowering & Code Generation
 

@@ -5,14 +5,11 @@
 
 #### Bison parser experiment.
 * If the module return from BisonParseListener::run is nullptr, there is no diagnostic message (but RC=11)
-* why is empty.silly failing when run with lit, but not otherwise. -- still?
-* takes two ninja calls to build the project (seemingly related to timestamps for tablegen related files).  This appears to be a fine grain timestamp issue somewhat like https://peeterjoot.com/2015/02/25/why-does-touch-include-a-utimensat-syscall/ https://peeterjoot.com/2015/02/25/on-touchs-use-of-futimes-and-a-filesystem-bug/ -- to be investigated.
-* Function names in Builder are a bit of a random hodge podge.  Review and make more consistent.
+* Samples/silly/empty.silly failing with LLVM internal location related cast error.
+* Function names in Builder are a bit of a random hodge podge.  Review and make more consistent.  Also review the private Parser function names.
+* Now have stuff that is Bison FE specific in the silly namespace, which is confusing.  Introduce a silly::Bison namespace for that?
 * TODO:
-- [ ] CALL expressions.  Can simplify things if I generalize declaration initializer lists (both grammars) to arbitrary expressions.  Then can use the expression codepath in both assignment and declaration (with init-list or assignment-init) uniformly.
 - [ ] Fix location info for parseExpression (and index expressions, ...)
-- [ ] Suspect that I don't have the -init-fill support right: have a couple state variable for declaration w/ assignment and declaration with init -- step into that and see if it's doing the right thing.
-- [ ] scopes
 - [ ] FOR
 - [ ] IF/ELSE/ELIF
 - [ ] MODULE
