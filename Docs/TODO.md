@@ -4,10 +4,10 @@
 ----------------------------------
 
 #### Bison parser experiment.
-* If the module return from BisonParseListener::run is nullptr, there is no diagnostic message (but RC=11)
 * Samples/silly/empty.silly failing with LLVM internal location related cast error.
 * Function names in Builder are a bit of a random hodge podge.  Review and make more consistent.  Also review the private Parser function names.
 * Now have stuff that is Bison FE specific in the silly namespace, which is confusing.  Introduce a silly::Bison namespace for that?
+* This template parameterization in generateCall is a hack.  Should probably switch to std::shared_ptr<silly::Expr> uniformly
 * TODO:
 - [ ] Fix location info for parseExpression (and index expressions, ...)
 - [ ] FOR

@@ -128,6 +128,8 @@ namespace silly
         if ( !fileLoc )
         {
             llvm::errs() << llvm::formatv( "{0}{1}error: {2}{3}\n", RED, internal ? "internal " : "", RESET, message );
+            errorCount++;
+            return;
         }
 
         std::string sourcename = fileLoc.getFilename().str();

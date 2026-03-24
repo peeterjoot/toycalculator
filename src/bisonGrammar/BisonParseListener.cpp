@@ -162,6 +162,9 @@ namespace silly
             return std::move( rmod );
         }
 
+        mlir::Location loc = builder.getUnknownLoc();
+        emitInternalError( loc, __FILE__, __LINE__, __func__, "Catastrophic compilation failure",
+                           currentFuncName );
         return nullptr;
     }
 
@@ -442,9 +445,8 @@ namespace silly
     }
 
     void BisonParseListener::declarationHelper( mlir::Location tLoc, mlir::Location aLoc, const std::string& varName,
-                                                const std::string& arraySizeString, mlir::Type ty,
-                                                bool hasInit, const std::vector<silly::Expr>& initializerLiterals,
-                                                LocationStack& ls )
+                                                const std::string& arraySizeString, mlir::Type ty, bool hasInit,
+                                                const std::vector<silly::Expr>& initializerLiterals, LocationStack& ls )
     {
         std::vector<mlir::Value> initializers;
 
@@ -481,6 +483,19 @@ namespace silly
         LocationStack ls( builder, tLoc );
 
         declarationHelper( tLoc, aLoc, varName, arraySizeString, ty, true, initializers, ls );
+    }
+
+    // Treat this differently than enterDeclareStatement w/ no initializers (which implies -init-fill memset),
+    // whereas any initializer expression (even empty) means all array members that don't have
+    // explicit init get a binary zero value.
+    void BisonParseListener::enterDeclareStatementWithEmptyInit( const silly::Types& type, const std::string& varName,
+                                                                 const std::string& arraySizeString,
+                                                                 const silly::BisonParser::location_type& typeLoc,
+                                                                 const silly::BisonParser::location_type& nameLoc,
+                                                                 const silly::BisonParser::location_type& arrayLoc )
+    {
+        std::vector<silly::Expr> initializers;
+        enterDeclareStatement( type, varName, arraySizeString, initializers, typeLoc, nameLoc, arrayLoc );
     }
 
     void BisonParseListener::enterDeclareStatement( const silly::Types& type, const std::string& varName,
@@ -642,9 +657,11 @@ namespace silly
         return *e;
     }
 
+    // This template parameterization is a hack.  Should probably switch to std::shared_ptr<silly::Expr> uniformly
+    // instead.
     template <class ExprVector>
-    mlir::Value BisonParseListener::generateCall( const std::string& name, const ExprVector& args,
-                                                  mlir::Location loc, bool isCallStatement )
+    mlir::Value BisonParseListener::generateCall( const std::string& name, const ExprVector& args, mlir::Location loc,
+                                                  bool isCallStatement )
     {
         LocationStack ls( builder, loc );
         ParserPerFunctionState& f = funcState( name );
@@ -658,7 +675,7 @@ namespace silly
         for ( const auto& e : args )
         {
             mlir::Type ty = funcType.getInputs()[i];
-            mlir::Value value = parseExpression( loc, ty, derefExpr(e), ls );
+            mlir::Value value = parseExpression( loc, ty, derefExpr( e ), ls );
             if ( !value )
             {
                 emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );

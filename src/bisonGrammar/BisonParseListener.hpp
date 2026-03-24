@@ -42,6 +42,12 @@ namespace silly
                                     const silly::BisonParser::location_type& nameLoc,
                                     const silly::BisonParser::location_type& arrayLoc );
 
+        void enterDeclareStatementWithEmptyInit( const silly::Types& type, const std::string& varName,
+                                    const std::string& arraySizeString,
+                                    const silly::BisonParser::location_type& typeLoc,
+                                    const silly::BisonParser::location_type& nameLoc,
+                                    const silly::BisonParser::location_type& arrayLoc );
+
         void enterDeclareStatement( const silly::Types& type, const std::string& varName,
                                     const std::string& arraySizeString,
                                     const silly::BisonParser::location_type& typeLoc,

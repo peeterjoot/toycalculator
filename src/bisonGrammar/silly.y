@@ -178,6 +178,10 @@
     }
 }
 
+%code {
+    #pragma clang diagnostic ignored "-Wunused-but-set-variable"
+}
+
 %param { silly::BisonParseListener& driver }
 
 %token ABORT_TOKEN
@@ -248,7 +252,7 @@
 %type <silly::Types>                        intType
 %type <silly::Types>                        floatType
 %type <std::string>                         arrayBoundsExpression
-%type <std::vector<silly::Expr>>            optionalInitializer
+%type <std::vector<silly::Expr>>            oneInitializerAsList
 %type <std::vector<silly::Expr>>            initializerList
 %type <std::string>                         importStatement
 %type <silly::Types>                        scalarType
@@ -484,8 +488,12 @@ optionalReturnType
 declareStatement
     : scalarType IDENTIFIER arrayBoundsExpression
         { driver.enterDeclareStatement( $1, $2, $3, @1, @2, @3 ); }
-    | scalarType IDENTIFIER arrayBoundsExpression optionalInitializer
-        { driver.enterDeclareStatement( $1, $2, $3, $4, @1, @2, @3 ); }
+    | scalarType IDENTIFIER arrayBoundsExpression EQUALS_TOKEN oneInitializerAsList
+        { driver.enterDeclareStatement( $1, $2, $3, $5, @1, @2, @3 ); }
+    | scalarType IDENTIFIER arrayBoundsExpression LEFT_CURLY_BRACKET_TOKEN RIGHT_CURLY_BRACKET_TOKEN
+        { driver.enterDeclareStatementWithEmptyInit( $1, $2, $3, @1, @2, @3 ); }
+    | scalarType IDENTIFIER arrayBoundsExpression LEFT_CURLY_BRACKET_TOKEN initializerList RIGHT_CURLY_BRACKET_TOKEN
+        { driver.enterDeclareStatement( $1, $2, $3, $5, @1, @2, @3 ); }
     ;
 
 scalarType
@@ -518,22 +526,16 @@ arrayBoundsExpression
         { $$ = $2; }
     ;
 
-optionalInitializer
-    : /* empty */
-        { $$ = {}; }
-    | EQUALS_TOKEN expression
-        { $$ = std::vector<silly::Expr>{ $2 }; }
-    | LEFT_CURLY_BRACKET_TOKEN RIGHT_CURLY_BRACKET_TOKEN
-        { $$ = {}; }
-    | LEFT_CURLY_BRACKET_TOKEN initializerList RIGHT_CURLY_BRACKET_TOKEN
-        { $$ = std::move( $2 ); }
-    ;
-
 initializerList
     : expression
         { $$ = std::vector<silly::Expr>{ $1 }; }
     | initializerList COMMA_TOKEN expression
         { $1.push_back( $3 ); $$ = std::move( $1 ); }
+    ;
+
+oneInitializerAsList
+    : expression
+        { $$ = std::vector<silly::Expr>{ $1 }; }
     ;
 
 printStatement
