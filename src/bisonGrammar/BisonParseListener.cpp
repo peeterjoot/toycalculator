@@ -163,7 +163,8 @@ namespace silly
         }
 
         mlir::Location loc = builder.getUnknownLoc();
-        emitInternalError( loc, __FILE__, __LINE__, __func__, "Catastrophic compilation failure",
+        // shouldn't see this if there was a non-internal error logged:
+        emitInternalError( loc, __FILE__, __LINE__, __func__, "Catastrophic compilation failure: Failed to generate MLIR module",
                            currentFuncName );
         return nullptr;
     }
