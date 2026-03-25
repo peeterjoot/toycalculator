@@ -16,7 +16,7 @@
 #define COMPILER_NAME "silly"
 
 /// For llvm.ident, and silly --version
-#define COMPILER_VERSION " V0.10.0"
+#define COMPILER_VERSION " V0.11.0"
 
 namespace silly
 {
