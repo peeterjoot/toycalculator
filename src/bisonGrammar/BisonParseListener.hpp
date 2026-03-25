@@ -82,8 +82,6 @@ namespace silly
 
         void enterReturnStatement( const silly::BisonParser::location_type& bLoc, const silly::Expr& expr );
 
-        void enterReturnStatement( const silly::BisonParser::location_type& bLoc );
-
         void enterCallStatement( const std::string& name, const std::vector<silly::Expr>& args,
                                  const silly::BisonParser::location_type& bLoc );
 
@@ -92,6 +90,14 @@ namespace silly
                                 const silly::Expr& start, const silly::Expr& stop, const silly::Expr& step );
 
         void exitForStatement( const silly::BisonParser::location_type& bForLoc );
+
+        void enterIfStatement( const silly::BisonParser::location_type& bLoc, const silly::Expr& predicate );
+
+        void enterElifStatement( const silly::BisonParser::location_type& bLoc, const silly::Expr& predicate );
+
+        void enterElseStatement( const silly::BisonParser::location_type& bLoc );
+
+        void exitIfElifElseStatement( const silly::BisonParser::location_type& bLoc );
 
         /// Called from parser on error
         void emitParseError( const silly::BisonParser::location_type& loc, const std::string& msg );

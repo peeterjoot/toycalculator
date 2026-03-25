@@ -155,12 +155,27 @@ namespace silly
                                 mlir::FunctionType funcType, bool callStatement, std::vector<mlir::Value> &parameters,
                                 LocationStack &ls );
 
-        /// mlir builder helper for FOR
+        /// mlir builder helper for FOR (enter part)
         void handleForStatement( mlir::Location loc, const std::string &varName, mlir::Type elemType,
                                  mlir::Location varLoc, mlir::Value start, mlir::Value end, mlir::Value step,
                                  LocationStack &ls );
 
+        /// mlir builder helper for FOR (exit part)
         void finishHandleFor( mlir::Location loc );
+
+        /// Find the current scf.if condition and set the insertion point to the else region for that if.
+        void selectElseBlock( mlir::Location loc );
+
+        /// For IF/ELIF, create an scf.if condition and set the insertion point to it's then region.
+        ///
+        /// @param loc [in] The starting location for the IF statement.
+        /// @param predicate [in] The predicate for the IF or ELIF condition.
+        /// @param saveIP [in] push the insertion point that is effectively after the if to insertionPointStack (use
+        /// this for the initial if in an IF/ELIF/ELSE, but not for the internal IF created when processing an ELIF.
+        void createIf( mlir::Location loc, mlir::Value predicate, bool saveIP, LocationStack &ls );
+
+        /// mlir builder helper for IF/ELIF/ELSE (exit part)
+        void finishIfElifElseStatement();
 
        protected:
         /// construct state for creation of a silly dialect ModuleOp

@@ -435,35 +435,19 @@ The V9 tag (aka: V0.9.0) was last built on LLVM 21.1.8.
 
 ### BISON/FLEX front end.
 
-As an experiment, I've implemented an incomplete Bison/Flex front end and grammar, factoring out just enough of `Antlr4ParseListener.cpp` into `Builder.cpp` so that this front end can handle some rudimentary operations.
+As an experiment, I've implemented an incomplete Bison/Flex front end and grammar, factoring out enough of `Antlr4ParseListener.cpp` into `Builder.cpp` so that this front end can handle some most operations.
 
-So far:
-- `ABORT`
-- `CALL`
-- `ERROR`
-- `EXIT`
-- `FOR`
-- `FUNCTION`
-- `GET`
-- `IMPORT`
-- `MAIN`
-- `MODULE`
-- `PRINT`
-- Declarations and assignments.
-- Unary and Binary expressions.
+See Docs/TODO.md for some of what is left to make this a first class front end.
 
-What doesn't work:
-- `IF/ELIF/ELSE`
-- proper location info (esp. for Expr, but lots needs review.)
-- debugging
-- multiple source files.
+#### Rationale
 
-I'm not sure how far I'll take this.
 I was able to minimize the locations where I required -frtti for ANTLR4, but that still clashes with the LLVM (default) requirement for -fno-rtti in a few key locations (i.e.: the Listener class.)
 This inspired me to look at other grammar/parser combinations, and explore just closely I'd coupled this project with ANTLR4.
 It turns out that it was possible to logically separate out a lot of the MLIR/silly-dialect specific builder code,
 making the thinning out the ANTLR4 parser/builder, and making it a much lighter weight entity.
 This refactoring is desirable, even if I end up throwing out or abandoning the Bison front end.
+
+#### Bison FE build
 
 To build with Bison instead of ANTLR4, configure with `cmake -DUSE_BISON_GRAMMAR=1`.
 

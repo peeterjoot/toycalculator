@@ -360,7 +360,6 @@ namespace silly
                                                 const std::string& varName, const silly::Expr& start,
                                                 const silly::Expr& stop, const silly::Expr& step )
     {
-
         mlir::Location loc = getLocation( bForLoc );
         mlir::Location varLoc = getLocation( bVarLoc );
         mlir::Type elemType = declarationType( loc, intType );
@@ -372,6 +371,8 @@ namespace silly
         {
             vstep = parseExpression( varLoc, elemType, step, ls );
         }
+
+        // checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
 
         handleForStatement( loc, varName, elemType, varLoc, vstart, vstop, vstep, ls );
     }
@@ -662,17 +663,65 @@ namespace silly
         LocPairs locs = getLocations( bLoc );
         LocationStack ls( builder, locs.first );
 
-        mlir::Value value = parseExpression( locs.first, {}, expr, ls );
+        mlir::Value value;
+        if ( expr.kind != silly::Expr::Kind::None )
+        {
+            value = parseExpression( locs.first, {}, expr, ls );
+        }
 
         processReturnLike( locs.second, value, ls );
     }
 
-    void BisonParseListener::enterReturnStatement( const silly::BisonParser::location_type& bLoc )
+    void BisonParseListener::enterIfStatement( const silly::BisonParser::location_type& bLoc,
+                                               const silly::Expr& predicate )
     {
-        LocPairs locs = getLocations( bLoc );
-        LocationStack ls( builder, locs.first );
+        mlir::Location loc = getLocation( bLoc );
+        LocationStack ls( builder, loc );
 
-        processReturnLike( locs.second, {}, ls );
+        // checkForReturnInScope( ctx->scopedStatements(), "IF block" );
+
+        mlir::Value conditionPredicate = parseExpression( loc, {}, predicate, ls );
+        if ( !conditionPredicate )
+        {
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
+            return;
+        }
+
+        createIf( loc, conditionPredicate, true, ls );
+    }
+
+    void BisonParseListener::enterElifStatement( const silly::BisonParser::location_type& bLoc,
+                                                 const silly::Expr& predicate )
+    {
+        mlir::Location loc = getLocation( bLoc );
+        LocationStack ls( builder, loc );
+
+        // checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
+
+        selectElseBlock( loc );
+
+        mlir::Value conditionPredicate = parseExpression( loc, {}, predicate, ls );
+        if ( !conditionPredicate )
+        {
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
+            return;
+        }
+
+        createIf( loc, conditionPredicate, false, ls );
+    }
+
+    void BisonParseListener::enterElseStatement( const silly::BisonParser::location_type& bLoc )
+    {
+        mlir::Location loc = getLocation( bLoc );
+
+        // checkForReturnInScope( ctx->scopedStatements(), "ELSE block" );
+
+        selectElseBlock( loc );
+    }
+
+    void BisonParseListener::exitIfElifElseStatement( const silly::BisonParser::location_type& bLoc )
+    {
+        finishIfElifElseStatement();
     }
 
     template <typename T>

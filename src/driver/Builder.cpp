@@ -1026,6 +1026,53 @@ namespace silly
             emitInternalError( loc, __FILE__, __LINE__, __func__, "empty insertionPointStack", currentFuncName );
         }
     }
+
+    void Builder::selectElseBlock( mlir::Location loc )
+    {
+        mlir::Block *currentBlock = builder.getInsertionBlock();
+        assert( currentBlock );
+
+        // Get the parent region of the current block (the then region).
+        mlir::Region *parentRegion = currentBlock->getParent();
+
+        // Verify it's inside an scf.if by checking the parent op.
+        mlir::Operation *parentOp = parentRegion->getParentOp();
+        mlir::scf::IfOp ifOp = dyn_cast<mlir::scf::IfOp>( parentOp );
+
+        if ( !ifOp )
+        {
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               "Current insertion point must be inside an scf.if then region", currentFuncName );
+            return;
+        }
+
+        // Set the insertion point to the start of the else region's (first) block.
+        mlir::Region &elseRegion = ifOp.getElseRegion();
+        mlir::Block &elseBlock = elseRegion.front();
+        builder.setInsertionPointToStart( &elseBlock );
+    }
+
+    void Builder::finishIfElifElseStatement()
+    {
+        ParserPerFunctionState &f = funcState( currentFuncName );
+        f.popFromInsertionPointStack( builder );
+    }
+
+    void Builder::createIf( mlir::Location loc, mlir::Value conditionPredicate, bool saveIP, LocationStack &ls )
+    {
+        // mlir::Location fusedLoc = ls.fuseLocations( );
+        mlir::scf::IfOp ifOp = mlir::scf::IfOp::create( builder, loc, conditionPredicate,
+                                                        /*withElseRegion=*/true );
+
+        if ( saveIP )
+        {
+            ParserPerFunctionState &f = funcState( currentFuncName );
+            f.pushToInsertionPointStack( ifOp.getOperation() );
+        }
+
+        mlir::Block &thenBlock = ifOp.getThenRegion().front();
+        builder.setInsertionPointToStart( &thenBlock );
+    }
 }    // namespace silly
 
 // vim: et ts=4 sw=4

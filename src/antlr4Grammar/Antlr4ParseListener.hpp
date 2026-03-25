@@ -188,17 +188,6 @@ namespace silly
         /// Parses scalar type string to MLIR type.
         mlir::Type parseScalarType( const std::string &ty );
 
-        /// For IF/ELIF, create an scf.if condition and set the insertion point to it's then region.
-        ///
-        /// @param loc [in] The starting location for the IF statement.
-        /// @param predicate [in] The predicate for the IF or ELIF condition.
-        /// @param saveIP [in] push the insertion point that is effectively after the if to insertionPointStack (use
-        /// this for the initial if in an IF/ELIF/ELSE, but not for the internal IF created when processing an ELIF.
-        void createIf( mlir::Location loc, SillyParser::ExpressionContext *predicate, bool saveIP, LocationStack &ls );
-
-        /// Find the current scf.if condition and set the insertion point to the else region for that if.
-        void selectElseBlock( mlir::Location loc, const std::string &errorText );
-
         /// Handle parsing of an expression (the top-level entry point for expressions).
         /// This function serves as the main entry point for parsing any rvalue expression.
         /// It delegates to the lowest-precedence level (logical OR).

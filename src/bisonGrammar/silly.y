@@ -400,12 +400,13 @@ forStatement
 
 ifElifElseStatement
     : ifStatement elifStatementList optionalElseStatement
-        { /* stub */ }
+        { driver.exitIfElifElseStatement( @1 ); }
     ;
 
 ifStatement
-    : IF_TOKEN BRACE_START_TOKEN expression BRACE_END_TOKEN scopedStatements
-        { /* stub */ }
+    : IF_TOKEN BRACE_START_TOKEN expression BRACE_END_TOKEN
+        { driver.enterIfStatement( @1, $3 ); }
+      scopedStatements
     ;
 
 elifStatementList
@@ -414,14 +415,16 @@ elifStatementList
     ;
 
 elifStatement
-    : ELIF_TOKEN BRACE_START_TOKEN expression BRACE_END_TOKEN scopedStatements
-        { /* stub */ }
+    : ELIF_TOKEN BRACE_START_TOKEN expression BRACE_END_TOKEN
+        { driver.enterElifStatement( @1, $3 ); }
+      scopedStatements
     ;
 
 optionalElseStatement
     : /* empty */
-    | ELSE_TOKEN scopedStatements
-        { /* stub */ }
+    | ELSE_TOKEN
+        { driver.enterElseStatement( @1 ); }
+      scopedStatements
     ;
 
 scopedStatements
@@ -434,7 +437,7 @@ optionalReturnStatement
     | RETURN_TOKEN expression ENDOFSTATEMENT_TOKEN
         { driver.enterReturnStatement( @2, $2 ); }
     | RETURN_TOKEN ENDOFSTATEMENT_TOKEN
-        { driver.enterReturnStatement( @1 ); }
+        { driver.enterReturnStatement( @1, silly::Expr::makeDummy( ) ); }
     ;
 
 assignmentStatement

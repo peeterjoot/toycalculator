@@ -638,30 +638,6 @@ namespace silly
         }
     }
 
-    void Antlr4ParseListener::createIf( mlir::Location loc, SillyParser::ExpressionContext *predicate, bool saveIP,
-                                        LocationStack &ls )
-    {
-        mlir::Value conditionPredicate = parseExpression( predicate, {}, ls );
-        if ( !conditionPredicate )
-        {
-            emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
-            return;
-        }
-
-        // mlir::Location fusedLoc = ls.fuseLocations( );
-        mlir::scf::IfOp ifOp = mlir::scf::IfOp::create( builder, loc, conditionPredicate,
-                                                        /*withElseRegion=*/true );
-
-        if ( saveIP )
-        {
-            ParserPerFunctionState &f = funcState( currentFuncName );
-            f.pushToInsertionPointStack( ifOp.getOperation() );
-        }
-
-        mlir::Block &thenBlock = ifOp.getThenRegion().front();
-        builder.setInsertionPointToStart( &thenBlock );
-    }
-
     void Antlr4ParseListener::enterIfStatement( SillyParser::IfStatementContext *ctx )
     {
         assert( ctx );
@@ -671,32 +647,14 @@ namespace silly
 
         checkForReturnInScope( ctx->scopedStatements(), "IF block" );
 
-        createIf( loc, ctx->expression(), true, ls );
-    }
-
-    void Antlr4ParseListener::selectElseBlock( mlir::Location loc, const std::string &errorText )
-    {
-        mlir::Block *currentBlock = builder.getInsertionBlock();
-        assert( currentBlock );
-
-        // Get the parent region of the current block (the then region).
-        mlir::Region *parentRegion = currentBlock->getParent();
-
-        // Verify it's inside an scf.if by checking the parent op.
-        mlir::Operation *parentOp = parentRegion->getParentOp();
-        mlir::scf::IfOp ifOp = dyn_cast<mlir::scf::IfOp>( parentOp );
-
-        if ( !ifOp )
+        mlir::Value conditionPredicate = parseExpression( ctx->expression(), {}, ls );
+        if ( !conditionPredicate )
         {
-            emitInternalError( loc, __FILE__, __LINE__, __func__,
-                               "Current insertion point must be inside an scf.if then region", currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
             return;
         }
 
-        // Set the insertion point to the start of the else region's (first) block.
-        mlir::Region &elseRegion = ifOp.getElseRegion();
-        mlir::Block &elseBlock = elseRegion.front();
-        builder.setInsertionPointToStart( &elseBlock );
+        createIf( loc, conditionPredicate, true, ls );
     }
 
     void Antlr4ParseListener::enterElseStatement( SillyParser::ElseStatementContext *ctx )
@@ -706,7 +664,7 @@ namespace silly
 
         checkForReturnInScope( ctx->scopedStatements(), "ELSE block" );
 
-        selectElseBlock( loc, ctx->getText() );
+        selectElseBlock( loc );
     }
 
     void Antlr4ParseListener::enterElifStatement( SillyParser::ElifStatementContext *ctx )
@@ -717,15 +675,21 @@ namespace silly
 
         checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
 
-        selectElseBlock( loc, ctx->getText() );
+        selectElseBlock( loc );
 
-        createIf( loc, ctx->expression(), false, ls );
+        mlir::Value conditionPredicate = parseExpression( ctx->expression(), {}, ls );
+        if ( !conditionPredicate )
+        {
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
+            return;
+        }
+
+        createIf( loc, conditionPredicate, false, ls );
     }
 
     void Antlr4ParseListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx )
     {
-        ParserPerFunctionState &f = funcState( currentFuncName );
-        f.popFromInsertionPointStack( builder );
+        finishIfElifElseStatement();
     }
 
     void Antlr4ParseListener::enterForStatement( SillyParser::ForStatementContext *ctx )
