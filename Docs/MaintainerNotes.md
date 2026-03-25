@@ -1,7 +1,7 @@
 
 ## Notes for tagging a new version:
 
-- Update lowering.cpp: `COMPILER_VERSION`
+- Update src/include/DriverState.hpp: `COMPILER_VERSION`
 - Tag the new version.
 - push the tag!
 - make a new Changelog placeholder, and move the last one to a versioned suffix.

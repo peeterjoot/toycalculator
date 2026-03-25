@@ -1003,7 +1003,8 @@ See tests/driver/callmod.silly + callee.silly for a small working demo.
 
 # Changelogs
 
-* [V0.10](Docs/Changelog.md) This is the current working version, not yet tagged.
+* [V0.11](Docs/Changelog.md) This is the current working version, not yet tagged.
+* [V0.10](Docs/Changelog.V0.10.md) (Mar 25, 2026)
 * [V0.9](Docs/Changelog.V0.9.md) (Feb 25, 2026)
 * [V0.8](Docs/Changelog.V0.8.md) (Feb 15, 2026)
 * [V0.7](Docs/Changelog.V0.7.md) (Jan 4, 2025)
