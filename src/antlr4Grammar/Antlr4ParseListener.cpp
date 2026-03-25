@@ -280,26 +280,17 @@ namespace silly
 
     void Antlr4ParseListener::enterScopedStatements( SillyParser::ScopedStatementsContext *ctx )
     {
-        ParserPerFunctionState &f = funcState( currentFuncName );
-
         bool isFunctionBody = dynamic_cast<SillyParser::FunctionStatementContext *>( ctx->parent ) != nullptr;
         bool isForBody = dynamic_cast<SillyParser::ForStatementContext *>( ctx->parent ) != nullptr;
 
-        mlir::Value value{};
-        if ( !isFunctionBody and !isForBody )
-        {
-            mlir::Location loc = getStartLocation( ctx );
-            value = silly::DebugScopeOp::create( builder, loc, typ.i1 ).getResult();
-        }
+        mlir::Location loc = getStartLocation( ctx );
 
-        // keep stack balanced, signals function scope when !isFunctionBody
-        f.startScope( value );
+        startScopedStatements( loc, !isFunctionBody and !isForBody );
     }
 
     void Antlr4ParseListener::exitScopedStatements( SillyParser::ScopedStatementsContext *ctx )
     {
-        ParserPerFunctionState &f = funcState( currentFuncName );
-        f.endScope();
+        finishScopedStatements();
     }
 
     mlir::Value Antlr4ParseListener::parseReturnExpression( mlir::Location loc,

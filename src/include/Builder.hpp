@@ -177,6 +177,12 @@ namespace silly
         /// mlir builder helper for IF/ELIF/ELSE (exit part)
         void finishIfElifElseStatement();
 
+        /// mlir builder helper for enter an IF/ELIF/ELSE scope.
+        void startScopedStatements( mlir::Location loc, bool wantScope );
+
+        /// mlir builder helper for exit an IF/ELIF/ELSE scope.
+        void finishScopedStatements( );
+
        protected:
         /// construct state for creation of a silly dialect ModuleOp
         Builder( silly::SourceManager &s, const std::string &filename );

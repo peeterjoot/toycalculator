@@ -1073,6 +1073,28 @@ namespace silly
         mlir::Block &thenBlock = ifOp.getThenRegion().front();
         builder.setInsertionPointToStart( &thenBlock );
     }
+
+    void Builder::startScopedStatements( mlir::Location loc, bool wantScope )
+    {
+        ParserPerFunctionState &f = funcState( currentFuncName );
+
+        mlir::Value value{};
+
+        // not doing this right now for FOR -- to be revisited.
+        if ( wantScope )
+        {
+            value = silly::DebugScopeOp::create( builder, loc, typ.i1 ).getResult();
+        }
+
+        // keep stack balanced, signals function scope when !isFunctionBody
+        f.startScope( value );
+    }
+
+    void Builder::finishScopedStatements()
+    {
+        ParserPerFunctionState &f = funcState( currentFuncName );
+        f.endScope();
+    }
 }    // namespace silly
 
 // vim: et ts=4 sw=4

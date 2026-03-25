@@ -99,6 +99,10 @@ namespace silly
 
         void exitIfElifElseStatement( const silly::BisonParser::location_type& bLoc );
 
+        void enterScopedStatements( const silly::BisonParser::location_type& bLoc );
+
+        void exitScopedStatements( );
+
         /// Called from parser on error
         void emitParseError( const silly::BisonParser::location_type& loc, const std::string& msg );
 

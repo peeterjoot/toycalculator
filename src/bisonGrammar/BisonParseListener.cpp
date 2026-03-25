@@ -775,6 +775,18 @@ namespace silly
         generateCall( name, args, loc, true );
     }
 
+    void BisonParseListener::enterScopedStatements( const silly::BisonParser::location_type& bLoc )
+    {
+        mlir::Location loc = getLocation( bLoc );
+
+        startScopedStatements( loc, true );
+    }
+
+    void BisonParseListener::exitScopedStatements( )
+    {
+        finishScopedStatements( );
+    }
+
     void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )
     {
         mlir::Location loc = getLocation( bLoc );

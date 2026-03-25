@@ -385,7 +385,7 @@ forStatement
           BRACE_END_TOKEN
       BRACE_END_TOKEN
         { driver.enterForStatement( @1, $3, @4, $4, $7, $9, silly::Expr::makeDummy( ) ); }
-      scopedStatements
+      otherScopedStatements
         { driver.exitForStatement( @1 ); }
     | FOR_TOKEN
       BRACE_START_TOKEN intType IDENTIFIER COLON_TOKEN
@@ -394,7 +394,7 @@ forStatement
           BRACE_END_TOKEN
       BRACE_END_TOKEN
         { driver.enterForStatement( @1, $3, @4, $4, $7, $9, $11 ); }
-      scopedStatements
+      otherScopedStatements
         { driver.exitForStatement( @1 ); }
     ;
 
@@ -406,7 +406,7 @@ ifElifElseStatement
 ifStatement
     : IF_TOKEN BRACE_START_TOKEN expression BRACE_END_TOKEN
         { driver.enterIfStatement( @1, $3 ); }
-      scopedStatements
+      ifScopeStatements
     ;
 
 elifStatementList
@@ -417,19 +417,27 @@ elifStatementList
 elifStatement
     : ELIF_TOKEN BRACE_START_TOKEN expression BRACE_END_TOKEN
         { driver.enterElifStatement( @1, $3 ); }
-      scopedStatements
+      ifScopeStatements
     ;
 
 optionalElseStatement
     : /* empty */
     | ELSE_TOKEN
         { driver.enterElseStatement( @1 ); }
-      scopedStatements
+      ifScopeStatements
     ;
 
-scopedStatements
-    : LEFT_CURLY_BRACKET_TOKEN statementList optionalReturnStatement RIGHT_CURLY_BRACKET_TOKEN
-        { /* stub */ }
+ifScopeStatements
+    : LEFT_CURLY_BRACKET_TOKEN
+        { driver.enterScopedStatements( @1 ); }
+      statementList optionalReturnStatement RIGHT_CURLY_BRACKET_TOKEN
+        { driver.exitScopedStatements( ); }
+    ;
+
+/* Antlr4ParseListener::enterScopedStatements: !isFunctionBody and !isForBody */
+otherScopedStatements
+    : LEFT_CURLY_BRACKET_TOKEN
+      statementList optionalReturnStatement RIGHT_CURLY_BRACKET_TOKEN
     ;
 
 optionalReturnStatement
@@ -466,7 +474,7 @@ functionStatement
       BRACE_START_TOKEN optionalParamList BRACE_END_TOKEN
       optionalReturnType
         { driver.enterFunctionDefinition( $2, $4, $6, @1 ); }
-      scopedStatements
+      otherScopedStatements
         { driver.exitFunctionDefinition( ); }
     ;
 
