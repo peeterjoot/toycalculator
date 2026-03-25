@@ -33,7 +33,7 @@ namespace silly
         /// - set the current function name, and squirrel away the funcOp for lookup.
         /// - Creates initial dummy DebugScopeOp placeholder.
         ///
-        void createScope( mlir::Location startLoc, mlir::func::FuncOp funcOp, const std::string &funcName,
+        void mkNewFunctionState( mlir::Location startLoc, mlir::func::FuncOp funcOp, const std::string &funcName,
                           const std::vector<std::string> &paramNames );
 
         /// Returns a reference to the functionStateMap entry for funcName.
@@ -43,10 +43,10 @@ namespace silly
 
         /// @param floc FuncOp location.  This should be a fused location, or overwritten with a fused location later.
         /// @param sloc1 DebugNameOp location for parameters.
-        void createMain( mlir::Location floc, mlir::Location sloc1 );
+        void mkMainFunction( mlir::Location floc, mlir::Location sloc1 );
 
         /// Emit an implicit return 0 for the silly program's main.
-        void createMainExit( mlir::Location loc );
+        void mkMainExit( mlir::Location loc );
 
         /// Emit a user-friendly error message in GCC/Clang style
         ///
@@ -71,19 +71,19 @@ namespace silly
         void emitError( mlir::Location loc, const std::string &message, const std::string &funcName, bool internal );
 
         /// Construct a Value for a TRUE or FALSE boolean literal string
-        mlir::Value parseBoolean( mlir::Location loc, const std::string &s, LocationStack &ls );
+        mlir::Value mkBooleanFromString( mlir::Location loc, const std::string &s, LocationStack &ls );
 
         /// Construct a Value for an integer literal string
-        mlir::Value parseInteger( mlir::Location loc, int width, const std::string &s, LocationStack &ls );
+        mlir::Value mkIntegerFromString( mlir::Location loc, int width, const std::string &s, LocationStack &ls );
 
         /// Construct a Value for a floating point literal string
-        mlir::Value parseFloat( mlir::Location loc, mlir::FloatType ty, const std::string &s, LocationStack &ls );
+        mlir::Value mkFloatFromString( mlir::Location loc, mlir::FloatType ty, const std::string &s, LocationStack &ls );
 
         /// Strip double quotes off of a string, and build a string literal op for it
-        silly::StringLiteralOp buildStringLiteral( mlir::Location loc, const std::string &input, LocationStack &ls );
+        silly::StringLiteralOp mkStringLiteral( mlir::Location loc, const std::string &input, LocationStack &ls );
 
         /// Registers a variable declaration in the current scope.
-        void registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty, mlir::Location aLoc,
+        void mkDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty, mlir::Location aLoc,
                                   const std::string &arrayBounds, bool haveInitializers,
                                   std::vector<mlir::Value> &initializers, LocationStack &ls );
 
@@ -104,24 +104,24 @@ namespace silly
                                       LocationStack &ls );
 
         /// Handle assignment processing, given the current var-name and index (if appropriate.)
-        void processAssignment( mlir::Location loc, mlir::Value resultValue, const std::string &currentVarName,
+        void mkAssignment( mlir::Location loc, mlir::Value resultValue, const std::string &currentVarName,
                                 mlir::Value currentIndexExpr, LocationStack &ls );
 
         /// Lookup in per-function state, whether a variable has been declared
         bool isVariableDeclared( const std::string &varName );
 
         /// Emits silly::ReturnOp (or exit equivalent) with optional value.
-        void processReturnLike( mlir::Location loc, mlir::Value returnValue, LocationStack &ls );
+        void mkReturnLike( mlir::Location loc, mlir::Value returnValue, LocationStack &ls );
 
         /// Lookup the type for a FUNCTION return.
         mlir::Type findReturnType();
 
         /// Create a silly::ArithBinOp
-        mlir::Value createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty, mlir::Value lhs,
+        mlir::Value mkBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty, mlir::Value lhs,
                                        mlir::Value rhs, LocationStack &ls );
 
         /// Create a silly::CmpBinOp
-        mlir::Value createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs, mlir::Value rhs,
+        mlir::Value mkBinaryCompare( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs, mlir::Value rhs,
                                      LocationStack &ls );
 
         /// All the supported unary operations for the silly dialect.
@@ -134,34 +134,34 @@ namespace silly
         };
 
         /// mlir builder helper for a unary expression (i.e.: negation or NOT operation)
-        mlir::Value makeUnaryExpression( mlir::Location loc, mlir::Value value, UnaryOp op, LocationStack &ls );
+        mlir::Value mkUnary( mlir::Location loc, mlir::Value value, UnaryOp op, LocationStack &ls );
 
         /// mlir builder helper for GET
-        void handleGet( mlir::Location loc, const std::string &varName, mlir::Value indexValue, mlir::Location iloc,
+        void mkGet( mlir::Location loc, const std::string &varName, mlir::Value indexValue, mlir::Location iloc,
                         LocationStack &ls );
 
         /// mlir builder helper for IMPORT
-        void handleImport( mlir::Location loc, const std::string &modname );
+        void mkImport( mlir::Location loc, const std::string &modname );
 
         /// mlir builder helper for FUNCTION (entry)
-        void handleEnterFunction( LocPairs locs, const std::string &funcName, bool isDeclaration, mlir::Type returnType,
+        void mkFunctionStart( LocPairs locs, const std::string &funcName, bool isDeclaration, mlir::Type returnType,
                                   std::vector<mlir::Type> &paramTypes, const std::vector<std::string> &paramNames );
 
         /// mlir builder helper for FUNCTION (completion)
-        void handleExitFunction();
+        void mkFunctionExit();
 
         /// mlir builder helper for CALL
-        mlir::Value handleCall( mlir::Location loc, const std::string &funcName, mlir::func::FuncOp funcOp,
+        mlir::Value mkCall( mlir::Location loc, const std::string &funcName, mlir::func::FuncOp funcOp,
                                 mlir::FunctionType funcType, bool callStatement, std::vector<mlir::Value> &parameters,
                                 LocationStack &ls );
 
         /// mlir builder helper for FOR (enter part)
-        void handleForStatement( mlir::Location loc, const std::string &varName, mlir::Type elemType,
+        void mkForStart( mlir::Location loc, const std::string &varName, mlir::Type elemType,
                                  mlir::Location varLoc, mlir::Value start, mlir::Value end, mlir::Value step,
                                  LocationStack &ls );
 
         /// mlir builder helper for FOR (exit part)
-        void finishHandleFor( mlir::Location loc );
+        void mkForExit( mlir::Location loc );
 
         /// Find the current scf.if condition and set the insertion point to the else region for that if.
         void selectElseBlock( mlir::Location loc );
@@ -172,16 +172,16 @@ namespace silly
         /// @param predicate [in] The predicate for the IF or ELIF condition.
         /// @param saveIP [in] push the insertion point that is effectively after the if to insertionPointStack (use
         /// this for the initial if in an IF/ELIF/ELSE, but not for the internal IF created when processing an ELIF.
-        void createIf( mlir::Location loc, mlir::Value predicate, bool saveIP, LocationStack &ls );
+        void mkIf( mlir::Location loc, mlir::Value predicate, bool saveIP, LocationStack &ls );
 
         /// mlir builder helper for IF/ELIF/ELSE (exit part)
-        void finishIfElifElseStatement();
+        void mkIfElifElseExit();
 
         /// mlir builder helper for enter an IF/ELIF/ELSE scope.
-        void startScopedStatements( mlir::Location loc, bool wantScope );
+        void mkScopedStart( mlir::Location loc, bool wantScope );
 
         /// mlir builder helper for exit an IF/ELIF/ELSE scope.
-        void finishScopedStatements( );
+        void mkScopedExit( );
 
        protected:
         /// construct state for creation of a silly dialect ModuleOp

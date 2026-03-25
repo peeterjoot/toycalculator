@@ -100,7 +100,7 @@
 }
 
 \"[^\"]*\"  {
-    /* String literal: not stripping the surrounding quotes -- leave that for buildStringLiteral */
+    /* String literal: not stripping the surrounding quotes -- leave that for mkStringLiteral */
     yylval->emplace<std::string>( std::string( yytext, yyleng ) );
     return silly::BisonParser::token::STRING_PATTERN;
 }

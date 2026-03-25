@@ -49,11 +49,11 @@ namespace silly
         return *p;
     }
 
-    void Builder::createScope( mlir::Location startLoc, mlir::func::FuncOp funcOp, const std::string &funcName,
+    void Builder::mkNewFunctionState( mlir::Location startLoc, mlir::func::FuncOp funcOp, const std::string &funcName,
                                const std::vector<std::string> &paramNames )
     {
         LLVM_DEBUG( {
-            llvm::errs() << llvm::formatv( "createScope: {0}: startLoc: {1}\n", funcName, formatLocation( startLoc ) );
+            llvm::errs() << llvm::formatv( "mkNewFunctionState: {0}: startLoc: {1}\n", funcName, formatLocation( startLoc ) );
         } );
         mlir::Block &block = *funcOp.addEntryBlock();
         builder.setInsertionPointToStart( &block );
@@ -81,15 +81,15 @@ namespace silly
         }
     }
 
-    void Builder::createMain( mlir::Location fLoc, mlir::Location sLoc )
+    void Builder::mkMainFunction( mlir::Location fLoc, mlir::Location sLoc )
     {
         mlir::FunctionType funcType = builder.getFunctionType( {}, typ.i32 );
         mlir::func::FuncOp funcOp = mlir::func::FuncOp::create( builder, fLoc, ENTRY_SYMBOL_NAME, funcType );
         std::vector<std::string> paramNames;
-        createScope( sLoc, funcOp, ENTRY_SYMBOL_NAME, paramNames );
+        mkNewFunctionState( sLoc, funcOp, ENTRY_SYMBOL_NAME, paramNames );
     }
 
-    void Builder::createMainExit( mlir::Location loc )
+    void Builder::mkMainExit( mlir::Location loc )
     {
         assert( currentFuncName == ENTRY_SYMBOL_NAME );
 
@@ -180,7 +180,7 @@ namespace silly
         errorCount++;
     }
 
-    mlir::Value Builder::parseBoolean( mlir::Location loc, const std::string &s, LocationStack &ls )
+    mlir::Value Builder::mkBooleanFromString( mlir::Location loc, const std::string &s, LocationStack &ls )
     {
         int val;
         if ( s == "TRUE" )
@@ -202,7 +202,7 @@ namespace silly
         return mlir::arith::ConstantIntOp::create( builder, loc, val, 1 );
     }
 
-    mlir::Value Builder::parseInteger( mlir::Location loc, int width, const std::string &s, LocationStack &ls )
+    mlir::Value Builder::mkIntegerFromString( mlir::Location loc, int width, const std::string &s, LocationStack &ls )
     {
         int64_t val{};
 
@@ -222,7 +222,7 @@ namespace silly
         return mlir::arith::ConstantIntOp::create( builder, loc, val, width );
     }
 
-    mlir::Value Builder::parseFloat( mlir::Location loc, mlir::FloatType ty, const std::string &s, LocationStack &ls )
+    mlir::Value Builder::mkFloatFromString( mlir::Location loc, mlir::FloatType ty, const std::string &s, LocationStack &ls )
     {
         ls.push_back( loc );
 
@@ -255,7 +255,7 @@ namespace silly
         }
     }
 
-    silly::StringLiteralOp Builder::buildStringLiteral( mlir::Location loc, const std::string &input,
+    silly::StringLiteralOp Builder::mkStringLiteral( mlir::Location loc, const std::string &input,
                                                         LocationStack &ls )
     {
         silly::StringLiteralOp stringLiteral{};
@@ -278,7 +278,7 @@ namespace silly
         return stringLiteral;
     }
 
-    void Builder::registerDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
+    void Builder::mkDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
                                        mlir::Location aLoc, const std::string &arrayBounds, bool haveInitializers,
                                        std::vector<mlir::Value> &initializers, LocationStack &ls )
     {
@@ -322,16 +322,16 @@ namespace silly
             {
                 if ( ty == typ.i1 )
                 {
-                    fill = parseBoolean( loc, "FALSE", ls );
+                    fill = mkBooleanFromString( loc, "FALSE", ls );
                 }
                 else if ( mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( ty ) )
                 {
                     int width = ity.getWidth();
-                    fill = parseInteger( loc, width, "0", ls );
+                    fill = mkIntegerFromString( loc, width, "0", ls );
                 }
                 else if ( mlir::FloatType fty = mlir::dyn_cast<mlir::FloatType>( ty ) )
                 {
-                    fill = parseFloat( loc, fty, "0", ls );
+                    fill = mkFloatFromString( loc, fty, "0", ls );
                 }
                 else
                 {
@@ -567,7 +567,7 @@ namespace silly
         return value;
     }
 
-    void Builder::processAssignment( mlir::Location loc, mlir::Value resultValue, const std::string &currentVarName,
+    void Builder::mkAssignment( mlir::Location loc, mlir::Value resultValue, const std::string &currentVarName,
                                      mlir::Value currentIndexExpr, LocationStack &ls )
     {
         if ( !resultValue )
@@ -648,7 +648,7 @@ namespace silly
         return returnType;
     }
 
-    void Builder::processReturnLike( mlir::Location loc, mlir::Value returnValue, LocationStack &ls )
+    void Builder::mkReturnLike( mlir::Location loc, mlir::Value returnValue, LocationStack &ls )
     {
         mlir::Value value{};
         ls.push_back( loc );
@@ -675,7 +675,7 @@ namespace silly
         }
     }
 
-    mlir::Value Builder::createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty,
+    mlir::Value Builder::mkBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty,
                                             mlir::Value lhs, mlir::Value rhs, LocationStack &ls )
     {
         ls.push_back( loc );
@@ -685,7 +685,7 @@ namespace silly
             .getResult();
     }
 
-    mlir::Value Builder::createBinaryCmp( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs,
+    mlir::Value Builder::mkBinaryCompare( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs,
                                           mlir::Value rhs, LocationStack &ls )
     {
         ls.push_back( loc );
@@ -695,7 +695,7 @@ namespace silly
             .getResult();
     }
 
-    mlir::Value Builder::makeUnaryExpression( mlir::Location loc, mlir::Value value, UnaryOp op, LocationStack &ls )
+    mlir::Value Builder::mkUnary( mlir::Location loc, mlir::Value value, UnaryOp op, LocationStack &ls )
     {
         mlir::Value v;
 
@@ -719,7 +719,7 @@ namespace silly
                 // NOT x: (x == 0)
                 mlir::Value zero =
                     mlir::arith::ConstantIntOp::create( builder, loc, 0, value.getType().getIntOrFloatBitWidth() );
-                v = createBinaryCmp( loc, silly::CmpBinOpKind::Equal, value, zero, ls );
+                v = mkBinaryCompare( loc, silly::CmpBinOpKind::Equal, value, zero, ls );
                 break;
             }
             case UnaryOp::Plus:
@@ -737,7 +737,7 @@ namespace silly
         return v;
     }
 
-    void Builder::handleGet( mlir::Location loc, const std::string &varName, mlir::Value indexValue,
+    void Builder::mkGet( mlir::Location loc, const std::string &varName, mlir::Value indexValue,
                              mlir::Location iloc, LocationStack &ls )
     {
         silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
@@ -772,7 +772,7 @@ namespace silly
         silly::AssignOp::create( builder, loc, var, optIndexValue, resultValue );
     }
 
-    void Builder::handleImport( mlir::Location loc, const std::string &modname )
+    void Builder::mkImport( mlir::Location loc, const std::string &modname )
     {
         LLVM_DEBUG( { llvm::errs() << llvm::formatv( "enterImportStatement: import: {0}\n", modname ); } );
 
@@ -812,7 +812,7 @@ namespace silly
         }
     }
 
-    void Builder::handleEnterFunction( LocPairs locs, const std::string &funcName, bool isDeclaration,
+    void Builder::mkFunctionStart( LocPairs locs, const std::string &funcName, bool isDeclaration,
                                        mlir::Type returnType, std::vector<mlir::Type> &paramTypes,
                                        const std::vector<std::string> &paramNames )
     {
@@ -856,7 +856,7 @@ namespace silly
 
             mainIP = builder.saveInsertionPoint();
 
-            // fall through to createScope, which will set the IP.
+            // fall through to mkNewFunctionState, which will set the IP.
         }
         else
         {
@@ -894,18 +894,18 @@ namespace silly
         }
         else
         {
-            createScope( locs.first, funcOp, funcName, paramNames );
+            mkNewFunctionState( locs.first, funcOp, funcName, paramNames );
         }
     }
 
-    void Builder::handleExitFunction()
+    void Builder::mkFunctionExit()
     {
         builder.restoreInsertionPoint( mainIP );
 
         currentFuncName = ENTRY_SYMBOL_NAME;
     }
 
-    mlir::Value Builder::handleCall( mlir::Location loc, const std::string &funcName, mlir::func::FuncOp funcOp,
+    mlir::Value Builder::mkCall( mlir::Location loc, const std::string &funcName, mlir::func::FuncOp funcOp,
                                      mlir::FunctionType funcType, bool callStatement,
                                      std::vector<mlir::Value> &parameters, LocationStack &ls )
     {
@@ -953,7 +953,7 @@ namespace silly
         return ret;
     }
 
-    void Builder::handleForStatement( mlir::Location loc, const std::string &varName, mlir::Type elemType,
+    void Builder::mkForStart( mlir::Location loc, const std::string &varName, mlir::Type elemType,
                                       mlir::Location varLoc, mlir::Value start, mlir::Value end, mlir::Value step,
                                       LocationStack &ls )
     {
@@ -1013,7 +1013,7 @@ namespace silly
 #endif
     }
 
-    void Builder::finishHandleFor( mlir::Location loc )
+    void Builder::mkForExit( mlir::Location loc )
     {
         ParserPerFunctionState &f = funcState( currentFuncName );
         if ( f.haveInsertionPointStack() )
@@ -1052,13 +1052,13 @@ namespace silly
         builder.setInsertionPointToStart( &elseBlock );
     }
 
-    void Builder::finishIfElifElseStatement()
+    void Builder::mkIfElifElseExit()
     {
         ParserPerFunctionState &f = funcState( currentFuncName );
         f.popFromInsertionPointStack( builder );
     }
 
-    void Builder::createIf( mlir::Location loc, mlir::Value conditionPredicate, bool saveIP, LocationStack &ls )
+    void Builder::mkIf( mlir::Location loc, mlir::Value conditionPredicate, bool saveIP, LocationStack &ls )
     {
         // mlir::Location fusedLoc = ls.fuseLocations( );
         mlir::scf::IfOp ifOp = mlir::scf::IfOp::create( builder, loc, conditionPredicate,
@@ -1074,7 +1074,7 @@ namespace silly
         builder.setInsertionPointToStart( &thenBlock );
     }
 
-    void Builder::startScopedStatements( mlir::Location loc, bool wantScope )
+    void Builder::mkScopedStart( mlir::Location loc, bool wantScope )
     {
         ParserPerFunctionState &f = funcState( currentFuncName );
 
@@ -1090,7 +1090,7 @@ namespace silly
         f.startScope( value );
     }
 
-    void Builder::finishScopedStatements()
+    void Builder::mkScopedExit()
     {
         ParserPerFunctionState &f = funcState( currentFuncName );
         f.endScope();

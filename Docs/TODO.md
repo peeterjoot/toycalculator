@@ -5,17 +5,16 @@
 
 #### Bison parser experiment.
 * TODO:
-- [ ] Antlr4ParseListener::exitScopedStatements( ) -- should be in builder, and called in bison FE.
+- [ ] proper location info (esp. for Expr, but lots needs review.)
 - [ ] Samples/silly/empty.silly failing with LLVM internal location related cast error.
-- [ ] Function names in Builder are a bit of a random hodge podge.  Review and make more consistent.  Also review any helper functions in both Parse walker implementations.
+- [ ] Review helper functions in both Parse walker implementations for consistency.
 - [ ] Now have stuff that is Bison FE specific in the silly namespace, which is confusing.  Introduce a silly::Bison namespace for that?
 - [ ] Fix location info for parseExpression (and index expressions, ...)
-- [ ] IF/ELIF/ELSE/FOR all have check-for-return logic in the ANTLR front end.  That's trickier in the bison front end.
+- [ ] IF/ELIF/ELSE/FOR all have check-for-return logic in the ANTLR front end.  Trickier seeming in the bison front end, but may just require thinking about it differently.
 - [ ] This template parameterization in generateCall is a hack.  Should probably switch to std::shared_ptr<silly::Expr> uniformly
-- [ ] proper location info (esp. for Expr, but lots needs review.)
 - [ ] debugging -- didn't work with an earlier debug attempt (probably still broken unless I accidentally fixed it.)
 - [ ] multiple source files?
-- [ ] triage the remaining failures.  have almost all the major features done (scope end logic is left.)
+- [ ] triage the remaining failures.
 
 #### Debug
 * Audit the places where I am passing both Location and LocationStack.  Do I need the first?
