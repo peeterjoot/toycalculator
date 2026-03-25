@@ -400,7 +400,7 @@ namespace silly
         return declareOp;
     }
 
-    mlir::Value Builder::createVariableLoadOrLookup( mlir::Location loc, const std::string &varName, mlir::Value iValue,
+    mlir::Value Builder::createVariableLoad( mlir::Location loc, const std::string &varName, mlir::Value iValue,
                                           mlir::Location iLoc, LocationStack &ls )
     {
         mlir::Value value;
@@ -432,7 +432,7 @@ namespace silly
 
             if ( iValue )
             {
-                i = createIndexTypeCast( iLoc, iValue, ls );
+                i = createIndexCast( iLoc, iValue, ls );
 
                 ls.push_back( loc );
                 value = silly::LoadOp::create( builder, loc, mlir::TypeRange{ elemType }, var, i );
@@ -462,7 +462,7 @@ namespace silly
         return value;
     }
 
-    mlir::Value Builder::createIndexTypeCast( mlir::Location loc, mlir::Value val, LocationStack &ls )
+    mlir::Value Builder::createIndexCast( mlir::Location loc, mlir::Value val, LocationStack &ls )
     {
         mlir::IndexType indexTy = builder.getIndexType();
         mlir::Type valTy = val.getType();
@@ -474,7 +474,7 @@ namespace silly
 
         if ( !valTy.isSignlessInteger( 64 ) && valTy.isInteger() )
         {
-            val = createCastOpIfRequired( loc, val, typ.i64, ls );
+            val = createCastIfNeeded( loc, val, typ.i64, ls );
             valTy = typ.i64;
         }
 
@@ -484,7 +484,7 @@ namespace silly
             // If it's a non-i64 IntegerType, we could cast up to i64, and then cast that to index.
             emitInternalError(
                 loc, __FILE__, __LINE__, __func__,
-                std::format( "NYI: createIndexTypeCast from type {} is not supported.", mlirTypeToString( valTy ) ),
+                std::format( "NYI: createIndexCast from type {} is not supported.", mlirTypeToString( valTy ) ),
                 currentFuncName );
             return mlir::Value{};
         }
@@ -493,7 +493,7 @@ namespace silly
         return mlir::arith::IndexCastOp::create( builder, loc, indexTy, val );
     }
 
-    mlir::Value Builder::createCastOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType,
+    mlir::Value Builder::createCastIfNeeded( mlir::Location loc, mlir::Value value, mlir::Type desiredType,
                                            LocationStack &ls )
     {
         mlir::Value newValue{};
@@ -598,7 +598,7 @@ namespace silly
             {
                 mlir::Location loc = currentIndexExpr.getLoc();
 
-                mlir::Value i = createIndexTypeCast( loc, currentIndexExpr, ls );
+                mlir::Value i = createIndexCast( loc, currentIndexExpr, ls );
 
                 silly::AssignOp assign = silly::AssignOp::create( builder, loc, var, i, resultValue );
 
@@ -617,7 +617,7 @@ namespace silly
         }
     }
 
-    bool Builder::lookupVariableDeclaration( const std::string &varName )
+    bool Builder::isDeclared( const std::string &varName )
     {
         // Get the single scope
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
@@ -626,7 +626,7 @@ namespace silly
         return ( v != nullptr ) ? true : false;
     }
 
-    mlir::Type Builder::lookupReturnType()
+    mlir::Type Builder::getReturnType()
     {
         mlir::Type returnType{};
         if ( currentFuncName == ENTRY_SYMBOL_NAME )
@@ -648,7 +648,7 @@ namespace silly
         return returnType;
     }
 
-    void Builder::createReturnLike( mlir::Location loc, mlir::Value returnValue, LocationStack &ls )
+    void Builder::createReturn( mlir::Location loc, mlir::Value returnValue, LocationStack &ls )
     {
         mlir::Value value{};
         ls.push_back( loc );
@@ -750,7 +750,7 @@ namespace silly
 
         if ( indexValue )
         {
-            optIndexValue = createIndexTypeCast( iloc, indexValue, ls );
+            optIndexValue = createIndexCast( iloc, indexValue, ls );
         }
         else if ( !shape.empty() )
         {
@@ -812,7 +812,7 @@ namespace silly
         }
     }
 
-    void Builder::createFunctionStart( LocPairs locs, const std::string &funcName, bool isDeclaration,
+    void Builder::createFunction( LocPairs locs, const std::string &funcName, bool isDeclaration,
                                        mlir::Type returnType, std::vector<mlir::Type> &paramTypes,
                                        const std::vector<std::string> &paramNames )
     {
@@ -898,7 +898,7 @@ namespace silly
         }
     }
 
-    void Builder::createFunctionFinish()
+    void Builder::finishFunction()
     {
         builder.restoreInsertionPoint( mainIP );
 
@@ -953,11 +953,11 @@ namespace silly
         return ret;
     }
 
-    void Builder::createForStart( mlir::Location loc, const std::string &varName, mlir::Type elemType,
+    void Builder::createFor( mlir::Location loc, const std::string &varName, mlir::Type elemType,
                                       mlir::Location varLoc, mlir::Value start, mlir::Value end, mlir::Value step,
                                       LocationStack &ls )
     {
-        bool declared = lookupVariableDeclaration( varName );
+        bool declared = isDeclared( varName );
         if ( declared )
         {
             // coverage: syntax-error/shadow-induction.silly
@@ -987,7 +987,7 @@ namespace silly
 
             //'scf.for' op failed to verify that all of {lowerBound, upperBound, step} have same type
             step = mlir::arith::ConstantIntOp::create( builder, loc, 1, width );
-            step = createCastOpIfRequired( loc, step, elemType, ls );
+            step = createCastIfNeeded( loc, step, elemType, ls );
         }
 
         mlir::Value scopeToken = silly::DebugScopeOp::create( builder, varLoc, typ.i1 ).getResult();
@@ -1013,7 +1013,7 @@ namespace silly
 #endif
     }
 
-    void Builder::createForFinish( mlir::Location loc )
+    void Builder::finishFor( mlir::Location loc )
     {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         if ( f.haveInsertionPointStack() )
@@ -1027,7 +1027,7 @@ namespace silly
         }
     }
 
-    void Builder::createElseBlockSelection( mlir::Location loc )
+    void Builder::selectElseBlock( mlir::Location loc )
     {
         mlir::Block *currentBlock = builder.getInsertionBlock();
         assert( currentBlock );
@@ -1052,7 +1052,7 @@ namespace silly
         builder.setInsertionPointToStart( &elseBlock );
     }
 
-    void Builder::createIfElifElseFinish()
+    void Builder::finishIfElifElse()
     {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         f.popFromInsertionPointStack( builder );
@@ -1074,7 +1074,7 @@ namespace silly
         builder.setInsertionPointToStart( &thenBlock );
     }
 
-    void Builder::createScopedStart( mlir::Location loc, bool wantScope )
+    void Builder::enterScopedRegion( mlir::Location loc, bool wantScope )
     {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
 
@@ -1090,7 +1090,7 @@ namespace silly
         f.startScope( value );
     }
 
-    void Builder::createScopedFinish()
+    void Builder::exitScopedRegion()
     {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         f.endScope();

@@ -159,7 +159,7 @@ namespace silly
 
         if ( ty )
         {
-            value = createCastOpIfRequired( loc, value, ty, ls );
+            value = createCastIfNeeded( loc, value, ty, ls );
         }
 
         return value;
@@ -285,12 +285,12 @@ namespace silly
 
         mlir::Location loc = getStartLocation( ctx );
 
-        createScopedStart( loc, !isFunctionBody and !isForBody );
+        enterScopedRegion( loc, !isFunctionBody and !isForBody );
     }
 
     void Antlr4ParseListener::exitScopedStatements( SillyParser::ScopedStatementsContext *ctx )
     {
-        createScopedFinish();
+        exitScopedRegion();
     }
 
     mlir::Value Antlr4ParseListener::parseReturnExpression( mlir::Location loc,
@@ -301,7 +301,7 @@ namespace silly
 
         if ( expression )
         {
-            mlir::Type returnType = lookupReturnType();
+            mlir::Type returnType = getReturnType();
 
             if ( !returnType )
             {
@@ -379,7 +379,7 @@ namespace silly
             paramNames.push_back( paramName );
         }
 
-        createFunctionStart( locs, funcName, !ctx->scopedStatements(), returnType, paramTypes, paramNames );
+        createFunction( locs, funcName, !ctx->scopedStatements(), returnType, paramTypes, paramNames );
     }
 
     void Antlr4ParseListener::exitFunctionStatement( SillyParser::FunctionStatementContext *ctx )
@@ -395,7 +395,7 @@ namespace silly
             }
         }
 
-        createFunctionFinish();
+        finishFunction();
     }
 
     mlir::Value Antlr4ParseListener::parseCallStatementOrExpr( SillyParser::CallExpressionContext *ctx,
@@ -655,7 +655,7 @@ namespace silly
 
         checkForReturnInScope( ctx->scopedStatements(), "ELSE block" );
 
-        createElseBlockSelection( loc );
+        selectElseBlock( loc );
     }
 
     void Antlr4ParseListener::enterElifStatement( SillyParser::ElifStatementContext *ctx )
@@ -666,7 +666,7 @@ namespace silly
 
         checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
 
-        createElseBlockSelection( loc );
+        selectElseBlock( loc );
 
         mlir::Value conditionPredicate = parseExpression( ctx->expression(), {}, ls );
         if ( !conditionPredicate )
@@ -680,7 +680,7 @@ namespace silly
 
     void Antlr4ParseListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx )
     {
-        createIfElifElseFinish();
+        finishIfElifElse();
     }
 
     void Antlr4ParseListener::enterForStatement( SillyParser::ForStatementContext *ctx )
@@ -760,7 +760,7 @@ namespace silly
 
         mlir::Location varLoc = getTerminalLocation( ctx->IDENTIFIER() );
 
-        createForStart( loc, varName, elemType, varLoc, start, end, step, ls );
+        createFor( loc, varName, elemType, varLoc, start, end, step, ls );
     }
 
     void Antlr4ParseListener::exitForStatement( SillyParser::ForStatementContext *ctx )
@@ -768,7 +768,7 @@ namespace silly
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
-        createForFinish( loc );
+        finishFor( loc );
     }
 
     void Antlr4ParseListener::handlePrint( mlir::Location loc,
@@ -875,7 +875,7 @@ namespace silly
         LocationStack ls( builder, locs.first );
 
         mlir::Value value = parseReturnExpression( locs.second, ctx->expression(), ls );
-        createReturnLike( locs.second, value, ls );
+        createReturn( locs.second, value, ls );
     }
 
     void Antlr4ParseListener::enterExitStatement( SillyParser::ExitStatementContext *ctx )
@@ -885,7 +885,7 @@ namespace silly
         LocationStack ls( builder, locs.first );
 
         mlir::Value value = parseReturnExpression( locs.second, ctx->expression(), ls );
-        createReturnLike( locs.second, value, ls );
+        createReturn( locs.second, value, ls );
     }
 
     void Antlr4ParseListener::enterAssignmentStatement( SillyParser::AssignmentStatementContext *ctx )
@@ -902,7 +902,7 @@ namespace silly
         SillyParser::IndexExpressionContext *indexExpr = lhs->indexExpression();
         mlir::Value currentIndexExpr = mlir::Value{};
 
-        bool declared = lookupVariableDeclaration( currentVarName );
+        bool declared = isDeclared( currentVarName );
         if ( !declared )
         {
             // coverage: syntax-error/undeclared-var.silly
@@ -1453,7 +1453,7 @@ namespace silly
                 iLoc = getStartLocation( indexExpr->expression() );
             }
 
-            value = createVariableLoadOrLookup( loc, varName, iValue, iLoc, ls );
+            value = createVariableLoad( loc, varName, iValue, iLoc, ls );
         }
         else if ( SillyParser::CallPrimaryContext *callCtx = dynamic_cast<SillyParser::CallPrimaryContext *>( ctx ) )
         {

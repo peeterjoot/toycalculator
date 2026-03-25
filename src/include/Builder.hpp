@@ -88,19 +88,19 @@ namespace silly
                                   std::vector<mlir::Value> &initializers, LocationStack &ls );
 
         /// lookup for silly::DeclareOp for a variable, or the Op for a parameter or induction variable.
-        mlir::Value createVariableLoadOrLookup( mlir::Location loc, const std::string &varName, mlir::Value iValue,
+        mlir::Value createVariableLoad( mlir::Location loc, const std::string &varName, mlir::Value iValue,
                                      mlir::Location iLoc, LocationStack &ls );
 
         /// Looks up DeclareOp for a variable.
         silly::DeclareOp lookupDeclareForVar( mlir::Location loc, const std::string &varName );
 
         /// Casts index value to index type.
-        mlir::Value createIndexTypeCast( mlir::Location loc, mlir::Value val, LocationStack &ls );
+        mlir::Value createIndexCast( mlir::Location loc, mlir::Value val, LocationStack &ls );
 
         /// Casts value to desired type if needed.
         ///
         /// This is adapted from AssignOpLowering, but uses arith dialect operations instead of LLVM dialect.
-        mlir::Value createCastOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType,
+        mlir::Value createCastIfNeeded( mlir::Location loc, mlir::Value value, mlir::Type desiredType,
                                       LocationStack &ls );
 
         /// Handle assignment processing, given the current var-name and index (if appropriate.)
@@ -108,13 +108,13 @@ namespace silly
                                 mlir::Value currentIndexExpr, LocationStack &ls );
 
         /// Lookup in per-function state, whether a variable has been declared
-        bool lookupVariableDeclaration( const std::string &varName );
+        bool isDeclared( const std::string &varName );
 
         /// Emits silly::ReturnOp (or exit equivalent) with optional value.
-        void createReturnLike( mlir::Location loc, mlir::Value returnValue, LocationStack &ls );
+        void createReturn( mlir::Location loc, mlir::Value returnValue, LocationStack &ls );
 
         /// Lookup the type for a FUNCTION return.
-        mlir::Type lookupReturnType();
+        mlir::Type getReturnType();
 
         /// Create a silly::ArithBinOp
         mlir::Value createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty, mlir::Value lhs,
@@ -144,11 +144,11 @@ namespace silly
         void createImport( mlir::Location loc, const std::string &modname );
 
         /// mlir builder helper for FUNCTION (entry)
-        void createFunctionStart( LocPairs locs, const std::string &funcName, bool isDeclaration, mlir::Type returnType,
+        void createFunction( LocPairs locs, const std::string &funcName, bool isDeclaration, mlir::Type returnType,
                                   std::vector<mlir::Type> &paramTypes, const std::vector<std::string> &paramNames );
 
         /// mlir builder helper for FUNCTION (completion)
-        void createFunctionFinish();
+        void finishFunction();
 
         /// mlir builder helper for CALL
         mlir::Value createCall( mlir::Location loc, const std::string &funcName, mlir::func::FuncOp funcOp,
@@ -156,15 +156,15 @@ namespace silly
                                 LocationStack &ls );
 
         /// mlir builder helper for FOR (enter part)
-        void createForStart( mlir::Location loc, const std::string &varName, mlir::Type elemType,
+        void createFor( mlir::Location loc, const std::string &varName, mlir::Type elemType,
                                  mlir::Location varLoc, mlir::Value start, mlir::Value end, mlir::Value step,
                                  LocationStack &ls );
 
         /// mlir builder helper for FOR (exit part)
-        void createForFinish( mlir::Location loc );
+        void finishFor( mlir::Location loc );
 
         /// Find the current scf.if condition and set the insertion point to the else region for that if.
-        void createElseBlockSelection( mlir::Location loc );
+        void selectElseBlock( mlir::Location loc );
 
         /// For IF/ELIF, create an scf.if condition and set the insertion point to it's then region.
         ///
@@ -175,13 +175,13 @@ namespace silly
         void createIf( mlir::Location loc, mlir::Value predicate, bool saveIP, LocationStack &ls );
 
         /// mlir builder helper for IF/ELIF/ELSE (exit part)
-        void createIfElifElseFinish();
+        void finishIfElifElse();
 
         /// mlir builder helper for enter an IF/ELIF/ELSE scope.
-        void createScopedStart( mlir::Location loc, bool wantScope );
+        void enterScopedRegion( mlir::Location loc, bool wantScope );
 
         /// mlir builder helper for exit an IF/ELIF/ELSE scope.
-        void createScopedFinish( );
+        void exitScopedRegion( );
 
        protected:
         /// construct state for creation of a silly dialect ModuleOp

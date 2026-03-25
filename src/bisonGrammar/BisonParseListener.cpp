@@ -113,9 +113,9 @@ namespace silly
         mlir::Location loc = getLocation( exitLoc );
         LocationStack ls( builder, loc );
 
-        mlir::Type returnType = lookupReturnType();
+        mlir::Type returnType = getReturnType();
         mlir::Value value = parseExpression( loc, returnType, var, ls );
-        createReturnLike( loc, value, ls );
+        createReturn( loc, value, ls );
     }
 
     void BisonParseListener::enterExitStatement( const silly::BisonParser::location_type& exitLoc )
@@ -125,7 +125,7 @@ namespace silly
         mlir::Location loc = getLocation( exitLoc );
         LocationStack ls( builder, loc );
 
-        createReturnLike( loc, {}, ls );
+        createReturn( loc, {}, ls );
     }
 
     void BisonParseListener::enterAbortStatement( const silly::BisonParser::location_type& bLoc )
@@ -348,7 +348,7 @@ namespace silly
                 index = parseExpression( vLoc, {}, *parg.left, ls );
             }
 
-            v = createVariableLoadOrLookup( vLoc, parg.name, index, vLoc, ls );
+            v = createVariableLoad( vLoc, parg.name, index, vLoc, ls );
         }
 
         return v;
@@ -374,14 +374,14 @@ namespace silly
 
         // checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
 
-        createForStart( loc, varName, elemType, varLoc, vstart, vstop, vstep, ls );
+        createFor( loc, varName, elemType, varLoc, vstart, vstop, vstep, ls );
     }
 
     void BisonParseListener::exitForStatement( const silly::BisonParser::location_type& bForLoc )
     {
         mlir::Location loc = getLocation( bForLoc );
 
-        createForFinish( loc );
+        finishFor( loc );
     }
 
     void BisonParseListener::enterPrintStatement( const std::vector<silly::Expr>& args,
@@ -555,7 +555,7 @@ namespace silly
         mlir::Location loc = getLocation( lhsLoc );
         LocationStack ls( builder, loc );
 
-        bool declared = lookupVariableDeclaration( var.name );
+        bool declared = isDeclared( var.name );
         if ( !declared )
         {
             // coverage: syntax-error/undeclared-var.silly
@@ -631,7 +631,7 @@ namespace silly
             paramNames.push_back( tn.name );
         }
 
-        createFunctionStart( locs, name, isDeclaration, rt, paramTypes, paramNames );
+        createFunction( locs, name, isDeclaration, rt, paramTypes, paramNames );
     }
 
     void BisonParseListener::enterFunctionPrototype( const std::string& name,
@@ -641,7 +641,7 @@ namespace silly
     {
         functionHelper( name, params, returnType, funcLoc, true );
 
-        createFunctionFinish();
+        finishFunction();
     }
 
     void BisonParseListener::enterFunctionDefinition( const std::string& name,
@@ -654,7 +654,7 @@ namespace silly
 
     void BisonParseListener::exitFunctionDefinition()
     {
-        createFunctionFinish();
+        finishFunction();
     }
 
     void BisonParseListener::enterReturnStatement( const silly::BisonParser::location_type& bLoc,
@@ -669,7 +669,7 @@ namespace silly
             value = parseExpression( locs.first, {}, expr, ls );
         }
 
-        createReturnLike( locs.second, value, ls );
+        createReturn( locs.second, value, ls );
     }
 
     void BisonParseListener::enterIfStatement( const silly::BisonParser::location_type& bLoc,
@@ -698,7 +698,7 @@ namespace silly
 
         // checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
 
-        createElseBlockSelection( loc );
+        selectElseBlock( loc );
 
         mlir::Value conditionPredicate = parseExpression( loc, {}, predicate, ls );
         if ( !conditionPredicate )
@@ -716,12 +716,12 @@ namespace silly
 
         // checkForReturnInScope( ctx->scopedStatements(), "ELSE block" );
 
-        createElseBlockSelection( loc );
+        selectElseBlock( loc );
     }
 
     void BisonParseListener::exitIfElifElseStatement( const silly::BisonParser::location_type& bLoc )
     {
-        createIfElifElseFinish();
+        finishIfElifElse();
     }
 
     template <typename T>
@@ -779,12 +779,12 @@ namespace silly
     {
         mlir::Location loc = getLocation( bLoc );
 
-        createScopedStart( loc, true );
+        enterScopedRegion( loc, true );
     }
 
     void BisonParseListener::exitScopedStatements( )
     {
-        createScopedFinish( );
+        exitScopedRegion( );
     }
 
     void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )
