@@ -200,7 +200,7 @@ namespace silly
         mlir::LLVM::DIFileAttr fileAttr;
 
         /// Map from function name to its DISubprogram attribute (and other stuff)
-        std::unordered_map<std::string, PerFunctionLoweringState> funcState;
+        std::unordered_map<std::string, PerFunctionLoweringState> lookupFunctionState;
 
         /// Type for mapping from string literal content to its GlobalOp.
         using StringLit2GlobalOp = std::unordered_map<std::string, mlir::LLVM::GlobalOp>;

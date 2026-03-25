@@ -298,7 +298,7 @@ namespace silly
                 }
                 funcOp->setLoc( builder.getFusedLoc( locs, sub ) );
 
-                funcState[funcName].subProgramDI = sub;
+                lookupFunctionState[funcName].subProgramDI = sub;
             }
 
             // Compute max print args for this function
@@ -333,7 +333,7 @@ namespace silly
 
             builder.setInsertionPointToStart( entryBlock );
 
-            funcState[funcName].printArgs = mlir::LLVM::AllocaOp::create(
+            lookupFunctionState[funcName].printArgs = mlir::LLVM::AllocaOp::create(
                 builder, loc, typ.ptr, printArgStructTy,
                 mlir::LLVM::ConstantOp::create( builder, loc, typ.i64, builder.getI64IntegerAttr( maxPrintArgs ) ) );
         }
@@ -343,12 +343,12 @@ namespace silly
 
     mlir::LLVM::AllocaOp LoweringContext::getPrintArgs( const std::string& funcName )
     {
-        return funcState[funcName].printArgs;
+        return lookupFunctionState[funcName].printArgs;
     }
 
     mlir::LLVM::AllocaOp LoweringContext::getAlloca( const std::string& funcName, mlir::Operation* dclOp )
     {
-        mlir::Operation* aOp = funcState[funcName].declareToAlloca[dclOp];
+        mlir::Operation* aOp = lookupFunctionState[funcName].declareToAlloca[dclOp];
         mlir::LLVM::AllocaOp allocOp = mlir::cast<mlir::LLVM::AllocaOp>( aOp );
 
         return allocOp;
@@ -356,7 +356,7 @@ namespace silly
 
     void LoweringContext::setAlloca( const std::string& funcName, mlir::Operation* dclOp, mlir::Operation* aOp )
     {
-        funcState[funcName].declareToAlloca[dclOp] = aOp;
+        lookupFunctionState[funcName].declareToAlloca[dclOp] = aOp;
     }
 
     mlir::LogicalResult LoweringContext::constructLexicalBlockDI( mlir::FileLineColLoc fileLoc,
@@ -365,7 +365,7 @@ namespace silly
     {
         mlir::MLIRContext* context = builder.getContext();
         std::string funcName = lookupFuncNameForOp( op );
-        auto& f = funcState[funcName];
+        auto& f = lookupFunctionState[funcName];
         mlir::LLVM::DISubprogramAttr sub = f.subProgramDI;
 
         mlir::LLVM::DILexicalBlockAttr lexicalBlock =
@@ -426,7 +426,7 @@ namespace silly
             opValue = value;
         }
 
-        PerFunctionLoweringState& f = funcState[funcName];
+        PerFunctionLoweringState& f = lookupFunctionState[funcName];
 
         mlir::LLVM::DILocalVariableAttr diVar;
         mlir::LLVM::DITypeAttr diType;
@@ -889,7 +889,7 @@ namespace silly
             mlir::MLIRContext* context = rewriter.getContext();
             mlir::LLVM::DITypeAttr diType = getDIType( elemType );
 
-            mlir::LLVM::DISubprogramAttr sub = funcState[funcName].subProgramDI;
+            mlir::LLVM::DISubprogramAttr sub = lookupFunctionState[funcName].subProgramDI;
             assert( sub );
 
             unsigned bitWidth = elemType.getIntOrFloatBitWidth();

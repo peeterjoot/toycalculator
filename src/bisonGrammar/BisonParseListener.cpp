@@ -81,7 +81,7 @@ namespace silly
         {
             mlir::Location loc = getLocation( bLoc );
 
-            mkMainFunction( loc, loc );
+            createMain( loc, loc );
         }
     }
 
@@ -94,13 +94,13 @@ namespace silly
             llvm::SmallVector<mlir::Location, 2> funcLocs{ locs.first, locs.second };
             mlir::Location fLoc = builder.getFusedLoc( funcLocs );
 
-            ParserPerFunctionState& f = funcState( currentFuncName );
+            ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
             mlir::func::FuncOp funcOp = f.getFuncOp();
             funcOp->setLoc( fLoc );
 
             if ( !hasExplicitExit )
             {
-                mkMainExit( locs.second );
+                createMainExit( locs.second );
             }
         }
     }
@@ -113,9 +113,9 @@ namespace silly
         mlir::Location loc = getLocation( exitLoc );
         LocationStack ls( builder, loc );
 
-        mlir::Type returnType = findReturnType();
+        mlir::Type returnType = lookupReturnType();
         mlir::Value value = parseExpression( loc, returnType, var, ls );
-        mkReturnLike( loc, value, ls );
+        createReturnLike( loc, value, ls );
     }
 
     void BisonParseListener::enterExitStatement( const silly::BisonParser::location_type& exitLoc )
@@ -125,7 +125,7 @@ namespace silly
         mlir::Location loc = getLocation( exitLoc );
         LocationStack ls( builder, loc );
 
-        mkReturnLike( loc, {}, ls );
+        createReturnLike( loc, {}, ls );
     }
 
     void BisonParseListener::enterAbortStatement( const silly::BisonParser::location_type& bLoc )
@@ -187,7 +187,7 @@ namespace silly
                         mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( ty );
                         width = ity.getWidth();
                     }
-                    v = mkIntegerFromString( vLoc, width, parg.lit.sval, ls );
+                    v = createIntegerFromString( vLoc, width, parg.lit.sval, ls );
                     break;
                 }
                 case Literal::Kind::Float:
@@ -197,7 +197,7 @@ namespace silly
                     {
                         fty = mlir::cast<mlir::FloatType>( ty );
                     }
-                    v = mkFloatFromString( vLoc, fty, parg.lit.sval, ls );
+                    v = createFloatFromString( vLoc, fty, parg.lit.sval, ls );
                     break;
                 }
                 case Literal::Kind::Bool:
@@ -207,7 +207,7 @@ namespace silly
                 }
                 case Literal::Kind::String:
                 {
-                    v = mkStringLiteral( vLoc, parg.lit.sval, ls );
+                    v = createStringLiteral( vLoc, parg.lit.sval, ls );
                     break;
                 }
             }
@@ -250,7 +250,7 @@ namespace silly
 
             if ( uop != UnaryOp::Undefined )
             {
-                v = mkUnary( vLoc, left, uop, ls );
+                v = createUnary( vLoc, left, uop, ls );
             }
         }
         else if ( parg.kind == Expr::Kind::BinaryOp )
@@ -262,72 +262,72 @@ namespace silly
             {
                 case ExprOp::Mul:
                 {
-                    v = mkBinaryArith( vLoc, silly::ArithBinOpKind::Mul, bty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Mul, bty, left, right, ls );
                     break;
                 }
                 case ExprOp::Div:
                 {
-                    v = mkBinaryArith( vLoc, silly::ArithBinOpKind::Div, bty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Div, bty, left, right, ls );
                     break;
                 }
                 case ExprOp::Mod:
                 {
-                    v = mkBinaryArith( vLoc, silly::ArithBinOpKind::Mod, bty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Mod, bty, left, right, ls );
                     break;
                 }
                 case ExprOp::Plus:
                 {
-                    v = mkBinaryArith( vLoc, silly::ArithBinOpKind::Add, bty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Add, bty, left, right, ls );
                     break;
                 }
                 case ExprOp::Minus:
                 {
-                    v = mkBinaryArith( vLoc, silly::ArithBinOpKind::Sub, bty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Sub, bty, left, right, ls );
                     break;
                 }
                 case ExprOp::Or:
                 {
-                    v = mkBinaryArith( vLoc, silly::ArithBinOpKind::Or, bty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Or, bty, left, right, ls );
                     break;
                 }
                 case ExprOp::And:
                 {
-                    v = mkBinaryArith( vLoc, silly::ArithBinOpKind::And, bty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::And, bty, left, right, ls );
                     break;
                 }
                 case ExprOp::Xor:
                 {
-                    v = mkBinaryArith( vLoc, silly::ArithBinOpKind::Xor, bty, left, right, ls );
+                    v = createBinaryArith( vLoc, silly::ArithBinOpKind::Xor, bty, left, right, ls );
                     break;
                 }
                 case ExprOp::Equal:
                 {
-                    v = mkBinaryCompare( vLoc, silly::CmpBinOpKind::Equal, left, right, ls );
+                    v = createBinaryCompare( vLoc, silly::CmpBinOpKind::Equal, left, right, ls );
                     break;
                 }
                 case ExprOp::NotEqual:
                 {
-                    v = mkBinaryCompare( vLoc, silly::CmpBinOpKind::NotEqual, left, right, ls );
+                    v = createBinaryCompare( vLoc, silly::CmpBinOpKind::NotEqual, left, right, ls );
                     break;
                 }
                 case ExprOp::Less:
                 {
-                    v = mkBinaryCompare( vLoc, silly::CmpBinOpKind::Less, left, right, ls );
+                    v = createBinaryCompare( vLoc, silly::CmpBinOpKind::Less, left, right, ls );
                     break;
                 }
                 case ExprOp::LessEqual:
                 {
-                    v = mkBinaryCompare( vLoc, silly::CmpBinOpKind::LessEq, left, right, ls );
+                    v = createBinaryCompare( vLoc, silly::CmpBinOpKind::LessEq, left, right, ls );
                     break;
                 }
                 case ExprOp::Greater:
                 {
-                    v = mkBinaryCompare( vLoc, silly::CmpBinOpKind::Less, right, left, ls );
+                    v = createBinaryCompare( vLoc, silly::CmpBinOpKind::Less, right, left, ls );
                     break;
                 }
                 case ExprOp::GreaterEqual:
                 {
-                    v = mkBinaryCompare( vLoc, silly::CmpBinOpKind::LessEq, right, left, ls );
+                    v = createBinaryCompare( vLoc, silly::CmpBinOpKind::LessEq, right, left, ls );
                     break;
                 }
                 default:
@@ -348,7 +348,7 @@ namespace silly
                 index = parseExpression( vLoc, {}, *parg.left, ls );
             }
 
-            v = variableToValue( vLoc, parg.name, index, vLoc, ls );
+            v = createVariableLoadOrLookup( vLoc, parg.name, index, vLoc, ls );
         }
 
         return v;
@@ -374,14 +374,14 @@ namespace silly
 
         // checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
 
-        mkForStart( loc, varName, elemType, varLoc, vstart, vstop, vstep, ls );
+        createForStart( loc, varName, elemType, varLoc, vstart, vstop, vstep, ls );
     }
 
     void BisonParseListener::exitForStatement( const silly::BisonParser::location_type& bForLoc )
     {
         mlir::Location loc = getLocation( bForLoc );
 
-        mkForExit( loc );
+        createForFinish( loc );
     }
 
     void BisonParseListener::enterPrintStatement( const std::vector<silly::Expr>& args,
@@ -494,7 +494,7 @@ namespace silly
             initializers.push_back( init );
         }
 
-        mkDeclaration( tLoc, varName, ty, aLoc, arraySizeString, hasInit, initializers, ls );
+        createDeclaration( tLoc, varName, ty, aLoc, arraySizeString, hasInit, initializers, ls );
     }
 
     void BisonParseListener::enterDeclareStatement( const silly::Types& type, const std::string& varName,
@@ -555,7 +555,7 @@ namespace silly
         mlir::Location loc = getLocation( lhsLoc );
         LocationStack ls( builder, loc );
 
-        bool declared = isVariableDeclared( var.name );
+        bool declared = lookupVariableDeclaration( var.name );
         if ( !declared )
         {
             // coverage: syntax-error/undeclared-var.silly
@@ -583,7 +583,7 @@ namespace silly
             return;
         }
 
-        mkAssignment( aLoc, resultValue, var.name, indexValue, ls );
+        createAssignment( aLoc, resultValue, var.name, indexValue, ls );
     }
 
     void BisonParseListener::enterGetStatement( const silly::BisonParser::location_type& bLoc,
@@ -592,7 +592,7 @@ namespace silly
         mlir::Location loc = getLocation( bLoc );
         LocationStack ls( builder, loc );
 
-        mkGet( loc, varName, {}, loc, ls );
+        createGet( loc, varName, {}, loc, ls );
     }
 
     void BisonParseListener::enterGetStatement( const silly::BisonParser::location_type& bLoc,
@@ -603,7 +603,7 @@ namespace silly
 
         mlir::Location iloc = loc;    // FIXME.
         mlir::Value idx = parseExpression( loc, {}, indexExpr, ls );
-        mkGet( loc, varName, idx, iloc, ls );
+        createGet( loc, varName, idx, iloc, ls );
     }
 
     void BisonParseListener::enterImportStatement( const silly::BisonParser::location_type& bLoc,
@@ -611,7 +611,7 @@ namespace silly
     {
         mlir::Location loc = getLocation( bLoc );
 
-        mkImport( loc, modName );
+        createImport( loc, modName );
     }
 
     void BisonParseListener::functionHelper( const std::string& name, const std::vector<silly::TypeAndName>& params,
@@ -631,7 +631,7 @@ namespace silly
             paramNames.push_back( tn.name );
         }
 
-        mkFunctionStart( locs, name, isDeclaration, rt, paramTypes, paramNames );
+        createFunctionStart( locs, name, isDeclaration, rt, paramTypes, paramNames );
     }
 
     void BisonParseListener::enterFunctionPrototype( const std::string& name,
@@ -641,7 +641,7 @@ namespace silly
     {
         functionHelper( name, params, returnType, funcLoc, true );
 
-        mkFunctionExit();
+        createFunctionFinish();
     }
 
     void BisonParseListener::enterFunctionDefinition( const std::string& name,
@@ -654,7 +654,7 @@ namespace silly
 
     void BisonParseListener::exitFunctionDefinition()
     {
-        mkFunctionExit();
+        createFunctionFinish();
     }
 
     void BisonParseListener::enterReturnStatement( const silly::BisonParser::location_type& bLoc,
@@ -669,7 +669,7 @@ namespace silly
             value = parseExpression( locs.first, {}, expr, ls );
         }
 
-        mkReturnLike( locs.second, value, ls );
+        createReturnLike( locs.second, value, ls );
     }
 
     void BisonParseListener::enterIfStatement( const silly::BisonParser::location_type& bLoc,
@@ -687,7 +687,7 @@ namespace silly
             return;
         }
 
-        mkIf( loc, conditionPredicate, true, ls );
+        createIf( loc, conditionPredicate, true, ls );
     }
 
     void BisonParseListener::enterElifStatement( const silly::BisonParser::location_type& bLoc,
@@ -698,7 +698,7 @@ namespace silly
 
         // checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
 
-        selectElseBlock( loc );
+        createElseBlockSelection( loc );
 
         mlir::Value conditionPredicate = parseExpression( loc, {}, predicate, ls );
         if ( !conditionPredicate )
@@ -707,7 +707,7 @@ namespace silly
             return;
         }
 
-        mkIf( loc, conditionPredicate, false, ls );
+        createIf( loc, conditionPredicate, false, ls );
     }
 
     void BisonParseListener::enterElseStatement( const silly::BisonParser::location_type& bLoc )
@@ -716,12 +716,12 @@ namespace silly
 
         // checkForReturnInScope( ctx->scopedStatements(), "ELSE block" );
 
-        selectElseBlock( loc );
+        createElseBlockSelection( loc );
     }
 
     void BisonParseListener::exitIfElifElseStatement( const silly::BisonParser::location_type& bLoc )
     {
-        mkIfElifElseExit();
+        createIfElifElseFinish();
     }
 
     template <typename T>
@@ -743,7 +743,7 @@ namespace silly
                                                   bool isCallStatement )
     {
         LocationStack ls( builder, loc );
-        ParserPerFunctionState& f = funcState( name );
+        ParserPerFunctionState& f = lookupFunctionState( name );
         mlir::func::FuncOp funcOp = f.getFuncOp();
         mlir::FunctionType funcType = funcOp.getFunctionType();
 
@@ -765,7 +765,7 @@ namespace silly
             i++;
         }
 
-        return mkCall( loc, name, funcOp, funcType, isCallStatement, parameters, ls );
+        return createCall( loc, name, funcOp, funcType, isCallStatement, parameters, ls );
     }
 
     void BisonParseListener::enterCallStatement( const std::string& name, const std::vector<silly::Expr>& args,
@@ -779,12 +779,12 @@ namespace silly
     {
         mlir::Location loc = getLocation( bLoc );
 
-        mkScopedStart( loc, true );
+        createScopedStart( loc, true );
     }
 
     void BisonParseListener::exitScopedStatements( )
     {
-        mkScopedExit( );
+        createScopedFinish( );
     }
 
     void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )

@@ -33,20 +33,20 @@ namespace silly
         /// - set the current function name, and squirrel away the funcOp for lookup.
         /// - Creates initial dummy DebugScopeOp placeholder.
         ///
-        void mkNewFunctionState( mlir::Location startLoc, mlir::func::FuncOp funcOp, const std::string &funcName,
+        void createNewFunctionState( mlir::Location startLoc, mlir::func::FuncOp funcOp, const std::string &funcName,
                           const std::vector<std::string> &paramNames );
 
         /// Returns a reference to the functionStateMap entry for funcName.
         ///
         /// Create that functionStateMap entry for funcName if it doesn't exist.
-        ParserPerFunctionState &funcState( const std::string &funcName );
+        ParserPerFunctionState &lookupFunctionState( const std::string &funcName );
 
         /// @param floc FuncOp location.  This should be a fused location, or overwritten with a fused location later.
         /// @param sloc1 DebugNameOp location for parameters.
-        void mkMainFunction( mlir::Location floc, mlir::Location sloc1 );
+        void createMain( mlir::Location floc, mlir::Location sloc1 );
 
         /// Emit an implicit return 0 for the silly program's main.
-        void mkMainExit( mlir::Location loc );
+        void createMainExit( mlir::Location loc );
 
         /// Emit a user-friendly error message in GCC/Clang style
         ///
@@ -71,57 +71,57 @@ namespace silly
         void emitError( mlir::Location loc, const std::string &message, const std::string &funcName, bool internal );
 
         /// Construct a Value for a TRUE or FALSE boolean literal string
-        mlir::Value mkBooleanFromString( mlir::Location loc, const std::string &s, LocationStack &ls );
+        mlir::Value createBooleanFromString( mlir::Location loc, const std::string &s, LocationStack &ls );
 
         /// Construct a Value for an integer literal string
-        mlir::Value mkIntegerFromString( mlir::Location loc, int width, const std::string &s, LocationStack &ls );
+        mlir::Value createIntegerFromString( mlir::Location loc, int width, const std::string &s, LocationStack &ls );
 
         /// Construct a Value for a floating point literal string
-        mlir::Value mkFloatFromString( mlir::Location loc, mlir::FloatType ty, const std::string &s, LocationStack &ls );
+        mlir::Value createFloatFromString( mlir::Location loc, mlir::FloatType ty, const std::string &s, LocationStack &ls );
 
         /// Strip double quotes off of a string, and build a string literal op for it
-        silly::StringLiteralOp mkStringLiteral( mlir::Location loc, const std::string &input, LocationStack &ls );
+        silly::StringLiteralOp createStringLiteral( mlir::Location loc, const std::string &input, LocationStack &ls );
 
         /// Registers a variable declaration in the current scope.
-        void mkDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty, mlir::Location aLoc,
+        void createDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty, mlir::Location aLoc,
                                   const std::string &arrayBounds, bool haveInitializers,
                                   std::vector<mlir::Value> &initializers, LocationStack &ls );
 
         /// lookup for silly::DeclareOp for a variable, or the Op for a parameter or induction variable.
-        mlir::Value variableToValue( mlir::Location loc, const std::string &varName, mlir::Value iValue,
+        mlir::Value createVariableLoadOrLookup( mlir::Location loc, const std::string &varName, mlir::Value iValue,
                                      mlir::Location iLoc, LocationStack &ls );
 
         /// Looks up DeclareOp for a variable.
         silly::DeclareOp lookupDeclareForVar( mlir::Location loc, const std::string &varName );
 
         /// Casts index value to index type.
-        mlir::Value indexTypeCast( mlir::Location loc, mlir::Value val, LocationStack &ls );
+        mlir::Value createIndexTypeCast( mlir::Location loc, mlir::Value val, LocationStack &ls );
 
         /// Casts value to desired type if needed.
         ///
         /// This is adapted from AssignOpLowering, but uses arith dialect operations instead of LLVM dialect.
-        mlir::Value castOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType,
+        mlir::Value createCastOpIfRequired( mlir::Location loc, mlir::Value value, mlir::Type desiredType,
                                       LocationStack &ls );
 
         /// Handle assignment processing, given the current var-name and index (if appropriate.)
-        void mkAssignment( mlir::Location loc, mlir::Value resultValue, const std::string &currentVarName,
+        void createAssignment( mlir::Location loc, mlir::Value resultValue, const std::string &currentVarName,
                                 mlir::Value currentIndexExpr, LocationStack &ls );
 
         /// Lookup in per-function state, whether a variable has been declared
-        bool isVariableDeclared( const std::string &varName );
+        bool lookupVariableDeclaration( const std::string &varName );
 
         /// Emits silly::ReturnOp (or exit equivalent) with optional value.
-        void mkReturnLike( mlir::Location loc, mlir::Value returnValue, LocationStack &ls );
+        void createReturnLike( mlir::Location loc, mlir::Value returnValue, LocationStack &ls );
 
         /// Lookup the type for a FUNCTION return.
-        mlir::Type findReturnType();
+        mlir::Type lookupReturnType();
 
         /// Create a silly::ArithBinOp
-        mlir::Value mkBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty, mlir::Value lhs,
+        mlir::Value createBinaryArith( mlir::Location loc, silly::ArithBinOpKind what, mlir::Type ty, mlir::Value lhs,
                                        mlir::Value rhs, LocationStack &ls );
 
         /// Create a silly::CmpBinOp
-        mlir::Value mkBinaryCompare( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs, mlir::Value rhs,
+        mlir::Value createBinaryCompare( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs, mlir::Value rhs,
                                      LocationStack &ls );
 
         /// All the supported unary operations for the silly dialect.
@@ -134,37 +134,37 @@ namespace silly
         };
 
         /// mlir builder helper for a unary expression (i.e.: negation or NOT operation)
-        mlir::Value mkUnary( mlir::Location loc, mlir::Value value, UnaryOp op, LocationStack &ls );
+        mlir::Value createUnary( mlir::Location loc, mlir::Value value, UnaryOp op, LocationStack &ls );
 
         /// mlir builder helper for GET
-        void mkGet( mlir::Location loc, const std::string &varName, mlir::Value indexValue, mlir::Location iloc,
+        void createGet( mlir::Location loc, const std::string &varName, mlir::Value indexValue, mlir::Location iloc,
                         LocationStack &ls );
 
         /// mlir builder helper for IMPORT
-        void mkImport( mlir::Location loc, const std::string &modname );
+        void createImport( mlir::Location loc, const std::string &modname );
 
         /// mlir builder helper for FUNCTION (entry)
-        void mkFunctionStart( LocPairs locs, const std::string &funcName, bool isDeclaration, mlir::Type returnType,
+        void createFunctionStart( LocPairs locs, const std::string &funcName, bool isDeclaration, mlir::Type returnType,
                                   std::vector<mlir::Type> &paramTypes, const std::vector<std::string> &paramNames );
 
         /// mlir builder helper for FUNCTION (completion)
-        void mkFunctionExit();
+        void createFunctionFinish();
 
         /// mlir builder helper for CALL
-        mlir::Value mkCall( mlir::Location loc, const std::string &funcName, mlir::func::FuncOp funcOp,
+        mlir::Value createCall( mlir::Location loc, const std::string &funcName, mlir::func::FuncOp funcOp,
                                 mlir::FunctionType funcType, bool callStatement, std::vector<mlir::Value> &parameters,
                                 LocationStack &ls );
 
         /// mlir builder helper for FOR (enter part)
-        void mkForStart( mlir::Location loc, const std::string &varName, mlir::Type elemType,
+        void createForStart( mlir::Location loc, const std::string &varName, mlir::Type elemType,
                                  mlir::Location varLoc, mlir::Value start, mlir::Value end, mlir::Value step,
                                  LocationStack &ls );
 
         /// mlir builder helper for FOR (exit part)
-        void mkForExit( mlir::Location loc );
+        void createForFinish( mlir::Location loc );
 
         /// Find the current scf.if condition and set the insertion point to the else region for that if.
-        void selectElseBlock( mlir::Location loc );
+        void createElseBlockSelection( mlir::Location loc );
 
         /// For IF/ELIF, create an scf.if condition and set the insertion point to it's then region.
         ///
@@ -172,16 +172,16 @@ namespace silly
         /// @param predicate [in] The predicate for the IF or ELIF condition.
         /// @param saveIP [in] push the insertion point that is effectively after the if to insertionPointStack (use
         /// this for the initial if in an IF/ELIF/ELSE, but not for the internal IF created when processing an ELIF.
-        void mkIf( mlir::Location loc, mlir::Value predicate, bool saveIP, LocationStack &ls );
+        void createIf( mlir::Location loc, mlir::Value predicate, bool saveIP, LocationStack &ls );
 
         /// mlir builder helper for IF/ELIF/ELSE (exit part)
-        void mkIfElifElseExit();
+        void createIfElifElseFinish();
 
         /// mlir builder helper for enter an IF/ELIF/ELSE scope.
-        void mkScopedStart( mlir::Location loc, bool wantScope );
+        void createScopedStart( mlir::Location loc, bool wantScope );
 
         /// mlir builder helper for exit an IF/ELIF/ELSE scope.
-        void mkScopedExit( );
+        void createScopedFinish( );
 
        protected:
         /// construct state for creation of a silly dialect ModuleOp
