@@ -697,17 +697,45 @@ namespace silly
         finishFunction();
     }
 
+    mlir::Value BisonParseListener::parseReturnExpression( mlir::Location loc, const silly::Expr& expr,
+                                                           LocationStack& ls )
+    {
+        mlir::Value value{};
+
+        if ( expr.kind != silly::Expr::Kind::None )
+        {
+            mlir::Type returnType = getReturnType();
+
+            if ( !returnType )
+            {
+                // FIXME?: ANTLR4 version of parseReturnExpression logs the expression string -- don't really need that
+                // since the logging also shows context -- could remove from both.
+                //
+                // coverage: syntax-error/return-expr-no-type.silly
+                emitUserError( loc,
+                               std::format( "return expression found, but no return type for function {}", currentFuncName ),
+                               currentFuncName );
+                return value;
+            }
+
+            value = parseExpression( returnType, expr, ls );
+            if ( !value )
+            {
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
+                return value;
+            }
+        }
+
+        return value;
+    }
+
     void BisonParseListener::enterReturnStatement( const silly::BisonParser::location_type& bLoc,
                                                    const silly::Expr& expr )
     {
         LocPairs locs = getLocations( bLoc );
         LocationStack ls( builder, locs.first );
 
-        mlir::Value value;
-        if ( expr.kind != silly::Expr::Kind::None )
-        {
-            value = parseExpression( {}, expr, ls );
-        }
+        mlir::Value value = parseReturnExpression( locs.first, expr, ls );
 
         createReturn( locs.second, value, ls );
     }
@@ -830,7 +858,7 @@ namespace silly
     void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )
     {
         mlir::Location loc = getLocation( bLoc );
-        emitInternalError( loc, __FILE__, __LINE__, __func__, msg, currentFuncName );
+        emitUserError( loc, msg, currentFuncName );
     }
 
     mlir::OwningOpRef<mlir::ModuleOp> runParseListener( silly::SourceManager& s, const std::string& filename )

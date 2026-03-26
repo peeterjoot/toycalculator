@@ -22,10 +22,6 @@ simple/empty.silly - Samples/silly/empty.silly failing with LLVM internal locati
         at /home/peeter/toycalculator/src/driver/LoweringContext.cpp:294
     294                     mlir::FusedLoc fusedLoc = mlir::cast<mlir::FusedLoc>( funcOp->getLoc() );
 
-array/lvalue-complex.silly
-
-    loc("lvalue-complex.silly":6:17): error: type of return operand 0 ('i64') doesn't match function result type ('i32') in function @plusone
-
 bool/not-on-comparison.silly
 
     mismatch:
@@ -42,23 +38,7 @@ driver/call2modules.silly
 driver/module-import-of-common-module.silly
 driver/module-not-found.silly
 driver/twosource-import.silly
-
-function/basic-return.silly
-
-    loc("basic-return.silly":3:13): error: type of return operand 0 ('i64') doesn't match function result type ('i32') in function @foo
-
-function/defined-not-called.silly
-function/int-ret-void-param.silly
-function/multi-function.silly
-function/return-expr.silly
 init/expr-call.silly
-
-    loc("expr-call.silly":2:38): error: type of return operand 0 ('i64') doesn't match function result type ('i32') in function @answer
-
-print/expression.silly
-
-    loc("expression.silly":7:16): error: type of return operand 0 ('f64') doesn't match function result type ('f32') in function @foo
-
 ```
 
 #### Debug

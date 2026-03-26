@@ -117,6 +117,7 @@ namespace silly
         void setModule();
 
         void setPrintContinue();
+
         void setPrintError();
 
        private:
@@ -142,6 +143,8 @@ namespace silly
         template <class ExprVector>
         mlir::Value generateCall( const std::string& name, const ExprVector& args, mlir::Location loc,
                                   bool isCallStatement );
+
+        mlir::Value parseReturnExpression( mlir::Location loc, const silly::Expr& expr, LocationStack &ls );
 
         yyscan_t scanner{};
 
