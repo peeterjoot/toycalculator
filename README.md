@@ -3,17 +3,20 @@
 ## Motivation
 
 The goal of this project was to gain concrete, hands-on experience with the MLIR ecosystem.
-It uses an ANTLR4 grammar, an MLIR builder, and MLIR lowering to LLVM IR, incorporating a custom dialect (silly) along with several existing MLIR dialects (scf, arith, memref, etc.).
+It uses an MLIR builder, with lowering to LLVM IR, incorporating a custom dialect (silly) along with several existing MLIR dialects (scf, arith, memref, etc.).
+
+There are two front ends, one using the original ANTLR4 grammar (requiring LLVM to be built without -fno-rtti), and another using an experimental Bison grammar (not yet feature complete, as measured by the test suite.)
 
 ### Why MLIR?
 
 My interest in MLIR was driven by work with proprietary AST walkers in both Clang and proprietary commercial compilers.
 In some cases, AST walking infrastructure can be used to extend the compiler itself by adding user-defined semantics tailored to a specific customer base,
 and is immensely powerful and valuable.
-While Clang's AST walk and rewrite API doesn't allow for user-defined language extension plugins,
+Despite Clang's AST walk and rewrite API not allowing for user-defined language extension plugins,
 having a structured representation of source code that can be queried programmatically is amazing and very useful.
 
-What does that have to do with MLIR? I had seen MLIR in action in a prototype project at a previous job, and that prototype suggested that it was a natural way to avoid hand-coding an AST.
+What does that have to do with MLIR?
+I had seen MLIR in action in a prototype project at a previous job, and that prototype suggested that it was a natural way to avoid hand-coding an AST.
 An MLIR representation of a program could:
 * drive a semantic analysis pass,
 * perform code generation,

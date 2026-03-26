@@ -1367,7 +1367,7 @@ namespace silly
             }
             else if ( tNode *integerNode = lit->INTEGER_PATTERN() )
             {
-                unsigned width = 64;
+                unsigned width{ 64 };
 
                 if ( ty )
                 {

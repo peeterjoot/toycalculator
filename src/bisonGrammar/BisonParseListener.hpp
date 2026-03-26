@@ -134,6 +134,9 @@ namespace silly
                              const silly::Types& returnType, const silly::BisonParser::location_type& funcLoc,
                              bool isDeclaration );
 
+        mlir::Value parseIntermediate( mlir::Type ty, const silly::Expr& parg, LocationStack& ls );
+
+        /// Calls parseIntermediate and does a final type conversion to the supplied type
         mlir::Value parseExpression( mlir::Type ty, const silly::Expr& parg, LocationStack& ls );
 
         template <class ExprVector>

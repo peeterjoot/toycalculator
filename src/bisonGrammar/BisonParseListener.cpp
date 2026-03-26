@@ -169,14 +169,14 @@ namespace silly
         return nullptr;
     }
 
-    mlir::Value BisonParseListener::parseExpression( mlir::Type ty, const silly::Expr& parg, LocationStack& ls )
+    mlir::Value BisonParseListener::parseIntermediate( mlir::Type ty, const silly::Expr& parg, LocationStack& ls )
     {
         mlir::Value v;
         mlir::Location loc = getLocation( parg.loc );
 
         if ( parg.kind == Expr::Kind::UnaryOp )
         {
-            mlir::Value left = parseExpression( ty, *parg.left, ls );
+            mlir::Value left = parseIntermediate( ty, *parg.left, ls );
             UnaryOp uop = UnaryOp::Undefined;
             switch ( parg.op )
             {
@@ -198,7 +198,7 @@ namespace silly
                 default:
                 {
                     emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                       std::format( "parseExpression failed. Unknown unary op: {}", (int)parg.kind ),
+                                       std::format( "parseIntermediate failed. Unknown unary op: {}", (int)parg.kind ),
                                        currentFuncName );
                 }
             }
@@ -210,8 +210,8 @@ namespace silly
         }
         else if ( parg.kind == Expr::Kind::BinaryOp )
         {
-            mlir::Value left = parseExpression( ty, *parg.left, ls );
-            mlir::Value right = parseExpression( ty, *parg.right, ls );
+            mlir::Value left = parseIntermediate( ty, *parg.left, ls );
+            mlir::Value right = parseIntermediate( ty, *parg.right, ls );
             mlir::Type bty = biggestTypeOf( left.getType(), right.getType() );
             switch ( parg.op )
             {
@@ -287,7 +287,7 @@ namespace silly
                 }
                 default:
                     emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                       std::format( "parseExpression failed. Unknown binary op: {}", (int)parg.kind ),
+                                       std::format( "parseIntermediate failed. Unknown binary op: {}", (int)parg.kind ),
                                        currentFuncName );
             }
         }
@@ -299,7 +299,7 @@ namespace silly
         {
             mlir::Location iloc = getLocation( ( *parg.left ).loc );
 
-            mlir::Value index = parseExpression( {}, *parg.left, ls );
+            mlir::Value index = parseIntermediate( ty, *parg.left, ls );
 
             v = createVariableLoad( loc, parg.sval, index, iloc, ls );
         }
@@ -315,22 +315,32 @@ namespace silly
             {
                 case Expr::Kind::Int:
                 {
-                    int width{ 64 };
+                    unsigned width{ 64 };
+
                     if ( ty )
                     {
-                        mlir::IntegerType ity = mlir::cast<mlir::IntegerType>( ty );
-                        width = ity.getWidth();
+                        if ( mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( ty ) )
+                        {
+                            width = ity.getWidth();
+                        }
                     }
+
                     v = createIntegerFromString( loc, width, parg.sval, ls );
                     break;
                 }
                 case Expr::Kind::Float:
                 {
-                    mlir::FloatType fty = typ.f64;
+                    mlir::FloatType fty{};
                     if ( ty )
                     {
-                        fty = mlir::cast<mlir::FloatType>( ty );
+                        fty = mlir::dyn_cast<mlir::FloatType>( ty );
                     }
+
+                    if ( !fty )
+                    {
+                        fty = typ.f64;
+                    }
+
                     v = createFloatFromString( loc, fty, parg.sval, ls );
                     break;
                 }
@@ -350,9 +360,24 @@ namespace silly
             if ( !v )
             {
                 emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                   std::format( "parseExpression failed. Kind: {}", (int)parg.kind ), currentFuncName );
+                                   std::format( "parseIntermediate failed. Kind: {}", (int)parg.kind ),
+                                   currentFuncName );
                 return v;
             }
+        }
+
+        return v;
+    }
+
+    mlir::Value BisonParseListener::parseExpression( mlir::Type ty, const silly::Expr& parg, LocationStack& ls )
+    {
+        mlir::Value v = parseIntermediate( ty, parg, ls );
+
+        if ( ty )
+        {
+            mlir::Location loc = getLocation( parg.loc );
+
+            v = createCastIfNeeded( loc, v, ty, ls );
         }
 
         return v;

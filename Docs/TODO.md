@@ -5,7 +5,6 @@
 
 #### Bison parser experiment.
 * TODO:
-- [ ] handle STRING failures below, then see what's left after that.
 - [ ] Big review of all the location passing.
 - [ ] Review helper functions in both Parse walker implementations for consistency.
 - [ ] Now have stuff that is Bison FE specific in the silly namespace, which is confusing.  Introduce a silly::Bison namespace for that?
@@ -17,36 +16,49 @@
 - [ ] remaining failures (not counting syntax and debug):
 ```
 simple/empty.silly - Samples/silly/empty.silly failing with LLVM internal location related cast error.
-array/elem-in-expr-minimal.silly
-array/elem-in-expr.silly
+
+    (gdb)
+#3  0x000000000048af90 in silly::LoweringContext::createPerFuncState (this=0xffffffffbb30, funcOp=...)
+        at /home/peeter/toycalculator/src/driver/LoweringContext.cpp:294
+    294                     mlir::FusedLoc fusedLoc = mlir::cast<mlir::FusedLoc>( funcOp->getLoc() );
+
 array/lvalue-complex.silly
-array/mixed-type-elem.silly
+
+    loc("lvalue-complex.silly":6:17): error: type of return operand 0 ('i64') doesn't match function result type ('i32') in function @plusone
+
 bool/not-on-comparison.silly
+
+    mismatch:
+    --- expected/not-on-comparison.out      2026-03-03 23:17:11.347448064 -0500
+    +++ out/not-on-comparison.out   2026-03-26 12:29:55.876880044 -0400
+    @@ -1,3 +1,3 @@
+     1
+     1
+    -0
+    +1
+
 driver/call1module-with-proto.silly
 driver/call2modules.silly
 driver/module-import-of-common-module.silly
 driver/module-not-found.silly
 driver/twosource-import.silly
-exit/rc-bool-true-1.silly
-exit/rc-bool-true-2.silly
-exit/rc-float64.silly
-expressions/assignment.silly
-expressions/conversions.silly
-expressions/int-float-add.silly
-expressions/int-to-float.silly
-expressions/no-operand-cast.silly
-expressions/two-binary-ops.silly
-expressions/zero-minus.silly
+
 function/basic-return.silly
+
+    loc("basic-return.silly":3:13): error: type of return operand 0 ('i64') doesn't match function result type ('i32') in function @foo
+
 function/defined-not-called.silly
 function/int-ret-void-param.silly
 function/multi-function.silly
 function/return-expr.silly
 init/expr-call.silly
-init/list-truncation.silly
-init/many-scalar-types.silly
-operators/unary.silly
+
+    loc("expr-call.silly":2:38): error: type of return operand 0 ('i64') doesn't match function result type ('i32') in function @answer
+
 print/expression.silly
+
+    loc("expression.silly":7:16): error: type of return operand 0 ('f64') doesn't match function result type ('f32') in function @foo
+
 ```
 
 #### Debug
