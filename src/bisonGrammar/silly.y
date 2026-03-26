@@ -271,6 +271,7 @@
 %type <silly::Types>                        boolType
 %type <silly::Types>                        intType
 %type <silly::Types>                        floatType
+%type <silly::Types>                        stringType
 %type <std::string>                         arrayBoundsExpression
 %type <std::vector<silly::Expr>>            oneInitializerAsList
 %type <std::vector<silly::Expr>>            initializerList
@@ -523,10 +524,16 @@ declareStatement
         { driver.enterDeclareStatement( $1, $2, $3, @1, @2, @3 ); }
     | scalarType IDENTIFIER arrayBoundsExpression EQUALS_TOKEN oneInitializerAsList
         { driver.enterDeclareStatement( $1, $2, $3, $5, @1, @2, @3 ); }
-    | scalarType IDENTIFIER arrayBoundsExpression LEFT_CURLY_BRACKET_TOKEN RIGHT_CURLY_BRACKET_TOKEN
-        { driver.enterDeclareStatementWithEmptyInit( $1, $2, $3, @1, @2, @3 ); }
     | scalarType IDENTIFIER arrayBoundsExpression LEFT_CURLY_BRACKET_TOKEN initializerList RIGHT_CURLY_BRACKET_TOKEN
         { driver.enterDeclareStatement( $1, $2, $3, $5, @1, @2, @3 ); }
+    | scalarType IDENTIFIER arrayBoundsExpression LEFT_CURLY_BRACKET_TOKEN RIGHT_CURLY_BRACKET_TOKEN
+        { driver.enterDeclareStatementWithEmptyInit( $1, $2, $3, @1, @2, @3 ); }
+    | stringType IDENTIFIER arrayBoundsExpression LEFT_CURLY_BRACKET_TOKEN RIGHT_CURLY_BRACKET_TOKEN
+        { driver.enterDeclareStatementWithEmptyInit( $1, $2, $3, @1, @2, @3 ); }
+    | stringType IDENTIFIER arrayBoundsExpression EQUALS_TOKEN stringLiteral
+        { driver.enterStringDeclareStatement( $2, $3, $5, @1, @2, @3 ); }
+    | stringType IDENTIFIER arrayBoundsExpression LEFT_CURLY_BRACKET_TOKEN stringLiteral RIGHT_CURLY_BRACKET_TOKEN
+        { driver.enterStringDeclareStatement( $2, $3, $5, @1, @2, @3 ); }
     ;
 
 scalarType
@@ -541,6 +548,9 @@ intType
     | INT32_TOKEN   { $$ = silly::Types::Int32; }
     | INT64_TOKEN   { $$ = silly::Types::Int64; }
     ;
+
+stringType
+    : STRING_TOKEN  { $$ = silly::Types::Int8;  }
 
 boolType
     : BOOL_TOKEN    { $$ = silly::Types::Boolean;  }

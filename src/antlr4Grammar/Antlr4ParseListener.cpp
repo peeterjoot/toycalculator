@@ -599,23 +599,10 @@ namespace silly
         tNode *index = arrayBounds->INTEGER_PATTERN();
         const std::string arrayBoundsString = index->getText();
         mlir::Location aloc = getTerminalLocation( index );
-        std::vector<mlir::Value> initializers;
-        createDeclaration( loc, varName, typ.i8, aloc, arrayBoundsString, false, initializers, ls );
 
-        if ( tNode *theString = ctx->STRING_PATTERN() )
-        {
-            silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
-            mlir::Value var = declareOp.getResult();
-
-            silly::StringLiteralOp stringLiteral = createStringLiteral( loc, theString->getText(), ls );
-            if ( stringLiteral )
-            {
-                mlir::Value i{};
-
-                // mlir::Location fusedLoc = ls.fuseLocations( );
-                silly::AssignOp::create( builder, loc, var, i, stringLiteral );
-            }
-        }
+        tNode *theString = ctx->STRING_PATTERN();
+        createStringDeclare( loc, varName, aloc, arrayBoundsString, theString != nullptr, theString ? theString->getText() : "",
+                             ls );
     }
 
     void Antlr4ParseListener::checkForReturnInScope( SillyParser::ScopedStatementsContext *scope, const char *what )

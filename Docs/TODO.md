@@ -5,8 +5,7 @@
 
 #### Bison parser experiment.
 * TODO:
-- [ ] proper location info (esp. for Expr, but lots needs review.)
-- [ ] Samples/silly/empty.silly failing with LLVM internal location related cast error.
+- [ ] Big review of all the location passing.
 - [ ] Review helper functions in both Parse walker implementations for consistency.
 - [ ] Now have stuff that is Bison FE specific in the silly namespace, which is confusing.  Introduce a silly::Bison namespace for that?
 - [ ] Fix location info for parseExpression (and index expressions, ...)
@@ -14,7 +13,47 @@
 - [ ] This template parameterization in generateCall is a hack.  Should probably switch to std::shared_ptr<silly::Expr> uniformly
 - [ ] debugging -- didn't work with an earlier debug attempt (probably still broken unless I accidentally fixed it.)
 - [ ] multiple source files?
-- [ ] triage the remaining failures.
+- [ ] remaining failures (not counting syntax and debug):
+```
+simple/empty.silly - Samples/silly/empty.silly failing with LLVM internal location related cast error.
+array/elem-in-expr-minimal.silly
+array/elem-in-expr.silly
+array/lvalue-complex.silly
+array/mixed-type-elem.silly
+array/string-array.silly
+bool/not-on-comparison.silly
+driver/call1module-with-proto.silly
+driver/call2modules.silly
+driver/module-import-of-common-module.silly
+driver/module-not-found.silly
+driver/twosource-import.silly
+exit/rc-bool-true-1.silly
+exit/rc-bool-true-2.silly
+exit/rc-float64.silly
+expressions/assignment.silly
+expressions/conversions.silly
+expressions/int-float-add.silly
+expressions/int-to-float.silly
+expressions/no-operand-cast.silly
+expressions/two-binary-ops.silly
+expressions/zero-minus.silly
+function/basic-return.silly
+function/defined-not-called.silly
+function/int-ret-void-param.silly
+function/multi-function.silly
+function/return-expr.silly
+init/expr-call.silly
+init/list-truncation.silly
+init/many-scalar-types.silly
+operators/unary.silly
+print/expression.silly
+simple/empty.silly
+types/loadstore.silly
+
+string/assign-basic.silly
+string/assign-empty.silly
+string/long-truncation.silly
+```
 
 #### Debug
 * Audit the places where I am passing both Location and LocationStack.  Do I need the first?

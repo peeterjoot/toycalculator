@@ -169,8 +169,7 @@ namespace silly
         return nullptr;
     }
 
-    mlir::Value BisonParseListener::parseExpression( mlir::Type ty, const silly::Expr& parg,
-                                                     LocationStack& ls )
+    mlir::Value BisonParseListener::parseExpression( mlir::Type ty, const silly::Expr& parg, LocationStack& ls )
     {
         mlir::Value v;
         mlir::Location loc = getLocation( parg.loc );
@@ -298,7 +297,7 @@ namespace silly
         }
         else if ( parg.kind == Expr::Kind::ArrayVariable )
         {
-            mlir::Location iloc = getLocation( (*parg.left).loc );
+            mlir::Location iloc = getLocation( ( *parg.left ).loc );
 
             mlir::Value index = parseExpression( {}, *parg.left, ls );
 
@@ -351,8 +350,7 @@ namespace silly
             if ( !v )
             {
                 emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                   std::format( "parseExpression failed. Kind: {}", (int)parg.kind ),
-                                   currentFuncName );
+                                   std::format( "parseExpression failed. Kind: {}", (int)parg.kind ), currentFuncName );
                 return v;
             }
         }
@@ -500,6 +498,19 @@ namespace silly
         }
 
         createDeclaration( tLoc, varName, ty, aLoc, arraySizeString, hasInit, initializers, ls );
+    }
+
+    void BisonParseListener::enterStringDeclareStatement( const std::string& varName,
+                                                          const std::string& arraySizeString, const std::string& init,
+                                                          const silly::BisonParser::location_type& typeLoc,
+                                                          const silly::BisonParser::location_type& nameLoc,
+                                                          const silly::BisonParser::location_type& arrayLoc )
+    {
+        mlir::Location tLoc = getLocation( typeLoc );
+        mlir::Location aLoc = getLocation( arrayLoc );
+        LocationStack ls( builder, tLoc );
+
+        createStringDeclare( tLoc, varName, aLoc, arraySizeString, true, init, ls );
     }
 
     void BisonParseListener::enterDeclareStatement( const silly::Types& type, const std::string& varName,
@@ -786,9 +797,9 @@ namespace silly
         enterScopedRegion( loc, true );
     }
 
-    void BisonParseListener::exitScopedStatements( )
+    void BisonParseListener::exitScopedStatements()
     {
-        exitScopedRegion( );
+        exitScopedRegion();
     }
 
     void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )

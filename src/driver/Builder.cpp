@@ -1095,6 +1095,29 @@ namespace silly
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         f.endScope();
     }
+
+    void Builder::createStringDeclare( mlir::Location loc, const std::string &varName, mlir::Location aloc,
+                                       const std::string &arrayBoundsString, bool haveInit, const std::string &strLit,
+                                       LocationStack &ls )
+    {
+        std::vector<mlir::Value> initializers;
+        createDeclaration( loc, varName, typ.i8, aloc, arrayBoundsString, false, initializers, ls );
+
+        if ( haveInit )
+        {
+            silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+            mlir::Value var = declareOp.getResult();
+
+            silly::StringLiteralOp stringLiteral = createStringLiteral( loc, strLit, ls );
+            if ( stringLiteral )
+            {
+                mlir::Value i{};
+
+                // mlir::Location fusedLoc = ls.fuseLocations( );
+                silly::AssignOp::create( builder, loc, var, i, stringLiteral );
+            }
+        }
+    }
 }    // namespace silly
 
 // vim: et ts=4 sw=4
