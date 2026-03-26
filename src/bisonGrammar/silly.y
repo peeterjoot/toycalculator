@@ -13,12 +13,14 @@
 %locations
 
 %code requires {
+    #include <memory>
     #include <string>
     #include <vector>
-    #include <memory>
-    #include "location.hh"   /* for silly::location */
 
-    namespace silly {
+    #include "location.hh"
+
+    namespace silly
+    {
         class BisonParseListener;
 
         enum class ExprOp : uint32_t
@@ -62,7 +64,7 @@
             silly::location loc{};
         };
 
-        struct Literal
+        struct Expr
         {
             enum class Kind
             {
@@ -70,44 +72,7 @@
                 Int,
                 Float,
                 String,
-                Bool
-            };
-            Kind kind{ Kind::None };
-            std::string sval{}; /* int or float as string, or string content */
-            bool bval{};
-
-            static Literal makeNone()
-            {
-                return { Kind::None, {}, false };
-            }
-
-            static Literal makeInt( const std::string& s )
-            {
-                return { Kind::Int, s, false };
-            }
-
-            static Literal makeFloat( const std::string& s )
-            {
-                return { Kind::Float, s, false };
-            }
-
-            static Literal makeString( const std::string& s )
-            {
-                return { Kind::String, s, false };
-            }
-
-            static Literal makeBool( bool b )
-            {
-                return { Kind::Bool, {}, b };
-            }
-        };
-
-        struct Expr
-        {
-            enum class Kind
-            {
-                None,
-                Literal,
+                Bool,
                 Variable,
                 ArrayVariable,
                 UnaryOp,
@@ -115,53 +80,102 @@
                 Call,
             };
 
-            Kind kind;
-            Literal lit{};
-            std::string name{};
-            ExprOp op{ExprOp::None};
-            std::shared_ptr<Expr> left{};  /* for UnaryOp: operand; BinaryOp: lhs, also index expressions */
-            std::shared_ptr<Expr> right{}; /* for BinaryOp: rhs */
-            std::vector<std::shared_ptr<Expr>> params{};  /* for Call: argument list */
+            Kind kind{ Kind::None };
+            silly::location loc{};
+            std::string sval{}; /* int or float as string, or string content, or variable name */
+            bool bval{};
+            ExprOp op{ ExprOp::None };
+            std::shared_ptr<Expr> left{};                /* UnaryOp: operand; BinaryOp: lhs; ArrayVariable: index */
+            std::shared_ptr<Expr> right{};               /* BinaryOp: rhs */
+            std::vector<std::shared_ptr<Expr>> params{}; /* Call: argument list */
 
-            static Expr makeDummy( )
+            static Expr makeNone()
             {
                 return { Kind::None };
             }
 
-            static Expr fromLiteral( const Literal& l )
+            static Expr makeInt( const std::string& s, const silly::location& loc )
             {
-                return { Kind::Literal, l };
+                return {
+                    Kind::Int, loc,
+                    s    // sval
+                };
             }
 
-            static Expr fromVariable( const std::string& s )
+            static Expr makeFloat( const std::string& s, const silly::location& loc )
             {
-                return { Kind::Variable, {}, s };
+                return {
+                    Kind::Float, loc,
+                    s    // sval
+                };
             }
 
-            static Expr fromArrayVariable( const std::string& s, const Expr& idx )
+            static Expr makeString( const std::string& s, const silly::location& loc )
             {
-                return { Kind::ArrayVariable, {}, s, ExprOp::None, std::make_shared<Expr>( idx ) };
+                return {
+                    Kind::String, loc,
+                    s    // sval
+                };
             }
 
-            static Expr makeUnaryOp( const ExprOp & op, const Expr& operand )
+            static Expr makeBool( bool b, const silly::location& loc )
             {
-                return { Kind::UnaryOp, {}, {}, op, std::make_shared<Expr>( operand ) };
+                return {
+                    Kind::Bool,
+                    loc,
+                    {},    // sval
+                    b      // bval
+                };
             }
 
-            static Expr makeBinaryOp( const ExprOp& op, const Expr& l, const Expr& r )
+            static Expr fromVariable( const std::string& s, const silly::location& loc )
             {
-                return { Kind::BinaryOp, {}, {}, op, std::make_shared<Expr>( l ), std::make_shared<Expr>( r ) };
+                return {
+                    Kind::Variable, loc,
+                    s        // sval
+                };
             }
 
-            static Expr makeCall( const std::string& name, const std::vector<Expr>& args )
+            static Expr fromArrayVariable( const std::string& s, const Expr& idx, const silly::location& loc )
             {
-                Expr e{ Kind::Call, {}, name };
+                Expr e{
+                    Kind::ArrayVariable, loc,
+                    s        // sval
+                };
+                e.left = std::make_shared<Expr>( idx );
+                return e;
+            }
+
+            static Expr makeUnaryOp( ExprOp op, const Expr& operand, const silly::location& loc )
+            {
+                Expr e{ Kind::UnaryOp, loc };
+                e.op = op;
+                e.left = std::make_shared<Expr>( operand );
+                return e;
+            }
+
+            static Expr makeBinaryOp( ExprOp op, const Expr& l, const Expr& r, const silly::location& loc )
+            {
+                Expr e{ Kind::BinaryOp, loc };
+                e.op = op;
+                e.left = std::make_shared<Expr>( l );
+                e.right = std::make_shared<Expr>( r );
+                return e;
+            }
+
+            static Expr makeCall( const std::string& name, const std::vector<Expr>& args, const silly::location& loc )
+            {
+                Expr e{
+                    Kind::Call, loc,
+                    name,    // sval
+                    false    // bval
+                };
                 for ( const auto& a : args )
                     e.params.push_back( std::make_shared<Expr>( a ) );
                 return e;
             }
         };
-    }
+    }    // namespace silly
 }
 
 %code provides {
@@ -250,7 +264,7 @@
 %token <std::string> IDENTIFIER
 
 /* Typed non-terminals */
-%type <silly::Literal>                      literal
+%type <silly::Expr>                         literal
 %type <std::string>                         integerLiteral
 %type <std::string>                         floatLiteral
 %type <std::string>                         stringLiteral
@@ -384,7 +398,7 @@ forStatement
               expression COMMA_TOKEN expression
           BRACE_END_TOKEN
       BRACE_END_TOKEN
-        { driver.enterForStatement( @1, $3, @4, $4, $7, $9, silly::Expr::makeDummy( ) ); }
+        { driver.enterForStatement( @1, $3, @4, $4, $7, $9, silly::Expr::makeNone( ) ); }
       otherScopedStatements
         { driver.exitForStatement( @1 ); }
     | FOR_TOKEN
@@ -445,7 +459,7 @@ optionalReturnStatement
     | RETURN_TOKEN expression ENDOFSTATEMENT_TOKEN
         { driver.enterReturnStatement( @2, $2 ); }
     | RETURN_TOKEN ENDOFSTATEMENT_TOKEN
-        { driver.enterReturnStatement( @1, silly::Expr::makeDummy( ) ); }
+        { driver.enterReturnStatement( @1, silly::Expr::makeNone( ) ); }
     ;
 
 assignmentStatement
@@ -455,9 +469,9 @@ assignmentStatement
 
 assignmentLHS
     : IDENTIFIER
-        { $$ = silly::Expr::fromVariable( $1 ); }
+        { $$ = silly::Expr::fromVariable( $1, @1 ); }
     | IDENTIFIER ARRAY_START_TOKEN expression ARRAY_END_TOKEN
-        { $$ = silly::Expr::fromArrayVariable( $1, $3 ); }
+        { $$ = silly::Expr::fromArrayVariable( $1, $3, @$ ); }
     ;
 
 importStatement
@@ -576,49 +590,49 @@ printArgList
 
 expression
     : expression BOOLEANOR_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Or,  $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Or,           $1, $3, @$ ); }
     | expression BOOLEANXOR_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Xor, $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Xor,          $1, $3, @$ ); }
     | expression BOOLEANAND_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::And, $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::And,          $1, $3, @$ ); }
     | expression EQUALITY_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Equal, $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Equal,        $1, $3, @$ ); }
     | expression NOTEQUAL_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::NotEqual, $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::NotEqual,     $1, $3, @$ ); }
     | expression LESSTHAN_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Less, $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Less,         $1, $3, @$ ); }
     | expression LESSEQUAL_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::LessEqual, $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::LessEqual,    $1, $3, @$ ); }
     | expression GREATERTHAN_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Greater, $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Greater,      $1, $3, @$ ); }
     | expression GREATEREQUAL_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::GreaterEqual, $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::GreaterEqual, $1, $3, @$ ); }
     | expression PLUSCHAR_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Plus, $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Plus,         $1, $3, @$ ); }
     | expression MINUS_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Minus, $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Minus,        $1, $3, @$ ); }
     | expression TIMES_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Mul, $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Mul,          $1, $3, @$ ); }
     | expression DIV_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Div, $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Div,          $1, $3, @$ ); }
     | expression MOD_TOKEN expression
-        { $$ = silly::Expr::makeBinaryOp( ExprOp::Mod, $1, $3 ); }
+        { $$ = silly::Expr::makeBinaryOp( ExprOp::Mod,          $1, $3, @$ ); }
     | MINUS_TOKEN expression %prec UMINUS
-        { $$ = silly::Expr::makeUnaryOp( ExprOp::Minus, $2 ); }
+        { $$ = silly::Expr::makeUnaryOp( ExprOp::Minus, $2, @$ ); }
     | PLUSCHAR_TOKEN expression %prec UPLUS
-        { $$ = silly::Expr::makeUnaryOp( ExprOp::Plus, $2 ); }
+        { $$ = silly::Expr::makeUnaryOp( ExprOp::Plus,  $2, @$ ); }
     | NOT_TOKEN expression %prec UNOT
-        { $$ = silly::Expr::makeUnaryOp( ExprOp::Not, $2 ); }
+        { $$ = silly::Expr::makeUnaryOp( ExprOp::Not,   $2, @$ ); }
     | BRACE_START_TOKEN expression BRACE_END_TOKEN
         { $$ = $2; }
     | literal
-        { $$ = silly::Expr::fromLiteral( $1 ); }
+        { $$ = $1; }
     | IDENTIFIER
-        { $$ = silly::Expr::fromVariable( $1 ); }
+        { $$ = silly::Expr::fromVariable( $1, @1 ); }
     | IDENTIFIER ARRAY_START_TOKEN expression ARRAY_END_TOKEN
-        { $$ = silly::Expr::fromArrayVariable( $1, $3 ); }
+        { $$ = silly::Expr::fromArrayVariable( $1, $3, @$ ); }
     | CALL_TOKEN IDENTIFIER BRACE_START_TOKEN optionalCallArgList BRACE_END_TOKEN
-        { $$ = silly::Expr::makeCall( $2, $4 ); }
+        { $$ = silly::Expr::makeCall( $2, $4, @$ ); }
     ;
 
 optionalContinue
@@ -629,15 +643,15 @@ optionalContinue
 
 literal
     : integerLiteral
-        { $$ = silly::Literal::makeInt( $1 ); }
+        { $$ = silly::Expr::makeInt( $1, @1 ); }
     | floatLiteral
-        { $$ = silly::Literal::makeFloat( $1 ); }
+        { $$ = silly::Expr::makeFloat( $1, @1 ); }
     | stringLiteral
-        { $$ = silly::Literal::makeString( $1 ); }
+        { $$ = silly::Expr::makeString( $1, @1 ); }
     | TRUE_LITERAL
-        { $$ = silly::Literal::makeBool( true ); }
+        { $$ = silly::Expr::makeBool( true, @1 ); }
     | FALSE_LITERAL
-        { $$ = silly::Literal::makeBool( false ); }
+        { $$ = silly::Expr::makeBool( false, @1 ); }
     ;
 
 integerLiteral

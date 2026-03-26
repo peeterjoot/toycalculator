@@ -128,7 +128,7 @@ namespace silly
                              const silly::Types& returnType, const silly::BisonParser::location_type& funcLoc,
                              bool isDeclaration );
 
-        mlir::Value parseExpression( mlir::Location vLoc, mlir::Type ty, const silly::Expr& parg, LocationStack& ls );
+        mlir::Value parseExpression( mlir::Type ty, const silly::Expr& parg, LocationStack& ls );
 
         template <class ExprVector>
         mlir::Value generateCall( const std::string& name, const ExprVector& args, mlir::Location loc,
