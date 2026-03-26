@@ -5,6 +5,7 @@
 
 #### Bison parser experiment.
 * TODO:
+- [ ] handle STRING failures below, then see what's left after that.
 - [ ] Big review of all the location passing.
 - [ ] Review helper functions in both Parse walker implementations for consistency.
 - [ ] Now have stuff that is Bison FE specific in the silly namespace, which is confusing.  Introduce a silly::Bison namespace for that?
@@ -20,7 +21,6 @@ array/elem-in-expr-minimal.silly
 array/elem-in-expr.silly
 array/lvalue-complex.silly
 array/mixed-type-elem.silly
-array/string-array.silly
 bool/not-on-comparison.silly
 driver/call1module-with-proto.silly
 driver/call2modules.silly
@@ -47,12 +47,6 @@ init/list-truncation.silly
 init/many-scalar-types.silly
 operators/unary.silly
 print/expression.silly
-simple/empty.silly
-types/loadstore.silly
-
-string/assign-basic.silly
-string/assign-empty.silly
-string/long-truncation.silly
 ```
 
 #### Debug
