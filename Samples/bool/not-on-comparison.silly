@@ -7,4 +7,19 @@ BOOL not_eq = NOT (x EQ y);      // NOT false → true
 PRINT not_eq;
 
 BOOL complex = NOT (x > y AND y < 10);  // NOT (true AND true) = false
-PRINT complex;                          // 0
+PRINT "complex (expect 0): ", complex;  // 0
+
+BOOL gt = x > y;
+PRINT gt;
+BOOL lt = y < 10;
+PRINT lt;
+BOOL tt = gt AND lt;
+PRINT tt;
+BOOL complex2 = NOT (gt AND lt);  // NOT (true AND true) = false
+PRINT complex2;                   // 0
+
+BOOL not_true = NOT TRUE;
+PRINT not_true;
+
+BOOL not_false = NOT FALSE;
+PRINT not_false;

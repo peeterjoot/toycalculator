@@ -22,23 +22,11 @@ simple/empty.silly - Samples/silly/empty.silly failing with LLVM internal locati
         at /home/peeter/toycalculator/src/driver/LoweringContext.cpp:294
     294                     mlir::FusedLoc fusedLoc = mlir::cast<mlir::FusedLoc>( funcOp->getLoc() );
 
-bool/not-on-comparison.silly
-
-    mismatch:
-    --- expected/not-on-comparison.out      2026-03-03 23:17:11.347448064 -0500
-    +++ out/not-on-comparison.out   2026-03-26 12:29:55.876880044 -0400
-    @@ -1,3 +1,3 @@
-     1
-     1
-    -0
-    +1
-
 driver/call1module-with-proto.silly
 driver/call2modules.silly
 driver/module-import-of-common-module.silly
 driver/module-not-found.silly
 driver/twosource-import.silly
-init/expr-call.silly
 ```
 
 #### Debug

@@ -1,0 +1,6 @@
+INT64 y = 3;
+BOOL lt;
+lt = (y < 10);
+PRINT lt;
+BOOL lt2 = (y < 10);
+PRINT lt2;
