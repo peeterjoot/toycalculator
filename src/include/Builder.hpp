@@ -142,7 +142,7 @@ namespace silly
                         LocationStack &ls );
 
         /// mlir builder helper for IMPORT
-        void createImport( mlir::Location loc, const std::string &modname );
+        void createImport( mlir::Location loc, mlir::Location nameLoc, const std::string &modname );
 
         /// mlir builder helper for FUNCTION (entry)
         void createFunction( LocPairs locs, const std::string &funcName, bool isDeclaration, mlir::Type returnType,

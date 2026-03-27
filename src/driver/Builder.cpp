@@ -772,7 +772,7 @@ namespace silly
         silly::AssignOp::create( builder, loc, var, optIndexValue, resultValue );
     }
 
-    void Builder::createImport( mlir::Location loc, const std::string &modname )
+    void Builder::createImport( mlir::Location loc, mlir::Location nameLoc, const std::string &modname )
     {
         LLVM_DEBUG( { llvm::errs() << llvm::formatv( "enterImportStatement: import: {0}\n", modname ); } );
 
@@ -781,7 +781,7 @@ namespace silly
         {
             // coverage: driver/module-not-found.silly
             emitUserError(
-                loc,
+                nameLoc,
                 std::format( "Failed to process IMPORT {}.  All module imports must be named with --imports", modname ),
                 currentFuncName );
             return;

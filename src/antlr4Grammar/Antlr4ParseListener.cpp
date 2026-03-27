@@ -273,9 +273,11 @@ namespace silly
         mlir::Location loc = getStartLocation( ctx );
         assert( ctx );
         assert( ctx->IDENTIFIER() );
-        std::string modname = ctx->IDENTIFIER()->getText();
+        tNode * mod = ctx->IDENTIFIER();
+        std::string modname = mod->getText();
+        mlir::Location nameLoc = getTerminalLocation( mod );
 
-        createImport( loc, modname );
+        createImport( loc, nameLoc, modname );
     }
 
     void Antlr4ParseListener::enterScopedStatements( SillyParser::ScopedStatementsContext *ctx )

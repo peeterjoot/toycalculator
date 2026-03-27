@@ -653,7 +653,7 @@ namespace silly
     {
         mlir::Location loc = getLocation( bLoc );
 
-        createImport( loc, modName );
+        createImport( loc, loc, modName );
     }
 
     void BisonParseListener::functionHelper( const std::string& name, const std::vector<silly::TypeAndName>& params,
