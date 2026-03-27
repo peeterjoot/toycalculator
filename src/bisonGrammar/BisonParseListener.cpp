@@ -65,12 +65,21 @@ namespace silly
         return startLoc;
     }
 
-    LocPairs BisonParseListener::getLocations( const silly::BisonParser::location_type& bLoc )
+    LocPairs BisonParseListener::getLocations( const silly::BisonParser::location_type& bLoc, bool unique )
     {
+        unsigned line1 = bLoc.begin.line;
+        unsigned col1 = bLoc.begin.column;
+        unsigned line2 = bLoc.end.line;
+        unsigned col2 = bLoc.end.column;
+        if ( unique and (line1 == line2) and (col1 == col2) )
+        {
+            line2++;
+        }
+
         mlir::FileLineColLoc startLoc =
-            mlir::FileLineColLoc::get( builder.getStringAttr( sourceFile ), bLoc.begin.line, bLoc.begin.column );
+            mlir::FileLineColLoc::get( builder.getStringAttr( sourceFile ), line1, col1 );
         mlir::FileLineColLoc endLoc =
-            mlir::FileLineColLoc::get( builder.getStringAttr( sourceFile ), bLoc.end.line, bLoc.end.column );
+            mlir::FileLineColLoc::get( builder.getStringAttr( sourceFile ), line2, col2 );
 
         return { startLoc, endLoc };
     }
@@ -91,7 +100,7 @@ namespace silly
     {
         if ( !isModule )
         {
-            LocPairs locs = getLocations( bLoc );
+            LocPairs locs = getLocations( bLoc, true );
 
             llvm::SmallVector<mlir::Location, 2> funcLocs{ locs.first, locs.second };
             mlir::Location fLoc = builder.getFusedLoc( funcLocs );
@@ -662,7 +671,7 @@ namespace silly
                                              const silly::Types& returnType,
                                              const silly::BisonParser::location_type& funcLoc, bool isDeclaration )
     {
-        LocPairs locs = getLocations( funcLoc );
+        LocPairs locs = getLocations( funcLoc, false );
 
         mlir::Type rt = declarationType( locs.first, returnType );
 
@@ -736,7 +745,7 @@ namespace silly
     void BisonParseListener::enterReturnStatement( const silly::BisonParser::location_type& bLoc,
                                                    const silly::Expr& expr )
     {
-        LocPairs locs = getLocations( bLoc );
+        LocPairs locs = getLocations( bLoc, false );
         LocationStack ls( builder, locs.first );
 
         mlir::Value value = parseReturnExpression( locs.first, expr, ls );

@@ -448,11 +448,15 @@ I was able to minimize the locations where I required -frtti for ANTLR4, but tha
 This inspired me to look at other grammar/parser combinations, and explore just closely I'd coupled this project with ANTLR4.
 It turns out that it was possible to logically separate out a lot of the MLIR/silly-dialect specific builder code,
 making the thinning out the ANTLR4 parser/builder, and making it a much lighter weight entity.
-This refactoring is desirable, even if I end up throwing out or abandoning the Bison front end.
+This refactoring was desirable, even if I end up throwing out or abandoning the Bison front end.
 
 #### Bison FE build
 
 To build with Bison instead of ANTLR4, configure with `cmake -DUSE_BISON_GRAMMAR=1`.
+
+#### Status
+
+The Bison front end passes all the non-debug/syntax-error tests in the testsuite.
 
 ### Testing
 

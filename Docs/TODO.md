@@ -8,21 +8,12 @@
 - [ ] Big review of all the location passing.
 - [ ] Review helper functions in both Parse walker implementations for consistency.
 - [ ] Now have stuff that is Bison FE specific in the silly namespace, which is confusing.  Introduce a silly::Bison namespace for that?
-- [ ] Fix location info for parseExpression (and index expressions, ...)
 - [ ] IF/ELIF/ELSE/FOR all have check-for-return logic in the ANTLR front end.  Trickier seeming in the bison front end, but may just require thinking about it differently.
 - [ ] This template parameterization in generateCall is a hack.  Should probably switch to std::shared_ptr<silly::Expr> uniformly
 - [ ] debugging -- didn't work with an earlier debug attempt (probably still broken unless I accidentally fixed it.)
 - [ ] multiple source files?
-- [ ] remaining failures (not counting syntax and debug):
+- [ ] remaining failures:
 ```
-  simple/empty.silly
-    - Samples/silly/empty.silly failing with LLVM internal location related cast error.
-
-    (gdb)
-#3  0x000000000048af90 in silly::LoweringContext::createPerFuncState (this=0xffffffffbb30, funcOp=...)
-        at /home/peeter/toycalculator/src/driver/LoweringContext.cpp:294
-    294                     mlir::FusedLoc fusedLoc = mlir::cast<mlir::FusedLoc>( funcOp->getLoc() );
-
 debug/induction-var-and-scope-decl.silly
 syntax-error/array-return-verbose.silly
 syntax-error/array-return.silly

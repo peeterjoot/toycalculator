@@ -123,7 +123,7 @@ namespace silly
        private:
         mlir::Location getLocation( const silly::BisonParser::location_type& bloc );
 
-        LocPairs getLocations( const silly::BisonParser::location_type& bloc );
+        LocPairs getLocations( const silly::BisonParser::location_type& bloc, bool unique );
 
         mlir::Type declarationType( mlir::Location loc, const Types type );
 
