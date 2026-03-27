@@ -23,36 +23,31 @@
         at /home/peeter/toycalculator/src/driver/LoweringContext.cpp:294
     294                     mlir::FusedLoc fusedLoc = mlir::cast<mlir::FusedLoc>( funcOp->getLoc() );
 
-  debug/induction-var-and-scope-decl.silly
-  driver/call1module-with-proto.silly
-  driver/call2modules.silly
-  driver/module-import-of-common-module.silly
-  driver/twosource-import.silly
-  syntax-error/array-return-verbose.silly
-  syntax-error/array-return.silly
-  syntax-error/call-wrong-params.silly
-  syntax-error/chained-comparison.silly
-  syntax-error/chained-equality.silly
-  syntax-error/expr-4c.silly
-  syntax-error/expr-4d.silly
-  syntax-error/expr-4e.silly
-  syntax-error/function-no-return.silly
-  syntax-error/get-string.silly
-  syntax-error/induction-in-step.silly
-  syntax-error/init-assign.silly
-  syntax-error/invalid-binary-op.silly
-  syntax-error/keyword-as-var.silly
-  syntax-error/keyword-as-var2.silly
-  syntax-error/multiple-in-func.silly
-  syntax-error/nested-if.silly
-  syntax-error/nested.silly
-  syntax-error/return-in-elif.silly
-  syntax-error/return-in-else.silly
-  syntax-error/return-in-for.silly
-  syntax-error/return-in-if.silly
-  syntax-error/string-return.silly
-  syntax-error/too-big-array.silly
-  syntax-error/user-main.silly
+debug/induction-var-and-scope-decl.silly
+syntax-error/array-return-verbose.silly
+syntax-error/array-return.silly
+syntax-error/chained-comparison.silly
+syntax-error/chained-equality.silly
+syntax-error/expr-4c.silly
+syntax-error/expr-4d.silly
+syntax-error/expr-4e.silly
+syntax-error/function-no-return.silly
+syntax-error/get-string.silly
+syntax-error/induction-in-step.silly
+syntax-error/init-assign.silly
+syntax-error/invalid-binary-op.silly
+syntax-error/keyword-as-var.silly
+syntax-error/keyword-as-var2.silly
+syntax-error/multiple-in-func.silly
+syntax-error/nested-if.silly
+syntax-error/nested.silly
+syntax-error/return-in-elif.silly
+syntax-error/return-in-else.silly
+syntax-error/return-in-for.silly
+syntax-error/return-in-if.silly
+syntax-error/string-return.silly
+syntax-error/too-big-array.silly
+syntax-error/user-main.silly
 ```
 
 
@@ -80,6 +75,18 @@
   sake can be made.
 
 #### Driver
+
+* import failure message: module-not-found.silly
+
+Grok review suggests a message change:
+```
+Current:
+    "Failed to process IMPORT foo. All module imports must be named with --imports"
+Consider:
+    "unknown module 'foo' — all imported modules must be specified with --imports=..."
+or
+    "module 'foo' not found — use --imports=foo to specify its location"
+```
 
 * CompilationUnit:
  - Reduce use of raw ModuleOp — prefer passing OwningOpRef& or keep it local

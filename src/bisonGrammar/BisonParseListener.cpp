@@ -77,6 +77,8 @@ namespace silly
 
     void BisonParseListener::enterStartRule( const silly::BisonParser::location_type& bLoc )
     {
+        currentFuncName = ENTRY_SYMBOL_NAME;
+
         if ( !isModule )
         {
             mlir::Location loc = getLocation( bLoc );

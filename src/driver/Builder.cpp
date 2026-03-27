@@ -49,11 +49,12 @@ namespace silly
         return *p;
     }
 
-    void Builder::createNewFunctionState( mlir::Location startLoc, mlir::func::FuncOp funcOp, const std::string &funcName,
-                               const std::vector<std::string> &paramNames )
+    void Builder::createNewFunctionState( mlir::Location startLoc, mlir::func::FuncOp funcOp,
+                                          const std::string &funcName, const std::vector<std::string> &paramNames )
     {
         LLVM_DEBUG( {
-            llvm::errs() << llvm::formatv( "createNewFunctionState: {0}: startLoc: {1}\n", funcName, formatLocation( startLoc ) );
+            llvm::errs() << llvm::formatv( "createNewFunctionState: {0}: startLoc: {1}\n", funcName,
+                                           formatLocation( startLoc ) );
         } );
         mlir::Block &block = *funcOp.addEntryBlock();
         builder.setInsertionPointToStart( &block );
@@ -202,7 +203,8 @@ namespace silly
         return mlir::arith::ConstantIntOp::create( builder, loc, val, 1 );
     }
 
-    mlir::Value Builder::createIntegerFromString( mlir::Location loc, int width, const std::string &s, LocationStack &ls )
+    mlir::Value Builder::createIntegerFromString( mlir::Location loc, int width, const std::string &s,
+                                                  LocationStack &ls )
     {
         int64_t val{};
 
@@ -222,7 +224,8 @@ namespace silly
         return mlir::arith::ConstantIntOp::create( builder, loc, val, width );
     }
 
-    mlir::Value Builder::createFloatFromString( mlir::Location loc, mlir::FloatType ty, const std::string &s, LocationStack &ls )
+    mlir::Value Builder::createFloatFromString( mlir::Location loc, mlir::FloatType ty, const std::string &s,
+                                                LocationStack &ls )
     {
         ls.push_back( loc );
 
@@ -256,7 +259,7 @@ namespace silly
     }
 
     silly::StringLiteralOp Builder::createStringLiteral( mlir::Location loc, const std::string &input,
-                                                        LocationStack &ls )
+                                                         LocationStack &ls )
     {
         silly::StringLiteralOp stringLiteral{};
 
@@ -278,9 +281,9 @@ namespace silly
         return stringLiteral;
     }
 
-    void Builder::createDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty,
-                                       mlir::Location aLoc, const std::string &arrayBounds, bool haveInitializers,
-                                       std::vector<mlir::Value> &initializers, LocationStack &ls )
+    void Builder::createDeclaration( mlir::Location loc, const std::string &varName, mlir::Type ty, mlir::Location aLoc,
+                                     const std::string &arrayBounds, bool haveInitializers,
+                                     std::vector<mlir::Value> &initializers, LocationStack &ls )
     {
         int64_t arraySize{};
         size_t numElements{ 1 };
@@ -401,7 +404,7 @@ namespace silly
     }
 
     mlir::Value Builder::createVariableLoad( mlir::Location loc, const std::string &varName, mlir::Value iValue,
-                                          mlir::Location iLoc, LocationStack &ls )
+                                             mlir::Location iLoc, LocationStack &ls )
     {
         mlir::Value value;
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
@@ -494,7 +497,7 @@ namespace silly
     }
 
     mlir::Value Builder::createCastIfNeeded( mlir::Location loc, mlir::Value value, mlir::Type desiredType,
-                                           LocationStack &ls )
+                                             LocationStack &ls )
     {
         mlir::Value newValue{};
 
@@ -568,7 +571,7 @@ namespace silly
     }
 
     void Builder::createAssignment( mlir::Location loc, mlir::Value resultValue, const std::string &currentVarName,
-                                     mlir::Value currentIndexExpr, LocationStack &ls )
+                                    mlir::Value currentIndexExpr, LocationStack &ls )
     {
         if ( !resultValue )
         {
@@ -686,7 +689,7 @@ namespace silly
     }
 
     mlir::Value Builder::createBinaryCompare( mlir::Location loc, silly::CmpBinOpKind what, mlir::Value lhs,
-                                          mlir::Value rhs, LocationStack &ls )
+                                              mlir::Value rhs, LocationStack &ls )
     {
         ls.push_back( loc );
 
@@ -812,15 +815,15 @@ namespace silly
         }
     }
 
-    void Builder::createFunction( LocPairs locs, const std::string &funcName, bool isDeclaration,
-                                       mlir::Type returnType, std::vector<mlir::Type> &paramTypes,
-                                       const std::vector<std::string> &paramNames )
+    void Builder::createFunction( LocPairs locs, const std::string &funcName, bool isDeclaration, mlir::Type returnType,
+                                  std::vector<mlir::Type> &paramTypes, const std::vector<std::string> &paramNames )
     {
         LLVM_DEBUG( {
             llvm::errs() << llvm::formatv( "enterFunctionStatement: startLoc: {0}, endLoc: {1}:\n",
                                            formatLocation( locs.first ), formatLocation( locs.second ) );
         } );
 
+        assert( !currentFuncName.empty() );
         if ( currentFuncName != ENTRY_SYMBOL_NAME )
         {
             // coverage: syntax-error/nested.silly
@@ -953,9 +956,8 @@ namespace silly
         return ret;
     }
 
-    void Builder::createFor( mlir::Location loc, const std::string &varName, mlir::Type elemType,
-                                      mlir::Location varLoc, mlir::Value start, mlir::Value end, mlir::Value step,
-                                      LocationStack &ls )
+    void Builder::createFor( mlir::Location loc, const std::string &varName, mlir::Type elemType, mlir::Location varLoc,
+                             mlir::Value start, mlir::Value end, mlir::Value step, LocationStack &ls )
     {
         bool declared = isDeclared( varName );
         if ( declared )
