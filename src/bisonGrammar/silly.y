@@ -57,11 +57,23 @@
             Float64
         };
 
-        struct TypeAndName
+        /// A string, location pair (identifier, array-size, ...)
+        struct StringAndLoc
         {
-            Types typ{};
             std::string name{};
             silly::location loc{};
+        };
+
+        struct TypeAndLoc
+        {
+            Types ty{};
+            silly::location loc{};
+        };
+
+        struct TypeAndName
+        {
+            TypeAndLoc  t{};
+            StringAndLoc id{};
         };
 
         struct Expr
@@ -128,19 +140,19 @@
                 };
             }
 
-            static Expr fromVariable( const std::string& s, const silly::location& loc )
+            static Expr fromVariable( const silly::StringAndLoc& id )
             {
                 return {
-                    Kind::Variable, loc,
-                    s        // sval
+                    Kind::Variable, id.loc,
+                    id.name        // sval
                 };
             }
 
-            static Expr fromArrayVariable( const std::string& s, const Expr& idx, const silly::location& loc )
+            static Expr fromArrayVariable( const silly::StringAndLoc& id, const Expr& idx )
             {
                 Expr e{
-                    Kind::ArrayVariable, loc,
-                    s        // sval
+                    Kind::ArrayVariable, id.loc,
+                    id.name        // sval
                 };
                 e.left = std::make_shared<Expr>( idx );
                 return e;
@@ -163,12 +175,12 @@
                 return e;
             }
 
-            static Expr makeCall( const std::string& name, const std::vector<Expr>& args, const silly::location& loc )
+            static Expr makeCall( const silly::StringAndLoc& id, const std::vector<Expr>& args )
             {
                 Expr e{
-                    Kind::Call, loc,
-                    name,    // sval
-                    false    // bval
+                    Kind::Call,
+                    id.loc,
+                    id.name     // sval
                 };
                 for ( const auto& a : args )
                     e.params.push_back( std::make_shared<Expr>( a ) );
@@ -265,22 +277,23 @@
 
 /* Typed non-terminals */
 %type <silly::Expr>                         literal
+%type <silly::StringAndLoc>                 identifier
 %type <std::string>                         integerLiteral
 %type <std::string>                         floatLiteral
 %type <std::string>                         stringLiteral
-%type <silly::Types>                        boolType
-%type <silly::Types>                        intType
-%type <silly::Types>                        floatType
-%type <silly::Types>                        stringType
-%type <std::string>                         arrayBoundsExpression
+%type <silly::TypeAndLoc>                   boolType
+%type <silly::TypeAndLoc>                   intType
+%type <silly::TypeAndLoc>                   floatType
+%type <silly::TypeAndLoc>                   stringType
+%type <silly::StringAndLoc>                 arrayBoundsExpression
 %type <std::vector<silly::Expr>>            oneInitializerAsList
 %type <std::vector<silly::Expr>>            initializerList
 %type <std::string>                         importStatement
-%type <silly::Types>                        scalarType
+%type <silly::TypeAndLoc>                   scalarType
 %type <std::vector<silly::Expr>>            printArgList
 %type <silly::Expr>                         assignmentLHS
 %type <silly::Expr>                         expression
-%type <silly::Types>                        optionalReturnType
+%type <silly::TypeAndLoc>                   optionalReturnType
 %type <std::vector<silly::TypeAndName>>     paramList
 %type <std::vector<silly::TypeAndName>>     optionalParamList
 %type <silly::TypeAndName>                  variableTypeAndName
@@ -337,9 +350,9 @@ optionalExitStatement
 
 exitStatement
     : EXIT_TOKEN expression
-        { driver.enterExitStatement( @2, $2 ); }
+        { driver.enterExitStatement( @1, $2 ); }
     | EXIT_TOKEN
-        { driver.enterExitStatement( @1 ); }
+        { driver.enterExitStatement( @1, silly::Expr::makeNone() ); }
     ;
 
 statementList
@@ -367,8 +380,8 @@ abortStatement
     ;
 
 callStatement
-    : CALL_TOKEN IDENTIFIER BRACE_START_TOKEN optionalCallArgList BRACE_END_TOKEN
-        { driver.enterCallStatement( $2, $4, @1 ); }
+    : CALL_TOKEN identifier BRACE_START_TOKEN optionalCallArgList BRACE_END_TOKEN
+        { driver.enterCallStatement( @1, $2, $4 ); }
     ;
 
 optionalCallArgList
@@ -386,29 +399,29 @@ callArgList
     ;
 
 getStatement
-    : GET_TOKEN IDENTIFIER
-        { driver.enterGetStatement( @2, $2 ); }
-    | GET_TOKEN IDENTIFIER ARRAY_START_TOKEN expression ARRAY_END_TOKEN
+    : GET_TOKEN identifier
+        { driver.enterGetStatement( @2, $2, silly::Expr::makeNone() ); }
+    | GET_TOKEN identifier ARRAY_START_TOKEN expression ARRAY_END_TOKEN
         { driver.enterGetStatement( @2, $2, $4 ); }
     ;
 
 forStatement
     : FOR_TOKEN
-      BRACE_START_TOKEN intType IDENTIFIER COLON_TOKEN
+      BRACE_START_TOKEN intType identifier COLON_TOKEN
           BRACE_START_TOKEN
               expression COMMA_TOKEN expression
           BRACE_END_TOKEN
       BRACE_END_TOKEN
-        { driver.enterForStatement( @1, $3, @4, $4, $7, $9, silly::Expr::makeNone( ) ); }
+        { driver.enterForStatement( @1, $3, $4, $7, $9, silly::Expr::makeNone( ) ); }
       otherScopedStatements
         { driver.exitForStatement( @1 ); }
     | FOR_TOKEN
-      BRACE_START_TOKEN intType IDENTIFIER COLON_TOKEN
+      BRACE_START_TOKEN intType identifier COLON_TOKEN
           BRACE_START_TOKEN
               expression COMMA_TOKEN expression COMMA_TOKEN expression
           BRACE_END_TOKEN
       BRACE_END_TOKEN
-        { driver.enterForStatement( @1, $3, @4, $4, $7, $9, $11 ); }
+        { driver.enterForStatement( @1, $3, $4, $7, $9, $11 ); }
       otherScopedStatements
         { driver.exitForStatement( @1 ); }
     ;
@@ -469,26 +482,26 @@ assignmentStatement
     ;
 
 assignmentLHS
-    : IDENTIFIER
-        { $$ = silly::Expr::fromVariable( $1, @1 ); }
-    | IDENTIFIER ARRAY_START_TOKEN expression ARRAY_END_TOKEN
-        { $$ = silly::Expr::fromArrayVariable( $1, $3, @$ ); }
+    : identifier
+        { $$ = silly::Expr::fromVariable( $1 ); }
+    | identifier ARRAY_START_TOKEN expression ARRAY_END_TOKEN
+        { $$ = silly::Expr::fromArrayVariable( $1, $3 ); }
     ;
 
 importStatement
-    : IMPORT_TOKEN IDENTIFIER
-        { driver.enterImportStatement( @2, $2 ); }
+    : IMPORT_TOKEN identifier
+        { driver.enterImportStatement( @1, $2 ); }
     ;
 
 functionStatement
-    : FUNCTION_TOKEN IDENTIFIER
+    : FUNCTION_TOKEN identifier
       BRACE_START_TOKEN optionalParamList BRACE_END_TOKEN
       optionalReturnType
-        { driver.enterFunctionPrototype( $2, $4, $6, @1 ); }
-    | FUNCTION_TOKEN IDENTIFIER
+        { driver.enterFunctionPrototype( @1, $2, $4, $6 ); }
+    | FUNCTION_TOKEN identifier
       BRACE_START_TOKEN optionalParamList BRACE_END_TOKEN
       optionalReturnType
-        { driver.enterFunctionDefinition( $2, $4, $6, @1 ); }
+        { driver.enterFunctionDefinition( @1, $2, $4, $6 ); }
       otherScopedStatements
         { driver.exitFunctionDefinition( ); }
     ;
@@ -508,34 +521,34 @@ paramList
     ;
 
 variableTypeAndName
-    : scalarType IDENTIFIER
-        { $$ = { $1, $2, @2 }; }
+    : scalarType identifier
+        { $$ = { $1, $2 }; }
     ;
 
 optionalReturnType
     : /* empty */
-        { $$ = silly::Types::None; }
+        { $$ = {silly::Types::None}; }
     | COLON_TOKEN scalarType
         { $$ = $2; }
     ;
 
 declareStatement
-    : scalarType IDENTIFIER arrayBoundsExpression
-        { driver.enterDeclareStatement( $1, $2, $3, @1, @2, @3 ); }
-    | scalarType IDENTIFIER arrayBoundsExpression EQUALS_TOKEN oneInitializerAsList
-        { driver.enterDeclareStatement( $1, $2, $3, $5, @1, @2, @3 ); }
-    | scalarType IDENTIFIER arrayBoundsExpression LEFT_CURLY_BRACKET_TOKEN initializerList RIGHT_CURLY_BRACKET_TOKEN
-        { driver.enterDeclareStatement( $1, $2, $3, $5, @1, @2, @3 ); }
-    | scalarType IDENTIFIER arrayBoundsExpression LEFT_CURLY_BRACKET_TOKEN RIGHT_CURLY_BRACKET_TOKEN
-        { driver.enterDeclareStatementWithEmptyInit( $1, $2, $3, @1, @2, @3 ); }
-    | stringType IDENTIFIER arrayBoundsExpression
-        { driver.enterDeclareStatement( $1, $2, $3, @1, @2, @3 ); }
-    | stringType IDENTIFIER arrayBoundsExpression EQUALS_TOKEN stringLiteral
-        { driver.enterStringDeclareStatement( $2, $3, $5, @1, @2, @3 ); }
-    | stringType IDENTIFIER arrayBoundsExpression LEFT_CURLY_BRACKET_TOKEN stringLiteral RIGHT_CURLY_BRACKET_TOKEN
-        { driver.enterStringDeclareStatement( $2, $3, $5, @1, @2, @3 ); }
-    | stringType IDENTIFIER arrayBoundsExpression LEFT_CURLY_BRACKET_TOKEN RIGHT_CURLY_BRACKET_TOKEN
-        { driver.enterDeclareStatementWithEmptyInit( $1, $2, $3, @1, @2, @3 ); }
+    : scalarType identifier arrayBoundsExpression
+        { driver.enterDeclareStatement( $1, $2, $3 ); }
+    | scalarType identifier arrayBoundsExpression EQUALS_TOKEN oneInitializerAsList
+        { driver.enterDeclareStatement( $1, $2, $3, $5 ); }
+    | scalarType identifier arrayBoundsExpression LEFT_CURLY_BRACKET_TOKEN initializerList RIGHT_CURLY_BRACKET_TOKEN
+        { driver.enterDeclareStatement( $1, $2, $3, $5 ); }
+    | scalarType identifier arrayBoundsExpression LEFT_CURLY_BRACKET_TOKEN RIGHT_CURLY_BRACKET_TOKEN
+        { driver.enterDeclareStatementEmptyInit( $1, $2, $3 ); }
+    | stringType identifier arrayBoundsExpression
+        { driver.enterDeclareStatement( $1, $2, $3 ); }
+    | stringType identifier arrayBoundsExpression EQUALS_TOKEN stringLiteral
+        { driver.enterStringDeclareStatement( $1, $2, $3, $5 ); }
+    | stringType identifier arrayBoundsExpression LEFT_CURLY_BRACKET_TOKEN stringLiteral RIGHT_CURLY_BRACKET_TOKEN
+        { driver.enterStringDeclareStatement( $1, $2, $3, $5 ); }
+    | stringType identifier arrayBoundsExpression LEFT_CURLY_BRACKET_TOKEN RIGHT_CURLY_BRACKET_TOKEN
+        { driver.enterDeclareStatementEmptyInit( $1, $2, $3 ); }
     ;
 
 scalarType
@@ -545,22 +558,22 @@ scalarType
     ;
 
 intType
-    : INT8_TOKEN    { $$ = silly::Types::Int8;  }
-    | INT16_TOKEN   { $$ = silly::Types::Int16; }
-    | INT32_TOKEN   { $$ = silly::Types::Int32; }
-    | INT64_TOKEN   { $$ = silly::Types::Int64; }
+    : INT8_TOKEN    { $$ = {silly::Types::Int8, @1};  }
+    | INT16_TOKEN   { $$ = {silly::Types::Int16, @1}; }
+    | INT32_TOKEN   { $$ = {silly::Types::Int32, @1}; }
+    | INT64_TOKEN   { $$ = {silly::Types::Int64, @1}; }
     ;
 
 stringType
-    : STRING_TOKEN  { $$ = silly::Types::Int8;  }
+    : STRING_TOKEN  { $$ = {silly::Types::Int8, @1};  }
 
 boolType
-    : BOOL_TOKEN    { $$ = silly::Types::Boolean;  }
+    : BOOL_TOKEN    { $$ = {silly::Types::Boolean, @1};  }
     ;
 
 floatType
-    : FLOAT32_TOKEN { $$ = silly::Types::Float32; }
-    | FLOAT64_TOKEN { $$ = silly::Types::Float64; }
+    : FLOAT32_TOKEN { $$ = {silly::Types::Float32, @1}; }
+    | FLOAT64_TOKEN { $$ = {silly::Types::Float64, @1}; }
     ;
 
 /* Returns -1 if no array bounds, otherwise the array size */
@@ -568,7 +581,7 @@ arrayBoundsExpression
     : /* empty */
         { $$ = {}; }
     | ARRAY_START_TOKEN INTEGER_PATTERN ARRAY_END_TOKEN
-        { $$ = $2; }
+        { $$ = {$2, @2}; }
     ;
 
 initializerList
@@ -639,12 +652,17 @@ expression
         { $$ = $2; }
     | literal
         { $$ = $1; }
-    | IDENTIFIER
-        { $$ = silly::Expr::fromVariable( $1, @1 ); }
-    | IDENTIFIER ARRAY_START_TOKEN expression ARRAY_END_TOKEN
-        { $$ = silly::Expr::fromArrayVariable( $1, $3, @$ ); }
-    | CALL_TOKEN IDENTIFIER BRACE_START_TOKEN optionalCallArgList BRACE_END_TOKEN
-        { $$ = silly::Expr::makeCall( $2, $4, @$ ); }
+    | identifier
+        { $$ = silly::Expr::fromVariable( $1 ); }
+    | identifier ARRAY_START_TOKEN expression ARRAY_END_TOKEN
+        { $$ = silly::Expr::fromArrayVariable( $1, $3 ); }
+    | CALL_TOKEN identifier BRACE_START_TOKEN optionalCallArgList BRACE_END_TOKEN
+        { $$ = silly::Expr::makeCall( $2, $4 ); }
+    ;
+
+identifier
+    : IDENTIFIER
+        { $$ = { $1, @1 }; }
     ;
 
 optionalContinue

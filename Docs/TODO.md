@@ -5,7 +5,7 @@
 
 #### Bison parser experiment.
 * TODO:
-- [ ] Big review of all the location passing.
+- [ ] location passing is better but still needs more work (pass rule start tokens consistently ; ranges need review.)
 - [ ] Review helper functions in both Parse walker implementations for consistency.
 - [ ] Now have stuff that is Bison FE specific in the silly namespace, which is confusing.  Introduce a silly::Bison namespace for that?
 - [ ] IF/ELIF/ELSE/FOR all have check-for-return logic in the ANTLR front end.  Trickier seeming in the bison front end, but may just require thinking about it differently.
@@ -15,8 +15,8 @@
 - [ ] remaining failures:
 ```
 debug/induction-var-and-scope-decl.silly
-syntax-error/array-return-verbose.silly
 syntax-error/array-return.silly
+syntax-error/array-return-verbose.silly
 syntax-error/chained-comparison.silly
 syntax-error/chained-equality.silly
 syntax-error/expr-4c.silly
@@ -27,8 +27,8 @@ syntax-error/get-string.silly
 syntax-error/induction-in-step.silly
 syntax-error/init-assign.silly
 syntax-error/invalid-binary-op.silly
-syntax-error/keyword-as-var.silly
 syntax-error/keyword-as-var2.silly
+syntax-error/keyword-as-var.silly
 syntax-error/multiple-in-func.silly
 syntax-error/nested-if.silly
 syntax-error/nested.silly
@@ -37,7 +37,6 @@ syntax-error/return-in-else.silly
 syntax-error/return-in-for.silly
 syntax-error/return-in-if.silly
 syntax-error/string-return.silly
-syntax-error/too-big-array.silly
 syntax-error/user-main.silly
 ```
 
