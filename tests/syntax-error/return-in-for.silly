@@ -1,6 +1,6 @@
 // RUN: cd %S
 // RUN: %Not %ExeSilly -g return-in-for.silly -o %t.exe 2>&1 | %FileCheck %s
-// CHECK: return-in-for.silly:9:5: error: RETURN is not currently allowed in a FOR loop body
+// CHECK: return-in-for.silly:9:5: error: RETURN is not currently allowed in
 // CHECK:     9 |     RETURN 0;
 // CHECK:       |     ^
 

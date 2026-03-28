@@ -406,6 +406,8 @@ namespace silly
             vstep = parseExpression( elemType, step, ls );
         }
 
+        ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
+        f.incrementScopeLevel();
         // checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
 
         createFor( loc, varId.name, elemType, varLoc, vstart, vstop, vstep, ls );
@@ -414,6 +416,9 @@ namespace silly
     void BisonParseListener::exitForStatement( const silly::BisonParser::location_type& bForLoc )
     {
         mlir::Location loc = getLocation( bForLoc );
+
+        ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
+        f.decrementScopeLevel();
 
         finishFor( loc );
     }
@@ -708,7 +713,7 @@ namespace silly
                 //
                 // coverage: syntax-error/return-expr-no-type.silly
                 emitUserError(
-                    loc, std::format( "return expression found, but no return type for function {}", currentFuncName ),
+                    getLocation( expr.loc ), std::format( "return expression found, but no return type for function {}", currentFuncName ),
                     currentFuncName );
                 return value;
             }
@@ -730,9 +735,17 @@ namespace silly
         LocPairs locs = getLocations( bLoc, false );
         LocationStack ls( builder, locs.first );
 
-        mlir::Value value = parseReturnExpression( locs.first, expr, ls );
+        ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
+        if ( f.getScopeLevel() )
+        {
+            emitUserError( locs.first, "RETURN is not currently allowed in this context", currentFuncName );
+        }
+        else
+        {
+            mlir::Value value = parseReturnExpression( locs.first, expr, ls );
 
-        createReturn( locs.second, value, ls );
+            createReturn( locs.second, value, ls );
+        }
     }
 
     void BisonParseListener::enterIfStatement( const silly::BisonParser::location_type& bLoc,
@@ -843,10 +856,15 @@ namespace silly
         mlir::Location loc = getLocation( bLoc );
 
         enterScopedRegion( loc, true );
+
+        ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
+        f.incrementScopeLevel();
     }
 
     void BisonParseListener::exitScopedStatements()
     {
+        ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
+        f.decrementScopeLevel();
         exitScopedRegion();
     }
 

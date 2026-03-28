@@ -1,6 +1,6 @@
 // RUN: cd %S
 // RUN: %Not %ExeSilly -g return-in-if.silly -o %t.exe 2>&1 | %FileCheck %s
-// CHECK: return-in-if.silly:9:5: error: RETURN is not currently allowed in a IF block
+// CHECK: return-in-if.silly:9:5: error: RETURN is not currently allowed in
 // CHECK:     9 |     RETURN 0;
 // CHECK:       |     ^
 

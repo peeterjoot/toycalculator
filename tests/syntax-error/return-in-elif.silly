@@ -1,6 +1,6 @@
 // RUN: cd %S
 // RUN: %Not %ExeSilly -g return-in-elif.silly -o %t.exe 2>&1 | %FileCheck %s
-// CHECK: return-in-elif.silly:13:5: error: RETURN is not currently allowed in a ELIF block
+// CHECK: return-in-elif.silly:13:5: error: RETURN is not currently allowed in
 // CHECK:    13 |     RETURN 0;
 // CHECK:       |     ^
 

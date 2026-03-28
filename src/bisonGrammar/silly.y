@@ -471,7 +471,7 @@ otherScopedStatements
 optionalReturnStatement
     : /* empty */
     | RETURN_TOKEN expression ENDOFSTATEMENT_TOKEN
-        { driver.enterReturnStatement( @2, $2 ); }
+        { driver.enterReturnStatement( @1, $2 ); }
     | RETURN_TOKEN ENDOFSTATEMENT_TOKEN
         { driver.enterReturnStatement( @1, silly::Expr::makeNone( ) ); }
     ;

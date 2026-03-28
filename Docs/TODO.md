@@ -5,7 +5,8 @@
 
 #### Bison parser experiment.
 * TODO:
-- [ ] IF/ELIF/ELSE/FOR all have check-for-return logic in the ANTLR front end.  Trickier seeming in the bison front end, but may just require thinking about it differently.
+- [ ] Hacked {increment/decrement/get}ScopeLevel functions into per-function state.  If scopedStatements wasn't handled inconsistently (IF vs. FOR) then
+      no extra state would be required.  Revisit that later after handling the FOR special case.
 - [ ] location passing is better but still needs more work (pass rule start tokens consistently ; ranges need review.)
 - [ ] Review helper functions in both Parse walker implementations for consistency.
 - [ ] Now have stuff that is Bison FE specific in the silly namespace, which is confusing.  Introduce a silly::Bison namespace for that?
@@ -20,13 +21,9 @@ debug/induction-var-and-scope-decl.silly
         // CHECK: DW_AT_decl_file{{.*}}induction-var-and-scope-decl.silly
         // CHECK: DW_AT_decl_line{{[[:space:]]+}}0x00000018
 
-syntax-error/return-in-elif.silly
-syntax-error/return-in-else.silly
-syntax-error/return-in-for.silly
-syntax-error/return-in-if.silly
 syntax-error/function-no-return.silly
 
-    -- missing the return-checking, so we are getting as far as lowering, but should fail earlier:
+    -- missing return-checking, so we are getting as far as lowering, but should fail earlier:
 
         + /usr/local/llvm-22.1.1/bin/FileCheck /home/peeter/toycalculator/tests/syntax-error/function-no-return.silly
         /home/peeter/toycalculator/tests/syntax-error/function-no-return.silly:3:11: error: CHECK: expected string not found in input

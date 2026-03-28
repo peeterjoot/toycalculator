@@ -7,6 +7,7 @@
 #pragma once
 
 #include <mlir/Dialect/Func/IR/FuncOps.h>
+#include <cassert>
 
 namespace silly
 {
@@ -99,15 +100,34 @@ namespace silly
             debugScopeStack.push_back( value );
         }
 
+        // These three are hacks for the Bison FE.  Revisit this after handling scopedStatements consistently
+        // (both front ends) wrt. FOR,IF,ELSE,ELIF,FUNCTION.
+        void incrementScopeLevel()
+        {
+            scopeLevel++;
+        }
+
+        void decrementScopeLevel()
+        {
+            assert( scopeLevel );
+
+            scopeLevel--;
+        }
+
+        int getScopeLevel()
+        {
+            return scopeLevel;
+        }
+
        private:
         /// The last silly::DeclareOp created for the current function.
         ///
         /// The next declaration in the function will be placed after this, and
         /// this point updated accordingly.
-        mlir::Operation *lastDeclareOp;
+        mlir::Operation *lastDeclareOp{};
 
         /// Associated func::FuncOp.
-        mlir::Operation *op;
+        mlir::Operation *op{};
 
         /// Induction variable name to Value mapping type
         using ValueList = std::vector<std::pair<std::string, mlir::Value>>;
@@ -129,6 +149,8 @@ namespace silly
 
         /// null/empty = function scope
         std::vector<mlir::Value> debugScopeStack;
+
+        int scopeLevel{};
     };
 }
 
