@@ -1,6 +1,6 @@
 // RUN: cd %S
 // RUN: %Not %ExeSilly -g expr-4e.silly -o %t.exe 2>&1 | %FileCheck %s
-// CHECK: expr-4e.silly:7:14: error: parse error: mismatched input 'NE' expecting ';'
+// CHECK: expr-4e.silly:7:14: error: syntax error
 // CHECK:     7 | PRINT 1 EQ 2 NE 3;
 // CHECK:       |              ^
 

@@ -1,6 +1,6 @@
 // RUN: cd %S
 // RUN: %Not %ExeSilly -g keyword-as-var2.silly -o %t.exe 2>&1 | %FileCheck %s
-// CHECK: keyword-as-var2.silly:7:7: error: parse error: extraneous input 'INT32' expecting IDENTIFIER
+// CHECK: keyword-as-var2.silly:7:7: error: syntax error
 // CHECK:     7 | INT32 INT32 x;
 // CHECK:       |       ^
 

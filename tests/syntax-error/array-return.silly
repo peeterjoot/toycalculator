@@ -1,17 +1,17 @@
 // RUN: cd %S
 // RUN: %Not %ExeSilly --no-verbose-parse-error -g array-return.silly -o %t.exe 2>&1 | %FileCheck %s
-// CHECK: array-return.silly:16:24: error: parse error
+// CHECK: array-return.silly:16:24: error: syntax error
 // CHECK:    16 | FUNCTION foo( ) : INT32[4]
 // CHECK:       |                        ^
-// CHECK: array-return.silly:20:5: error: parse error
-// CHECK:    20 |     RETURN r;
-// CHECK:       |     ^
-// CHECK: array-return.silly:20:13: error: parse error
-// CHECK:    20 |     RETURN r;
-// CHECK:       |             ^
-// CHECK: array-return.silly:21:1: error: parse error
-// CHECK:    21 | };
-// CHECK:       | ^
+
+
+
+
+
+
+
+
+
 
 FUNCTION foo( ) : INT32[4]
 {

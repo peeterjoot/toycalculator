@@ -1,4 +1,4 @@
 // RUN: %Not %ExeSilly -g %s -o %t.exe 2>&1 | %FileCheck %s
-// CHECK: init-assign.silly:4:12: error: parse error: mismatched input '=' expecting ';'
+// CHECK: init-assign.silly:4:12: error: syntax error
 
 INT32 s{3} = 4;

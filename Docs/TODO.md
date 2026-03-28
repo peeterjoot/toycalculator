@@ -42,18 +42,8 @@ syntax-error/nested-if.silly
        133 | PRINT x; // error
            |       ^
 
-syntax-error/array-return.silly
 syntax-error/array-return-verbose.silly
-syntax-error/chained-comparison.silly
-syntax-error/chained-equality.silly
-syntax-error/expr-4c.silly
-syntax-error/expr-4d.silly
-syntax-error/expr-4e.silly
-syntax-error/init-assign.silly
 syntax-error/invalid-binary-op.silly
-syntax-error/keyword-as-var2.silly
-syntax-error/keyword-as-var.silly
-syntax-error/string-return.silly
     --- parse errors.
 ```
 

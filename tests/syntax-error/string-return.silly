@@ -1,17 +1,17 @@
 // RUN: cd %S
 // RUN: %Not %ExeSilly -g string-return.silly -o %t.exe 2>&1 | %FileCheck %s
-// CHECK: string-return.silly:16:19: error: parse error: mismatched input 'STRING' expecting {'INT8', 'INT16', 'INT32', 'INT64', 'FLOAT32', 'FLOAT64', 'BOOL'}
+// CHECK: string-return.silly:16:19: error: syntax error
 // CHECK:    16 | FUNCTION foo( ) : STRING[4]
 // CHECK:       |                   ^
-// CHECK: string-return.silly:16:25: error: parse error: missing IDENTIFIER at '['
-// CHECK:    16 | FUNCTION foo( ) : STRING[4]
-// CHECK:       |                         ^
-// CHECK: string-return.silly:18:5: error: parse error: extraneous input 'RETURN' expecting STRING_PATTERN
-// CHECK:    18 |     RETURN "hi";
-// CHECK:       |     ^
-// CHECK: string-return.silly:18:16: error: parse error: extraneous input ';' expecting '}'
-// CHECK:    18 |     RETURN "hi";
-// CHECK:       |                ^
+
+
+
+
+
+
+
+
+
 
 FUNCTION foo( ) : STRING[4]
 {

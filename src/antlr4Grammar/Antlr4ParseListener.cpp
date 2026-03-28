@@ -194,7 +194,7 @@ namespace silly
             if ( driverState.noVerboseParseError )
             {
                 // coverage: syntax-error/array-return.silly
-                emitUserError( loc, std::format( "parse error" ), currentFuncName );
+                emitUserError( loc, "syntax error", currentFuncName );
             }
             else
             {
@@ -203,14 +203,14 @@ namespace silly
                 // specifically implemented --no-verbose-parse-error to avoid error messages that change with any
                 // grammar addition... but with the lit infra, it's easy enough to use wildcards and test this path
                 // too.
-                emitUserError( loc, std::format( "parse error: {}", msg ), currentFuncName );
+                emitUserError( loc, std::format( "syntax error: {}", msg ), currentFuncName );
             }
         }
         else
         {
             mlir::Location loc = builder.getUnknownLoc();
             emitInternalError( loc, __FILE__, __LINE__, __func__,
-                               std::format( "parse error in {}:{}:{}: {}", sourceFile, line, charPositionInLine, msg ),
+                               std::format( "syntax error in {}:{}:{}: {}", sourceFile, line, charPositionInLine, msg ),
                                currentFuncName );
         }
     }
@@ -1473,7 +1473,7 @@ namespace silly
         if ( !value )
         {
             emitInternalError( loc, __FILE__, __LINE__, __func__,
-                               std::format( "expression parse error: {}", ctx->getText() ), currentFuncName );
+                               std::format( "expression syntax error: {}", ctx->getText() ), currentFuncName );
             return value;
         }
 
