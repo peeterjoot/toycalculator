@@ -5,6 +5,10 @@
 
 #### Bison parser experiment.
 * TODO:
+- [ ] doxygen for BisonParseListener
+- [ ] Grok suggests this for the createGet string error message: syntax-error/get-string.silly:
+      "GET target must be a scalar variable (not a string or array)"
+      Have it do a review of all my message text and do a big batched update.
 - [ ] Hacked {increment/decrement/get}ScopeLevel functions into per-function state.  If scopedStatements wasn't handled inconsistently (IF vs. FOR) then
       no extra state would be required.  Revisit that later after handling the FOR special case.
 - [ ] location passing is better but still needs more work (pass rule start tokens consistently ; ranges need review.)
@@ -23,41 +27,12 @@ debug/induction-var-and-scope-decl.silly
 
 syntax-error/function-no-return.silly
 
-    -- missing return-checking, so we are getting as far as lowering, but should fail earlier:
+    function-no-return.silly: In function ‘blah’:
+    function-no-return.silly:11:18: error: Function must have a RETURN statement
+       11 | FUNCTION blah ( )
+          |                  ^
 
-        + /usr/local/llvm-22.1.1/bin/FileCheck /home/peeter/toycalculator/tests/syntax-error/function-no-return.silly
-        /home/peeter/toycalculator/tests/syntax-error/function-no-return.silly:3:11: error: CHECK: expected string not found in input
-        // CHECK: function-no-return.silly: In function ‘blah’:
-        <stdin>:1:1: note: scanning from here
-        loc("function-no-return.silly":13:5): error: block with no terminator, has "silly.print"(%1, %0) : (i32, !llvm.ptr) -> ()
-        ^
-        <stdin>:1:5: note: possible intended match here
-        loc("function-no-return.silly":13:5): error: block with no terminator, has "silly.print"(%1, %0) : (i32, !llvm.ptr) -> ()
-            ^
-
-syntax-error/user-main.silly
-syntax-error/nested.silly
-syntax-error/multiple-in-func.silly
-syntax-error/induction-in-step.silly
-
-    not handling error gracefully:
-
-    # cat out/induction-in-step.compile.out
-    induction-in-step.silly:10:23: error: Undeclared variable i
-       10 | FOR (INT32 i: (0, 10, i+1))
-          |                       ^
-    PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace and instructions to reproduce the bug.
-    Stack dump without symbol names (ensure you have llvm-symbolizer in your PATH or set the environment var `LLVM_SYMBOLIZER_PATH` to point to it):
-    0  libLLVMSupport.so.22.1 0x0000ffff7aa72990 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) + 52
-    1  libLLVMSupport.so.22.1 0x0000ffff7aa72da8
-    2  libLLVMSupport.so.22.1 0x0000ffff7aa706b0 llvm::sys::RunSignalHandlers() + 140
-    3  libLLVMSupport.so.22.1 0x0000ffff7aa722b0
-    4  linux-vdso.so.1        0x0000ffff8ae39930 __kernel_rt_sigreturn + 0
-    5  silly                  0x000000000043ba2c llvm::detail::PunnedPointer<mlir::Type>::asInt() const + 16
-    6  silly                  0x000000000043b998 llvm::detail::PunnedPointer<mlir::Type>::operator long() const + 24
-    7  silly                  0x000000000043b938 llvm::PointerIntPair<mlir::Type, 3u, mlir::detail::ValueImpl::Kind, llvm::PointerLikeTypeTraits<mlir::Type>, llvm::PointerIntPairInfo<mlir::Type, 3u, llvm::PointerLikeTypeTraits<mlir::Type>>>::getPointer() const + 24
-    8  silly                  0x0000000000437954 mlir::detail::ValueImpl::getType() const + 28
-    9  silly                  0x000000000043a240 mlir::Value::getType() const + 28
+    My attempt to get the location for the } position failed.  Why?
 
 syntax-error/nested-if.silly
 
@@ -66,7 +41,6 @@ syntax-error/nested-if.silly
      nested-if.silly:133:7: error: Undeclared variable x
        133 | PRINT x; // error
            |       ^
-
 
 syntax-error/array-return.silly
 syntax-error/array-return-verbose.silly

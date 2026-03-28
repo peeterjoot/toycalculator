@@ -211,6 +211,14 @@ namespace silly
         {
             mlir::Value left = parseIntermediate( ty, *parg.left, ls );
             mlir::Value right = parseIntermediate( ty, *parg.right, ls );
+            if (!left or !right)
+            {
+                emitInternalError( loc, __FILE__, __LINE__, __func__,
+                                   "parseIntermediate left/right failed.",
+                                   currentFuncName );
+                return v;
+            }
+
             mlir::Type bty = biggestTypeOf( left.getType(), right.getType() );
             switch ( parg.op )
             {
@@ -596,11 +604,9 @@ namespace silly
         declarationHelper( tLoc, var, arraySize, ty, false, initializers, ls );
     }
 
-    void BisonParseListener::enterAssignmentStatement( const silly::Expr& var, const silly::Expr& rhs,
-                                                       const silly::BisonParser::location_type& lhsLoc,
-                                                       const silly::BisonParser::location_type& rhsLoc )
+    void BisonParseListener::enterAssignmentStatement( const silly::Expr& var, const silly::Expr& rhs )
     {
-        mlir::Location loc = getLocation( lhsLoc );
+        mlir::Location loc = getLocation( var.loc );
         LocationStack ls( builder, loc );
 
         bool declared = isDeclared( var.sval );
@@ -623,7 +629,7 @@ namespace silly
             }
         }
 
-        mlir::Location aLoc = getLocation( rhsLoc );
+        mlir::Location aLoc = getLocation( rhs.loc );
         mlir::Value resultValue = parseExpression( {}, rhs, ls );
         if ( !resultValue )
         {
@@ -693,8 +699,16 @@ namespace silly
         functionHelper( funcLoc, id, params, returnType, false );
     }
 
-    void BisonParseListener::exitFunctionDefinition()
+    void BisonParseListener::exitFunctionDefinition( const silly::BisonParser::location_type& funcLoc )
     {
+        ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
+        if ( !f.getHaveReturn() )
+        {
+            LocPairs locs = getLocations( funcLoc, false );
+            emitUserError( locs.second, "Function must have a RETURN statement", currentFuncName );
+            return;
+        }
+
         finishFunction();
     }
 
@@ -747,6 +761,8 @@ namespace silly
 
             createReturn( locs.second, value, ls );
         }
+
+        f.setHaveReturn();
     }
 
     void BisonParseListener::enterIfStatement( const silly::BisonParser::location_type& bLoc,
@@ -819,9 +835,15 @@ namespace silly
     mlir::Value BisonParseListener::generateCall( const std::string& name, const ExprVector& args, mlir::Location loc,
                                                   bool isCallStatement )
     {
+        mlir::Value value{};
         LocationStack ls( builder, loc );
         ParserPerFunctionState& f = lookupFunctionState( name );
         mlir::func::FuncOp funcOp = f.getFuncOp();
+        if (!funcOp)
+        {
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "null FuncOp", currentFuncName );
+            return value;
+        }
         mlir::FunctionType funcType = funcOp.getFunctionType();
 
         std::vector<mlir::Value> parameters;
@@ -831,7 +853,7 @@ namespace silly
         for ( const auto& e : args )
         {
             mlir::Type ty = funcType.getInputs()[i];
-            mlir::Value value = parseExpression( ty, derefExpr( e ), ls );
+            value = parseExpression( ty, derefExpr( e ), ls );
             if ( !value )
             {
                 emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );

@@ -501,6 +501,17 @@ namespace silly
     {
         mlir::Value newValue{};
 
+        // tolerate emitError codepaths where things go bad, logging an internal error and continuing
+        if ( !value )
+        {
+            emitInternalError(
+                loc, __FILE__, __LINE__, __func__,
+                "NULL value in cast attempt.",
+                currentFuncName );
+
+            return value;
+        }
+
         if ( value.getType() != desiredType )
         {
             mlir::Type valType = value.getType();

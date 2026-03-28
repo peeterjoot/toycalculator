@@ -276,6 +276,7 @@
 %token <std::string> IDENTIFIER
 
 /* Typed non-terminals */
+%type <silly::location>                     otherScopedStatements
 %type <silly::Expr>                         literal
 %type <silly::StringAndLoc>                 identifier
 %type <std::string>                         integerLiteral
@@ -466,6 +467,7 @@ ifScopeStatements
 otherScopedStatements
     : LEFT_CURLY_BRACKET_TOKEN
       statementList optionalReturnStatement RIGHT_CURLY_BRACKET_TOKEN
+      { $$ = @4; }
     ;
 
 optionalReturnStatement
@@ -478,7 +480,7 @@ optionalReturnStatement
 
 assignmentStatement
     : assignmentLHS EQUALS_TOKEN expression
-        { driver.enterAssignmentStatement( $1, $3, @1, @3 ); }
+        { driver.enterAssignmentStatement( $1, $3 ); }
     ;
 
 assignmentLHS
@@ -503,7 +505,7 @@ functionStatement
       optionalReturnType
         { driver.enterFunctionDefinition( @1, $2, $4, $6 ); }
       otherScopedStatements
-        { driver.exitFunctionDefinition( ); }
+        { driver.exitFunctionDefinition( @7 ); }
     ;
 
 optionalParamList

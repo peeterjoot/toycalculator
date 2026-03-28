@@ -119,6 +119,16 @@ namespace silly
             return scopeLevel;
         }
 
+        void setHaveReturn()
+        {
+            haveReturn = true;
+        }
+
+        bool getHaveReturn()
+        {
+            return haveReturn;
+        }
+
        private:
         /// The last silly::DeclareOp created for the current function.
         ///
@@ -151,6 +161,9 @@ namespace silly
         std::vector<mlir::Value> debugScopeStack;
 
         int scopeLevel{};
+
+        /// Bison FE only.
+        bool haveReturn{};
     };
 }
 

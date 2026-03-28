@@ -48,9 +48,7 @@ namespace silly
         void enterStringDeclareStatement( const silly::TypeAndLoc& type, const silly::StringAndLoc& var, const silly::StringAndLoc& arraySize,
                                           const std::string& init );
 
-        void enterAssignmentStatement( const silly::Expr& var, const silly::Expr& rhs,
-                                       const silly::BisonParser::location_type& lhsLoc,
-                                       const silly::BisonParser::location_type& rhsLoc );
+        void enterAssignmentStatement( const silly::Expr& var, const silly::Expr& rhs );
 
         void enterExitStatement( const silly::BisonParser::location_type& loc, const silly::Expr& var );
 
@@ -67,7 +65,7 @@ namespace silly
         void enterFunctionDefinition( const silly::BisonParser::location_type& funcLoc, const silly::StringAndLoc& name,
                                       const std::vector<silly::TypeAndName>& params, const silly::TypeAndLoc& returnType );
 
-        void exitFunctionDefinition();
+        void exitFunctionDefinition( const silly::BisonParser::location_type& funcLoc );
 
         void enterReturnStatement( const silly::BisonParser::location_type& bLoc, const silly::Expr& expr );
 
