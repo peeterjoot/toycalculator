@@ -9,8 +9,13 @@
 - [ ] Grok suggests this for the createGet string error message: syntax-error/get-string.silly:
       "GET target must be a scalar variable (not a string or array)"
       Have it do a review of all my message text and do a big batched update.
-- [ ] Hacked {increment/decrement/get}ScopeLevel functions into per-function state.  If scopedStatements wasn't handled inconsistently (IF vs. FOR) then
-      no extra state would be required.  Revisit that later after handling the FOR special case.
+- [ ] Hacked {increment/decrement/get}ScopeLevel functions into per-function state.  If scopedStatements wasn't handled inconsistently (IF vs. FOR) then no extra state would be required.  Revisit that later after handling the FOR special case.
+
+FIXME: think I meant to use f.debugScopeStack, not f.variables -- am creating that, even in FOR where I'm not using it for the induction vars.
+```
+debugScopeStack = std::vector of length 1, capacity 1 = {{impl = 0x0}}, scopeLevel = 1,
+```
+
 - [ ] location passing is better but still needs more work (pass rule start tokens consistently ; ranges need review.)
 - [ ] Review helper functions in both Parse walker implementations for consistency.
 - [ ] Now have stuff that is Bison FE specific in the silly namespace, which is confusing.  Introduce a silly::Bison namespace for that?
@@ -24,6 +29,97 @@ debug/induction-var-and-scope-decl.silly
         // CHECK: DW_AT_name{{.*}}myScopeVar
         // CHECK: DW_AT_decl_file{{.*}}induction-var-and-scope-decl.silly
         // CHECK: DW_AT_decl_line{{[[:space:]]+}}0x00000018
+
+    --- a   2026-03-28 06:04:03.247316088 -0400
+    +++ b   2026-03-28 06:03:59.417725208 -0400
+    @@ -7,7 +7,7 @@ module {
+         scf.for %arg0 = %c1_i64 to %c5_i64 step %c1_i64_0  : i64 {
+           "silly.debug_name"(%arg0) <{name = "myLoopVar"}> : (i64) -> ()
+           %1 = "silly.declare"() : () -> !silly.var<i64>
+    -      "silly.debug_name"(%1) <{name = "myScopeVar"}> : (!silly.var<i64>) -> ()
+    +      "silly.debug_name"(%1, %0) <{name = "myScopeVar"}> : (!silly.var<i64>, i1) -> ()
+           %c0_i32_1 = arith.constant 0 : i32
+           "silly.print"(%c0_i32_1, %arg0) : (i32, i64) -> ()
+           %c3_i64 = arith.constant 3 : i64
+
+where:
+
+    %0 = "silly.scope"() : () -> i1
+    scf.for %arg0 = %c1_i64 to %c5_i64 step %c1_i64_0  : i64 {
+
+
+antlr4 fe:
+
+(gdb) p f
+$3 = (silly::ParserPerFunctionState &) @0x5ebe10: {lastDeclareOp = 0x0, op = 0x6bca90, inductionVariables = std::vector of length 1, capacity 1 = {{
+      first = "myLoopVar", second = {impl = 0x6bc2c0}}}, parameters = std::unordered_map with 0 elements,
+  variables = std::vector of length 1, capacity 1 = {std::unordered_map with 0 elements},
+  insertionPointStack = std::vector of length 1, capacity 1 = {0x5fc060}, debugScopeStack = std::vector of length 3, capacity 4 = {{impl = 0x0}, {
+      impl = 0x6bc2f0}, {impl = 0x0}}, scopeLevel = 0, haveReturn = false}
+
+  why does debugScopeStack have a third null dummy entry?
+
+  0:
+
+  (gdb) bt
+#0  silly::ParserPerFunctionState::pushScopeOp (this=0x5ebe10, value=...) at /home/peeter/toycalculator/src/include/ParserPerFunctionState.hpp:100
+#1  0x000000000043789c in silly::Builder::createNewFunctionState (this=0xffffffffdc50, startLoc=..., funcOp=..., funcName="main",
+    paramNames=std::vector of length 0, capacity 0) at /home/peeter/toycalculator/src/driver/Builder.cpp:81
+#2  0x0000000000437a24 in silly::Builder::createMain (this=0xffffffffdc50, fLoc=..., sLoc=...)
+    at /home/peeter/toycalculator/src/driver/Builder.cpp:90
+
+  1:
+  (gdb) c
+Continuing.
+For: FOR(INT64myLoopVar:(1,5)){INT64myScopeVar;PRINTmyLoopVar;myScopeVar=3+myLoopVar;PRINTmyScopeVar;}
+
+Breakpoint 8, silly::ParserPerFunctionState::pushScopeOp (this=0x5ebe10, value=...)
+    at /home/peeter/toycalculator/src/include/ParserPerFunctionState.hpp:100
+100                 debugScopeStack.push_back( value );
+(gdb) p value
+$2 = {impl = 0x6bc2f0}
+(gdb) n
+101             }
+(gdb) n
+silly::Builder::createFor (this=0xffffffffdc50, loc=..., varName="myLoopVar", elemType=..., varLoc=..., start=..., end=..., step=..., ls=...)
+    at /home/peeter/toycalculator/src/driver/Builder.cpp:1010
+1010            mlir::scf::ForOp forOp = mlir::scf::ForOp::create( builder, loc, start, end, step );
+(gdb) p f
+$3 = (silly::ParserPerFunctionState &) @0x5ebe10: {lastDeclareOp = 0x0, op = 0x6bca90, inductionVariables = std::vector of length 0, capacity 0,
+  parameters = std::unordered_map with 0 elements, variables = std::vector of length 0, capacity 0,
+  insertionPointStack = std::vector of length 0, capacity 0, debugScopeStack = std::vector of length 2, capacity 2 = {{impl = 0x0}, {
+      impl = 0x6bc2f0}}, scopeLevel = 0, haveReturn = false}
+
+    3:
+
+    Breakpoint 8, silly::ParserPerFunctionState::pushScopeOp (this=0x5ebe10, value=...)
+    at /home/peeter/toycalculator/src/include/ParserPerFunctionState.hpp:100
+100                 debugScopeStack.push_back( value );
+(gdb) bt
+#0  silly::ParserPerFunctionState::pushScopeOp (this=0x5ebe10, value=...) at /home/peeter/toycalculator/src/include/ParserPerFunctionState.hpp:100
+#1  0x00000000004c79e0 in silly::ParserPerFunctionState::startScope (this=0x5ebe10, value=...)
+    at /home/peeter/toycalculator/src/driver/ParserPerFunctionState.cpp:80
+#2  0x000000000043c5b0 in silly::Builder::enterScopedRegion (this=0xffffffffdc50, loc=..., wantScope=false)
+    at /home/peeter/toycalculator/src/driver/Builder.cpp:1103
+#3  0x00000000004d2c24 in silly::Antlr4ParseListener::enterScopedStatements (this=0xffffffffdc48, ctx=0x6adcb0)
+    at /home/peeter/toycalculator/src/antlr4Grammar/Antlr4ParseListener.cpp:290
+
+
+    -- Looks like I got confused.  Doing this in both enterScopedStatements and enterForStatement:
+
+    (gdb) up
+#2  0x000000000043c5b0 in silly::Builder::enterScopedRegion (this=0xffffffffdc50, loc=..., wantScope=false)
+    at /home/peeter/toycalculator/src/driver/Builder.cpp:1103
+1103            f.startScope( value );
+(gdb) up
+#3  0x00000000004d2c24 in silly::Antlr4ParseListener::enterScopedStatements (this=0xffffffffdc48, ctx=0x6adcb0)
+    at /home/peeter/toycalculator/src/antlr4Grammar/Antlr4ParseListener.cpp:290
+290             enterScopedRegion( loc, !isFunctionBody and !isForBody );
+(gdb) p isFunctionBody
+$4 = false
+(gdb) p isForBody
+$5 = true
+
 
 syntax-error/nested-if.silly
 

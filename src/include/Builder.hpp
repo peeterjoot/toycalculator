@@ -177,10 +177,10 @@ namespace silly
         /// mlir builder helper for IF/ELIF/ELSE (exit part)
         void finishIfElifElse();
 
-        /// mlir builder helper for enter an IF/ELIF/ELSE scope.
-        void enterScopedRegion( mlir::Location loc, bool wantScope );
+        /// mlir builder helper for enter an IF/ELIF/ELSE/FOR scope.
+        void enterScopedRegion( mlir::Location loc );
 
-        /// mlir builder helper for exit an IF/ELIF/ELSE scope.
+        /// mlir builder helper for exit an IF/ELIF/ELSE/FOR scope.
         void exitScopedRegion();
 
         void createStringDeclare( mlir::Location loc, const std::string &varName, mlir::Location aloc,

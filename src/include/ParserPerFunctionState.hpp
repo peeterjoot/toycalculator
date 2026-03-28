@@ -116,7 +116,13 @@ namespace silly
 
         int getScopeLevel()
         {
+#if 0 // debug why this doesn't work:
+            size_t s = debugScopeStack.size();
+            assert( s >= 1 );
+            return s - 1;
+#else
             return scopeLevel;
+#endif
         }
 
         void setHaveReturn()

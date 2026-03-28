@@ -1003,9 +1003,6 @@ namespace silly
             step = createCastIfNeeded( loc, step, elemType, ls );
         }
 
-        mlir::Value scopeToken = silly::DebugScopeOp::create( builder, varLoc, typ.i1 ).getResult();
-        f.pushScopeOp( scopeToken );
-
         // mlir::Location fusedLoc = ls.fuseLocations( );
         mlir::scf::ForOp forOp = mlir::scf::ForOp::create( builder, loc, start, end, step );
         f.pushToInsertionPointStack( forOp.getOperation() );
@@ -1017,13 +1014,7 @@ namespace silly
 
         f.pushInductionVariable( varName, inductionVar );
 
-        // HACK: DISABLE SCOPEOP just for FOR induction-variables for now (induction var DI is MIA after
-        // LLVM-IR lowering -- perhaps a dominance issue.)
-#if 0
-        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, scopeToken );
-#else
         silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, mlir::Value{} );
-#endif
     }
 
     void Builder::finishFor( mlir::Location loc )
@@ -1087,19 +1078,12 @@ namespace silly
         builder.setInsertionPointToStart( &thenBlock );
     }
 
-    void Builder::enterScopedRegion( mlir::Location loc, bool wantScope )
+    void Builder::enterScopedRegion( mlir::Location loc )
     {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
 
-        mlir::Value value{};
+        mlir::Value value = silly::DebugScopeOp::create( builder, loc, typ.i1 ).getResult();
 
-        // not doing this right now for FOR -- to be revisited.
-        if ( wantScope )
-        {
-            value = silly::DebugScopeOp::create( builder, loc, typ.i1 ).getResult();
-        }
-
-        // keep stack balanced, signals function scope when !isFunctionBody
         f.startScope( value );
     }
 
