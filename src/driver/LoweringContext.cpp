@@ -299,6 +299,11 @@ namespace silly
                 funcOp->setLoc( builder.getFusedLoc( locs, sub ) );
 
                 lookupFunctionState[funcName].subProgramDI = sub;
+
+                for ( auto& block : funcOp.getBody() )
+                {
+                    processScopedOps( block.begin(), block.end(), sub );
+                }
             }
 
             // Compute max print args for this function
@@ -333,9 +338,12 @@ namespace silly
 
             builder.setInsertionPointToStart( entryBlock );
 
-            lookupFunctionState[funcName].printArgs = mlir::LLVM::AllocaOp::create(
+            mlir::LLVM::AllocaOp allocOp = mlir::LLVM::AllocaOp::create(
                 builder, loc, typ.ptr, printArgStructTy,
                 mlir::LLVM::ConstantOp::create( builder, loc, typ.i64, builder.getI64IntegerAttr( maxPrintArgs ) ) );
+
+            lookupFunctionState[funcName].printArgs = allocOp;
+            lookupFunctionState[funcName].lastAlloca = allocOp.getOperation();
         }
 
         return false;
@@ -357,23 +365,6 @@ namespace silly
     void LoweringContext::setAlloca( const std::string& funcName, mlir::Operation* dclOp, mlir::Operation* aOp )
     {
         lookupFunctionState[funcName].declareToAlloca[dclOp] = aOp;
-    }
-
-    mlir::LogicalResult LoweringContext::constructLexicalBlockDI( mlir::FileLineColLoc fileLoc,
-                                                                  mlir::ConversionPatternRewriter& rewriter,
-                                                                  mlir::Operation* op )
-    {
-        mlir::MLIRContext* context = builder.getContext();
-        std::string funcName = lookupFuncNameForOp( op );
-        auto& f = lookupFunctionState[funcName];
-        mlir::LLVM::DISubprogramAttr sub = f.subProgramDI;
-
-        mlir::LLVM::DILexicalBlockAttr lexicalBlock =
-            mlir::LLVM::DILexicalBlockAttr::get( context, sub, fileAttr, fileLoc.getLine(), fileLoc.getColumn() );
-
-        f.scopeOpToAttr[op] = lexicalBlock;
-
-        return mlir::success();
     }
 
     mlir::LogicalResult LoweringContext::constructVariableDI( mlir::ConversionPatternRewriter& rewriter,
@@ -434,7 +425,7 @@ namespace silly
         const char* typeName{};
         unsigned dwType = llvm::dwarf::DW_ATE_signed;
         unsigned elemStorageSizeInBits = elemSizeInBits;    // Storage size (e.g., i1 uses i8)
-        mlir::Operation * op = debugNameOp.getOperation();
+        mlir::Operation* op = debugNameOp.getOperation();
 
         if ( mlir::isa<mlir::IntegerType>( elemType ) )
         {
@@ -504,17 +495,13 @@ namespace silly
 
         mlir::MLIRContext* context = builder.getContext();
 
-        mlir::LLVM::DIScopeAttr subOrLexicalBlock{};
+        mlir::LLVM::DIScopeAttr subOrLexicalBlock = f.subProgramDI;
 
-        if ( mlir::Value scope = debugNameOp.getScope() )
-        {
-            silly::DebugScopeOp scopeOp = scope.getDefiningOp<silly::DebugScopeOp>();
+        auto lbIT = scopeMap.find( debugNameOp.getOperation() );
 
-            subOrLexicalBlock = f.scopeOpToAttr[scopeOp.getOperation()];
-        }
-        else
+        if ( lbIT != scopeMap.end() )
         {
-            subOrLexicalBlock = f.subProgramDI;
+            subOrLexicalBlock = lbIT->second;
         }
 
         if ( mlir::LLVM::AllocaOp allocaOp = opValue.getDefiningOp<mlir::LLVM::AllocaOp>() )
@@ -562,7 +549,7 @@ namespace silly
                 /*argNo=*/0, totalSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
 
             builder.setInsertionPointAfter( allocaOp );
-            mlir::LLVM::DbgDeclareOp::create( builder, fileLoc, allocaOp, diVar );
+            mlir::LLVM::DbgDeclareOp::create( builder, loc, allocaOp, diVar );
         }
         else
         {
@@ -578,7 +565,7 @@ namespace silly
             // Empty expression for direct value binding
             mlir::LLVM::DIExpressionAttr emptyExpr = mlir::LLVM::DIExpressionAttr::get( context, {} );
 
-            mlir::LLVM::DbgValueOp::create( rewriter, fileLoc, opValue, diVar, emptyExpr );
+            mlir::LLVM::DbgValueOp::create( rewriter, loc, opValue, diVar, emptyExpr );
         }
 
         return mlir::success();
@@ -592,7 +579,7 @@ namespace silly
         {
             globalOp = it->second;
             LLVM_DEBUG( llvm::dbgs() << llvm::formatv( "Found global: {0} for string literal '{1}'\n",
-                                                     globalOp.getSymName().str(), stringLit.str() ) );
+                                                       globalOp.getSymName().str(), stringLit.str() ) );
         }
 
         return globalOp;
@@ -1108,9 +1095,11 @@ namespace silly
     void LoweringContext::insertFill( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
                                       mlir::LLVM::AllocaOp allocaOp, mlir::Value bytesVal )
     {
+#if 0
         loc = rewriter.getUnknownLoc();    // HACK: suppress location info for these implicit memset's, so that the line
                                            // numbers in gdb don't bounce around.  The re-ordering that I now do in the
                                            // DeclareOp builder is messing things up.
+#endif
 
         mlir::Value i8Ptr = mlir::LLVM::BitcastOp::create( rewriter, loc, typ.ptr, allocaOp );
 
@@ -1123,6 +1112,142 @@ namespace silly
     void LoweringContext::markMathLibRequired()
     {
         driverState.needsMathLib = true;
+    }
+
+    mlir::Block::iterator LoweringContext::processScopeBegin( mlir::Block::iterator it, mlir::Block::iterator blockEnd,
+                                                              mlir::LLVM::DIScopeAttr parentScope )
+    {
+        mlir::MLIRContext* context = builder.getContext();
+
+        auto scopeBegin = mlir::cast<silly::ScopeBeginOp>( *it );
+        uint32_t targetId = scopeBegin.getId();
+
+        // Build the DILexicalBlockAttr for this scope, parented to the current scope
+        auto loc = mlir::cast<mlir::FileLineColLoc>( scopeBegin.getLoc() );
+        auto thisScope =
+            mlir::LLVM::DILexicalBlockAttr::get( context, parentScope, fileAttr, loc.getLine(), loc.getColumn() );
+
+        ++it;    // move past the ScopeBeginOp itself
+
+        while ( it != blockEnd )
+        {
+            mlir::Operation& op = *it;
+
+            if ( auto endOp = mlir::dyn_cast<silly::ScopeEndOp>( op ) )
+            {
+                if ( endOp.getId() == targetId )
+                {
+                    // Record the closing brace location for any region-bearing op
+                    // that was stamped with thisScope — its entry block's terminator
+                    // should carry this closing location
+                    mlir::Location closingLoc = mlir::FusedLoc::get( context, { endOp.getLoc() }, thisScope );
+                    blockClosingLoc[scopeBegin->getBlock()] = closingLoc;
+
+                    ++it;    // move past the ScopeEndOp without erasing it
+                    return it;
+                }
+            }
+
+            if ( mlir::dyn_cast<silly::ScopeBeginOp>( op ) )
+            {
+                it = processScopeBegin( it, blockEnd, thisScope );
+                continue;
+            }
+
+            // Record the scope for DebugNameOps
+            if ( auto debugName = mlir::dyn_cast<silly::DebugNameOp>( op ) )
+            {
+                scopeMap[debugName.getOperation()] = thisScope;
+            }
+
+            // Restamp this op's location with thisScope
+            mlir::Location origLoc = op.getLoc();
+            op.setLoc( mlir::FusedLoc::get( context, { origLoc }, thisScope ) );
+
+            // If the op has regions (e.g. scf.for, scf.if), recurse into them
+            for ( auto& region : op.getRegions() )
+            {
+                for ( auto& block : region )
+                {
+                    // Record this region's entry block as needing the closing loc
+                    blockClosingLoc[&block] = mlir::FusedLoc::get( context, { op.getLoc() }, thisScope );
+                    processScopedOps( block.begin(), block.end(), thisScope );
+                }
+            }
+
+            ++it;
+        }
+
+        llvm_unreachable( "ScopeBeginOp with no matching ScopeEndOp" );
+    }
+
+    void LoweringContext::processScopedOps( mlir::Block::iterator begin, mlir::Block::iterator end,
+                                            mlir::LLVM::DIScopeAttr parentScope )
+    {
+        auto it = begin;
+        while ( it != end )
+        {
+            mlir::Operation& op = *it;
+
+            if ( mlir::dyn_cast<silly::ScopeBeginOp>( op ) )
+            {
+                it = processScopeBegin( it, end, parentScope );
+                continue;
+            }
+
+            // Ops outside any scope marker are left alone
+            ++it;
+        }
+    }
+
+    mlir::LLVM::AllocaOp LoweringContext::createAlloca( mlir::ConversionPatternRewriter& rewriter, mlir::Operation* op,
+                                                        mlir::Type elemType, int64_t arraySize, unsigned alignment )
+    {
+        mlir::func::FuncOp funcOp = getEnclosingFuncOp( op );
+        std::string funcName = funcOp.getSymName().str();
+
+        auto& f = lookupFunctionState[funcName];
+        if ( f.lastAlloca )
+        {
+            rewriter.setInsertionPointAfter( f.lastAlloca );
+        }
+        else
+        {
+            mlir::Block& entryBlock = funcOp.getBody().front();
+            rewriter.setInsertionPointToStart( &entryBlock );
+        }
+
+        mlir::Location loc = rewriter.getUnknownLoc();
+        mlir::Value sizeVal;
+        if ( arraySize )
+        {
+            sizeVal = mlir::LLVM::ConstantOp::create( rewriter, loc, typ.i64, rewriter.getI64IntegerAttr( arraySize ) );
+        }
+        else
+        {
+            sizeVal = getI64one( loc, rewriter );
+        }
+
+        mlir::LLVM::AllocaOp allocaOp =
+            mlir::LLVM::AllocaOp::create( rewriter, loc, typ.ptr, elemType, sizeVal, alignment );
+
+        f.lastAlloca = allocaOp.getOperation();
+
+        return allocaOp;
+    }
+
+    void LoweringContext::fixBranchDebugLocs( mlir::func::FuncOp funcOp )
+    {
+        funcOp.walk(
+            [&]( mlir::Block* block )
+            {
+                auto it = blockClosingLoc.find( block );
+                if ( it == blockClosingLoc.end() )
+                    return;
+                mlir::Operation* terminator = block->getTerminator();
+                if ( terminator )
+                    terminator->setLoc( *it->second );
+            } );
     }
 }    // namespace silly
 

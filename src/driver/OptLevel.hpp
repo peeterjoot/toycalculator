@@ -14,5 +14,4 @@ namespace silly
         O2,
         O3
     };
-}
-
+}    // namespace silly

@@ -10,9 +10,9 @@
 /// - runs the assembly printer.
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/FileSystem.h>
+#include <llvm/Support/FormatVariadic.h>
 #include <llvm/Support/InitLLVM.h>
 #include <llvm/Support/Path.h>
-#include <llvm/Support/FormatVariadic.h>
 #include <llvm/Support/TargetSelect.h>    // InitializeAllTargetInfos
 
 #include "CompilationUnit.hpp"
@@ -34,8 +34,8 @@ static llvm::cl::OptionCategory SillyCategory( "Silly Compiler Options" );
 //
 
 static llvm::cl::list<std::string> inputFilenames( llvm::cl::Positional, llvm::cl::desc( "<input file(s)>" ),
-                                                   llvm::cl::value_desc( "filename" ),
-                                                   llvm::cl::cat( SillyCategory ), llvm::cl::NotHidden );
+                                                   llvm::cl::value_desc( "filename" ), llvm::cl::cat( SillyCategory ),
+                                                   llvm::cl::NotHidden );
 
 static llvm::cl::opt<bool> compileOnly( "c", llvm::cl::desc( "Compile only and don't link." ), llvm::cl::init( false ),
                                         llvm::cl::cat( SillyCategory ) );
@@ -43,8 +43,10 @@ static llvm::cl::opt<bool> compileOnly( "c", llvm::cl::desc( "Compile only and d
 static llvm::cl::opt<bool> keepTemps( "keep-temp", llvm::cl::desc( "Do not automatically delete temporary files." ),
                                       llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
-static llvm::cl::opt<bool> versionFlag( "silly-version", llvm::cl::desc( "Show the silly compiler/language version and the LLVM path used to build it, then exit" ),
-                                        llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
+static llvm::cl::opt<bool> versionFlag(
+    "silly-version",
+    llvm::cl::desc( "Show the silly compiler/language version and the LLVM path used to build it, then exit" ),
+    llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<std::string> outDir(
     "output-directory", llvm::cl::desc( "Output directory for generated files (e.g., .mlir, .ll, .o)" ),
@@ -66,8 +68,8 @@ static llvm::cl::opt<bool> emitMLIR(
 static llvm::cl::opt<bool> emitMLIRBC( "emit-mlirbc", llvm::cl::desc( "Emit MLIR BC for the silly dialect" ),
                                        llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
-static llvm::cl::opt<bool> emitLLVM( "emit-llvm", llvm::cl::desc( "Emit LLVM-IR in text format" ), llvm::cl::init( false ),
-                                     llvm::cl::cat( SillyCategory ) );
+static llvm::cl::opt<bool> emitLLVM( "emit-llvm", llvm::cl::desc( "Emit LLVM-IR in text format" ),
+                                     llvm::cl::init( false ), llvm::cl::cat( SillyCategory ) );
 
 static llvm::cl::opt<bool> emitLLVMBC( "emit-llvmbc", llvm::cl::desc( "Emit LLVM-IR BC" ), llvm::cl::init( false ),
                                        llvm::cl::cat( SillyCategory ) );
@@ -141,7 +143,7 @@ static void llvmInitialization( int argc, char** argv )
 ///
 int main( int argc, char** argv )
 {
-    static_assert( (int)silly::ReturnCodes::LAST_ERROR_VALUE < 256 ); // Unix rc semantics.
+    static_assert( (int)silly::ReturnCodes::LAST_ERROR_VALUE < 256 );    // Unix rc semantics.
     llvmInitialization( argc, argv );
 
     // once this goes out of scope, the module is toast and can't be referenced further.
@@ -184,7 +186,8 @@ int main( int argc, char** argv )
     if ( versionFlag )
     {
         // coverage: driver/version-flag.silly
-        llvm::outs() << llvm::formatv( COMPILER_NAME ": info: silly compiler version {0}, LLVM: {1}\n", COMPILER_VERSION, LLVMVERSION);
+        llvm::outs() << llvm::formatv( COMPILER_NAME ": info: silly compiler version {0}, LLVM: {1}\n",
+                                       COMPILER_VERSION, LLVMVERSION );
         return (int)silly::ReturnCodes::success;
     }
 
@@ -198,21 +201,25 @@ int main( int argc, char** argv )
     if ( ds.emitLLVM and ds.emitLLVMBC )
     {
         // coverage: driver/emit-llvm-conflict.silly
-        llvm::errs() << COMPILER_NAME ": error: --emit-llvm and --emit-llvmbc are mutually exclusive (choose one for LLVM IR output)\n";
+        llvm::errs() << COMPILER_NAME
+            ": error: --emit-llvm and --emit-llvmbc are mutually exclusive (choose one for LLVM IR output)\n";
         return (int)silly::ReturnCodes::badOption;
     }
 
     if ( ds.emitMLIR and ds.emitMLIRBC )
     {
         // coverage: driver/emit-mlir-conflict.silly
-        llvm::errs() << COMPILER_NAME ": error: --emit-mlir and --emit-mlirbc are mutually exclusive (choose one for silly diaglect MLIR output)\n";
+        llvm::errs() << COMPILER_NAME
+            ": error: --emit-mlir and --emit-mlirbc are mutually exclusive (choose one for silly diaglect MLIR "
+            "output)\n";
         return (int)silly::ReturnCodes::badOption;
     }
 
-    if ( ds.compileOnly and !ds.oName.empty() and (inputFilenames.size() > 1) )
+    if ( ds.compileOnly and !ds.oName.empty() and ( inputFilenames.size() > 1 ) )
     {
         // coverage: driver/multi-source-c-o-fail.silly
-        llvm::errs() << COMPILER_NAME ": error: -c and -o cannot be used together with multiple input files (ambiguous output name)\n";
+        llvm::errs() << COMPILER_NAME
+            ": error: -c and -o cannot be used together with multiple input files (ambiguous output name)\n";
         return (int)silly::ReturnCodes::badOption;
     }
 
@@ -228,7 +235,7 @@ int main( int argc, char** argv )
 
     for ( const auto& importModuleName : imports )
     {
-        silly::SourceManager::FileNameAndCU * cup{};
+        silly::SourceManager::FileNameAndCU* cup{};
         rc = sm.createCU( importModuleName, cup );
         if ( rc != silly::ReturnCodes::success )
         {
@@ -245,7 +252,7 @@ int main( int argc, char** argv )
 
     for ( const auto& filename : files )
     {
-        silly::SourceManager::FileNameAndCU * cup{};
+        silly::SourceManager::FileNameAndCU* cup{};
         rc = sm.createCU( filename, cup );
         if ( rc != silly::ReturnCodes::success )
         {
@@ -277,7 +284,7 @@ int main( int argc, char** argv )
 
     for ( const auto& importModuleName : imports )
     {
-        silly::SourceManager::FileNameAndCU * cup{};
+        silly::SourceManager::FileNameAndCU* cup{};
         rc = sm.findCU( importModuleName, cup );
         if ( rc != silly::ReturnCodes::success )
         {

@@ -273,7 +273,7 @@ namespace silly
         mlir::Location loc = getStartLocation( ctx );
         assert( ctx );
         assert( ctx->IDENTIFIER() );
-        tNode * mod = ctx->IDENTIFIER();
+        tNode *mod = ctx->IDENTIFIER();
         std::string modname = mod->getText();
         mlir::Location nameLoc = getTerminalLocation( mod );
 
@@ -282,17 +282,16 @@ namespace silly
 
     void Antlr4ParseListener::enterScopedStatements( SillyParser::ScopedStatementsContext *ctx )
     {
-        bool isFunctionBody = dynamic_cast<SillyParser::FunctionStatementContext *>( ctx->parent ) != nullptr;
-        bool isForBody = dynamic_cast<SillyParser::ForStatementContext *>( ctx->parent ) != nullptr;
-
         mlir::Location loc = getStartLocation( ctx );
 
-        enterScopedRegion( loc, !isFunctionBody and !isForBody );
+        createNewVariableLookupScope( loc );
     }
 
     void Antlr4ParseListener::exitScopedStatements( SillyParser::ScopedStatementsContext *ctx )
     {
-        exitScopedRegion();
+        mlir::Location loc = getStartLocation( ctx );
+
+        removeCurrentVariableLookupScope( loc );
     }
 
     mlir::Value Antlr4ParseListener::parseReturnExpression( mlir::Location loc,
@@ -505,7 +504,8 @@ namespace silly
             }
         }
 
-        createDeclaration( loc, varName, ty, aLoc, arrayBoundsString, pExpressions ? true : false, initializers, ls );
+        mlir::Location vLoc = getTerminalLocation( identifier );
+        createDeclaration( vLoc, varName, ty, aLoc, arrayBoundsString, pExpressions ? true : false, initializers, ls );
     }
 
     void Antlr4ParseListener::enterBoolDeclareStatement( SillyParser::BoolDeclareStatementContext *ctx )
@@ -603,8 +603,8 @@ namespace silly
         mlir::Location aloc = getTerminalLocation( index );
 
         tNode *theString = ctx->STRING_PATTERN();
-        createStringDeclare( loc, varName, aloc, arrayBoundsString, theString != nullptr, theString ? theString->getText() : "",
-                             ls );
+        createStringDeclare( loc, varName, aloc, arrayBoundsString, theString != nullptr,
+                             theString ? theString->getText() : "", ls );
     }
 
     void Antlr4ParseListener::checkForReturnInScope( SillyParser::ScopedStatementsContext *scope, const char *what )
@@ -627,6 +627,12 @@ namespace silly
 
         checkForReturnInScope( ctx->scopedStatements(), "IF block" );
 
+        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
+        int scopeLevel = f.incrementScopeLevel();
+        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, loc, scopeLevel );
+        silly::ScopeEndOp scopeEnd = silly::ScopeEndOp::create( builder, loc, scopeLevel );
+        builder.setInsertionPointAfter( scopeBegin.getOperation() );
+
         mlir::Value conditionPredicate = parseExpression( ctx->expression(), {}, ls );
         if ( !conditionPredicate )
         {
@@ -634,7 +640,10 @@ namespace silly
             return;
         }
 
-        createIf( loc, conditionPredicate, true, ls );
+        SillyParser::ScopedStatementsContext *ss = ctx->scopedStatements();
+        mlir::Location sbLoc = getTerminalLocation( ss->LEFT_CURLY_BRACKET_TOKEN() );
+        mlir::Location seLoc = getTerminalLocation( ss->RIGHT_CURLY_BRACKET_TOKEN() );
+        createIf( loc, sbLoc, seLoc, conditionPredicate, scopeEnd.getOperation(), ls );
     }
 
     void Antlr4ParseListener::enterElseStatement( SillyParser::ElseStatementContext *ctx )
@@ -644,7 +653,10 @@ namespace silly
 
         checkForReturnInScope( ctx->scopedStatements(), "ELSE block" );
 
-        selectElseBlock( loc );
+        SillyParser::ScopedStatementsContext *ss = ctx->scopedStatements();
+        mlir::Location sbLoc = getTerminalLocation( ss->LEFT_CURLY_BRACKET_TOKEN() );
+        mlir::Location seLoc = getTerminalLocation( ss->RIGHT_CURLY_BRACKET_TOKEN() );
+        selectElseBlock( loc, sbLoc, seLoc );
     }
 
     void Antlr4ParseListener::enterElifStatement( SillyParser::ElifStatementContext *ctx )
@@ -655,7 +667,7 @@ namespace silly
 
         checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
 
-        selectElseBlock( loc );
+        selectElseBlock( loc, loc, loc );
 
         mlir::Value conditionPredicate = parseExpression( ctx->expression(), {}, ls );
         if ( !conditionPredicate )
@@ -664,12 +676,21 @@ namespace silly
             return;
         }
 
-        createIf( loc, conditionPredicate, false, ls );
+        SillyParser::ScopedStatementsContext *ss = ctx->scopedStatements();
+        mlir::Location sbLoc = getTerminalLocation( ss->LEFT_CURLY_BRACKET_TOKEN() );
+        mlir::Location seLoc = getTerminalLocation( ss->RIGHT_CURLY_BRACKET_TOKEN() );
+        createIf( loc, sbLoc, seLoc, conditionPredicate, nullptr, ls );
+    }
+
+    void Antlr4ParseListener::exitElifStatement( SillyParser::ElifStatementContext *ctx )
+    {
     }
 
     void Antlr4ParseListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx )
     {
-        finishIfElifElse();
+        mlir::Location loc = getStartLocation( ctx );
+
+        finishIfElifElse( loc );
     }
 
     void Antlr4ParseListener::enterForStatement( SillyParser::ForStatementContext *ctx )
@@ -701,6 +722,12 @@ namespace silly
         mlir::Value step;
 
         mlir::Type elemType = integerDeclarationType( loc, ctx->intType() );
+
+        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
+        int scopeLevel = f.incrementScopeLevel();
+        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, loc, scopeLevel );
+        silly::ScopeEndOp scopeEnd = silly::ScopeEndOp::create( builder, loc, scopeLevel );
+        builder.setInsertionPointAfter( scopeBegin.getOperation() );
 
         std::string s;
         if ( pStart )
@@ -749,7 +776,10 @@ namespace silly
 
         mlir::Location varLoc = getTerminalLocation( ctx->IDENTIFIER() );
 
-        createFor( loc, varName, elemType, varLoc, start, end, step, ls );
+        SillyParser::ScopedStatementsContext *ss = ctx->scopedStatements();
+        mlir::Location sbLoc = getTerminalLocation( ss->LEFT_CURLY_BRACKET_TOKEN() );
+        mlir::Location seLoc = getTerminalLocation( ss->RIGHT_CURLY_BRACKET_TOKEN() );
+        createFor( loc, sbLoc, seLoc, varName, elemType, varLoc, scopeEnd.getOperation(), start, end, step, ls );
     }
 
     void Antlr4ParseListener::exitForStatement( SillyParser::ForStatementContext *ctx )
@@ -887,8 +917,10 @@ namespace silly
 
         SillyParser::ScalarOrArrayElementContext *lhs = ctx->scalarOrArrayElement();
         assert( lhs );
-        assert( lhs->IDENTIFIER() );
-        std::string currentVarName = lhs->IDENTIFIER()->getText();
+        tNode *id = lhs->IDENTIFIER();
+        assert( id );
+        mlir::Location aLoc = getTerminalLocation( id );
+        std::string currentVarName = id->getText();
 
         SillyParser::IndexExpressionContext *indexExpr = lhs->indexExpression();
         mlir::Value currentIndexExpr = mlir::Value{};
@@ -913,7 +945,6 @@ namespace silly
         }
 
         SillyParser::ExpressionContext *exprContext = ctx->expression();
-        mlir::Location aLoc = getStartLocation( exprContext );
         mlir::Value resultValue = parseExpression( exprContext, {}, ls );
         createAssignment( aLoc, resultValue, currentVarName, currentIndexExpr, ls );
     }
@@ -1073,13 +1104,17 @@ namespace silly
                     return rhs;
                 }
 
-                if ( eqNeCtx->equalityOperator()->EQUALITY_TOKEN() )
+                SillyParser::EqualityOperatorContext *ectx = eqNeCtx->equalityOperator();
+                mlir::Location opLoc = loc;
+                if ( ectx->EQUALITY_TOKEN() )
                 {
-                    value = createBinaryCompare( loc, silly::CmpBinOpKind::Equal, value, rhs, ls );
+                    opLoc = getTerminalLocation( ectx->EQUALITY_TOKEN() );
+                    value = createBinaryCompare( opLoc, silly::CmpBinOpKind::Equal, value, rhs, ls );
                 }
-                else if ( eqNeCtx->equalityOperator()->NOTEQUAL_TOKEN() )
+                else if ( ectx->NOTEQUAL_TOKEN() )
                 {
-                    value = createBinaryCompare( loc, silly::CmpBinOpKind::NotEqual, value, rhs, ls );
+                    opLoc = getTerminalLocation( ectx->NOTEQUAL_TOKEN() );
+                    value = createBinaryCompare( opLoc, silly::CmpBinOpKind::NotEqual, value, rhs, ls );
                 }
                 else
                 {
@@ -1132,21 +1167,26 @@ namespace silly
                 SillyParser::RelationalOperatorContext *op = compareCtx->relationalOperator();
                 assert( op );
 
+                mlir::Location opLoc = loc;
                 if ( op->LESSTHAN_TOKEN() )
                 {
-                    value = createBinaryCompare( loc, silly::CmpBinOpKind::Less, value, rhs, ls );
+                    opLoc = getTerminalLocation( op->LESSTHAN_TOKEN() );
+                    value = createBinaryCompare( opLoc, silly::CmpBinOpKind::Less, value, rhs, ls );
                 }
                 else if ( op->GREATERTHAN_TOKEN() )
                 {
-                    value = createBinaryCompare( loc, silly::CmpBinOpKind::Less, rhs, value, ls );
+                    opLoc = getTerminalLocation( op->GREATERTHAN_TOKEN() );
+                    value = createBinaryCompare( opLoc, silly::CmpBinOpKind::Less, rhs, value, ls );
                 }
                 else if ( op->LESSEQUAL_TOKEN() )
                 {
-                    value = createBinaryCompare( loc, silly::CmpBinOpKind::LessEq, value, rhs, ls );
+                    opLoc = getTerminalLocation( op->LESSEQUAL_TOKEN() );
+                    value = createBinaryCompare( opLoc, silly::CmpBinOpKind::LessEq, value, rhs, ls );
                 }
                 else if ( op->GREATEREQUAL_TOKEN() )
                 {
-                    value = createBinaryCompare( loc, silly::CmpBinOpKind::LessEq, rhs, value, ls );
+                    opLoc = getTerminalLocation( op->GREATEREQUAL_TOKEN() );
+                    value = createBinaryCompare( opLoc, silly::CmpBinOpKind::LessEq, rhs, value, ls );
                 }
                 else
                 {
@@ -1204,13 +1244,16 @@ namespace silly
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
 
                 SillyParser::AdditionOperatorContext *op = ops[i - 1];
+                mlir::Location opLoc = loc;
                 if ( op->PLUSCHAR_TOKEN() )
                 {
-                    value = createBinaryArith( loc, silly::ArithBinOpKind::Add, ty, value, rhs, ls );
+                    opLoc = getTerminalLocation( op->PLUSCHAR_TOKEN() );
+                    value = createBinaryArith( opLoc, silly::ArithBinOpKind::Add, ty, value, rhs, ls );
                 }
                 else if ( op->MINUS_TOKEN() )
                 {
-                    value = createBinaryArith( loc, silly::ArithBinOpKind::Sub, ty, value, rhs, ls );
+                    opLoc = getTerminalLocation( op->MINUS_TOKEN() );
+                    value = createBinaryArith( opLoc, silly::ArithBinOpKind::Sub, ty, value, rhs, ls );
                 }
                 else
                 {
@@ -1268,17 +1311,21 @@ namespace silly
 
                 SillyParser::MultiplicativeOperatorContext *op = ops[i - 1];
 
+                mlir::Location opLoc = loc;
                 if ( op->TIMES_TOKEN() )
                 {
-                    value = createBinaryArith( loc, silly::ArithBinOpKind::Mul, ty, value, rhs, ls );
+                    opLoc = getTerminalLocation( op->TIMES_TOKEN() );
+                    value = createBinaryArith( opLoc, silly::ArithBinOpKind::Mul, ty, value, rhs, ls );
                 }
                 else if ( op->DIV_TOKEN() )
                 {
-                    value = createBinaryArith( loc, silly::ArithBinOpKind::Div, ty, value, rhs, ls );
+                    opLoc = getTerminalLocation( op->DIV_TOKEN() );
+                    value = createBinaryArith( opLoc, silly::ArithBinOpKind::Div, ty, value, rhs, ls );
                 }
                 else if ( op->MOD_TOKEN() )
                 {
-                    value = createBinaryArith( loc, silly::ArithBinOpKind::Mod, ty, value, rhs, ls );
+                    opLoc = getTerminalLocation( op->MOD_TOKEN() );
+                    value = createBinaryArith( opLoc, silly::ArithBinOpKind::Mod, ty, value, rhs, ls );
                 }
                 else
                 {
@@ -1373,7 +1420,7 @@ namespace silly
             {
                 unsigned width{ 64 };
 
-#if 0 // This is no good if the destination type is narrower than the input value.  See for example lt.silly
+#if 0    // This is no good if the destination type is narrower than the input value.  See for example lt.silly
                 if ( ty )
                 {
                     if ( mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( ty ) )

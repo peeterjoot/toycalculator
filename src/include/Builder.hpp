@@ -31,7 +31,6 @@ namespace silly
         ///
         /// - Records parameter Values, and creates each parameter DebugNameOp.
         /// - set the current function name, and squirrel away the funcOp for lookup.
-        /// - Creates initial dummy DebugScopeOp placeholder.
         ///
         void createNewFunctionState( mlir::Location startLoc, mlir::func::FuncOp funcOp, const std::string &funcName,
                                      const std::vector<std::string> &paramNames );
@@ -138,8 +137,8 @@ namespace silly
         mlir::Value createUnary( mlir::Location loc, mlir::Value value, UnaryOp op, LocationStack &ls );
 
         /// mlir builder helper for GET
-        void createGet( mlir::Location gloc, const std::string &varName, mlir::Location vloc, mlir::Value indexValue, mlir::Location iloc,
-                        LocationStack &ls );
+        void createGet( mlir::Location gloc, const std::string &varName, mlir::Location vloc, mlir::Value indexValue,
+                        mlir::Location iloc, LocationStack &ls );
 
         /// mlir builder helper for IMPORT
         void createImport( mlir::Location loc, mlir::Location nameLoc, const std::string &modname );
@@ -157,35 +156,42 @@ namespace silly
                                 LocationStack &ls );
 
         /// mlir builder helper for FOR (enter part)
-        void createFor( mlir::Location loc, const std::string &varName, mlir::Type elemType, mlir::Location varLoc,
-                        mlir::Value start, mlir::Value end, mlir::Value step, LocationStack &ls );
+        void createFor( mlir::Location loc, mlir::Location sbloc, mlir::Location seloc, const std::string &varName,
+                        mlir::Type elemType, mlir::Location varLoc, mlir::Operation *retOp, mlir::Value start,
+                        mlir::Value end, mlir::Value step, LocationStack &ls );
 
         /// mlir builder helper for FOR (exit part)
         void finishFor( mlir::Location loc );
 
         /// Find the current scf.if condition and set the insertion point to the else region for that if.
-        void selectElseBlock( mlir::Location loc );
+        void selectElseBlock( mlir::Location loc, mlir::Location sbLoc, mlir::Location seLoc );
 
         /// For IF/ELIF, create an scf.if condition and set the insertion point to it's then region.
         ///
         /// @param loc [in] The starting location for the IF statement.
         /// @param predicate [in] The predicate for the IF or ELIF condition.
-        /// @param saveIP [in] push the insertion point that is effectively after the if to insertionPointStack (use
+        /// @param retOp [in] for the insertionPointStack push for the scopeend op that is effectively after the IF. Use
         /// this for the initial if in an IF/ELIF/ELSE, but not for the internal IF created when processing an ELIF.
-        void createIf( mlir::Location loc, mlir::Value predicate, bool saveIP, LocationStack &ls );
+        /// @param ls [in] for fusion experiments.
+        void createIf( mlir::Location loc, mlir::Location sbLoc, mlir::Location seLoc, mlir::Value predicate,
+                       mlir::Operation *retOp, LocationStack &ls );
 
         /// mlir builder helper for IF/ELIF/ELSE (exit part)
-        void finishIfElifElse();
+        void finishIfElifElse( mlir::Location loc );
 
-        /// mlir builder helper for enter an IF/ELIF/ELSE scope.
-        void enterScopedRegion( mlir::Location loc, bool wantScope );
+        /// mlir builder helper to enter a new variable-lookup scope
+        void createNewVariableLookupScope( mlir::Location loc );
 
-        /// mlir builder helper for exit an IF/ELIF/ELSE scope.
-        void exitScopedRegion();
+        /// mlir builder helper to exit a new variable-lookup scope
+        void removeCurrentVariableLookupScope( mlir::Location loc );
 
+        /// Helper function for string declaration creation.
         void createStringDeclare( mlir::Location loc, const std::string &varName, mlir::Location aloc,
                                   const std::string &arrayBoundsString, bool haveInit, const std::string &strLit,
                                   LocationStack &ls );
+
+        /// pop inducation variables "scope", create a ScopeEndOp
+        void scopeEndHelper( mlir::Location loc, bool isFor );
 
        protected:
         /// construct state for creation of a silly dialect ModuleOp

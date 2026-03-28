@@ -1,8 +1,8 @@
 INT32 x = 3;
 
-IF ( x < 4 )
+IF ( x < 4 ) // 3
 {
-   INT32 myScopeVar = 1 + x;
+   INT32 myScopeVar = 1 + x; // 5
 
-   PRINT myScopeVar;
+   PRINT myScopeVar; // 7
 };

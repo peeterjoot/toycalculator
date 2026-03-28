@@ -14,7 +14,7 @@
 - [ ] location passing is better but still needs more work (pass rule start tokens consistently ; ranges need review.)
 - [ ] Review helper functions in both Parse walker implementations for consistency.
 - [ ] Now have stuff that is Bison FE specific in the silly namespace, which is confusing.  Introduce a silly::Bison namespace for that?
-- [ ] This template parameterization in generateCall is a hack.  Should probably switch to std::shared_ptr<silly::Expr> uniformly
+- [ ] This template parameterization in generateCall is a hack.  Should probably switch to `std::shared_ptr<silly::Expr>` uniformly
 - [ ] debugging -- didn't work with an earlier debug attempt (probably still broken unless I accidentally fixed it.)
 - [ ] remaining failures:
 ```
@@ -33,7 +33,7 @@ syntax-error/nested-if.silly
        133 | PRINT x; // error
            |       ^
 ```
-
+- See if this issue is resolved.  Will have to fix the Bison FE first, which was broken by the LexicalBlock commit.
 
 #### Debug
 * Audit the places where I am passing both Location and LocationStack.  Do I need the first?
@@ -41,6 +41,18 @@ syntax-error/nested-if.silly
 * fedoravm: branch: DebugScopeOp-no-type -- tried making DebugScopeOp not have a type.  Revisit this -- end up not knowing how to convert to mlir::Value to be able to pass as arg to DebugNameOp::create.
 * fused-loc experimentation in branch: fused-loc-hacking -- need to tackle lexical scoping first (that's now done, for all but induction variables.)
 * Implementing lexical block wasn't enough: different-scoped-vars.silly -- dwarfdump looks okay, but gdb lookup fails to find the right var!
+* I've changed binary comparison location references to match clang LLVM-IR:
+```
+    IF ( x < 4 )
+        // ^
+        // here.
+```
+(i.e.: the icmp that gets generated for this)
+However, I didn't do that for chains of createBinaryArith expressions (or, xor, and).  Do I have token locations for those?  YES: Example:
+```
+    std::vector<antlr4::tree::TerminalNode *> BOOLEANOR_TOKEN();
+    antlr4::tree::TerminalNode* BOOLEANOR_TOKEN(size_t i);
+```
 
 #### ctest/lit:
 

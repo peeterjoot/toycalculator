@@ -1,12 +1,15 @@
-INT32 x = 3;
 
-IF ( x > 4 )
-{
-   PRINT x;
-}
-ELIF ( x < 5 )
-{
-   PRINT "Bug if we don't get here.";
-};
 
-PRINT "Done.";
+
+    INT32 x = 3; // 4
+
+    IF ( x > 4 ) // 6
+    {
+       PRINT           x; // 8
+    } // 9
+    ELIF    ( x < 5 ) // 10
+    {
+       PRINT "Bug if we don't get here."; // 12
+    }; // 13
+
+    PRINT "Done."; // 15

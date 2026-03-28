@@ -5,6 +5,7 @@
 ///
 #pragma once
 
+#include <llvm/Support/FormatVariadic.h>
 #include <mlir/Conversion/LLVMCommon/TypeConverter.h>    // LLVMTypeConverter
 #include <mlir/Dialect/Func/IR/FuncOps.h>                // mlir::func::FuncOp
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>             // mlir::LLVM::ConstantOp
@@ -34,9 +35,10 @@ namespace silly
         /// Map from DeclareOp to AllocaOp for local variables.
         std::unordered_map<mlir::Operation*, mlir::Operation*> declareToAlloca;
 
-        /// Map a ScopeOp to a DILexicalBlockAttr
-        std::unordered_map<mlir::Operation*, mlir::LLVM::DILexicalBlockAttr> scopeOpToAttr;
+        mlir::Operation* lastAlloca{};
     };
+
+    using DebugScopeMap = llvm::DenseMap<mlir::Operation*, mlir::LLVM::DILexicalBlockAttr>;
 
     /// Context object holding state and helper functions used during lowering
     /// of the Silly dialect to LLVM dialect.
@@ -74,8 +76,7 @@ namespace silly
                                            mlir::Operation* op, mlir::Type inputType, mlir::Value& output );
 
         /// Emits debug information for a local variable (scalar or array), or a parameter, or a FOR induction variable.
-        mlir::LogicalResult constructVariableDI( mlir::ConversionPatternRewriter& rewriter,
-                                                 silly::DebugNameOp );
+        mlir::LogicalResult constructVariableDI( mlir::ConversionPatternRewriter& rewriter, silly::DebugNameOp );
 
         /// Emits debug information for a function parameter.
         void constructParameterDI( mlir::FileLineColLoc loc, mlir::ConversionPatternRewriter& rewriter,
@@ -83,8 +84,9 @@ namespace silly
                                    int paramIndex, const std::string& funcName );
 
         /// Emits lexical scope DI for a for, if, else, elif block
-        mlir::LogicalResult constructLexicalBlockDI( mlir::FileLineColLoc fileLoc,
-                                                     mlir::ConversionPatternRewriter& rewriter, mlir::Operation* op );
+        // mlir::LogicalResult constructLexicalBlockDI( mlir::FileLineColLoc fileLoc,
+        //                                              mlir::ConversionPatternRewriter& rewriter, mlir::Operation* op
+        //                                              );
 
         /// Return the PRINT args allocation for this function, big enough for the biggest PRINT list in the function.
         mlir::LLVM::AllocaOp getPrintArgs( const std::string& funcName );
@@ -155,6 +157,30 @@ namespace silly
         /// mlir::LLVM::FRemOp lowers to fmod (at least on some targets), so -lm will be required at link time.
         void markMathLibRequired();
 
+        /// Walk ops until hitting an ScopeBeginOp, and if found call processScopeBegin.
+        void processScopedOps( mlir::Block::iterator begin, mlir::Block::iterator end,
+                               mlir::LLVM::DIScopeAttr parentScope );
+
+        /// @brief process all the ops until a matching ScopeEndOp is found.
+        ///
+        /// Create a DILexicalBlockAttr for the scope.
+        /// Record the DILexicalBlockAttr that should apply to any DebugNameOps found.
+        /// Restamp the OP locations with a fused location that ties the OP to the DILexicalBlockAttr.
+        /// If an OP has any regions, process those recursively.
+        mlir::Block::iterator processScopeBegin( mlir::Block::iterator it, mlir::Block::iterator blockEnd,
+                                                 mlir::LLVM::DIScopeAttr parentScope );
+
+        /// Set the IP to the funcOp start position, or just after the last alloca, then create the AllocaOp
+        /// and save that AllocaOp's Operation* to lastAlloca.
+        mlir::LLVM::AllocaOp createAlloca( mlir::ConversionPatternRewriter& rewriter, mlir::Operation* op,
+                                           mlir::Type elemType, int64_t arraySize, unsigned alignment );
+
+        /// This is a hack to tag the last BB branch after lowering with a fused DILexicalBlockAttr location
+        /// associated with the ScopeEndOp
+        ///
+        /// t/c: if-elif-taken.silly, if-with-decl.silly
+        void fixBranchDebugLocs( mlir::func::FuncOp funcOp );
+
        private:
         /// Returns the MLIR context.
         inline mlir::MLIRContext* getContext();
@@ -207,6 +233,12 @@ namespace silly
 
         /// Map from string literal content to its GlobalOp.
         StringLit2GlobalOp stringLiterals;
+
+        /// Map debugNameOp to DILexicalBlock
+        DebugScopeMap scopeMap;
+
+        /// Map from the first op after a scope_begin to the scope's closing location
+        llvm::DenseMap<mlir::Block *, std::optional<mlir::Location>> blockClosingLoc;
 
         /// Prototype for __silly_print.
         mlir::func::FuncOp printFunc;

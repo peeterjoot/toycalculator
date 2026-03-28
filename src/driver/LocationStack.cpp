@@ -26,6 +26,6 @@ namespace silly
 
         return builder.getFusedLoc( locs );
     }
-}
+}    // namespace silly
 
 // vim: et ts=4 sw=4

@@ -82,7 +82,6 @@ namespace silly
             mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
             llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
 
-            mlir::Value sizeVal;
             mlir::Value bytesVal;
             int64_t arraySize = 1;
             if ( !shape.empty() )
@@ -96,21 +95,22 @@ namespace silly
                                                   arraySize, shape.size() ) );
                 }
 
-                sizeVal = mlir::LLVM::ConstantOp::create( rewriter, loc, lState.typ.i64,
-                                                          rewriter.getI64IntegerAttr( arraySize ) );
                 bytesVal = mlir::LLVM::ConstantOp::create( rewriter, loc, lState.typ.i64,
                                                            rewriter.getI64IntegerAttr( arraySize * elemSizeInBytes ) );
             }
             else
             {
-                sizeVal = lState.getI64one( loc, rewriter );
+                arraySize = 0;
                 bytesVal = mlir::LLVM::ConstantOp::create( rewriter, loc, lState.typ.i64,
                                                            rewriter.getI64IntegerAttr( elemSizeInBytes ) );
             }
 
-            mlir::Location uloc = rewriter.getUnknownLoc();
-            mlir::LLVM::AllocaOp allocaOp =
-                mlir::LLVM::AllocaOp::create( rewriter, uloc, lState.typ.ptr, elemType, sizeVal, alignment );
+            mlir::LLVM::AllocaOp allocaOp;
+            {
+                mlir::OpBuilder::InsertionGuard guard( rewriter );
+
+                allocaOp = lState.createAlloca( rewriter, op, elemType, arraySize, alignment );
+            }
 
             auto init = declareOp.getInitializers();
             if ( init.size() )
@@ -354,20 +354,21 @@ namespace silly
         }
     };
 
-#if 0
-    // Now unused (again)
+    /// For trivial lowering that just requires deletion.
     template <class SillOpType>
     class LowerByDeletion : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState;
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
+        /// Constructor boilerplate
         LowerByDeletion( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
             : mlir::ConversionPattern( SillOpType::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
+        /// Lowering workhorse -- just delete the Op
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -376,39 +377,12 @@ namespace silly
             return mlir::success();
         }
     };
-#endif
 
-    /// Lower silly::DebugScopeOp
-    class DebugScopeOpLowering : public mlir::ConversionPattern
-    {
-       private:
-        LoweringContext& lState;    ///< lowering context (including DriverState)
+    /// ScopeBeginOp handled early (where the DILexicalBlockAttrs are created)
+    using ScopeBeginOpLowering = LowerByDeletion<ScopeBeginOp>;
 
-       public:
-        /// Constructor boilerplate for DebugScopeOpLowering
-        DebugScopeOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( silly::DebugScopeOp::getOperationName(), benefit, context ),
-              lState( loweringState )
-        {
-        }
-
-        /// Lowering workhorse for silly::DebugScopeOp
-        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
-                                             mlir::ConversionPatternRewriter& rewriter ) const override
-        {
-            silly::DebugScopeOp debugScopeOp = cast<silly::DebugScopeOp>( op );
-            mlir::Location loc = debugScopeOp.getLoc();
-            mlir::FileLineColLoc fileLoc = locationToFLCLoc( loc );
-
-            if ( mlir::failed( lState.constructLexicalBlockDI( fileLoc, rewriter, op ) ) )
-            {
-                return mlir::failure();
-            }
-
-            rewriter.eraseOp( debugScopeOp );
-            return mlir::success();
-        }
-    };
+    /// ScopeEndOp handled early (where the DILexicalBlockAttrs are created)
+    using ScopeEndOpLowering = LowerByDeletion<ScopeEndOp>;
 
     /// Lower silly::DebugNameOp
     class DebugNameOpLowering : public mlir::ConversionPattern
@@ -492,16 +466,15 @@ namespace silly
 
                 mlir::LLVM::ConstantOp indexVal =
                     mlir::LLVM::ConstantOp::create( rewriter, loc, lState.typ.i64, rewriter.getI64IntegerAttr( i ) );
-                mlir::LLVM::GEPOp slotPtr =
-                    mlir::LLVM::GEPOp::create( rewriter, loc, lState.typ.ptr, lState.printArgStructTy, arrayAlloca,
-                                               mlir::ValueRange{ indexVal } );
+                mlir::LLVM::GEPOp slotPtr = mlir::LLVM::GEPOp::create(
+                    rewriter, loc, lState.typ.ptr, lState.printArgStructTy, arrayAlloca, mlir::ValueRange{ indexVal } );
 
                 mlir::LLVM::StoreOp::create( rewriter, loc, argStruct, slotPtr );
             }
 
             // Final call
-            mlir::LLVM::ConstantOp numArgsConst = mlir::LLVM::ConstantOp::create(
-                rewriter, loc, lState.typ.i32, rewriter.getI32IntegerAttr( numArgs ) );
+            mlir::LLVM::ConstantOp numArgsConst =
+                mlir::LLVM::ConstantOp::create( rewriter, loc, lState.typ.i32, rewriter.getI32IntegerAttr( numArgs ) );
 
             mlir::func::CallOp::create( rewriter, loc, mlir::TypeRange{}, "__silly_print",
                                         mlir::ValueRange{ numArgsConst, arrayAlloca } );
@@ -1079,7 +1052,7 @@ namespace silly
                 target.addLegalDialect<mlir::LLVM::LLVMDialect>();
                 target.addIllegalOp<silly::AssignOp, silly::DeclareOp, silly::LoadOp, silly::NegOp, silly::PrintOp,
                                     silly::GetOp, silly::StringLiteralOp, silly::AbortOp, silly::DebugNameOp,
-                                    silly::DebugScopeOp, silly::ArithBinOp, silly::CmpBinOp>();
+                                    silly::ArithBinOp, silly::CmpBinOp, silly::ScopeBeginOp, silly::ScopeEndOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
 
                 target.addIllegalDialect<mlir::scf::SCFDialect>();
@@ -1088,7 +1061,8 @@ namespace silly
                 mlir::RewritePatternSet patterns( &getContext() );
                 patterns.add<AssignOpLowering, LoadOpLowering, NegOpLowering, PrintOpLowering, AbortOpLowering,
                              GetOpLowering, StringLiteralOpLowering, ArithBinOpLowering, CmpBinOpLowering,
-                             DeclareOpLowering, DebugScopeOpLowering, DebugNameOpLowering>( lState, &getContext(), 1 );
+                             DeclareOpLowering, DebugNameOpLowering, ScopeBeginOpLowering, ScopeEndOpLowering>(
+                    lState, &getContext(), 1 );
 
                 // SCF -> CF
                 mlir::populateSCFToControlFlowConversionPatterns( patterns );
@@ -1112,6 +1086,11 @@ namespace silly
                     mod->print( llvm::dbgs(), flags );
                     llvm::dbgs() << '\n';
                 } );
+            }
+
+            for ( mlir::func::FuncOp funcOp : mod.getBodyRegion().getOps<mlir::func::FuncOp>() )
+            {
+                lState.fixBranchDebugLocs( funcOp );
             }
 
             LLVM_DEBUG( {

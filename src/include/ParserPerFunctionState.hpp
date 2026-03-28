@@ -7,6 +7,7 @@
 #pragma once
 
 #include <mlir/Dialect/Func/IR/FuncOps.h>
+
 #include <cassert>
 
 namespace silly
@@ -83,30 +84,21 @@ namespace silly
         }
 
         /// New variables will be visible only for this scope and later
-        void startScope( mlir::Value );
+        void createVariableLookupScope();
 
         /// Any variables that had been declared in the current scope will no longer be visible.
-        void endScope();
+        void destroyVariableLookupScope();
 
-        /// Get the last pushed scope Op
-        mlir::Value currentDebugScope() const
-        {
-            return debugScopeStack.empty() ? mlir::Value{} : debugScopeStack.back();
-        }
-
-        /// Push one more scope Op for later use.
-        void pushScopeOp( mlir::Value value )
-        {
-            debugScopeStack.push_back( value );
-        }
-
-        // These three are hacks for the Bison FE.  Revisit this after handling scopedStatements consistently
-        // (both front ends) wrt. FOR,IF,ELSE,ELIF,FUNCTION.
-        void incrementScopeLevel()
+        /// Increase the level for scope_begin/scope_end
+        /// @retval return the new scope-level
+        int incrementScopeLevel()
         {
             scopeLevel++;
+
+            return scopeLevel;
         }
 
+        /// Decrease the level for scope_begin/scope_end
         void decrementScopeLevel()
         {
             assert( scopeLevel );
@@ -114,16 +106,19 @@ namespace silly
             scopeLevel--;
         }
 
+        /// Obtain the level for the current or next scope_begin/scope_end pair.
         int getScopeLevel()
         {
             return scopeLevel;
         }
 
+        /// For the bison front end.  Squirrel away the fact that there was a return statement.
         void setHaveReturn()
         {
             haveReturn = true;
         }
 
+        /// For the bison front end.  Was there a return statement.
         bool getHaveReturn()
         {
             return haveReturn;
@@ -157,14 +152,12 @@ namespace silly
         /// Stack for scf.if/scf.for blocks.
         std::vector<mlir::Operation *> insertionPointStack;
 
-        /// null/empty = function scope
-        std::vector<mlir::Value> debugScopeStack;
-
+        /// For ScopeBeginOp/ScopeEndOp -- the scope level param.
         int scopeLevel{};
 
         /// Bison FE only.
         bool haveReturn{};
     };
-}
+}    // namespace silly
 
 // vim: et ts=4 sw=4

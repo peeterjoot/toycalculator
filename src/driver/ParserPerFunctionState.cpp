@@ -74,20 +74,17 @@ namespace silly
         variables.back()[varName] = i;
     }
 
-    void ParserPerFunctionState::startScope( mlir::Value value )
+    void ParserPerFunctionState::createVariableLookupScope()
     {
         variables.push_back( {} );
-        pushScopeOp( value );
     }
 
-    void ParserPerFunctionState::endScope()
+    void ParserPerFunctionState::destroyVariableLookupScope()
     {
         if ( variables.size() )
         {
             variables.pop_back();
         }
-
-        debugScopeStack.pop_back();
     }
 
     void ParserPerFunctionState::pushToInsertionPointStack( mlir::Operation *op )
@@ -105,6 +102,6 @@ namespace silly
     {
         return ( insertionPointStack.size() != 0 );
     }
-}
+}    // namespace silly
 
 // vim: et ts=4 sw=4

@@ -18,4 +18,4 @@ namespace silly
         /// Loads required dialects (Silly, Func, Arith, MemRef, LLVM, SCF).
         DialectContext();
     };
-}
+}    // namespace silly

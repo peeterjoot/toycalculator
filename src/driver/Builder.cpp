@@ -69,17 +69,12 @@ namespace silly
             } );
 
             mlir::Value param = funcOp.getArgument( i );
-            silly::DebugNameOp::create( builder, startLoc, param, paramNames[i], f.currentDebugScope() );
+            silly::DebugNameOp::create( builder, startLoc, param, paramNames[i] );
             f.recordParameterValue( paramNames[i], param );
         }
 
         currentFuncName = funcName;
         f.setFuncOp( funcOp );
-
-        if ( funcName == ENTRY_SYMBOL_NAME )
-        {
-            f.pushScopeOp( mlir::Value{} );
-        }
     }
 
     void Builder::createMain( mlir::Location fLoc, mlir::Location sLoc )
@@ -379,9 +374,7 @@ namespace silly
 
         f.setLastDeclared( dcl.getOperation() );
 
-        mlir::Value debugScopeOp = f.currentDebugScope();
-
-        silly::DebugNameOp::create( builder, loc, dcl.getResult(), varName, debugScopeOp );
+        silly::DebugNameOp::create( builder, loc, dcl.getResult(), varName );
     }
 
     silly::DeclareOp Builder::lookupDeclareForVar( mlir::Location loc, const std::string &varName )
@@ -504,10 +497,7 @@ namespace silly
         // tolerate emitError codepaths where things go bad, logging an internal error and continuing
         if ( !value )
         {
-            emitInternalError(
-                loc, __FILE__, __LINE__, __func__,
-                "NULL value in cast attempt.",
-                currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "NULL value in cast attempt.", currentFuncName );
 
             return value;
         }
@@ -751,8 +741,8 @@ namespace silly
         return v;
     }
 
-    void Builder::createGet( mlir::Location gloc, const std::string &varName, mlir::Location vloc, mlir::Value indexValue,
-                             mlir::Location iloc, LocationStack &ls )
+    void Builder::createGet( mlir::Location gloc, const std::string &varName, mlir::Location vloc,
+                             mlir::Value indexValue, mlir::Location iloc, LocationStack &ls )
     {
         silly::DeclareOp declareOp = lookupDeclareForVar( gloc, varName );
         silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
@@ -967,8 +957,9 @@ namespace silly
         return ret;
     }
 
-    void Builder::createFor( mlir::Location loc, const std::string &varName, mlir::Type elemType, mlir::Location varLoc,
-                             mlir::Value start, mlir::Value end, mlir::Value step, LocationStack &ls )
+    void Builder::createFor( mlir::Location loc, mlir::Location sbloc, mlir::Location seloc, const std::string &varName,
+                             mlir::Type elemType, mlir::Location varLoc, mlir::Operation *retOp, mlir::Value start,
+                             mlir::Value end, mlir::Value step, LocationStack &ls )
     {
         bool declared = isDeclared( varName );
         if ( declared )
@@ -1003,12 +994,9 @@ namespace silly
             step = createCastIfNeeded( loc, step, elemType, ls );
         }
 
-        mlir::Value scopeToken = silly::DebugScopeOp::create( builder, varLoc, typ.i1 ).getResult();
-        f.pushScopeOp( scopeToken );
-
         // mlir::Location fusedLoc = ls.fuseLocations( );
         mlir::scf::ForOp forOp = mlir::scf::ForOp::create( builder, loc, start, end, step );
-        f.pushToInsertionPointStack( forOp.getOperation() );
+        f.pushToInsertionPointStack( retOp );
 
         mlir::Block &loopBody = forOp.getRegion().front();
         mlir::Value inductionVar = loopBody.getArgument( 0 );
@@ -1017,22 +1005,24 @@ namespace silly
 
         f.pushInductionVariable( varName, inductionVar );
 
-        // HACK: DISABLE SCOPEOP just for FOR induction-variables for now (induction var DI is MIA after
-        // LLVM-IR lowering -- perhaps a dominance issue.)
-#if 0
-        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, scopeToken );
-#else
-        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, mlir::Value{} );
-#endif
+        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName );
+
+        int scopeLevel = f.incrementScopeLevel();
+        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, sbloc, scopeLevel );
+        silly::ScopeEndOp::create( builder, seloc, scopeLevel );
+        builder.setInsertionPointAfter( scopeBegin.getOperation() );
     }
 
-    void Builder::finishFor( mlir::Location loc )
+    void Builder::scopeEndHelper( mlir::Location loc, bool isFor )
     {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         if ( f.haveInsertionPointStack() )
         {
             f.popFromInsertionPointStack( builder );
-            f.popInductionVariable();
+            if ( isFor )
+            {
+                f.popInductionVariable();
+            }
         }
         else
         {
@@ -1040,7 +1030,17 @@ namespace silly
         }
     }
 
-    void Builder::selectElseBlock( mlir::Location loc )
+    void Builder::finishFor( mlir::Location loc )
+    {
+        scopeEndHelper( loc, true );
+    }
+
+    void Builder::finishIfElifElse( mlir::Location loc )
+    {
+        scopeEndHelper( loc, false );
+    }
+
+    void Builder::selectElseBlock( mlir::Location loc, mlir::Location sbLoc, mlir::Location seLoc )
     {
         mlir::Block *currentBlock = builder.getInsertionBlock();
         assert( currentBlock );
@@ -1063,50 +1063,49 @@ namespace silly
         mlir::Region &elseRegion = ifOp.getElseRegion();
         mlir::Block &elseBlock = elseRegion.front();
         builder.setInsertionPointToStart( &elseBlock );
-    }
 
-    void Builder::finishIfElifElse()
-    {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
-        f.popFromInsertionPointStack( builder );
+        int scopeLevel = f.incrementScopeLevel();
+        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, sbLoc, scopeLevel );
+        silly::ScopeEndOp::create( builder, seLoc, scopeLevel );
+        builder.setInsertionPointAfter( scopeBegin.getOperation() );
     }
 
-    void Builder::createIf( mlir::Location loc, mlir::Value conditionPredicate, bool saveIP, LocationStack &ls )
+    void Builder::createIf( mlir::Location loc, mlir::Location sbLoc, mlir::Location seLoc,
+                            mlir::Value conditionPredicate, mlir::Operation *retOp, LocationStack &ls )
     {
         // mlir::Location fusedLoc = ls.fuseLocations( );
         mlir::scf::IfOp ifOp = mlir::scf::IfOp::create( builder, loc, conditionPredicate,
                                                         /*withElseRegion=*/true );
 
-        if ( saveIP )
+        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
+        if ( retOp )
         {
-            ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
-            f.pushToInsertionPointStack( ifOp.getOperation() );
+            f.pushToInsertionPointStack( retOp );
         }
 
         mlir::Block &thenBlock = ifOp.getThenRegion().front();
         builder.setInsertionPointToStart( &thenBlock );
+
+        int scopeLevel = f.incrementScopeLevel();
+        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, sbLoc, scopeLevel );
+        silly::ScopeEndOp::create( builder, seLoc, scopeLevel );
+        builder.setInsertionPointAfter( scopeBegin.getOperation() );
     }
 
-    void Builder::enterScopedRegion( mlir::Location loc, bool wantScope )
+    void Builder::createNewVariableLookupScope( mlir::Location loc )
     {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
 
-        mlir::Value value{};
-
-        // not doing this right now for FOR -- to be revisited.
-        if ( wantScope )
-        {
-            value = silly::DebugScopeOp::create( builder, loc, typ.i1 ).getResult();
-        }
-
-        // keep stack balanced, signals function scope when !isFunctionBody
-        f.startScope( value );
+        // This is front-end specific scoping for variable lookup:
+        f.createVariableLookupScope();
     }
 
-    void Builder::exitScopedRegion()
+    void Builder::removeCurrentVariableLookupScope( mlir::Location loc )
     {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
-        f.endScope();
+
+        f.destroyVariableLookupScope();
     }
 
     void Builder::createStringDeclare( mlir::Location loc, const std::string &varName, mlir::Location aloc,

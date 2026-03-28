@@ -10,13 +10,13 @@
 ///
 #pragma once
 
-#include <llvm/IR/Module.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
+#include <llvm/Target/TargetMachine.h>
 #include <mlir/IR/BuiltinOps.h>
 #include <mlir/IR/OperationSupport.h>
 #include <mlir/IR/OwningOpRef.h>
-#include <llvm/Target/TargetMachine.h>
 
 #include <memory>
 #include <string>
@@ -55,19 +55,19 @@ namespace silly
         /// Construct a new module state for a compilation unit.
         ///
         /// @param s [in] SourceManager to pass down to the parse listener for IMPORT lookup, DriverState, and context.
-        CompilationUnit( silly::SourceManager & s );
+        CompilationUnit( silly::SourceManager& s );
 
         /// Parse the source file and build the MLIR module.
         ///
         /// Determines input type (.silly, .mlir, .o) and invokes the appropriate parser.
         /// Populates rmod with the resulting MLIR module.
-        ReturnCodes processSourceFile( const std::string & sourceFileName );
+        ReturnCodes processSourceFile( const std::string& sourceFileName );
 
         /// Lower the MLIR module to LLVM IR dialect.
         ///
         /// Runs the MLIR-to-LLVM lowering passes and translates the result to an llvm::Module.
         /// Populates llvmModule as a side effect.
-        ReturnCodes mlirToLLVM( const std::string & llvmSourceFilename );
+        ReturnCodes mlirToLLVM( const std::string& llvmSourceFilename );
 
         /// Run LLVM optimization passes on the lowered module.
         ///
@@ -84,10 +84,10 @@ namespace silly
         }
 
         /// Serialize the MLIR module to a .mlir file (if --emit-mlir specified).
-        ReturnCodes serializeModuleMLIR( const llvm::SmallString<128> & mlirOutputName );
+        ReturnCodes serializeModuleMLIR( const llvm::SmallString<128>& mlirOutputName );
 
         /// Serialize the LLVM IR module to a .ll file (if --emit-llvm specified).
-        ReturnCodes serializeModuleLLVMIR( const llvm::SmallString<128> & llvmOuputFile );
+        ReturnCodes serializeModuleLLVMIR( const llvm::SmallString<128>& llvmOuputFile );
 
         /// Emit object code (.o file) from the optimized LLVM module.
         ///
@@ -95,11 +95,14 @@ namespace silly
         ReturnCodes serializeObjectCode( const llvm::SmallString<128>& outputFilename );
 
         /// Return a raw-pointer to the current silly dialect module.
-        mlir::ModuleOp getModule() { return rmod.get(); }
+        mlir::ModuleOp getModule()
+        {
+            return rmod.get();
+        }
 
        private:
         /// back reference to the owning SourceManager
-        silly::SourceManager & sm;
+        silly::SourceManager& sm;
 
         /// convienience reference to the SourceManager driver state.
         silly::DriverState& ds;
@@ -137,7 +140,7 @@ namespace silly
         /// Parse a .mlir file into the MLIR module.
         ///
         /// Saves the parsed module to rmod as a side effect.
-        ReturnCodes parseMLIRFile( const std::string & mlirSourceName );
+        ReturnCodes parseMLIRFile( const std::string& mlirSourceName );
 
         /// Parse a .ll or .bc file
         ///

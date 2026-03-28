@@ -1,10 +1,14 @@
-INT32 x = 3;
 
-IF ( x < 4 )
-{
-  INT32 y;
-  y = 42;
-  PRINT y;
-};
 
-PRINT "Done.";
+
+
+    INT32 x = 3; // 5
+
+    IF ( x < 4 ) // 7
+    {  //  silly has sext i64 for icmp above that clang doesn't have (not easy to fix without introducing typed constants)
+      INT32 y; // 9
+      y = 42; // 10
+      PRINT y; // 11
+    }; // clang flags the final branch with 12:5, the scope end position.  How?  It also uses lexical scope 2 here.
+
+    PRINT "Done."; // 14
