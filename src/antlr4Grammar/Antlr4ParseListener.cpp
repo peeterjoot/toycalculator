@@ -829,6 +829,7 @@ namespace silly
         std::string varName;
         mlir::Value indexValue;
         mlir::Location iloc = loc;
+        mlir::Location vloc = loc;
         SillyParser::ScalarOrArrayElementContext *scalarOrArrayElement = ctx->scalarOrArrayElement();
 
         if ( scalarOrArrayElement )
@@ -836,6 +837,7 @@ namespace silly
             tNode *varNameObject = scalarOrArrayElement->IDENTIFIER();
             assert( varNameObject );
             varName = varNameObject->getText();
+            vloc = getTerminalLocation( varNameObject );
 
             if ( SillyParser::IndexExpressionContext *indexExpr = scalarOrArrayElement->indexExpression() )
             {
@@ -854,7 +856,7 @@ namespace silly
                                std::format( "unexpected get context {}", ctx->getText() ), currentFuncName );
         }
 
-        createGet( loc, varName, indexValue, iloc, ls );
+        createGet( loc, varName, vloc, indexValue, iloc, ls );
     }
 
     void Antlr4ParseListener::enterReturnStatement( SillyParser::ReturnStatementContext *ctx )

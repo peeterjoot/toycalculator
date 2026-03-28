@@ -138,7 +138,7 @@ namespace silly
         mlir::Value createUnary( mlir::Location loc, mlir::Value value, UnaryOp op, LocationStack &ls );
 
         /// mlir builder helper for GET
-        void createGet( mlir::Location loc, const std::string &varName, mlir::Value indexValue, mlir::Location iloc,
+        void createGet( mlir::Location gloc, const std::string &varName, mlir::Location vloc, mlir::Value indexValue, mlir::Location iloc,
                         LocationStack &ls );
 
         /// mlir builder helper for IMPORT

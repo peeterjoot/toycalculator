@@ -740,10 +740,10 @@ namespace silly
         return v;
     }
 
-    void Builder::createGet( mlir::Location loc, const std::string &varName, mlir::Value indexValue,
+    void Builder::createGet( mlir::Location gloc, const std::string &varName, mlir::Location vloc, mlir::Value indexValue,
                              mlir::Location iloc, LocationStack &ls )
     {
-        silly::DeclareOp declareOp = lookupDeclareForVar( loc, varName );
+        silly::DeclareOp declareOp = lookupDeclareForVar( gloc, varName );
         silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
         mlir::Type elemType = varTy.getElementType();
         mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
@@ -758,7 +758,7 @@ namespace silly
         else if ( !shape.empty() )
         {
             // coverage: syntax-error/get-string.silly
-            emitUserError( loc, std::format( "Attempted GET to string literal or array?" ), currentFuncName );
+            emitUserError( vloc, std::format( "Attempted GET to string literal or array?" ), currentFuncName );
             return;
         }
         else
@@ -768,11 +768,11 @@ namespace silly
 
         mlir::Value var = declareOp.getResult();
 
-        ls.push_back( loc );
-        silly::GetOp resultValue = silly::GetOp::create( builder, loc, elemType );
+        ls.push_back( gloc );
+        silly::GetOp resultValue = silly::GetOp::create( builder, gloc, elemType );
 
         // mlir::Location fusedLoc = ls.fuseLocations( );
-        silly::AssignOp::create( builder, loc, var, optIndexValue, resultValue );
+        silly::AssignOp::create( builder, gloc, var, optIndexValue, resultValue );
     }
 
     void Builder::createImport( mlir::Location loc, mlir::Location nameLoc, const std::string &modname )

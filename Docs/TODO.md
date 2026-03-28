@@ -35,18 +35,6 @@ syntax-error/function-no-return.silly
         loc("function-no-return.silly":13:5): error: block with no terminator, has "silly.print"(%1, %0) : (i32, !llvm.ptr) -> ()
             ^
 
-syntax-error/get-string.silly
-
-    // CHECK: get-string.silly:8:1: error: Attempted GET to string literal or array?
-    // CHECK:     8 | GET y;
-    // CHECK:       | ^
-
-    # cat out/get-string.compile.out
-    get-string.silly:8:5: error: Attempted GET to string literal or array?
-        8 | GET y;
-          |     ^
-
-
 syntax-error/user-main.silly
 syntax-error/nested.silly
 syntax-error/multiple-in-func.silly

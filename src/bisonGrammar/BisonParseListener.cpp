@@ -634,14 +634,15 @@ namespace silly
     }
 
     void BisonParseListener::enterGetStatement( const silly::BisonParser::location_type& bLoc,
-                                                const silly::StringAndLoc& id, const silly::Expr& indexExpr )
+                                                const silly::StringAndLoc& var, const silly::Expr& indexExpr )
     {
         mlir::Location loc = getLocation( bLoc );
         LocationStack ls( builder, loc );
 
-        mlir::Location iloc = getLocation( id.loc );
+        mlir::Location vloc = getLocation( var.loc );
+        mlir::Location iloc = getLocation( indexExpr.loc );
         mlir::Value idx = parseExpression( {}, indexExpr, ls );
-        createGet( loc, id.name, idx, iloc, ls );
+        createGet( loc, var.name, vloc, idx, iloc, ls );
     }
 
     void BisonParseListener::enterImportStatement( const silly::BisonParser::location_type& bLoc,
