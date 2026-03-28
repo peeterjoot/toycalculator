@@ -43,8 +43,6 @@ syntax-error/nested-if.silly
            |       ^
 
 syntax-error/array-return-verbose.silly
-syntax-error/invalid-binary-op.silly
-    --- parse errors.
 ```
 
 

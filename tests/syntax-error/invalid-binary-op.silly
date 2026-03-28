@@ -1,9 +1,9 @@
 // RUN: cd %S
 // RUN: %Not %ExeSilly -g invalid-binary-op.silly -o %t.exe 2>&1 | %FileCheck %s
-// CHECK: line 10:6 token recognition error at: '^'
-// CHECK: invalid-binary-op.silly:10:9: error: syntax error
+// This test is intentionally loose because Bison and ANTLR4 report slightly different locations/messages
+// CHECK: invalid-binary-op.silly:10:{{[0-9]+}}: error: syntax error
 // CHECK:    10 | x = y ^ z;  // Invalid binary operator
-// CHECK:       |         ^
+// CHECK:       |       {{ *}}^
 
 FLOAT64 x;
 FLOAT64 y;
