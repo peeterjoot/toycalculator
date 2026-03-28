@@ -52,6 +52,34 @@ def Silly_VarType : TypeDef<Silly_Dialect, "var"> {
   let hasCustomAssemblyFormat = 1;
 }
 
+def Silly_ArithBinOpKind : I32EnumAttr<
+    "ArithBinOpKind",
+    "arithmetic binary operation kind",
+    [
+      I32EnumAttrCase<"Mul", 0, "mul">,
+      I32EnumAttrCase<"Div", 1, "div">,
+      I32EnumAttrCase<"Mod", 2, "mod">,
+      I32EnumAttrCase<"Add", 3, "add">,
+      I32EnumAttrCase<"Sub", 4, "sub">,
+      I32EnumAttrCase<"Or",  5, "or">,
+      I32EnumAttrCase<"And", 6, "and">,
+      I32EnumAttrCase<"Xor", 7, "xor">
+]> {
+  let cppNamespace = "::silly";
+}
+
+def Silly_CmpBinOpKind : I32EnumAttr<
+    "CmpBinOpKind",
+    "arithmetic comparison operation kind",
+    [
+      I32EnumAttrCase<"Less",    0, "less">,
+      I32EnumAttrCase<"LessEq",  1, "less_eq">,
+      I32EnumAttrCase<"Equal",   2, "eq">,
+      I32EnumAttrCase<"NotEqual",3, "neq">,
+]> {
+  let cppNamespace = "::silly";
+}
+
 def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
   let summary = "Declare an abstract variable location (scalar or array).";
   let description = [{
@@ -95,16 +123,23 @@ def Silly_AssignOp : Op<Silly_Dialect, "assign"> {
   }];
 }
 
-def Silly_DebugScopeOp : Op<Silly_Dialect, "scope", [NoMemoryEffect]> {
-  let summary = "Defines a new lexical scoping level for debug information lookup of loop induction variables and scoped-declarations.";
+def Silly_ScopeBeginOp : Op<Silly_Dialect, "scope_begin", [NoMemoryEffect]> {
+  let summary = "Marks the start of a lexical scope.";
 
   let description = [{
-    This operation has no runtime effect and exists solely to propagate scoping level information
-    to lowering passes for emission of debug metadata.
+    This operation has no runtime effect and exists solely to instruct lowering when to create
+    a new !DILexicalBlock.   Ops between this scope_begin and the subsequent matching scope_end
+    will be visited recursively (creating new !DILexicalBlock whenever a new scope_begin is encountered),
+    restamping the op Location with a fused location built from the original location and the matching !DILexicalBlock.
   }];
 
-  let arguments = (ins);
-  let results = (outs AnyType:$result);
+  let arguments = (ins I32Attr:$id);
+}
+
+def Silly_ScopeEndOp : Op<Silly_Dialect, "scope_end", [NoMemoryEffect]> {
+  let summary = "Marks the end of a lexical scope.";
+
+  let arguments = (ins I32Attr:$id);
 }
 
 def Silly_DebugNameOp : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {
@@ -113,8 +148,8 @@ def Silly_DebugNameOp : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {
   let description = [{
     This operation has no runtime effect and exists solely to propagate a variable name
     (and optionally a source location) to lowering passes that emit debug metadata (e.g. LLVM IR).
-    It is typically inserted immediately after the value is defined (or at the point where
-    the value becomes "live" in source terms).
+    It is inserted close to the point that the value is defined (immediately after for declarations,
+    or in the loop body for FOR induction variables.)
 
     Example:
       %ind = arith.addi %prev, %step : i32
@@ -123,8 +158,7 @@ def Silly_DebugNameOp : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {
 
   let arguments = (ins
     AnyType:$value,
-    StrAttr:$name,
-    Optional<AnyType>:$scope
+    StrAttr:$name
   );
 }
 
@@ -178,22 +212,6 @@ def Silly_GetOp : Op<Silly_Dialect, "get"> {
   let assemblyFormat = "attr-dict `:` type(results)";
 }
 
-def Silly_ArithBinOpKind : I32EnumAttr<
-    "ArithBinOpKind",
-    "arithmetic binary operation kind",
-    [
-      I32EnumAttrCase<"Mul", 0, "mul">,
-      I32EnumAttrCase<"Div", 1, "div">,
-      I32EnumAttrCase<"Mod", 2, "mod">,
-      I32EnumAttrCase<"Add", 3, "add">,
-      I32EnumAttrCase<"Sub", 4, "sub">,
-      I32EnumAttrCase<"Or",  5, "or">,
-      I32EnumAttrCase<"And", 6, "and">,
-      I32EnumAttrCase<"Xor", 7, "xor">
-]> {
-  let cppNamespace = "::silly";
-}
-
 def Silly_ArithBinOp : Op<Silly_Dialect, "arith_binop"> {
   let summary = "Generic arithmetic binary operation (mul, div, mod, etc.)";
   let description = [{
@@ -215,16 +233,6 @@ def Silly_ArithBinOp : Op<Silly_Dialect, "arith_binop"> {
     `,` $rhs `:` type($rhs)
     `->` type($result) attr-dict
   }];
-}
-
-def Silly_CmpBinOpKind : I32EnumAttr<"CmpBinOpKind",
-                                  "arithmetic comparison operation kind", [
-  I32EnumAttrCase<"Less",    0, "less">,
-  I32EnumAttrCase<"LessEq",  1, "less_eq">,
-  I32EnumAttrCase<"Equal",   2, "eq">,
-  I32EnumAttrCase<"NotEqual",3, "neq">,
-]> {
-  let cppNamespace = "::silly";
 }
 
 def Silly_CmpBinOp : Op<Silly_Dialect, "cmp"> {

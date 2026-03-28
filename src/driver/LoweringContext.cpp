@@ -299,6 +299,71 @@ namespace silly
                 funcOp->setLoc( builder.getFusedLoc( locs, sub ) );
 
                 lookupFunctionState[funcName].subProgramDI = sub;
+
+                // Now that we have the DISubprogramAttr built, build the DILexicalBlockAttr for IF
+
+#if 0
+                funcOp.walk(
+                    [&]( mlir::scf::IfOp op )
+                {
+                    auto ins = op.getInputs();
+                } );
+#endif
+                mlir::LLVM::DILexicalBlockAttr lexicalBlock{};
+                mlir::LLVM::DIScopeAttr sub2 = sub;
+                funcOp.walk(
+                    [&]( silly::ScopeBeginOp op )
+                    {
+                        // mlir::OpBuilder::InsertionGuard guard( builder );
+                        // builder.setInsertionPointAfter( op.getOperation() );
+                        ModuleInsertionPointGuard ip( mod, builder );
+
+                        mlir::Location loc = op.getLoc();
+                        uint32_t targetId = op.getId();
+                        mlir::FileLineColLoc fileLoc = locationToFLCLoc( loc );
+
+                        bool second{};
+                        if ( lexicalBlock )
+                        {
+                            sub2 = lexicalBlock;
+                            second = true;
+                        }
+
+                        lexicalBlock = mlir::LLVM::DILexicalBlockAttr::get( context, sub2, fileAttr, fileLoc.getLine(),
+                                                                            fileLoc.getColumn() );
+
+                        if ( second )
+                        {
+                            lscope = lexicalBlock;
+                            // Now want to manually hack-restamp all the instructions until I hit the
+                            // final silly::ScopeEndOp for this prefabricated IF program:
+                            //
+                            lscope = lexicalBlock;
+
+                            // Walk forward from this ScopeBeginOp until we hit the matching ScopeEndOp
+                            mlir::Block* block = op->getBlock();
+
+                            // Start from the op immediately after this ScopeBeginOp
+                            auto it = std::next( op->getIterator() );
+                            while ( it != block->end() )
+                            {
+                                mlir::Operation* current = &*it;
+                                ++it;    // advance before potentially modifying
+
+                                // Stop when we hit the matching ScopeEndOp
+                                if ( auto endOp = mlir::dyn_cast<silly::ScopeEndOp>( current ) )
+                                {
+                                    if ( endOp.getId() == targetId )
+                                        break;
+                                }
+
+                                // Restamp this op's location with the lexical block scope
+                                mlir::Location original = current->getLoc();
+                                mlir::Location scoped = mlir::FusedLoc::get( context, { original }, lscope );
+                                current->setLoc( scoped );
+                            }
+                        }
+                    } );
             }
 
             // Compute max print args for this function
@@ -434,7 +499,7 @@ namespace silly
         const char* typeName{};
         unsigned dwType = llvm::dwarf::DW_ATE_signed;
         unsigned elemStorageSizeInBits = elemSizeInBits;    // Storage size (e.g., i1 uses i8)
-        mlir::Operation * op = debugNameOp.getOperation();
+        mlir::Operation* op = debugNameOp.getOperation();
 
         if ( mlir::isa<mlir::IntegerType>( elemType ) )
         {
@@ -506,6 +571,26 @@ namespace silly
 
         mlir::LLVM::DIScopeAttr subOrLexicalBlock{};
 
+        mlir::Location fileLoc2 = fileLoc;
+        if ( varName == "myScopeVar" )
+        {
+#if 1 // initial hack.  replaced with iteration over instructions bounded by the 2nd scope-pair:
+#if 0
+            fileLoc2 = mlir::FusedLoc::get( context, { loc },
+                                            lscope    // the body DILexicalBlockAttr
+            );
+#endif
+            // op->setLoc( scoped );
+            fileLoc2 = loc;
+#endif
+
+            subOrLexicalBlock = lscope;
+        }
+        else
+        {
+            subOrLexicalBlock = f.subProgramDI;
+        }
+#if 0
         if ( mlir::Value scope = debugNameOp.getScope() )
         {
             silly::DebugScopeOp scopeOp = scope.getDefiningOp<silly::DebugScopeOp>();
@@ -516,6 +601,7 @@ namespace silly
         {
             subOrLexicalBlock = f.subProgramDI;
         }
+#endif
 
         if ( mlir::LLVM::AllocaOp allocaOp = opValue.getDefiningOp<mlir::LLVM::AllocaOp>() )
         {
@@ -562,7 +648,7 @@ namespace silly
                 /*argNo=*/0, totalSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
 
             builder.setInsertionPointAfter( allocaOp );
-            mlir::LLVM::DbgDeclareOp::create( builder, fileLoc, allocaOp, diVar );
+            mlir::LLVM::DbgDeclareOp::create( builder, fileLoc2, allocaOp, diVar );
         }
         else
         {
@@ -578,7 +664,15 @@ namespace silly
             // Empty expression for direct value binding
             mlir::LLVM::DIExpressionAttr emptyExpr = mlir::LLVM::DIExpressionAttr::get( context, {} );
 
-            mlir::LLVM::DbgValueOp::create( rewriter, fileLoc, opValue, diVar, emptyExpr );
+            //static DbgValueOp create(::mlir::OpBuilder &builder, ::mlir::Location location, ::mlir::Value value, ::mlir::LLVM::DILocalVariableAttr varInfo, ::mlir::LLVM::DIExpressionAttr locationExpr = nullptr);
+            //auto dbg =
+                mlir::LLVM::DbgValueOp::create( rewriter, fileLoc2, opValue, diVar, emptyExpr );
+#if 0
+            if ( varName == "myScopeVar" )
+            {
+                dbg.setLoc( fileLoc2 );
+            }
+#endif
         }
 
         return mlir::success();
@@ -592,7 +686,7 @@ namespace silly
         {
             globalOp = it->second;
             LLVM_DEBUG( llvm::dbgs() << llvm::formatv( "Found global: {0} for string literal '{1}'\n",
-                                                     globalOp.getSymName().str(), stringLit.str() ) );
+                                                       globalOp.getSymName().str(), stringLit.str() ) );
         }
 
         return globalOp;

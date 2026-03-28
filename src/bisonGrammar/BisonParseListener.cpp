@@ -416,7 +416,6 @@ namespace silly
 
         ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
         f.incrementScopeLevel();
-        // checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
 
         createFor( loc, varId.name, elemType, varLoc, vstart, vstop, vstep, ls );
     }
@@ -771,8 +770,6 @@ namespace silly
         mlir::Location loc = getLocation( bLoc );
         LocationStack ls( builder, loc );
 
-        // checkForReturnInScope( ctx->scopedStatements(), "IF block" );
-
         mlir::Value conditionPredicate = parseExpression( {}, predicate, ls );
         if ( !conditionPredicate )
         {
@@ -789,8 +786,6 @@ namespace silly
         mlir::Location loc = getLocation( bLoc );
         LocationStack ls( builder, loc );
 
-        // checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
-
         selectElseBlock( loc );
 
         mlir::Value conditionPredicate = parseExpression( {}, predicate, ls );
@@ -806,8 +801,6 @@ namespace silly
     void BisonParseListener::enterElseStatement( const silly::BisonParser::location_type& bLoc )
     {
         mlir::Location loc = getLocation( bLoc );
-
-        // checkForReturnInScope( ctx->scopedStatements(), "ELSE block" );
 
         selectElseBlock( loc );
     }
@@ -886,9 +879,11 @@ namespace silly
 
     void BisonParseListener::exitScopedStatements()
     {
+#if 0
         ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
         f.decrementScopeLevel();
         exitScopedRegion();
+#endif
     }
 
     void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )

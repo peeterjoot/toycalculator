@@ -69,17 +69,12 @@ namespace silly
             } );
 
             mlir::Value param = funcOp.getArgument( i );
-            silly::DebugNameOp::create( builder, startLoc, param, paramNames[i], f.currentDebugScope() );
+            silly::DebugNameOp::create( builder, startLoc, param, paramNames[i] );
             f.recordParameterValue( paramNames[i], param );
         }
 
         currentFuncName = funcName;
         f.setFuncOp( funcOp );
-
-        if ( funcName == ENTRY_SYMBOL_NAME )
-        {
-            f.pushScopeOp( mlir::Value{} );
-        }
     }
 
     void Builder::createMain( mlir::Location fLoc, mlir::Location sLoc )
@@ -379,9 +374,7 @@ namespace silly
 
         f.setLastDeclared( dcl.getOperation() );
 
-        mlir::Value debugScopeOp = f.currentDebugScope();
-
-        silly::DebugNameOp::create( builder, loc, dcl.getResult(), varName, debugScopeOp );
+        silly::DebugNameOp::create( builder, loc, dcl.getResult(), varName );
     }
 
     silly::DeclareOp Builder::lookupDeclareForVar( mlir::Location loc, const std::string &varName )
@@ -1003,9 +996,6 @@ namespace silly
             step = createCastIfNeeded( loc, step, elemType, ls );
         }
 
-        mlir::Value scopeToken = silly::DebugScopeOp::create( builder, varLoc, typ.i1 ).getResult();
-        f.pushScopeOp( scopeToken );
-
         // mlir::Location fusedLoc = ls.fuseLocations( );
         mlir::scf::ForOp forOp = mlir::scf::ForOp::create( builder, loc, start, end, step );
         f.pushToInsertionPointStack( forOp.getOperation() );
@@ -1017,13 +1007,7 @@ namespace silly
 
         f.pushInductionVariable( varName, inductionVar );
 
-        // HACK: DISABLE SCOPEOP just for FOR induction-variables for now (induction var DI is MIA after
-        // LLVM-IR lowering -- perhaps a dominance issue.)
-#if 0
-        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, scopeToken );
-#else
-        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName, mlir::Value{} );
-#endif
+        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName );
     }
 
     void Builder::finishFor( mlir::Location loc )
@@ -1089,24 +1073,29 @@ namespace silly
 
     void Builder::enterScopedRegion( mlir::Location loc, bool wantScope )
     {
+#if 0
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
 
         mlir::Value value{};
 
-        // not doing this right now for FOR -- to be revisited.
+        // not doing this right now for FUNCTION
         if ( wantScope )
         {
-            value = silly::DebugScopeOp::create( builder, loc, typ.i1 ).getResult();
+            //value = silly::DebugScopeOp::create( builder, loc, typ.i1 ).getResult();
         }
 
         // keep stack balanced, signals function scope when !isFunctionBody
         f.startScope( value );
+#endif
+
+        silly::ScopeBeginOp::create( builder, loc, 0 );
     }
 
-    void Builder::exitScopedRegion()
+    void Builder::exitScopedRegion( mlir::Location loc )
     {
-        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
-        f.endScope();
+        //ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
+        //f.endScope();
+        silly::ScopeEndOp::create( builder, loc, 0 );
     }
 
     void Builder::createStringDeclare( mlir::Location loc, const std::string &varName, mlir::Location aloc,

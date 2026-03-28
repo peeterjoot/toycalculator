@@ -354,7 +354,6 @@ namespace silly
         }
     };
 
-#if 0
     // Now unused (again)
     template <class SillOpType>
     class LowerByDeletion : public mlir::ConversionPattern
@@ -376,39 +375,9 @@ namespace silly
             return mlir::success();
         }
     };
-#endif
 
-    /// Lower silly::DebugScopeOp
-    class DebugScopeOpLowering : public mlir::ConversionPattern
-    {
-       private:
-        LoweringContext& lState;    ///< lowering context (including DriverState)
-
-       public:
-        /// Constructor boilerplate for DebugScopeOpLowering
-        DebugScopeOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
-            : mlir::ConversionPattern( silly::DebugScopeOp::getOperationName(), benefit, context ),
-              lState( loweringState )
-        {
-        }
-
-        /// Lowering workhorse for silly::DebugScopeOp
-        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
-                                             mlir::ConversionPatternRewriter& rewriter ) const override
-        {
-            silly::DebugScopeOp debugScopeOp = cast<silly::DebugScopeOp>( op );
-            mlir::Location loc = debugScopeOp.getLoc();
-            mlir::FileLineColLoc fileLoc = locationToFLCLoc( loc );
-
-            if ( mlir::failed( lState.constructLexicalBlockDI( fileLoc, rewriter, op ) ) )
-            {
-                return mlir::failure();
-            }
-
-            rewriter.eraseOp( debugScopeOp );
-            return mlir::success();
-        }
-    };
+    using ScopeBeginOpLowering = LowerByDeletion<ScopeBeginOp>;
+    using ScopeEndOpLowering = LowerByDeletion<ScopeEndOp>;
 
     /// Lower silly::DebugNameOp
     class DebugNameOpLowering : public mlir::ConversionPattern
@@ -1079,7 +1048,8 @@ namespace silly
                 target.addLegalDialect<mlir::LLVM::LLVMDialect>();
                 target.addIllegalOp<silly::AssignOp, silly::DeclareOp, silly::LoadOp, silly::NegOp, silly::PrintOp,
                                     silly::GetOp, silly::StringLiteralOp, silly::AbortOp, silly::DebugNameOp,
-                                    silly::DebugScopeOp, silly::ArithBinOp, silly::CmpBinOp>();
+                                    silly::ArithBinOp, silly::CmpBinOp,
+                                    silly::ScopeBeginOp, silly::ScopeEndOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
 
                 target.addIllegalDialect<mlir::scf::SCFDialect>();
@@ -1088,7 +1058,8 @@ namespace silly
                 mlir::RewritePatternSet patterns( &getContext() );
                 patterns.add<AssignOpLowering, LoadOpLowering, NegOpLowering, PrintOpLowering, AbortOpLowering,
                              GetOpLowering, StringLiteralOpLowering, ArithBinOpLowering, CmpBinOpLowering,
-                             DeclareOpLowering, DebugScopeOpLowering, DebugNameOpLowering>( lState, &getContext(), 1 );
+                             DeclareOpLowering, DebugNameOpLowering,
+                             ScopeBeginOpLowering, ScopeEndOpLowering>( lState, &getContext(), 1 );
 
                 // SCF -> CF
                 mlir::populateSCFToControlFlowConversionPatterns( patterns );

@@ -273,6 +273,8 @@ namespace silly
 
         /// Debug type for unknown/unsupported types.
         mlir::LLVM::DITypeAttr diUNKNOWN;
+
+        mlir::LLVM::DIScopeAttr lscope;
     };
 
     inline mlir::LLVM::ConstantOp LoweringContext::getI64one( mlir::Location loc,

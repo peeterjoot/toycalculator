@@ -77,7 +77,6 @@ namespace silly
     void ParserPerFunctionState::startScope( mlir::Value value )
     {
         variables.push_back( {} );
-        pushScopeOp( value );
     }
 
     void ParserPerFunctionState::endScope()
@@ -86,8 +85,6 @@ namespace silly
         {
             variables.pop_back();
         }
-
-        debugScopeStack.pop_back();
     }
 
     void ParserPerFunctionState::pushToInsertionPointStack( mlir::Operation *op )

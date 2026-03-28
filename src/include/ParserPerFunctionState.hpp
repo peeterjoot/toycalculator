@@ -88,25 +88,13 @@ namespace silly
         /// Any variables that had been declared in the current scope will no longer be visible.
         void endScope();
 
-        /// Get the last pushed scope Op
-        mlir::Value currentDebugScope() const
-        {
-            return debugScopeStack.empty() ? mlir::Value{} : debugScopeStack.back();
-        }
-
-        /// Push one more scope Op for later use.
-        void pushScopeOp( mlir::Value value )
-        {
-            debugScopeStack.push_back( value );
-        }
-
-        // These three are hacks for the Bison FE.  Revisit this after handling scopedStatements consistently
-        // (both front ends) wrt. FOR,IF,ELSE,ELIF,FUNCTION.
+        /// Increase the level for scope_begin/scope_end
         void incrementScopeLevel()
         {
             scopeLevel++;
         }
 
+        /// Decrease the level for scope_begin/scope_end
         void decrementScopeLevel()
         {
             assert( scopeLevel );
@@ -114,6 +102,7 @@ namespace silly
             scopeLevel--;
         }
 
+        /// Obtain the level for the current or next scope_begin/scope_end pair.
         int getScopeLevel()
         {
             return scopeLevel;
@@ -156,9 +145,6 @@ namespace silly
 
         /// Stack for scf.if/scf.for blocks.
         std::vector<mlir::Operation *> insertionPointStack;
-
-        /// null/empty = function scope
-        std::vector<mlir::Value> debugScopeStack;
 
         int scopeLevel{};
 

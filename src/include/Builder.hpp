@@ -31,7 +31,6 @@ namespace silly
         ///
         /// - Records parameter Values, and creates each parameter DebugNameOp.
         /// - set the current function name, and squirrel away the funcOp for lookup.
-        /// - Creates initial dummy DebugScopeOp placeholder.
         ///
         void createNewFunctionState( mlir::Location startLoc, mlir::func::FuncOp funcOp, const std::string &funcName,
                                      const std::vector<std::string> &paramNames );
@@ -177,11 +176,11 @@ namespace silly
         /// mlir builder helper for IF/ELIF/ELSE (exit part)
         void finishIfElifElse();
 
-        /// mlir builder helper for enter an IF/ELIF/ELSE scope.
+        /// mlir builder helper for enter an IF/ELIF/ELSE/FOR scope.
         void enterScopedRegion( mlir::Location loc, bool wantScope );
 
-        /// mlir builder helper for exit an IF/ELIF/ELSE scope.
-        void exitScopedRegion();
+        /// mlir builder helper for exit an IF/ELIF/ELSE/FOR scope.
+        void exitScopedRegion( mlir::Location loc );
 
         void createStringDeclare( mlir::Location loc, const std::string &varName, mlir::Location aloc,
                                   const std::string &arrayBoundsString, bool haveInit, const std::string &strLit,
