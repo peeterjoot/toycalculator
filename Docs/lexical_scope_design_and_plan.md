@@ -101,7 +101,8 @@ def ScopeKind : I32EnumAttr<"ScopeKind", "Scope boundary kind", [
     I32EnumAttrCase<"ElifBody",      3>,
     I32EnumAttrCase<"ElseBody",      4>,
     I32EnumAttrCase<"ForHeader",     5>,
-    I32EnumAttrCase<"ForBody",       6>,
+    I32EnumAttrCase<"ForPredicate",  6>,
+    I32EnumAttrCase<"ForBody",       7>,
 ]>;
 
 def ScopeBeginOp : Silly_Op<"scope_begin"> {

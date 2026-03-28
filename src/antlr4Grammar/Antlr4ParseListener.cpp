@@ -293,7 +293,9 @@ namespace silly
 
     void Antlr4ParseListener::exitScopedStatements( SillyParser::ScopedStatementsContext *ctx )
     {
-        exitScopedRegion();
+        mlir::Location loc = getStartLocation( ctx );
+
+        exitScopedRegion( loc );
     }
 
     mlir::Value Antlr4ParseListener::parseReturnExpression( mlir::Location loc,

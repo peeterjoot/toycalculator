@@ -181,7 +181,7 @@ namespace silly
         void enterScopedRegion( mlir::Location loc, bool wantScope );
 
         /// mlir builder helper for exit an IF/ELIF/ELSE/FOR scope.
-        void exitScopedRegion();
+        void exitScopedRegion( mlir::Location loc );
 
         void createStringDeclare( mlir::Location loc, const std::string &varName, mlir::Location aloc,
                                   const std::string &arrayBoundsString, bool haveInit, const std::string &strLit,

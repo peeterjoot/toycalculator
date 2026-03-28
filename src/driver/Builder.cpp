@@ -1080,6 +1080,7 @@ namespace silly
 
     void Builder::enterScopedRegion( mlir::Location loc, bool wantScope )
     {
+#if 0
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
 
         mlir::Value value{};
@@ -1092,12 +1093,18 @@ namespace silly
 
         // keep stack balanced, signals function scope when !isFunctionBody
         f.startScope( value );
+#endif
+
+        mlir::arith::ConstantIntOp level = mlir::arith::ConstantIntOp::create( builder, loc, 0, 32 );
+        silly::ScopeBeginOp::create( builder, loc, level, silly::ScopeKind::IfPredicate );
     }
 
-    void Builder::exitScopedRegion()
+    void Builder::exitScopedRegion( mlir::Location loc )
     {
-        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
-        f.endScope();
+        //ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
+        //f.endScope();
+        mlir::arith::ConstantIntOp level = mlir::arith::ConstantIntOp::create( builder, loc, 0, 32 );
+        silly::ScopeEndOp::create( builder, loc, level );
     }
 
     void Builder::createStringDeclare( mlir::Location loc, const std::string &varName, mlir::Location aloc,

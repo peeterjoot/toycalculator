@@ -52,6 +52,50 @@ def Silly_VarType : TypeDef<Silly_Dialect, "var"> {
   let hasCustomAssemblyFormat = 1;
 }
 
+def Silly_ArithBinOpKind : I32EnumAttr<
+    "ArithBinOpKind",
+    "arithmetic binary operation kind",
+    [
+      I32EnumAttrCase<"Mul", 0, "mul">,
+      I32EnumAttrCase<"Div", 1, "div">,
+      I32EnumAttrCase<"Mod", 2, "mod">,
+      I32EnumAttrCase<"Add", 3, "add">,
+      I32EnumAttrCase<"Sub", 4, "sub">,
+      I32EnumAttrCase<"Or",  5, "or">,
+      I32EnumAttrCase<"And", 6, "and">,
+      I32EnumAttrCase<"Xor", 7, "xor">
+]> {
+  let cppNamespace = "::silly";
+}
+
+def Silly_CmpBinOpKind : I32EnumAttr<
+    "CmpBinOpKind",
+    "arithmetic comparison operation kind",
+    [
+      I32EnumAttrCase<"Less",    0, "less">,
+      I32EnumAttrCase<"LessEq",  1, "less_eq">,
+      I32EnumAttrCase<"Equal",   2, "eq">,
+      I32EnumAttrCase<"NotEqual",3, "neq">,
+]> {
+  let cppNamespace = "::silly";
+}
+
+def Silly_ScopeKind : I32EnumAttr<
+    "ScopeKind",
+    "Scope boundary kind",
+    [
+      I32EnumAttrCase<"IfPredicate",   0, "if-pred">,
+      I32EnumAttrCase<"IfBody",        1, "if-body">,
+      I32EnumAttrCase<"ElifPredicate", 2, "elif-pred">,
+      I32EnumAttrCase<"ElifBody",      3, "elif-body">,
+      I32EnumAttrCase<"ElseBody",      4, "else-body">,
+      I32EnumAttrCase<"ForHeader",     5, "for-header">,
+      I32EnumAttrCase<"ForPredicate",  6, "for-pred">,
+      I32EnumAttrCase<"ForBody",       7, "for-body">
+]> {
+  let cppNamespace = "::silly";
+}
+
 def Silly_DeclareOp : Op<Silly_Dialect, "declare"> {
   let summary = "Declare an abstract variable location (scalar or array).";
   let description = [{
@@ -105,6 +149,14 @@ def Silly_DebugScopeOp : Op<Silly_Dialect, "scope", [NoMemoryEffect]> {
 
   let arguments = (ins);
   let results = (outs AnyType:$result);
+}
+
+def Silly_ScopeBeginOp : Op<Silly_Dialect, "scope_begin", [NoMemoryEffect]> {
+    let arguments = (ins I32:$id, Silly_ScopeKind:$kind);
+}
+
+def Silly_ScopeEndOp : Op<Silly_Dialect, "scope_end", [NoMemoryEffect]> {
+    let arguments = (ins I32:$id);
 }
 
 def Silly_DebugNameOp : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {
@@ -178,22 +230,6 @@ def Silly_GetOp : Op<Silly_Dialect, "get"> {
   let assemblyFormat = "attr-dict `:` type(results)";
 }
 
-def Silly_ArithBinOpKind : I32EnumAttr<
-    "ArithBinOpKind",
-    "arithmetic binary operation kind",
-    [
-      I32EnumAttrCase<"Mul", 0, "mul">,
-      I32EnumAttrCase<"Div", 1, "div">,
-      I32EnumAttrCase<"Mod", 2, "mod">,
-      I32EnumAttrCase<"Add", 3, "add">,
-      I32EnumAttrCase<"Sub", 4, "sub">,
-      I32EnumAttrCase<"Or",  5, "or">,
-      I32EnumAttrCase<"And", 6, "and">,
-      I32EnumAttrCase<"Xor", 7, "xor">
-]> {
-  let cppNamespace = "::silly";
-}
-
 def Silly_ArithBinOp : Op<Silly_Dialect, "arith_binop"> {
   let summary = "Generic arithmetic binary operation (mul, div, mod, etc.)";
   let description = [{
@@ -215,16 +251,6 @@ def Silly_ArithBinOp : Op<Silly_Dialect, "arith_binop"> {
     `,` $rhs `:` type($rhs)
     `->` type($result) attr-dict
   }];
-}
-
-def Silly_CmpBinOpKind : I32EnumAttr<"CmpBinOpKind",
-                                  "arithmetic comparison operation kind", [
-  I32EnumAttrCase<"Less",    0, "less">,
-  I32EnumAttrCase<"LessEq",  1, "less_eq">,
-  I32EnumAttrCase<"Equal",   2, "eq">,
-  I32EnumAttrCase<"NotEqual",3, "neq">,
-]> {
-  let cppNamespace = "::silly";
 }
 
 def Silly_CmpBinOp : Op<Silly_Dialect, "cmp"> {
