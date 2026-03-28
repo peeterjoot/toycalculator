@@ -41,8 +41,6 @@ syntax-error/nested-if.silly
      nested-if.silly:133:7: error: Undeclared variable x
        133 | PRINT x; // error
            |       ^
-
-syntax-error/array-return-verbose.silly
 ```
 
 
