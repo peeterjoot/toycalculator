@@ -282,13 +282,13 @@ namespace silly
 
     void Antlr4ParseListener::enterScopedStatements( SillyParser::ScopedStatementsContext *ctx )
     {
-        //bool isFunctionBody = dynamic_cast<SillyParser::FunctionStatementContext *>( ctx->parent ) != nullptr;
+        bool isFunctionBody = dynamic_cast<SillyParser::FunctionStatementContext *>( ctx->parent ) != nullptr;
         //bool isForBody = dynamic_cast<SillyParser::ForStatementContext *>( ctx->parent ) != nullptr;
 
         mlir::Location loc = getStartLocation( ctx );
 
+        enterScopedRegion( loc, !isFunctionBody );
         //enterScopedRegion( loc, !isFunctionBody and !isForBody );
-        enterScopedRegion( loc );
     }
 
     void Antlr4ParseListener::exitScopedStatements( SillyParser::ScopedStatementsContext *ctx )

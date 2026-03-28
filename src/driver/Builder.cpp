@@ -1078,12 +1078,19 @@ namespace silly
         builder.setInsertionPointToStart( &thenBlock );
     }
 
-    void Builder::enterScopedRegion( mlir::Location loc )
+    void Builder::enterScopedRegion( mlir::Location loc, bool wantScope )
     {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
 
-        mlir::Value value = silly::DebugScopeOp::create( builder, loc, typ.i1 ).getResult();
+        mlir::Value value{};
 
+        // not doing this right now for FUNCTION
+        if ( wantScope )
+        {
+            value = silly::DebugScopeOp::create( builder, loc, typ.i1 ).getResult();
+        }
+
+        // keep stack balanced, signals function scope when !isFunctionBody
         f.startScope( value );
     }
 
