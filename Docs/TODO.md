@@ -5,16 +5,84 @@
 
 #### Bison parser experiment.
 * TODO:
+- [ ] IF/ELIF/ELSE/FOR all have check-for-return logic in the ANTLR front end.  Trickier seeming in the bison front end, but may just require thinking about it differently.
 - [ ] location passing is better but still needs more work (pass rule start tokens consistently ; ranges need review.)
 - [ ] Review helper functions in both Parse walker implementations for consistency.
 - [ ] Now have stuff that is Bison FE specific in the silly namespace, which is confusing.  Introduce a silly::Bison namespace for that?
-- [ ] IF/ELIF/ELSE/FOR all have check-for-return logic in the ANTLR front end.  Trickier seeming in the bison front end, but may just require thinking about it differently.
 - [ ] This template parameterization in generateCall is a hack.  Should probably switch to std::shared_ptr<silly::Expr> uniformly
 - [ ] debugging -- didn't work with an earlier debug attempt (probably still broken unless I accidentally fixed it.)
-- [ ] multiple source files?
 - [ ] remaining failures:
 ```
 debug/induction-var-and-scope-decl.silly
+
+    missing (but myLoopVar shows up):
+        // CHECK: DW_AT_name{{.*}}myScopeVar
+        // CHECK: DW_AT_decl_file{{.*}}induction-var-and-scope-decl.silly
+        // CHECK: DW_AT_decl_line{{[[:space:]]+}}0x00000018
+
+syntax-error/return-in-elif.silly
+syntax-error/return-in-else.silly
+syntax-error/return-in-for.silly
+syntax-error/return-in-if.silly
+syntax-error/function-no-return.silly
+
+    -- missing the return-checking, so we are getting as far as lowering, but should fail earlier:
+
+        + /usr/local/llvm-22.1.1/bin/FileCheck /home/peeter/toycalculator/tests/syntax-error/function-no-return.silly
+        /home/peeter/toycalculator/tests/syntax-error/function-no-return.silly:3:11: error: CHECK: expected string not found in input
+        // CHECK: function-no-return.silly: In function ‘blah’:
+        <stdin>:1:1: note: scanning from here
+        loc("function-no-return.silly":13:5): error: block with no terminator, has "silly.print"(%1, %0) : (i32, !llvm.ptr) -> ()
+        ^
+        <stdin>:1:5: note: possible intended match here
+        loc("function-no-return.silly":13:5): error: block with no terminator, has "silly.print"(%1, %0) : (i32, !llvm.ptr) -> ()
+            ^
+
+syntax-error/get-string.silly
+
+    // CHECK: get-string.silly:8:1: error: Attempted GET to string literal or array?
+    // CHECK:     8 | GET y;
+    // CHECK:       | ^
+
+    # cat out/get-string.compile.out
+    get-string.silly:8:5: error: Attempted GET to string literal or array?
+        8 | GET y;
+          |     ^
+
+
+syntax-error/user-main.silly
+syntax-error/nested.silly
+syntax-error/multiple-in-func.silly
+syntax-error/induction-in-step.silly
+
+    not handling error gracefully:
+
+    # cat out/induction-in-step.compile.out
+    induction-in-step.silly:10:23: error: Undeclared variable i
+       10 | FOR (INT32 i: (0, 10, i+1))
+          |                       ^
+    PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace and instructions to reproduce the bug.
+    Stack dump without symbol names (ensure you have llvm-symbolizer in your PATH or set the environment var `LLVM_SYMBOLIZER_PATH` to point to it):
+    0  libLLVMSupport.so.22.1 0x0000ffff7aa72990 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) + 52
+    1  libLLVMSupport.so.22.1 0x0000ffff7aa72da8
+    2  libLLVMSupport.so.22.1 0x0000ffff7aa706b0 llvm::sys::RunSignalHandlers() + 140
+    3  libLLVMSupport.so.22.1 0x0000ffff7aa722b0
+    4  linux-vdso.so.1        0x0000ffff8ae39930 __kernel_rt_sigreturn + 0
+    5  silly                  0x000000000043ba2c llvm::detail::PunnedPointer<mlir::Type>::asInt() const + 16
+    6  silly                  0x000000000043b998 llvm::detail::PunnedPointer<mlir::Type>::operator long() const + 24
+    7  silly                  0x000000000043b938 llvm::PointerIntPair<mlir::Type, 3u, mlir::detail::ValueImpl::Kind, llvm::PointerLikeTypeTraits<mlir::Type>, llvm::PointerIntPairInfo<mlir::Type, 3u, llvm::PointerLikeTypeTraits<mlir::Type>>>::getPointer() const + 24
+    8  silly                  0x0000000000437954 mlir::detail::ValueImpl::getType() const + 28
+    9  silly                  0x000000000043a240 mlir::Value::getType() const + 28
+
+syntax-error/nested-if.silly
+
+    missing one of the error outputs:
+
+     nested-if.silly:133:7: error: Undeclared variable x
+       133 | PRINT x; // error
+           |       ^
+
+
 syntax-error/array-return.silly
 syntax-error/array-return-verbose.silly
 syntax-error/chained-comparison.silly
@@ -22,22 +90,12 @@ syntax-error/chained-equality.silly
 syntax-error/expr-4c.silly
 syntax-error/expr-4d.silly
 syntax-error/expr-4e.silly
-syntax-error/function-no-return.silly
-syntax-error/get-string.silly
-syntax-error/induction-in-step.silly
 syntax-error/init-assign.silly
 syntax-error/invalid-binary-op.silly
 syntax-error/keyword-as-var2.silly
 syntax-error/keyword-as-var.silly
-syntax-error/multiple-in-func.silly
-syntax-error/nested-if.silly
-syntax-error/nested.silly
-syntax-error/return-in-elif.silly
-syntax-error/return-in-else.silly
-syntax-error/return-in-for.silly
-syntax-error/return-in-if.silly
 syntax-error/string-return.silly
-syntax-error/user-main.silly
+    --- parse errors.
 ```
 
 
