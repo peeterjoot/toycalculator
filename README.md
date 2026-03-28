@@ -262,6 +262,9 @@ This is inconsistent with assignment to a `BOOL` variable, which will truncate w
 Array `BOOL` values may use a packed bitmask representation in the future.
 * Negative `FOR` loop step sizes currently have implementation defined behaviour.
 `FOR` loops have no `BREAK` nor `CONTINUE` support.
+* Debugging instrumentation for `FOR` needs work.  `IF` debug instrumentation may not be right either (the
+ lowered LLVM-IR differs from what clang does for example.)  See the TODO for places where debugging has not worked
+ right, such failures have only been noticed in programs with control flow (may have things right for simple programs.)
 
 ## Interesting Files
 

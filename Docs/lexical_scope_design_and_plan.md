@@ -448,7 +448,7 @@ attributes #1 = { "frame-pointer"="non-leaf-no-reserve" "no-trapping-math"="true
 !45 = !DILocation(line: 15, column: 5, scope: !17)
 ```
 
-### Sample clang LLVM-IR for an IF
+### Sample clang LLVM-IR for a FOR
 
 ```
 #include <stdio.h>
