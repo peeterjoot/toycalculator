@@ -705,7 +705,7 @@ namespace silly
         if ( !f.getHaveReturn() )
         {
             LocPairs locs = getLocations( funcLoc, false );
-            emitUserError( locs.second, "Function must have a RETURN statement", currentFuncName );
+            emitUserError( locs.first, "Function must have a RETURN statement", currentFuncName );
             return;
         }
 

@@ -505,7 +505,7 @@ functionStatement
       optionalReturnType
         { driver.enterFunctionDefinition( @1, $2, $4, $6 ); }
       otherScopedStatements
-        { driver.exitFunctionDefinition( @7 ); }
+        { driver.exitFunctionDefinition( $8 ); }
     ;
 
 optionalParamList

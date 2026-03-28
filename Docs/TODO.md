@@ -25,15 +25,6 @@ debug/induction-var-and-scope-decl.silly
         // CHECK: DW_AT_decl_file{{.*}}induction-var-and-scope-decl.silly
         // CHECK: DW_AT_decl_line{{[[:space:]]+}}0x00000018
 
-syntax-error/function-no-return.silly
-
-    function-no-return.silly: In function ‘blah’:
-    function-no-return.silly:11:18: error: Function must have a RETURN statement
-       11 | FUNCTION blah ( )
-          |                  ^
-
-    My attempt to get the location for the } position failed.  Why?
-
 syntax-error/nested-if.silly
 
     missing one of the error outputs:
