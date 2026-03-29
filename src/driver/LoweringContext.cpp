@@ -442,30 +442,30 @@ namespace silly
             {
                 case 1:
                 {
-                    typeName = "bool";
+                    typeName = "BOOL";
                     dwType = llvm::dwarf::DW_ATE_boolean;
                     elemStorageSizeInBits = 8;
                     break;
                 }
                 case 8:
                 {
-                    typeName = "char";    // Using "char" for STRING arrays
+                    typeName = "UINT8";    // Using "char" for STRING arrays
                     dwType = llvm::dwarf::DW_ATE_signed_char;
                     break;
                 }
                 case 16:
                 {
-                    typeName = "int16_t";
+                    typeName = "INT16";
                     break;
                 }
                 case 32:
                 {
-                    typeName = "int32_t";
+                    typeName = "INT32";
                     break;
                 }
                 case 64:
                 {
-                    typeName = "int64_t";
+                    typeName = "INT64";
                     break;
                 }
                 default:
@@ -482,12 +482,12 @@ namespace silly
             {
                 case 32:
                 {
-                    typeName = "float";
+                    typeName = "FLOAT";
                     break;
                 }
                 case 64:
                 {
-                    typeName = "double";
+                    typeName = "DOUBLE";
                     break;
                 }
                 default:

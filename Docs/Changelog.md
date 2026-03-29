@@ -12,3 +12,7 @@ Had inappropriate i1 narrowing for the literal creation in bowls of parseExpress
 ## Bison FE.
 
 * Fixed all the non-debug/syntax-error testsuite failures.
+
+## Debugging.
+
+* Updated the dwarf types to use the silly-language type names.
