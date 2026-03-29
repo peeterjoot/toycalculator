@@ -574,7 +574,7 @@ namespace silly
         mlir::Location fileLoc2 = fileLoc;
         if ( varName == "myScopeVar" )
         {
-#if 0 // initial hack.  replaced with iteration over instructions bounded by the 2nd scope-pair:
+#if 1 // initial hack.  replaced with iteration over instructions bounded by the 2nd scope-pair:
             fileLoc2 = mlir::FusedLoc::get( context, { loc },
                                             lscope    // the body DILexicalBlockAttr
             );
@@ -661,7 +661,15 @@ namespace silly
             // Empty expression for direct value binding
             mlir::LLVM::DIExpressionAttr emptyExpr = mlir::LLVM::DIExpressionAttr::get( context, {} );
 
-            mlir::LLVM::DbgValueOp::create( rewriter, fileLoc2, opValue, diVar, emptyExpr );
+            //static DbgValueOp create(::mlir::OpBuilder &builder, ::mlir::Location location, ::mlir::Value value, ::mlir::LLVM::DILocalVariableAttr varInfo, ::mlir::LLVM::DIExpressionAttr locationExpr = nullptr);
+            //auto dbg =
+                mlir::LLVM::DbgValueOp::create( rewriter, fileLoc2, opValue, diVar, emptyExpr );
+#if 0
+            if ( varName == "myScopeVar" )
+            {
+                dbg.setLoc( fileLoc2 );
+            }
+#endif
         }
 
         return mlir::success();

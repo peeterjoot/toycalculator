@@ -792,6 +792,12 @@ Inspection of the resulting LLVM-IR shows there's still one thing wrong:
 
 Here `!19` is "pointing" to the file-scope, not the second DILexicalBlock?
 
+I had to reenable the fusion at the `#dbg_declare` create point:
+```
+fileLoc2 = mlir::FusedLoc::get( context, { loc }, lscope );
+```
+
+to get the `!19` to "point" to !15 properly.
 
 ---
 
