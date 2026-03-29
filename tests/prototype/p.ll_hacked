@@ -1,0 +1,49 @@
+; ModuleID = 'print-columnar.silly'
+source_filename = "print-columnar.silly"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128-Fn32"
+target triple = "aarch64-unknown-linux-gnu"
+
+declare void @__silly_print(i32, ptr)
+
+define i32 @main() #0 !dbg !5 {
+  %2 = alloca double, i64 1, align 8, !dbg !12
+    #dbg_declare(ptr %2, !9, !DIExpression(), !12)
+  call void @llvm.memset.p0.i64(ptr %2, i8 0, i64 8, i1 false), !dbg !12
+  store volatile double 3.000000e+00, ptr %2, align 8, !dbg !12
+  %3 = load volatile double, ptr %2, align 8, !dbg !13
+  %4 = bitcast double %3 to i64, !dbg !14
+  %5 = insertvalue { i32, i32, i64, ptr } { i32 2, i32 0, i64 undef, ptr undef }, i64 %4, 2, !dbg !14
+  %6 = insertvalue { i32, i32, i64, ptr } %5, ptr null, 3, !dbg !14
+  %p1 = alloca { i32, i32, i64, ptr }, i64 1, align 8, !dbg !14
+  %7 = getelementptr { i32, i32, i64, ptr }, ptr %p1, i64 0, !dbg !14
+  store volatile { i32, i32, i64, ptr } %6, ptr %7, align 8, !dbg !14
+  call void @__silly_print(i32 1, ptr %p1), !dbg !14
+  ret i32 0, !dbg !15
+}
+
+attributes #0 = { noinline nounwind optnone uwtable "frame-pointer"="non-leaf-no-reserve" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="generic" "target-features"="+fp-armv8,+neon,+outline-atomics,+v8a,-fmv" }
+
+; Function Attrs: nocallback nofree nounwind willreturn memory(argmem: write)
+declare void @llvm.memset.p0.i64(ptr writeonly captures(none), i8, i64, i1 immarg) #0
+
+attributes #0 = { nocallback nofree nounwind willreturn memory(argmem: write) }
+
+!llvm.dbg.cu = !{!0}
+!llvm.ident = !{!2}
+!llvm.module.flags = !{!3, !4}
+
+!0 = distinct !DICompileUnit(language: DW_LANG_C, file: !1, producer: "silly", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, nameTableKind: None)
+!1 = !DIFile(filename: "print-columnar.silly", directory: ".")
+!2 = !{!"silly V0.10.0"}
+!3 = !{i32 2, !"Debug Info Version", i32 3}
+!4 = !{i32 7, !"Dwarf Version", i32 5}
+!5 = distinct !DISubprogram(name: "main", linkageName: "main", scope: !1, file: !1, line: 20, type: !6, scopeLine: 20, spFlags: DISPFlagDefinition, unit: !0)
+!6 = !DISubroutineType(types: !7)
+!7 = !{!8}
+!8 = !DIBasicType(name: "int", size: 32, encoding: DW_ATE_signed)
+!9 = !DILocalVariable(name: "x", scope: !5, file: !1, line: 20, type: !10, align: 64)
+!10 = !DIBasicType(name: "double", size: 64, encoding: DW_ATE_float)
+!12 = !DILocation(line: 20, column: 13, scope: !5)
+!13 = !DILocation(line: 22, column: 12, scope: !5)
+!14 = !DILocation(line: 22, column: 6, scope: !5)
+!15 = !DILocation(line: 23, column: 1, scope: !5)
