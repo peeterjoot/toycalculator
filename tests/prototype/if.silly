@@ -1,0 +1,8 @@
+INT32 x = 3;
+
+IF ( x < 4 )
+{
+   INT32 myScopeVar = 1 + x;
+
+   PRINT myScopeVar;
+};

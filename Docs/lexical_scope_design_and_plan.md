@@ -628,4 +628,188 @@ attributes #1 = { "frame-pointer"="non-leaf-no-reserve" "no-trapping-math"="true
 
 ---
 
+## Experiment Results — IF Scope Proof of Concept
+
+### Date: March 30, 2026
+
+### What was tested
+
+A hand-edited MLIR file for a simple silly program:
+
+```
+INT32 x = 3;
+IF ( x < 4 )
+{
+    INT32 myScopeVar = 1 + x;
+    PRINT myScopeVar;
+};
+```
+
+`ScopeBeginOp`/`ScopeEndOp` markers were inserted manually into the compiled MLIR at
+the IF predicate and IF body boundaries. A minimal hack in `LoweringContext.cpp` walked
+the `ScopeBeginOp` sequence after `DISubprogramAttr` creation and built two
+`DILexicalBlockAttr`s — one for the IF predicate, one for the IF body — using the ops'
+`FileLineColLoc` for line/column. The `DILocalVariable` for `myScopeVar` was pointed at
+the body block via `FusedLoc` wrapping on the `DebugNameOp` location.
+
+---
+
+### Finding 1: `DILexicalBlockAttr` construction works
+
+The two `DILexicalBlockAttr`s are constructed correctly and appear in the LLVM-IR:
+
+```
+!17 = distinct !DILexicalBlock(scope: !18, file: !1, line: 5, column: 23)
+!18 = distinct !DILexicalBlock(scope: !5, file: !1, line: 3, column: 6)
+```
+
+`!18` is the IF predicate block (scoped to `!5`, the subprogram). `!17` is the IF body
+block (scoped to `!18`). Parent/child nesting is correct.
+
+---
+
+### Finding 2: `DILocalVariable` scope via `FusedLoc` on `DebugNameOp` works
+
+Wrapping the `DebugNameOp` location in `FusedLoc([original_loc], body_DILexicalBlockAttr)`
+causes the generated `#dbg_declare` to reference the correct lexical block:
+
+```
+!16 = !DILocalVariable(name: "myScopeVar", scope: !17, ...)
+!19 = !DILocation(line: 5, column: 4, scope: !17)
+```
+
+Column info is preserved through the `FusedLoc` wrapping (col 4 survives).
+
+---
+
+### Finding 3: All op locations must reference the lexical block scope
+
+This was the critical discovery. When only `myScopeVar`'s `DILocalVariable` and
+`#dbg_declare` location referenced `!17`, but all other op locations inside the if-body
+still referenced `!5` (subprogram), LLVM's backend dropped `myScopeVar` from the DWARF
+output entirely — it did not appear in `dwarfdump` and gdb could not find it.
+
+The alloca location (entry block vs if-body block) was **not** the cause of the
+failure. Moving the alloca to the entry block made no difference to the DWARF output.
+
+When all `!DILocation` entries for ops inside the if-body were changed to reference
+`!17` (the body lexical block scope), the variable survived into the final DWARF and gdb
+could inspect it:
+
+```
+(gdb) p myScopeVar
+$2 = 4
+```
+
+The `dwarfdump` confirmed correct output:
+
+```
+DW_TAG_lexical_block
+    DW_AT_low_pc   0x00400748
+    DW_AT_high_pc  <offset> 68
+  DW_TAG_variable
+      DW_AT_name   myScopeVar
+      DW_AT_decl_line  5
+      DW_AT_type   → int32_t
+```
+
+---
+
+### Conclusion
+
+The mechanism is validated. To produce correct DWARF lexical scopes, **every**
+`!DILocation` for ops inside a scoped region must reference the innermost
+`DILexicalBlock`, not the subprogram. It is not sufficient to set the scope only on the
+`DILocalVariable` and its `#dbg_declare` location.
+
+This means the re-stamping step in the `ScopeInstrumentationPass` (described in the
+implementation plan) is not optional — it is required for LLVM's backend to emit
+correct DWARF. The op location re-stamping must cover all ops between a
+`scope_begin`/`scope_end` pair, including loads, stores, arithmetic, and print ops, not
+just `DebugNameOp`.
+
+---
+
+### 
+
+Since the experiment above was done by hacking the `!DILocation` manually at the LLVM stage, we want
+to ensure that we can generate the same `!DILocation`s using the `FusedLoc` restamping strategy.
+
+Doing that restamping manually has the desired behaviour:
+
+```
+(gdb) b main
+Breakpoint 2 at 0x40073c: file ./if.silly, line 3.
+(gdb) run
+Starting program: /home/peeter/toycalculator/tests/prototype/if-hacked --output-directory out if-hacked.mlir  -g --emit-llvm --emit-mlir  --debug
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib64/libthread_db.so.1".
+
+Breakpoint 2, main () at ./if.silly:3
+3       IF ( x < 4 )
+(gdb) l
+1       INT32 x = 3;
+2
+3       IF ( x < 4 )
+4       {
+5          INT32 myScopeVar = 1 + x;
+6
+7          PRINT myScopeVar;
+8       };
+(gdb) b 5
+Breakpoint 3 at 0x400748: file ./if.silly, line 5.
+(gdb) c
+Continuing.
+
+Breakpoint 3, main () at ./if.silly:5
+5          INT32 myScopeVar = 1 + x;
+(gdb) n
+7          PRINT myScopeVar;
+(gdb) p myScopeVar
+$1 = 4
+(gdb) p x
+$2 = 3
+```
+
+We see that it preserves column information (the original `FileLineColLoc` is the single element
+inside the fused loc) and the MLIR-to-LLVM translation layer correctly reads the `DILexicalBlockAttr` metadata
+from it to populate the `scope:` field of each `!DILocation`.
+
+Inspection of the resulting LLVM-IR shows there's still one thing wrong:
+
+```
+!5 = distinct !DISubprogram(name: "main", linkageName: "main", scope: !1, file: !1, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !0)
+...
+!15 = distinct !DILexicalBlock(scope: !16, file: !1, line: 5, column: 23)
+!16 = distinct !DILexicalBlock(scope: !5, file: !1, line: 3, column: 6)
+!17 = !DILocation(line: 5, column: 23, scope: !15)
+!18 = !DILocalVariable(name: "myScopeVar", scope: !15, file: !1, line: 5, type: !10, align: 32)
+!19 = !DILocation(line: 5, column: 4, scope: !5)
+!20 = !DILocation(line: 5, column: 4, scope: !15)
+!21 = !DILocation(line: 7, column: 10, scope: !15)
+!22 = !DILocation(line: 7, column: 4, scope: !15)
+```
+
+Here `!19` is "pointing" to the file-scope, not the second DILexicalBlock?
+
+
+---
+
+### Remaining known issue
+
+gdb line-stepping shows an anomaly at program start (steps to line 1 after hitting the
+breakpoint at line 3). This is a pre-existing issue unrelated to lexical scope and will
+be investigated separately (it may be the program start glitch observed exclusively on ARM
+previously, where the ARM codegen schedules instructions from before the first breakpoint
+early.)
+
+---
+
+### Next step
+
+Repeat the experiment for a `FOR` loop, hand-editing the MLIR to insert
+`ForHeader`/`ForPredicate`/`ForBody` scope markers and re-stamping all op locations in
+each region. The induction variable `DebugNameOp` placement relative to the `scf.for`
+structure needs particular attention.
+
 <!-- vim: set tw=100 ts=4 sw=4 et: -->

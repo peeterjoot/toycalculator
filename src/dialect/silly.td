@@ -152,11 +152,11 @@ def Silly_DebugScopeOp : Op<Silly_Dialect, "scope", [NoMemoryEffect]> {
 }
 
 def Silly_ScopeBeginOp : Op<Silly_Dialect, "scope_begin", [NoMemoryEffect]> {
-    let arguments = (ins I32:$id, Silly_ScopeKind:$kind);
+    let arguments = (ins I32Attr:$id, Silly_ScopeKind:$kind);
 }
 
 def Silly_ScopeEndOp : Op<Silly_Dialect, "scope_end", [NoMemoryEffect]> {
-    let arguments = (ins I32:$id);
+    let arguments = (ins I32Attr:$id);
 }
 
 def Silly_DebugNameOp : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {

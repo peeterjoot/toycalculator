@@ -354,7 +354,6 @@ namespace silly
         }
     };
 
-#if 0
     // Now unused (again)
     template <class SillOpType>
     class LowerByDeletion : public mlir::ConversionPattern
@@ -376,7 +375,9 @@ namespace silly
             return mlir::success();
         }
     };
-#endif
+
+    using ScopeBeginOpLowering = LowerByDeletion<ScopeBeginOp>;
+    using ScopeEndOpLowering = LowerByDeletion<ScopeEndOp>;
 
     /// Lower silly::DebugScopeOp
     class DebugScopeOpLowering : public mlir::ConversionPattern
@@ -397,6 +398,7 @@ namespace silly
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
             silly::DebugScopeOp debugScopeOp = cast<silly::DebugScopeOp>( op );
+#if 0
             mlir::Location loc = debugScopeOp.getLoc();
             mlir::FileLineColLoc fileLoc = locationToFLCLoc( loc );
 
@@ -404,6 +406,7 @@ namespace silly
             {
                 return mlir::failure();
             }
+#endif
 
             rewriter.eraseOp( debugScopeOp );
             return mlir::success();
@@ -1079,7 +1082,8 @@ namespace silly
                 target.addLegalDialect<mlir::LLVM::LLVMDialect>();
                 target.addIllegalOp<silly::AssignOp, silly::DeclareOp, silly::LoadOp, silly::NegOp, silly::PrintOp,
                                     silly::GetOp, silly::StringLiteralOp, silly::AbortOp, silly::DebugNameOp,
-                                    silly::DebugScopeOp, silly::ArithBinOp, silly::CmpBinOp>();
+                                    silly::DebugScopeOp, silly::ArithBinOp, silly::CmpBinOp,
+                                    silly::ScopeBeginOp, silly::ScopeEndOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
 
                 target.addIllegalDialect<mlir::scf::SCFDialect>();
@@ -1088,7 +1092,8 @@ namespace silly
                 mlir::RewritePatternSet patterns( &getContext() );
                 patterns.add<AssignOpLowering, LoadOpLowering, NegOpLowering, PrintOpLowering, AbortOpLowering,
                              GetOpLowering, StringLiteralOpLowering, ArithBinOpLowering, CmpBinOpLowering,
-                             DeclareOpLowering, DebugScopeOpLowering, DebugNameOpLowering>( lState, &getContext(), 1 );
+                             DeclareOpLowering, DebugScopeOpLowering, DebugNameOpLowering,
+                             ScopeBeginOpLowering, ScopeEndOpLowering>( lState, &getContext(), 1 );
 
                 // SCF -> CF
                 mlir::populateSCFToControlFlowConversionPatterns( patterns );

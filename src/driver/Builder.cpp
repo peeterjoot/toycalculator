@@ -1095,16 +1095,18 @@ namespace silly
         f.startScope( value );
 #endif
 
-        mlir::arith::ConstantIntOp level = mlir::arith::ConstantIntOp::create( builder, loc, 0, 32 );
-        silly::ScopeBeginOp::create( builder, loc, level, silly::ScopeKind::IfPredicate );
+        //auto level = builder.getI32IntegerAttr( 0 );
+        //mlir::arith::ConstantIntOp level = mlir::arith::ConstantIntOp::create( builder, loc, 0, 32 );
+        silly::ScopeBeginOp::create( builder, loc, 0, silly::ScopeKind::IfPredicate );
     }
 
     void Builder::exitScopedRegion( mlir::Location loc )
     {
         //ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         //f.endScope();
-        mlir::arith::ConstantIntOp level = mlir::arith::ConstantIntOp::create( builder, loc, 0, 32 );
-        silly::ScopeEndOp::create( builder, loc, level );
+        //mlir::arith::ConstantIntOp level = mlir::arith::ConstantIntOp::create( builder, loc, 0, 32 );
+        //auto level = builder.getI32IntegerAttr( 0 );
+        silly::ScopeEndOp::create( builder, loc, 0 );
     }
 
     void Builder::createStringDeclare( mlir::Location loc, const std::string &varName, mlir::Location aloc,
