@@ -728,14 +728,109 @@ correct DWARF. The op location re-stamping must cover all ops between a
 `scope_begin`/`scope_end` pair, including loads, stores, arithmetic, and print ops, not
 just `DebugNameOp`.
 
+`FusedLoc` wrapping is confirmed as the correct mechanism. It preserves column
+information (the original `FileLineColLoc` is the single element inside the fused loc)
+and the MLIR-to-LLVM translation layer correctly reads the `DILexicalBlockAttr` metadata
+from it to populate the `scope:` field of each `!DILocation`.
+
 ---
 
-### 
+### Remaining known issue
 
-Since the experiment above was done by hacking the `!DILocation` manually at the LLVM stage, we want
-to ensure that we can generate the same `!DILocation`s using the `FusedLoc` restamping strategy.
+gdb line-stepping shows an anomaly at program start (steps to line 1 after hitting the
+breakpoint at line 3). This is a pre-existing issue unrelated to lexical scope and will
+be investigated separately (it may be the program start glitch observed exclusively on ARM
+previously, where the ARM codegen schedules instructions from before the first breakpoint
+early.)
 
-Doing that restamping manually has the desired behaviour:
+---
+
+## Experiment Results — IF Scope, MLIR-Driven Restamping
+
+### Date: March 31, 2026
+
+### What was tested
+
+The same hand-edited MLIR IF program, but now with `ScopeBeginOp`/`ScopeEndOp` using
+`I32Attr` (not `I32` SSA value) for the `id` field, and with the op-sequence restamping
+loop added to the lowering hack. All ops between the if-body `scope_begin` and
+`scope_end` are now wrapped in `FusedLoc([original_loc], bodyDILexicalBlockAttr)` by
+iterating forward from the `ScopeBeginOp` until the matching `ScopeEndOp` is found by
+`id` comparison.
+
+The MLIR used two scope marker pairs — one for the IF predicate (id=0, kind=0) sitting
+outside the `scf.if` region, and one for the IF body (id=0, kind=1) sitting inside the
+`scf.if`'s then-region. The restamping loop only fires for the second pair (the body
+scope), since that is where `lscope` is set.
+
+---
+
+### Finding 4: MLIR-driven restamping produces correct LLVM-IR and DWARF
+
+The LLVM-IR initially showed most ops inside the if-body correctly attributed to `!15` (the body
+`DILexicalBlock`):
+
+```
+  %11 = alloca i32, i64 1, align 4
+    #dbg_declare(ptr %11, !18, !DIExpression(), !19)
+...
+!5 = distinct !DISubprogram(name: "main", linkageName: "main", scope: !1, file: !1, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !0)
+...
+!15 = distinct !DILexicalBlock(scope: !16, file: !1, line: 5, column: 23)
+!16 = distinct !DILexicalBlock(scope: !5, file: !1, line: 3, column: 6)
+!17 = !DILocation(line: 5, column: 23, scope: !15)
+!18 = !DILocalVariable(name: "myScopeVar", scope: !15, file: !1, line: 5, type: !10, align: 32)
+!19 = !DILocation(line: 5, column: 4, scope: !5)
+!20 = !DILocation(line: 5, column: 4, scope: !15)
+!21 = !DILocation(line: 7, column: 10, scope: !15)
+!22 = !DILocation(line: 7, column: 4, scope: !15)
+```
+
+The single exception was the `!19` which had file-scope instead of the desired lexical scope (this
+is the location for the `#dbg_declare` itself.)
+The location for the dbg_declare was derived from one of the restamped locations, but was a
+FileLineCol location, so lost the restamping attrs.  If that was hacked back in, using:
+
+```
+fileLoc2 = mlir::FusedLoc::get( context, { loc }, lscope );
+```
+
+(it also works to revert to just the `loc` value itself, since that has the original fusion.)
+
+With that done, the LLVM-IR shows all ops inside the if-body correctly attributed to `!15` (the body
+`DILexicalBlock`):
+
+```
+!14 = !DILocation(line: 5, column: 27, scope: !15)
+!15 = distinct !DILexicalBlock(scope: !16, file: !1, line: 5, column: 23)
+!16 = distinct !DILexicalBlock(scope: !5, file: !1, line: 3, column: 6)
+!17 = !DILocation(line: 5, column: 23, scope: !15)
+!18 = !DILocalVariable(name: "myScopeVar", scope: !15, ...)
+!19 = !DILocation(line: 5, column: 4, scope: !15)
+!20 = !DILocation(line: 7, column: 10, scope: !15)
+!21 = !DILocation(line: 7, column: 4, scope: !15)
+```
+
+Column info is preserved through `FusedLoc` wrapping on all ops (provided the fusion is just a
+single location, but scoped to the lexical block.)
+
+The `dwarfdump` output confirms `myScopeVar` is correctly placed inside a
+`DW_TAG_lexical_block`:
+
+```
+DW_TAG_lexical_block
+    DW_AT_low_pc   0x00400748
+    DW_AT_high_pc  <offset> 52
+  DW_TAG_variable
+      DW_AT_name        myScopeVar
+      DW_AT_decl_line   5
+      DW_AT_type        → int32_t
+      DW_AT_location    (loclists, valid range 0x00400754..0x0040077c)
+```
+
+---
+
+### Sample GDB session
 
 ```
 (gdb) b main
@@ -771,51 +866,67 @@ $1 = 4
 $2 = 3
 ```
 
-We see that it preserves column information (the original `FileLineColLoc` is the single element
-inside the fused loc) and the MLIR-to-LLVM translation layer correctly reads the `DILexicalBlockAttr` metadata
-from it to populate the `scope:` field of each `!DILocation`.
+### Finding 5: Two `DILexicalBlock`s in LLVM-IR collapse to one `DW_TAG_lexical_block` in DWARF
 
-Inspection of the resulting LLVM-IR shows there's still one thing wrong:
+The LLVM-IR contains two `DILexicalBlock` entries — `!16` for the IF predicate scope
+and `!15` for the IF body scope. However, the final `dwarfdump` output shows only a
+single `DW_TAG_lexical_block`. This matches the clang reference output for an equivalent
+C program — clang's LLVM-IR also has two `DILexicalBlock`s, but only one
+`DW_TAG_lexical_block` appears in the final DWARF.
 
-```
-!5 = distinct !DISubprogram(name: "main", linkageName: "main", scope: !1, file: !1, line: 1, type: !6, scopeLine: 1, spFlags: DISPFlagDefinition, unit: !0)
-...
-!15 = distinct !DILexicalBlock(scope: !16, file: !1, line: 5, column: 23)
-!16 = distinct !DILexicalBlock(scope: !5, file: !1, line: 3, column: 6)
-!17 = !DILocation(line: 5, column: 23, scope: !15)
-!18 = !DILocalVariable(name: "myScopeVar", scope: !15, file: !1, line: 5, type: !10, align: 32)
-!19 = !DILocation(line: 5, column: 4, scope: !5)
-!20 = !DILocation(line: 5, column: 4, scope: !15)
-!21 = !DILocation(line: 7, column: 10, scope: !15)
-!22 = !DILocation(line: 7, column: 4, scope: !15)
-```
-
-Here `!19` is "pointing" to the file-scope, not the second DILexicalBlock?
-
-I had to reenable the fusion at the `#dbg_declare` create point:
-```
-fileLoc2 = mlir::FusedLoc::get( context, { loc }, lscope );
-```
-
-to get the `!19` to "point" to !15 properly.
+LLVM's backend merges or elides the predicate-scope block when it contains no variables
+and its address range is subsumed by the body-scope block. This is the expected behavior
+and is not a problem — the two-block structure in the IR is still correct and necessary
+to maintain proper parent/child scope relationships for the body block.
 
 ---
 
-### Remaining known issue
+### Finding 6: `I32Attr` required for `id` field in scope marker ops
 
-gdb line-stepping shows an anomaly at program start (steps to line 1 after hitting the
-breakpoint at line 3). This is a pre-existing issue unrelated to lexical scope and will
-be investigated separately (it may be the program start glitch observed exclusively on ARM
-previously, where the ARM codegen schedules instructions from before the first breakpoint
-early.)
+The tablegen definition must use `I32Attr` (a compile-time attribute) rather than `I32`
+(an SSA value type) for the `id` field. Using `I32` makes `getId()` return an
+`mlir::Value`, which cannot be directly compared as an integer. With `I32Attr`, `getId()`
+returns `int32_t` directly, enabling the matching loop:
+
+```cpp
+if ( auto endOp = mlir::dyn_cast<silly::ScopeEndOp>( current ) )
+    if ( endOp.getId() == targetId )
+        break;
+```
+
+---
+
+### Updated MLIR syntax for scope markers
+
+```mlir
+"silly.scope_begin"() <{id = 0 : i32, kind = 0 : i32}> : () -> ()  // predicate
+"silly.scope_begin"() <{id = 1 : i32, kind = 1 : i32}> : () -> ()  // body
+"silly.scope_end"()   <{id = 1 : i32}> : () -> ()
+"silly.scope_end"()   <{id = 0 : i32}> : () -> ()
+```
+
+---
+
+### Status
+
+The IF scope experiment is complete and successful. The mechanism is validated:
+
+1. `ScopeBeginOp`/`ScopeEndOp` pairs with `I32Attr` id and kind fields
+2. A scope stack in the lowering handler, seeded with the `DISubprogramAttr`
+3. On each `ScopeBeginOp`: create a `DILexicalBlockAttr` parented to the current stack top
+4. Forward iteration from `ScopeBeginOp` to matching `ScopeEndOp`, wrapping each op's
+   location in `FusedLoc([original], currentDILexicalBlockAttr)`
+5. The `DebugNameOp` location wrapping causes its `DILocalVariable` to reference the
+   correct scope automatically (no special-casing needed beyond the restamp loop)
 
 ---
 
 ### Next step
+---
 
-Repeat the experiment for a `FOR` loop, hand-editing the MLIR to insert
-`ForHeader`/`ForPredicate`/`ForBody` scope markers and re-stamping all op locations in
-each region. The induction variable `DebugNameOp` placement relative to the `scf.for`
-structure needs particular attention.
+Step 2 of the implementation plan: repeat the experiment for a `FOR` loop, hand-editing
+the MLIR to insert `ForHeader`/`ForPredicate`/`ForBody` scope markers. The induction
+variable `DebugNameOp` placement relative to the `scf.for` structure and the three-level
+block nesting (`ForHeader` → `ForPredicate` → `ForBody`) require particular attention.
 
 <!-- vim: set tw=100 ts=4 sw=4 et: -->

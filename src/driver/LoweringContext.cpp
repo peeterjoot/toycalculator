@@ -575,10 +575,13 @@ namespace silly
         if ( varName == "myScopeVar" )
         {
 #if 1 // initial hack.  replaced with iteration over instructions bounded by the 2nd scope-pair:
+#if 0
             fileLoc2 = mlir::FusedLoc::get( context, { loc },
                                             lscope    // the body DILexicalBlockAttr
             );
+#endif
             // op->setLoc( scoped );
+            fileLoc2 = loc;
 #endif
 
             subOrLexicalBlock = lscope;
