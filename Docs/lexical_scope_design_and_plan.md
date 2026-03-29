@@ -457,8 +457,8 @@ attributes #1 = { "frame-pointer"="non-leaf-no-reserve" "no-trapping-math"="true
 int main() // 3
 { // 4
     for ( long myLoopVar = 1 ; myLoopVar < 2 ; myLoopVar++ ) // 5
-          ^                    ^          
-          5:11 (!26)           5:32 (!27)  
+          ^                    ^
+          5:11 (!26)           5:32 (!27)
                ^                         ^
                5:16 (!25)                5:42 (!29)
     { // 6
@@ -496,7 +496,7 @@ for.cond:                                         ; preds = %for.inc, %entry
   %cmp = icmp slt i64 %0, 2, !dbg !29
   // 5:5      [for]
   br i1 %cmp, label %for.body, label %for.end, !dbg !30
-  // 
+  //
 for.body:                                         ; preds = %for.cond
     // 7:14   [myScopeVar;]
     // !31 is a DILocalVariable, scoped to !32,
