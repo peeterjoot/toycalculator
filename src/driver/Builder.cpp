@@ -1073,28 +1073,21 @@ namespace silly
 
     void Builder::enterScopedRegion( mlir::Location loc, bool wantScope )
     {
-#if 0
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
 
-        mlir::Value value{};
+        // This is front-end specific scoping for variable lookup:
+        f.createVariableLookupScope( );
 
-        // not doing this right now for FUNCTION
-        if ( wantScope )
-        {
-            //value = silly::DebugScopeOp::create( builder, loc, typ.i1 ).getResult();
-        }
-
-        // keep stack balanced, signals function scope when !isFunctionBody
-        f.startScope( value );
-#endif
-
+        // This is for lowering a scope to a !DILexicalBlock
         silly::ScopeBeginOp::create( builder, loc, 0 );
     }
 
     void Builder::exitScopedRegion( mlir::Location loc )
     {
-        //ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
-        //f.endScope();
+        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
+
+        f.destroyVariableLookupScope();
+
         silly::ScopeEndOp::create( builder, loc, 0 );
     }
 

@@ -74,12 +74,12 @@ namespace silly
         variables.back()[varName] = i;
     }
 
-    void ParserPerFunctionState::startScope( mlir::Value value )
+    void ParserPerFunctionState::createVariableLookupScope( )
     {
         variables.push_back( {} );
     }
 
-    void ParserPerFunctionState::endScope()
+    void ParserPerFunctionState::destroyVariableLookupScope()
     {
         if ( variables.size() )
         {

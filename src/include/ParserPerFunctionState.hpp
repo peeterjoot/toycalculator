@@ -7,6 +7,7 @@
 #pragma once
 
 #include <mlir/Dialect/Func/IR/FuncOps.h>
+
 #include <cassert>
 
 namespace silly
@@ -83,10 +84,10 @@ namespace silly
         }
 
         /// New variables will be visible only for this scope and later
-        void startScope( mlir::Value );
+        void createVariableLookupScope();
 
         /// Any variables that had been declared in the current scope will no longer be visible.
-        void endScope();
+        void destroyVariableLookupScope();
 
         /// Increase the level for scope_begin/scope_end
         void incrementScopeLevel()
@@ -151,6 +152,6 @@ namespace silly
         /// Bison FE only.
         bool haveReturn{};
     };
-}
+}    // namespace silly
 
 // vim: et ts=4 sw=4
