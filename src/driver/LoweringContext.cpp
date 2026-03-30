@@ -300,6 +300,7 @@ namespace silly
 
                 lookupFunctionState[funcName].subProgramDI = sub;
 
+#if 0
                 // Now that we have the DISubprogramAttr built, build the DILexicalBlockAttr for IF
 
 #if 0
@@ -364,6 +365,7 @@ namespace silly
                             }
                         }
                     } );
+#endif
             }
 
             // Compute max print args for this function
@@ -569,37 +571,14 @@ namespace silly
 
         mlir::MLIRContext* context = builder.getContext();
 
-        mlir::LLVM::DIScopeAttr subOrLexicalBlock{};
+        mlir::LLVM::DIScopeAttr subOrLexicalBlock = f.subProgramDI;
 
-        mlir::Location fileLoc2 = fileLoc;
-        if ( varName == "myScopeVar" )
-        {
-#if 1 // initial hack.  replaced with iteration over instructions bounded by the 2nd scope-pair:
-#if 0
-            fileLoc2 = mlir::FusedLoc::get( context, { loc },
-                                            lscope    // the body DILexicalBlockAttr
-            );
-#endif
-            // op->setLoc( scoped );
-            fileLoc2 = loc;
-#endif
-
-            subOrLexicalBlock = lscope;
-        }
-        else
-        {
-            subOrLexicalBlock = f.subProgramDI;
-        }
-#if 0
+#if 0 // FIXME: lookup !DILexicalBlock for this debugNameOp, if any, replacing this old code:
         if ( mlir::Value scope = debugNameOp.getScope() )
         {
             silly::DebugScopeOp scopeOp = scope.getDefiningOp<silly::DebugScopeOp>();
 
             subOrLexicalBlock = f.scopeOpToAttr[scopeOp.getOperation()];
-        }
-        else
-        {
-            subOrLexicalBlock = f.subProgramDI;
         }
 #endif
 
