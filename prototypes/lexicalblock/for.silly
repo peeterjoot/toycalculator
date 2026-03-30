@@ -1,0 +1,6 @@
+FOR (INT64 myLoopVar : (1, 2))
+{
+    INT64 myScopeVar;
+    myScopeVar = 1 + myLoopVar;
+    PRINT myScopeVar;
+};
