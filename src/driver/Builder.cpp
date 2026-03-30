@@ -1071,15 +1071,18 @@ namespace silly
         builder.setInsertionPointToStart( &thenBlock );
     }
 
-    void Builder::enterScopedRegion( mlir::Location loc, bool wantScope )
+    void Builder::enterScopedRegion( mlir::Location loc, bool wantLexicalScope )
     {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
 
         // This is front-end specific scoping for variable lookup:
         f.createVariableLookupScope( );
 
-        // This is for lowering a scope to a !DILexicalBlock
-        silly::ScopeBeginOp::create( builder, loc, 0 );
+        if ( wantLexicalScope )
+        {
+            // This is for lowering a scope to a !DILexicalBlock
+            silly::ScopeBeginOp::create( builder, loc, 0 );
+        }
     }
 
     void Builder::exitScopedRegion( mlir::Location loc )

@@ -176,8 +176,8 @@ namespace silly
         /// mlir builder helper for IF/ELIF/ELSE (exit part)
         void finishIfElifElse();
 
-        /// mlir builder helper for enter an IF/ELIF/ELSE/FOR scope.
-        void enterScopedRegion( mlir::Location loc, bool wantScope );
+        /// mlir builder helper to enter an new variable-lookup scope, and a new lexical scope for IF/ELIF/ELSE/FOR.
+        void enterScopedRegion( mlir::Location loc, bool wantLexicalScope );
 
         /// mlir builder helper for exit an IF/ELIF/ELSE/FOR scope.
         void exitScopedRegion( mlir::Location loc );
