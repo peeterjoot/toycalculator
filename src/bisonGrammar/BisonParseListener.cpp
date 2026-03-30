@@ -879,11 +879,9 @@ namespace silly
 
     void BisonParseListener::exitScopedStatements()
     {
-#if 0
         ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
         f.decrementScopeLevel();
         exitScopedRegion();
-#endif
     }
 
     void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )
