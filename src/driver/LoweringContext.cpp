@@ -426,6 +426,7 @@ namespace silly
         lookupFunctionState[funcName].declareToAlloca[dclOp] = aOp;
     }
 
+#if 0 // rework.
     mlir::LogicalResult LoweringContext::constructLexicalBlockDI( mlir::FileLineColLoc fileLoc,
                                                                   mlir::ConversionPatternRewriter& rewriter,
                                                                   mlir::Operation* op )
@@ -442,6 +443,7 @@ namespace silly
 
         return mlir::success();
     }
+#endif
 
     mlir::LogicalResult LoweringContext::constructVariableDI( mlir::ConversionPatternRewriter& rewriter,
                                                               silly::DebugNameOp debugNameOp )
