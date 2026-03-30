@@ -1,0 +1,40 @@
+// I32EnumAttrCase<"ForHeader",     5, "for-header">,
+// I32EnumAttrCase<"ForPredicate",  6, "for-pred">,
+// I32EnumAttrCase<"ForBody",       7, "for-body">
+
+module {
+  func.func @main() -> i32 {
+    "silly.scope_begin"() <{id = 2 : i32, kind = 5 : i32}> : () -> () loc(#loc3)
+    %c1_i64 = arith.constant 1 : i64 loc(#loc3)
+    %c3_i64 = arith.constant 3 : i64 loc(#loc4)
+    %c1_i64_0 = arith.constant 1 : i64 loc(#loc1)
+    scf.for %arg0 = %c1_i64 to %c3_i64 step %c1_i64_0  : i64 {
+      "silly.debug_name"(%arg0) <{name = "myLoopVar"}> : (i64) -> () loc(#loc5)
+      "silly.scope_begin"() <{id = 3 : i32, kind = 7 : i32}> : () -> () loc(#loc6)
+      %0 = "silly.declare"() : () -> !silly.var<i64> loc(#loc7)
+      "silly.debug_name"(%0) <{name = "myScopeVar"}> : (!silly.var<i64>) -> () loc(#loc7)
+      %c1_i64_1 = arith.constant 1 : i64 loc(#loc8)
+      %1 = silly.arith_binop add %c1_i64_1 : i64, %arg0 : i64 -> i64 loc(#loc8)
+      silly.assign %0 : <i64> = %1 : i64 loc(#loc8)
+      %2 = silly.load %0 : <i64> : i64 loc(#loc9)
+      %c0_i32_2 = arith.constant 0 : i32 loc(#loc10)
+      "silly.print"(%c0_i32_2, %2) : (i32, i64) -> () loc(#loc10)
+      "silly.scope_end"() <{id = 3 : i32}> : () -> () loc(#loc10)
+    } loc(#loc1)
+    "silly.scope_end"() <{id = 2 : i32}> : () -> () loc(#loc1)
+    %c0_i32 = arith.constant 0 : i32 loc(#loc2)
+    return %c0_i32 : i32 loc(#loc2)
+  } loc(#loc11)
+} loc(#loc)
+#loc = loc("for.silly":0:0)
+#loc1 = loc("for.silly":1:1)
+#loc2 = loc("for.silly":7:1)
+#loc3 = loc("for.silly":1:25)
+#loc4 = loc("for.silly":1:28)
+#loc5 = loc("for.silly":1:12)
+#loc6 = loc("for.silly":2:1)
+#loc7 = loc("for.silly":3:5)
+#loc8 = loc("for.silly":4:18)
+#loc9 = loc("for.silly":5:11)
+#loc10 = loc("for.silly":5:5)
+#loc11 = loc(fused[#loc1, #loc2])

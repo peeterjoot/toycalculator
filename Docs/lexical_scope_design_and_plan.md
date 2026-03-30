@@ -929,4 +929,124 @@ the MLIR to insert `ForHeader`/`ForPredicate`/`ForBody` scope markers. The induc
 variable `DebugNameOp` placement relative to the `scf.for` structure and the three-level
 block nesting (`ForHeader` → `ForPredicate` → `ForBody`) require particular attention.
 
+## Experiment Results — FOR Scope Proof of Concept
+
+### Date: April 1, 2026
+
+### What was tested
+
+A hand-edited MLIR file for a simple silly FOR loop:
+
+```
+FOR (INT64 myLoopVar : (1, 2))
+{
+    INT64 myScopeVar;
+    myScopeVar = 1 + myLoopVar;
+    PRINT myScopeVar;
+};
+```
+
+`ScopeBeginOp`/`ScopeEndOp` pairs were inserted using a simplified two-scope structure
+(ForHeader + ForBody only, omitting ForPredicate), since the `scf.for` bounds
+computation and condition check are implicit and do not appear as explicit ops in the
+MLIR at this level. The ForPredicate scope kind is reserved for future use.
+
+---
+
+### Scope marker placement
+
+```
+scope_begin(id=2, kind=ForHeader)    ← before scf.for, at FOR token location
+%c1_i64 = ...                        ← loop start bound
+%c2_i64 = ...                        ← loop end bound
+%c1_i64_0 = ...                      ← loop step
+scf.for %arg0 = ... {
+    debug_name(%arg0) "myLoopVar"    ← inside scf.for region, before ForBody
+    scope_begin(id=3, kind=ForBody)  ← at opening { location
+    ...body ops...
+    scope_end(id=3)
+}
+scope_end(id=2)                      ← after scf.for, inside func.func
+```
+
+Key decisions:
+- ForHeader `scope_begin`/`scope_end` wraps the bounds computation ops and the `scf.for`
+  itself, but the `scope_end` is placed after the `scf.for` closes (inside the function)
+- `myLoopVar` `DebugNameOp` is placed inside the `scf.for` region before the ForBody
+  `scope_begin`. This means it gets restamped with the ForHeader scope, not the ForBody
+  scope, which is correct — the induction variable belongs to the loop header scope.
+- ForBody `scope_begin`/`scope_end` wraps the body ops inside the `scf.for` region
+
+---
+
+### Results
+
+The LLVM-IR shows correct two-level `DILexicalBlock` nesting:
+
+```
+!14 = !DILocalVariable(name: "myScopeVar", scope: !15, ...)
+!15 = distinct !DILexicalBlock(scope: !16, file: !1, line: 2, column: 1)   ← ForBody
+!16 = distinct !DILexicalBlock(scope: !5, file: !1, line: 1, column: 25)   ← ForHeader
+```
+
+`myLoopVar` correctly scopes to `!5` (the subprogram) in this run since the ForHeader
+restamping loop does not reach into the `scf.for` region (it only iterates over sibling
+ops in the same block). This is a limitation of the current hack — see note below.
+
+The `dwarfdump` shows:
+
+```
+DW_TAG_subprogram (main)
+  DW_TAG_variable
+      DW_AT_name   myLoopVar          ← at subprogram scope (acceptable for now)
+      DW_AT_decl_line  1
+  DW_TAG_lexical_block
+      DW_AT_low_pc   0x0040075c
+      DW_AT_high_pc  <offset> 24
+    DW_TAG_variable
+        DW_AT_name   myScopeVar       ← correctly inside lexical block
+        DW_AT_decl_line  3
+```
+
+The gdb session confirms both variables are accessible at the correct points:
+
+```
+(gdb) p myLoopVar
+$1 = 1
+(gdb) p myScopeVar
+$2 = 2
+```
+
+---
+
+### Key finding: ForHeader restamping does not cross `scf.for` region boundary
+
+The sibling-iteration restamping loop only walks ops in the same block. The `scf.for`
+op itself gets restamped (so the branch instructions lowered from it carry the ForHeader
+scope), but ops inside the `scf.for` region are not reached. This means:
+
+- The `myLoopVar` `DebugNameOp` inside the `scf.for` region is not restamped by the
+  ForHeader loop — it retains the subprogram scope
+- This is why `myLoopVar` appears as a `DW_TAG_variable` directly under
+  `DW_TAG_subprogram` rather than inside the ForHeader lexical block
+
+For the general implementation (Step 3), the restamping logic needs to be extended to
+walk into nested regions for the ForHeader scope case. The ForBody scope restamping
+already works correctly because its `scope_begin`/`scope_end` are siblings inside the
+`scf.for` region, so the inner iteration loop handles them.
+
+---
+
+### Conclusion
+
+The FOR scope proof of concept succeeds. Both `myLoopVar` and `myScopeVar` are
+visible in gdb at the correct program points. The `DW_TAG_lexical_block` for the FOR
+body is correctly nested and contains `myScopeVar`. The induction variable scoping
+to the ForHeader block (rather than the subprogram) is a known remaining gap that
+will be addressed in Step 3 when the restamping is extended to cross region boundaries.
+
+The overall design — `ScopeBeginOp`/`ScopeEndOp` pairs, scope stack in lowering,
+`FusedLoc` wrapping — is validated for both IF and FOR. Step 3 (general
+implementation) can now proceed.
+
 <!-- vim: set tw=100 ts=4 sw=4 et: -->
