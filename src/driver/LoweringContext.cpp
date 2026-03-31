@@ -514,14 +514,12 @@ namespace silly
 
         mlir::LLVM::DIScopeAttr subOrLexicalBlock = f.subProgramDI;
 
-#if 0    // FIXME: lookup !DILexicalBlock for this debugNameOp, if any, replacing this old code:
-        if ( mlir::Value scope = debugNameOp.getScope() )
-        {
-            silly::DebugScopeOp scopeOp = scope.getDefiningOp<silly::DebugScopeOp>();
+        auto lbIT = scopeMap.find( debugNameOp.getOperation() );
 
-            subOrLexicalBlock = f.scopeOpToAttr[scopeOp.getOperation()];
+        if ( lbIT != scopeMap.end() )
+        {
+            subOrLexicalBlock = lbIT->second;
         }
-#endif
 
         if ( mlir::LLVM::AllocaOp allocaOp = opValue.getDefiningOp<mlir::LLVM::AllocaOp>() )
         {
