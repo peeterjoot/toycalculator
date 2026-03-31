@@ -157,7 +157,7 @@ namespace silly
 
         /// mlir builder helper for FOR (enter part)
         void createFor( mlir::Location loc, const std::string &varName, mlir::Type elemType, mlir::Location varLoc,
-                        mlir::Value start, mlir::Value end, mlir::Value step, LocationStack &ls );
+                        mlir::Operation * retOp, mlir::Value start, mlir::Value end, mlir::Value step, LocationStack &ls );
 
         /// mlir builder helper for FOR (exit part)
         void finishFor( mlir::Location loc );
@@ -169,10 +169,9 @@ namespace silly
         ///
         /// @param loc [in] The starting location for the IF statement.
         /// @param predicate [in] The predicate for the IF or ELIF condition.
-        /// @param saveIP [in] push the insertion point that is effectively after the if to insertionPointStack (use
+        /// @param retOp [in] for the insertionPointStack push for the scopeend op that is effectively after the IF.  Use this for the initial if in an IF/ELIF/ELSE, but not for the internal IF created when processing an ELIF.
         /// @param ls [in] for fusion experiments.
-        /// this for the initial if in an IF/ELIF/ELSE, but not for the internal IF created when processing an ELIF.
-        void createIf( mlir::Location loc, mlir::Value predicate, bool saveIP, LocationStack &ls );
+        void createIf( mlir::Location loc, mlir::Value predicate, mlir::Operation * retOp, LocationStack &ls );
 
         /// mlir builder helper for IF/ELIF/ELSE (exit part)
         void finishIfElifElse( mlir::Location loc );

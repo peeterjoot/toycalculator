@@ -292,15 +292,6 @@ namespace silly
         mlir::Location loc = getStartLocation( ctx );
 
         removeCurrentVariableLookupScope( loc );
-
-        bool isFunctionBody = dynamic_cast<SillyParser::FunctionStatementContext *>( ctx->parent ) != nullptr;
-        if (!isFunctionBody)
-        {
-            ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
-            int scopeLevel = f.getScopeLevel();
-            silly::ScopeEndOp::create( builder, loc, scopeLevel );
-            f.decrementScopeLevel();
-        }
     }
 
     mlir::Value Antlr4ParseListener::parseReturnExpression( mlir::Location loc,
@@ -637,7 +628,9 @@ namespace silly
 
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         int scopeLevel = f.incrementScopeLevel();
-        silly::ScopeBeginOp::create( builder, loc, scopeLevel );
+        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, loc, scopeLevel );
+        silly::ScopeEndOp scopeEnd = silly::ScopeEndOp::create( builder, loc, scopeLevel );
+        builder.setInsertionPointAfter( scopeBegin.getOperation() );
 
         mlir::Value conditionPredicate = parseExpression( ctx->expression(), {}, ls );
         if ( !conditionPredicate )
@@ -646,7 +639,7 @@ namespace silly
             return;
         }
 
-        createIf( loc, conditionPredicate, true, ls );
+        createIf( loc, conditionPredicate, scopeEnd.getOperation(), ls );
     }
 
     void Antlr4ParseListener::enterElseStatement( SillyParser::ElseStatementContext *ctx )
@@ -676,21 +669,11 @@ namespace silly
             return;
         }
 
-        createIf( loc, conditionPredicate, false, ls );
+        createIf( loc, conditionPredicate, nullptr, ls );
     }
 
     void Antlr4ParseListener::exitElifStatement( SillyParser::ElifStatementContext *ctx )
     {
-        // This is the wrong insertion point
-#if 0
-        assert( ctx );
-        mlir::Location loc = getStartLocation( ctx );
-
-        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
-        int scopeLevel = f.getScopeLevel();
-        silly::ScopeEndOp::create( builder, loc, scopeLevel );
-        f.decrementScopeLevel();
-#endif
     }
 
     void Antlr4ParseListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx )
@@ -732,7 +715,9 @@ namespace silly
 
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         int scopeLevel = f.incrementScopeLevel();
-        silly::ScopeBeginOp::create( builder, loc, scopeLevel );
+        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, loc, scopeLevel );
+        silly::ScopeEndOp scopeEnd = silly::ScopeEndOp::create( builder, loc, scopeLevel );
+        builder.setInsertionPointAfter( scopeBegin.getOperation() );
 
         std::string s;
         if ( pStart )
@@ -781,7 +766,7 @@ namespace silly
 
         mlir::Location varLoc = getTerminalLocation( ctx->IDENTIFIER() );
 
-        createFor( loc, varName, elemType, varLoc, start, end, step, ls );
+        createFor( loc, varName, elemType, varLoc, scopeEnd.getOperation(), start, end, step, ls );
     }
 
     void Antlr4ParseListener::exitForStatement( SillyParser::ForStatementContext *ctx )
