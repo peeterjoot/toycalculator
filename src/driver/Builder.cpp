@@ -1,6 +1,8 @@
 /// @file    Builder.cpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Grammar agnostic subset of the MLIR builder for the silly language.
+#include "Builder.hpp"
+
 #include <llvm/Support/FormatVariadic.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
@@ -9,7 +11,6 @@
 #include <format>
 #include <fstream>
 
-#include "Builder.hpp"
 #include "DriverState.hpp"
 #include "LocationStack.hpp"
 #include "ModuleInsertionPointGuard.hpp"
@@ -497,10 +498,7 @@ namespace silly
         // tolerate emitError codepaths where things go bad, logging an internal error and continuing
         if ( !value )
         {
-            emitInternalError(
-                loc, __FILE__, __LINE__, __func__,
-                "NULL value in cast attempt.",
-                currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "NULL value in cast attempt.", currentFuncName );
 
             return value;
         }
@@ -744,8 +742,8 @@ namespace silly
         return v;
     }
 
-    void Builder::createGet( mlir::Location gloc, const std::string &varName, mlir::Location vloc, mlir::Value indexValue,
-                             mlir::Location iloc, LocationStack &ls )
+    void Builder::createGet( mlir::Location gloc, const std::string &varName, mlir::Location vloc,
+                             mlir::Value indexValue, mlir::Location iloc, LocationStack &ls )
     {
         silly::DeclareOp declareOp = lookupDeclareForVar( gloc, varName );
         silly::varType varTy = mlir::cast<silly::varType>( declareOp.getVar().getType() );
@@ -961,7 +959,8 @@ namespace silly
     }
 
     void Builder::createFor( mlir::Location loc, const std::string &varName, mlir::Type elemType, mlir::Location varLoc,
-                             mlir::Operation * retOp, mlir::Value start, mlir::Value end, mlir::Value step, LocationStack &ls )
+                             mlir::Operation *retOp, mlir::Value start, mlir::Value end, mlir::Value step,
+                             LocationStack &ls )
     {
         bool declared = isDeclared( varName );
         if ( declared )
@@ -1073,7 +1072,8 @@ namespace silly
         builder.setInsertionPointAfter( scopeBegin.getOperation() );
     }
 
-    void Builder::createIf( mlir::Location loc, mlir::Value conditionPredicate, mlir::Operation * retOp, LocationStack &ls )
+    void Builder::createIf( mlir::Location loc, mlir::Value conditionPredicate, mlir::Operation *retOp,
+                            LocationStack &ls )
     {
         // mlir::Location fusedLoc = ls.fuseLocations( );
         mlir::scf::IfOp ifOp = mlir::scf::IfOp::create( builder, loc, conditionPredicate,
@@ -1099,7 +1099,7 @@ namespace silly
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
 
         // This is front-end specific scoping for variable lookup:
-        f.createVariableLookupScope( );
+        f.createVariableLookupScope();
     }
 
     void Builder::removeCurrentVariableLookupScope( mlir::Location loc )

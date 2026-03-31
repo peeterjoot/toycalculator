@@ -3,11 +3,12 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Bison based experimental parse tree listener and MLIR builder.
 ///
+#include "BisonParseListener.hpp"
+
 #include <mlir/Dialect/Arith/IR/Arith.h>
 
 #include <format>
 
-#include "BisonParseListener.hpp"
 #include "DriverState.hpp"
 #include "LocationStack.hpp"
 #include "PrintFlags.hpp"
@@ -211,10 +212,9 @@ namespace silly
         {
             mlir::Value left = parseIntermediate( ty, *parg.left, ls );
             mlir::Value right = parseIntermediate( ty, *parg.right, ls );
-            if (!left or !right)
+            if ( !left or !right )
             {
-                emitInternalError( loc, __FILE__, __LINE__, __func__,
-                                   "parseIntermediate left/right failed.",
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "parseIntermediate left/right failed.",
                                    currentFuncName );
                 return v;
             }
@@ -547,7 +547,8 @@ namespace silly
     }
 
     void BisonParseListener::enterStringDeclareStatement( const silly::TypeAndLoc& type, const silly::StringAndLoc& var,
-                                                          const silly::StringAndLoc& arraySize, const std::string& init )
+                                                          const silly::StringAndLoc& arraySize,
+                                                          const std::string& init )
     {
         mlir::Location tLoc = getLocation( type.loc );
         mlir::Location aLoc = getLocation( arraySize.loc );
@@ -729,7 +730,8 @@ namespace silly
                 //
                 // coverage: syntax-error/return-expr-no-type.silly
                 emitUserError(
-                    getLocation( expr.loc ), std::format( "return expression found, but no return type for function {}", currentFuncName ),
+                    getLocation( expr.loc ),
+                    std::format( "return expression found, but no return type for function {}", currentFuncName ),
                     currentFuncName );
                 return value;
             }
@@ -834,7 +836,7 @@ namespace silly
         LocationStack ls( builder, loc );
         ParserPerFunctionState& f = lookupFunctionState( name );
         mlir::func::FuncOp funcOp = f.getFuncOp();
-        if (!funcOp)
+        if ( !funcOp )
         {
             emitInternalError( loc, __FILE__, __LINE__, __func__, "null FuncOp", currentFuncName );
             return value;

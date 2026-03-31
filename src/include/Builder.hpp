@@ -137,8 +137,8 @@ namespace silly
         mlir::Value createUnary( mlir::Location loc, mlir::Value value, UnaryOp op, LocationStack &ls );
 
         /// mlir builder helper for GET
-        void createGet( mlir::Location gloc, const std::string &varName, mlir::Location vloc, mlir::Value indexValue, mlir::Location iloc,
-                        LocationStack &ls );
+        void createGet( mlir::Location gloc, const std::string &varName, mlir::Location vloc, mlir::Value indexValue,
+                        mlir::Location iloc, LocationStack &ls );
 
         /// mlir builder helper for IMPORT
         void createImport( mlir::Location loc, mlir::Location nameLoc, const std::string &modname );
@@ -157,7 +157,8 @@ namespace silly
 
         /// mlir builder helper for FOR (enter part)
         void createFor( mlir::Location loc, const std::string &varName, mlir::Type elemType, mlir::Location varLoc,
-                        mlir::Operation * retOp, mlir::Value start, mlir::Value end, mlir::Value step, LocationStack &ls );
+                        mlir::Operation *retOp, mlir::Value start, mlir::Value end, mlir::Value step,
+                        LocationStack &ls );
 
         /// mlir builder helper for FOR (exit part)
         void finishFor( mlir::Location loc );
@@ -169,9 +170,10 @@ namespace silly
         ///
         /// @param loc [in] The starting location for the IF statement.
         /// @param predicate [in] The predicate for the IF or ELIF condition.
-        /// @param retOp [in] for the insertionPointStack push for the scopeend op that is effectively after the IF.  Use this for the initial if in an IF/ELIF/ELSE, but not for the internal IF created when processing an ELIF.
+        /// @param retOp [in] for the insertionPointStack push for the scopeend op that is effectively after the IF. Use
+        /// this for the initial if in an IF/ELIF/ELSE, but not for the internal IF created when processing an ELIF.
         /// @param ls [in] for fusion experiments.
-        void createIf( mlir::Location loc, mlir::Value predicate, mlir::Operation * retOp, LocationStack &ls );
+        void createIf( mlir::Location loc, mlir::Value predicate, mlir::Operation *retOp, LocationStack &ls );
 
         /// mlir builder helper for IF/ELIF/ELSE (exit part)
         void finishIfElifElse( mlir::Location loc );

@@ -466,16 +466,15 @@ namespace silly
 
                 mlir::LLVM::ConstantOp indexVal =
                     mlir::LLVM::ConstantOp::create( rewriter, loc, lState.typ.i64, rewriter.getI64IntegerAttr( i ) );
-                mlir::LLVM::GEPOp slotPtr =
-                    mlir::LLVM::GEPOp::create( rewriter, loc, lState.typ.ptr, lState.printArgStructTy, arrayAlloca,
-                                               mlir::ValueRange{ indexVal } );
+                mlir::LLVM::GEPOp slotPtr = mlir::LLVM::GEPOp::create(
+                    rewriter, loc, lState.typ.ptr, lState.printArgStructTy, arrayAlloca, mlir::ValueRange{ indexVal } );
 
                 mlir::LLVM::StoreOp::create( rewriter, loc, argStruct, slotPtr );
             }
 
             // Final call
-            mlir::LLVM::ConstantOp numArgsConst = mlir::LLVM::ConstantOp::create(
-                rewriter, loc, lState.typ.i32, rewriter.getI32IntegerAttr( numArgs ) );
+            mlir::LLVM::ConstantOp numArgsConst =
+                mlir::LLVM::ConstantOp::create( rewriter, loc, lState.typ.i32, rewriter.getI32IntegerAttr( numArgs ) );
 
             mlir::func::CallOp::create( rewriter, loc, mlir::TypeRange{}, "__silly_print",
                                         mlir::ValueRange{ numArgsConst, arrayAlloca } );
@@ -1053,8 +1052,7 @@ namespace silly
                 target.addLegalDialect<mlir::LLVM::LLVMDialect>();
                 target.addIllegalOp<silly::AssignOp, silly::DeclareOp, silly::LoadOp, silly::NegOp, silly::PrintOp,
                                     silly::GetOp, silly::StringLiteralOp, silly::AbortOp, silly::DebugNameOp,
-                                    silly::ArithBinOp, silly::CmpBinOp,
-                                    silly::ScopeBeginOp, silly::ScopeEndOp>();
+                                    silly::ArithBinOp, silly::CmpBinOp, silly::ScopeBeginOp, silly::ScopeEndOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
 
                 target.addIllegalDialect<mlir::scf::SCFDialect>();
@@ -1063,8 +1061,8 @@ namespace silly
                 mlir::RewritePatternSet patterns( &getContext() );
                 patterns.add<AssignOpLowering, LoadOpLowering, NegOpLowering, PrintOpLowering, AbortOpLowering,
                              GetOpLowering, StringLiteralOpLowering, ArithBinOpLowering, CmpBinOpLowering,
-                             DeclareOpLowering, DebugNameOpLowering,
-                             ScopeBeginOpLowering, ScopeEndOpLowering>( lState, &getContext(), 1 );
+                             DeclareOpLowering, DebugNameOpLowering, ScopeBeginOpLowering, ScopeEndOpLowering>(
+                    lState, &getContext(), 1 );
 
                 // SCF -> CF
                 mlir::populateSCFToControlFlowConversionPatterns( patterns );

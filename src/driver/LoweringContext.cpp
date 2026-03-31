@@ -3,6 +3,8 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   This file implements helper functions for silly dialect to LLVM-IR lowering.
 ///
+#include "LoweringContext.hpp"
+
 #include <llvm/BinaryFormat/Dwarf.h>
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/Support/FormatVariadic.h>
@@ -13,7 +15,6 @@
 #include <format>
 
 #include "DriverState.hpp"
-#include "LoweringContext.hpp"
 #include "ModuleInsertionPointGuard.hpp"
 #include "helper.hpp"
 
@@ -426,7 +427,7 @@ namespace silly
         lookupFunctionState[funcName].declareToAlloca[dclOp] = aOp;
     }
 
-#if 0 // rework.
+#if 0    // rework.
     mlir::LogicalResult LoweringContext::constructLexicalBlockDI( mlir::FileLineColLoc fileLoc,
                                                                   mlir::ConversionPatternRewriter& rewriter,
                                                                   mlir::Operation* op )
@@ -575,7 +576,7 @@ namespace silly
 
         mlir::LLVM::DIScopeAttr subOrLexicalBlock = f.subProgramDI;
 
-#if 0 // FIXME: lookup !DILexicalBlock for this debugNameOp, if any, replacing this old code:
+#if 0    // FIXME: lookup !DILexicalBlock for this debugNameOp, if any, replacing this old code:
         if ( mlir::Value scope = debugNameOp.getScope() )
         {
             silly::DebugScopeOp scopeOp = scope.getDefiningOp<silly::DebugScopeOp>();

@@ -3,6 +3,8 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   altlr4 parse tree listener and MLIR builder.
 ///
+#include "Antlr4ParseListener.hpp"
+
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/FormatVariadic.h>
 #include <llvm/Support/raw_ostream.h>
@@ -21,7 +23,6 @@
 #include <fstream>
 #include <string>
 
-#include "Antlr4ParseListener.hpp"
 #include "DriverState.hpp"
 #include "ModuleInsertionPointGuard.hpp"
 #include "ParserPerFunctionState.hpp"
@@ -273,7 +274,7 @@ namespace silly
         mlir::Location loc = getStartLocation( ctx );
         assert( ctx );
         assert( ctx->IDENTIFIER() );
-        tNode * mod = ctx->IDENTIFIER();
+        tNode *mod = ctx->IDENTIFIER();
         std::string modname = mod->getText();
         mlir::Location nameLoc = getTerminalLocation( mod );
 
@@ -602,8 +603,8 @@ namespace silly
         mlir::Location aloc = getTerminalLocation( index );
 
         tNode *theString = ctx->STRING_PATTERN();
-        createStringDeclare( loc, varName, aloc, arrayBoundsString, theString != nullptr, theString ? theString->getText() : "",
-                             ls );
+        createStringDeclare( loc, varName, aloc, arrayBoundsString, theString != nullptr,
+                             theString ? theString->getText() : "", ls );
     }
 
     void Antlr4ParseListener::checkForReturnInScope( SillyParser::ScopedStatementsContext *scope, const char *what )
@@ -1390,7 +1391,7 @@ namespace silly
             {
                 unsigned width{ 64 };
 
-#if 0 // This is no good if the destination type is narrower than the input value.  See for example lt.silly
+#if 0    // This is no good if the destination type is narrower than the input value.  See for example lt.silly
                 if ( ty )
                 {
                     if ( mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( ty ) )

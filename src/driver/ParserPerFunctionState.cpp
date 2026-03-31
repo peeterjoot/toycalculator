@@ -74,7 +74,7 @@ namespace silly
         variables.back()[varName] = i;
     }
 
-    void ParserPerFunctionState::createVariableLookupScope( )
+    void ParserPerFunctionState::createVariableLookupScope()
     {
         variables.push_back( {} );
     }
@@ -102,6 +102,6 @@ namespace silly
     {
         return ( insertionPointStack.size() != 0 );
     }
-}
+}    // namespace silly
 
 // vim: et ts=4 sw=4

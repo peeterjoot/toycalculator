@@ -74,8 +74,7 @@ namespace silly
                                            mlir::Operation* op, mlir::Type inputType, mlir::Value& output );
 
         /// Emits debug information for a local variable (scalar or array), or a parameter, or a FOR induction variable.
-        mlir::LogicalResult constructVariableDI( mlir::ConversionPatternRewriter& rewriter,
-                                                 silly::DebugNameOp );
+        mlir::LogicalResult constructVariableDI( mlir::ConversionPatternRewriter& rewriter, silly::DebugNameOp );
 
         /// Emits debug information for a function parameter.
         void constructParameterDI( mlir::FileLineColLoc loc, mlir::ConversionPatternRewriter& rewriter,
@@ -83,8 +82,9 @@ namespace silly
                                    int paramIndex, const std::string& funcName );
 
         /// Emits lexical scope DI for a for, if, else, elif block
-        //mlir::LogicalResult constructLexicalBlockDI( mlir::FileLineColLoc fileLoc,
-        //                                             mlir::ConversionPatternRewriter& rewriter, mlir::Operation* op );
+        // mlir::LogicalResult constructLexicalBlockDI( mlir::FileLineColLoc fileLoc,
+        //                                              mlir::ConversionPatternRewriter& rewriter, mlir::Operation* op
+        //                                              );
 
         /// Return the PRINT args allocation for this function, big enough for the biggest PRINT list in the function.
         mlir::LLVM::AllocaOp getPrintArgs( const std::string& funcName );
