@@ -1071,18 +1071,12 @@ namespace silly
         builder.setInsertionPointToStart( &thenBlock );
     }
 
-    void Builder::enterScopedRegion( mlir::Location loc, bool wantLexicalScope )
+    void Builder::enterScopedRegion( mlir::Location loc )
     {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
 
         // This is front-end specific scoping for variable lookup:
         f.createVariableLookupScope( );
-
-        if ( wantLexicalScope )
-        {
-            // This is for lowering a scope to a !DILexicalBlock
-            silly::ScopeBeginOp::create( builder, loc, 0 );
-        }
     }
 
     void Builder::exitScopedRegion( mlir::Location loc )
@@ -1090,8 +1084,6 @@ namespace silly
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
 
         f.destroyVariableLookupScope();
-
-        silly::ScopeEndOp::create( builder, loc, 0 );
     }
 
     void Builder::createStringDeclare( mlir::Location loc, const std::string &varName, mlir::Location aloc,
