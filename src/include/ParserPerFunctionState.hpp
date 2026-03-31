@@ -90,9 +90,12 @@ namespace silly
         void destroyVariableLookupScope();
 
         /// Increase the level for scope_begin/scope_end
-        void incrementScopeLevel()
+        /// @retval return the new scope-level
+        int incrementScopeLevel()
         {
             scopeLevel++;
+
+            return scopeLevel;
         }
 
         /// Decrease the level for scope_begin/scope_end

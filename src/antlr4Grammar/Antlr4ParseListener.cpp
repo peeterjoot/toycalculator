@@ -292,6 +292,15 @@ namespace silly
         mlir::Location loc = getStartLocation( ctx );
 
         exitScopedRegion( loc );
+
+        bool isForBody = dynamic_cast<SillyParser::ForStatementContext *>( ctx->parent ) != nullptr;
+        if (isForBody)
+        {
+            ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
+            int scopeLevel = f.getScopeLevel();
+            silly::ScopeEndOp::create( builder, loc, scopeLevel );
+            f.decrementScopeLevel();
+        }
     }
 
     mlir::Value Antlr4ParseListener::parseReturnExpression( mlir::Location loc,
@@ -700,6 +709,10 @@ namespace silly
         mlir::Value step;
 
         mlir::Type elemType = integerDeclarationType( loc, ctx->intType() );
+
+        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
+        int scopeLevel = f.incrementScopeLevel();
+        silly::ScopeBeginOp::create( builder, loc, scopeLevel );
 
         std::string s;
         if ( pStart )

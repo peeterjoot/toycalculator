@@ -1008,6 +1008,9 @@ namespace silly
         f.pushInductionVariable( varName, inductionVar );
 
         silly::DebugNameOp::create( builder, varLoc, inductionVar, varName );
+
+        int scopeLevel = f.incrementScopeLevel();
+        silly::ScopeBeginOp::create( builder, loc, scopeLevel );
     }
 
     void Builder::finishFor( mlir::Location loc )
@@ -1022,6 +1025,10 @@ namespace silly
         {
             emitInternalError( loc, __FILE__, __LINE__, __func__, "empty insertionPointStack", currentFuncName );
         }
+
+        int scopeLevel = f.getScopeLevel();
+        silly::ScopeEndOp::create( builder, loc, scopeLevel );
+        f.decrementScopeLevel();
     }
 
     void Builder::selectElseBlock( mlir::Location loc )

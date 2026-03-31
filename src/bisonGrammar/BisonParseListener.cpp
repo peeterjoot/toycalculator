@@ -425,9 +425,11 @@ namespace silly
         mlir::Location loc = getLocation( bForLoc );
 
         ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
-        f.decrementScopeLevel();
 
         finishFor( loc );
+
+
+        f.decrementScopeLevel();
     }
 
     void BisonParseListener::enterPrintStatement( const std::vector<silly::Expr>& args,
