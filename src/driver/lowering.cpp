@@ -354,19 +354,21 @@ namespace silly
         }
     };
 
-    // Now unused (again)
+    /// For trivial lowering that just requires deletion.
     template <class SillOpType>
     class LowerByDeletion : public mlir::ConversionPattern
     {
        private:
-        LoweringContext& lState;
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
        public:
+        /// Constructor boilerplate
         LowerByDeletion( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
             : mlir::ConversionPattern( SillOpType::getOperationName(), benefit, context ), lState{ loweringState }
         {
         }
 
+        /// Lowering workhorse -- just delete the Op
         mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
                                              mlir::ConversionPatternRewriter& rewriter ) const override
         {
@@ -376,7 +378,10 @@ namespace silly
         }
     };
 
+    /// ScopeBeginOp handled early (where the DILexicalBlockAttrs are created)
     using ScopeBeginOpLowering = LowerByDeletion<ScopeBeginOp>;
+
+    /// ScopeEndOp handled early (where the DILexicalBlockAttrs are created)
     using ScopeEndOpLowering = LowerByDeletion<ScopeEndOp>;
 
     /// Lower silly::DebugNameOp

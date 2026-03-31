@@ -170,6 +170,7 @@ namespace silly
         /// @param loc [in] The starting location for the IF statement.
         /// @param predicate [in] The predicate for the IF or ELIF condition.
         /// @param saveIP [in] push the insertion point that is effectively after the if to insertionPointStack (use
+        /// @param ls [in] for fusion experiments.
         /// this for the initial if in an IF/ELIF/ELSE, but not for the internal IF created when processing an ELIF.
         void createIf( mlir::Location loc, mlir::Value predicate, bool saveIP, LocationStack &ls );
 
@@ -182,9 +183,13 @@ namespace silly
         /// mlir builder helper to exit a new variable-lookup scope
         void removeCurrentVariableLookupScope( mlir::Location loc );
 
+        /// Helper function for string declaration creation.
         void createStringDeclare( mlir::Location loc, const std::string &varName, mlir::Location aloc,
                                   const std::string &arrayBoundsString, bool haveInit, const std::string &strLit,
                                   LocationStack &ls );
+
+        /// pop inducation variables "scope", create a ScopeEndOp
+        void scopeEndHelper( mlir::Location loc, bool isFor );
 
        protected:
         /// construct state for creation of a silly dialect ModuleOp

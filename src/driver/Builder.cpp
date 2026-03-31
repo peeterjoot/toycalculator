@@ -1013,22 +1013,35 @@ namespace silly
         silly::ScopeBeginOp::create( builder, loc, scopeLevel );
     }
 
-    void Builder::finishFor( mlir::Location loc )
+    void Builder::scopeEndHelper( mlir::Location loc, bool isFor )
     {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         if ( f.haveInsertionPointStack() )
         {
             f.popFromInsertionPointStack( builder );
-            f.popInductionVariable();
+            if ( isFor )
+            {
+                f.popInductionVariable();
+            }
+
+            int scopeLevel = f.getScopeLevel();
+            silly::ScopeEndOp::create( builder, loc, scopeLevel );
+            f.decrementScopeLevel();
         }
         else
         {
             emitInternalError( loc, __FILE__, __LINE__, __func__, "empty insertionPointStack", currentFuncName );
         }
+    }
 
-        int scopeLevel = f.getScopeLevel();
-        silly::ScopeEndOp::create( builder, loc, scopeLevel );
-        f.decrementScopeLevel();
+    void Builder::finishFor( mlir::Location loc )
+    {
+        scopeEndHelper( loc, true );
+    }
+
+    void Builder::finishIfElifElse( mlir::Location loc )
+    {
+        scopeEndHelper( loc, false );
     }
 
     void Builder::selectElseBlock( mlir::Location loc )
@@ -1058,16 +1071,6 @@ namespace silly
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         int scopeLevel = f.incrementScopeLevel();
         silly::ScopeBeginOp::create( builder, loc, scopeLevel );
-    }
-
-    void Builder::finishIfElifElse( mlir::Location loc )
-    {
-        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
-        f.popFromInsertionPointStack( builder );
-
-        int scopeLevel = f.getScopeLevel();
-        silly::ScopeEndOp::create( builder, loc, scopeLevel );
-        f.decrementScopeLevel();
     }
 
     void Builder::createIf( mlir::Location loc, mlir::Value conditionPredicate, bool saveIP, LocationStack &ls )

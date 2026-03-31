@@ -681,6 +681,8 @@ namespace silly
 
     void Antlr4ParseListener::exitElifStatement( SillyParser::ElifStatementContext *ctx )
     {
+        // This is the wrong insertion point
+#if 0
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
 
@@ -688,6 +690,7 @@ namespace silly
         int scopeLevel = f.getScopeLevel();
         silly::ScopeEndOp::create( builder, loc, scopeLevel );
         f.decrementScopeLevel();
+#endif
     }
 
     void Antlr4ParseListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx )

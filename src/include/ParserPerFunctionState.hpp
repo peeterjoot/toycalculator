@@ -112,11 +112,13 @@ namespace silly
             return scopeLevel;
         }
 
+        /// For the bison front end.  Squirrel away the fact that there was a return statement.
         void setHaveReturn()
         {
             haveReturn = true;
         }
 
+        /// For the bison front end.  Was there a return statement.
         bool getHaveReturn()
         {
             return haveReturn;
@@ -150,6 +152,7 @@ namespace silly
         /// Stack for scf.if/scf.for blocks.
         std::vector<mlir::Operation *> insertionPointStack;
 
+        /// For ScopeBeginOp/ScopeEndOp -- the scope level param.
         int scopeLevel{};
 
         /// Bison FE only.
