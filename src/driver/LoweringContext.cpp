@@ -301,72 +301,10 @@ namespace silly
 
                 lookupFunctionState[funcName].subProgramDI = sub;
 
-#if 0
-                // Now that we have the DISubprogramAttr built, build the DILexicalBlockAttr for IF
-
-#if 0
-                funcOp.walk(
-                    [&]( mlir::scf::IfOp op )
+                for ( auto& block : funcOp.getBody() )
                 {
-                    auto ins = op.getInputs();
-                } );
-#endif
-                mlir::LLVM::DILexicalBlockAttr lexicalBlock{};
-                mlir::LLVM::DIScopeAttr sub2 = sub;
-                funcOp.walk(
-                    [&]( silly::ScopeBeginOp op )
-                    {
-                        // mlir::OpBuilder::InsertionGuard guard( builder );
-                        // builder.setInsertionPointAfter( op.getOperation() );
-                        ModuleInsertionPointGuard ip( mod, builder );
-
-                        mlir::Location loc = op.getLoc();
-                        uint32_t targetId = op.getId();
-                        mlir::FileLineColLoc fileLoc = locationToFLCLoc( loc );
-
-                        bool second{};
-                        if ( lexicalBlock )
-                        {
-                            sub2 = lexicalBlock;
-                            second = true;
-                        }
-
-                        lexicalBlock = mlir::LLVM::DILexicalBlockAttr::get( context, sub2, fileAttr, fileLoc.getLine(),
-                                                                            fileLoc.getColumn() );
-
-                        if ( second )
-                        {
-                            lscope = lexicalBlock;
-                            // Now want to manually hack-restamp all the instructions until I hit the
-                            // final silly::ScopeEndOp for this prefabricated IF program:
-                            //
-                            lscope = lexicalBlock;
-
-                            // Walk forward from this ScopeBeginOp until we hit the matching ScopeEndOp
-                            mlir::Block* block = op->getBlock();
-
-                            // Start from the op immediately after this ScopeBeginOp
-                            auto it = std::next( op->getIterator() );
-                            while ( it != block->end() )
-                            {
-                                mlir::Operation* current = &*it;
-                                ++it;    // advance before potentially modifying
-
-                                // Stop when we hit the matching ScopeEndOp
-                                if ( auto endOp = mlir::dyn_cast<silly::ScopeEndOp>( current ) )
-                                {
-                                    if ( endOp.getId() == targetId )
-                                        break;
-                                }
-
-                                // Restamp this op's location with the lexical block scope
-                                mlir::Location original = current->getLoc();
-                                mlir::Location scoped = mlir::FusedLoc::get( context, { original }, lscope );
-                                current->setLoc( scoped );
-                            }
-                        }
-                    } );
-#endif
+                    processScopedOps( block.begin(), block.end(), sub );
+                }
             }
 
             // Compute max print args for this function
@@ -1191,6 +1129,84 @@ namespace silly
     void LoweringContext::markMathLibRequired()
     {
         driverState.needsMathLib = true;
+    }
+
+    mlir::Block::iterator LoweringContext::processScopeBegin( mlir::Block::iterator it, mlir::Block::iterator blockEnd,
+                                                              mlir::LLVM::DIScopeAttr parentScope )
+    {
+        mlir::MLIRContext* context = builder.getContext();
+
+        auto scopeBegin = mlir::cast<silly::ScopeBeginOp>( *it );
+        uint32_t targetId = scopeBegin.getId();
+
+        // Build the DILexicalBlockAttr for this scope, parented to the current scope
+        auto loc = mlir::cast<mlir::FileLineColLoc>( scopeBegin.getLoc() );
+        auto thisScope =
+            mlir::LLVM::DILexicalBlockAttr::get( context, parentScope, fileAttr, loc.getLine(), loc.getColumn() );
+
+        ++it;    // move past the ScopeBeginOp itself
+
+        while ( it != blockEnd )
+        {
+            mlir::Operation& op = *it;
+
+            if ( auto endOp = mlir::dyn_cast<silly::ScopeEndOp>( op ) )
+            {
+                if ( endOp.getId() == targetId )
+                {
+                    ++it;    // move past the ScopeEndOp without erasing it
+                    return it;
+                }
+            }
+
+            if ( mlir::dyn_cast<silly::ScopeBeginOp>( op ) )
+            {
+                it = processScopeBegin( it, blockEnd, thisScope );
+                continue;
+            }
+
+            // Record the scope for DebugNameOps
+            if ( auto debugName = mlir::dyn_cast<silly::DebugNameOp>( op ) )
+            {
+                scopeMap[debugName.getOperation()] = thisScope;
+            }
+
+            // Restamp this op's location with thisScope
+            mlir::Location origLoc = op.getLoc();
+            op.setLoc( mlir::FusedLoc::get( context, { origLoc }, thisScope ) );
+
+            // If the op has regions (e.g. scf.for, scf.if), recurse into them
+            for ( auto& region : op.getRegions() )
+            {
+                for ( auto& block : region )
+                {
+                    processScopedOps( block.begin(), block.end(), thisScope );
+                }
+            }
+
+            ++it;
+        }
+
+        llvm_unreachable( "ScopeBeginOp with no matching ScopeEndOp" );
+    }
+
+    void LoweringContext::processScopedOps( mlir::Block::iterator begin, mlir::Block::iterator end,
+                                            mlir::LLVM::DIScopeAttr parentScope )
+    {
+        auto it = begin;
+        while ( it != end )
+        {
+            mlir::Operation& op = *it;
+
+            if ( mlir::dyn_cast<silly::ScopeBeginOp>( op ) )
+            {
+                it = processScopeBegin( it, end, parentScope );
+                continue;
+            }
+
+            // Ops outside any scope marker are left alone
+            ++it;
+        }
     }
 }    // namespace silly
 

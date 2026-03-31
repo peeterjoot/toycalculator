@@ -5,8 +5,9 @@
 ///
 #include "helper.hpp"
 
-#include <format>
 #include <llvm/Support/Debug.h>
+
+#include <format>
 
 #define DEBUG_TYPE "silly-helper"
 
@@ -14,9 +15,7 @@ namespace silly
 {
     mlir::FileLineColLoc locationToFLCLoc( mlir::Location loc )
     {
-        LLVM_DEBUG( {
-                llvm::dbgs() << "locationToFLCLoc: loc: " << loc << '\n';
-            } );
+        LLVM_DEBUG( { llvm::dbgs() << "locationToFLCLoc: loc: " << loc << '\n'; } );
 
         mlir::FileLineColLoc fileLineLoc{};
 
@@ -139,6 +138,6 @@ namespace silly
             }
         }
     }
-}
+}    // namespace silly
 
 // vim: et ts=4 sw=4

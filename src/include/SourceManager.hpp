@@ -5,8 +5,11 @@
 
 #include <vector>
 #include <unordered_map>
+#include <mlir/IR/BuiltinOps.h> // ModuleOp
+#include <llvm/ADT/SmallString.h>
 
 #include "ReturnCodes.hpp"
+#include "DriverState.hpp"
 
 namespace silly
 {

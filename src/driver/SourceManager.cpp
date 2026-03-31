@@ -1,16 +1,17 @@
 /// @file    SourceManager.hpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Silly compiler handling of a set of sources or objects.
+#include "SourceManager.hpp"
+
+#include <llvm/Support/FormatVariadic.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/Program.h>
-#include <llvm/Support/FormatVariadic.h>
 
 #include <fstream>
 
 #include "CompilationUnit.hpp"
-#include "ReturnCodes.hpp"
-#include "SourceManager.hpp"
 #include "DriverState.hpp"
+#include "ReturnCodes.hpp"
 
 #define DEBUG_TYPE "silly-sm"
 
@@ -29,8 +30,7 @@ namespace silly
         llvm::errs() << '\n';
     }
 
-    SourceManager::SourceManager( silly::DriverState& d, mlir::MLIRContext* c )
-        : ds{ d }, context{ c }
+    SourceManager::SourceManager( silly::DriverState& d, mlir::MLIRContext* c ) : ds{ d }, context{ c }
     {
     }
 
@@ -62,7 +62,7 @@ namespace silly
         return ReturnCodes::success;
     }
 
-    ReturnCodes SourceManager::createCU( const std::string& filename, SourceManager::FileNameAndCU *& cup )
+    ReturnCodes SourceManager::createCU( const std::string& filename, SourceManager::FileNameAndCU*& cup )
     {
         cup = nullptr;
         std::string stem = llvm::sys::path::stem( filename ).str();
@@ -83,7 +83,7 @@ namespace silly
         return ReturnCodes::success;
     }
 
-    ReturnCodes SourceManager::findCU( const std::string& filename, SourceManager::FileNameAndCU *& cup )
+    ReturnCodes SourceManager::findCU( const std::string& filename, SourceManager::FileNameAndCU*& cup )
     {
         cup = nullptr;
         std::string stem = llvm::sys::path::stem( filename ).str();
@@ -138,7 +138,7 @@ namespace silly
         }
 
         // Get the driver path
-        std::string driver = llvm::sys::fs::getMainExecutable( ds.argv0, (void *)ds.mainSymbol );
+        std::string driver = llvm::sys::fs::getMainExecutable( ds.argv0, (void*)ds.mainSymbol );
         llvm::StringRef driverPath = llvm::sys::path::parent_path( driver );
         LLVM_DEBUG( { llvm::outs() << "Compiler driver path: " << driverPath << '\n'; } );
 
@@ -208,8 +208,8 @@ namespace silly
             }
 
             // coverage: driver/link-failure.silly
-            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Linker failed with exit code: {0}, rc = {1}\n", errMsg,
-                                           result );
+            llvm::errs() << llvm::formatv( COMPILER_NAME ": error: Linker failed with exit code: {0}, rc = {1}\n",
+                                           errMsg, result );
             return ReturnCodes::linkError;
         }
 
@@ -286,7 +286,7 @@ namespace silly
         return ReturnCodes::success;
     }
 
-    ReturnCodes SourceManager::createAndSerializeLLVM( FileNameAndCU& cup, bool & isDone )
+    ReturnCodes SourceManager::createAndSerializeLLVM( FileNameAndCU& cup, bool& isDone )
     {
         auto cu = cup.pCU;
         isDone = false;
@@ -392,8 +392,7 @@ namespace silly
             if ( ds.keepTemps )
             {
                 // coverage: driver/keep-temp.silly
-                llvm::errs() << llvm::formatv( COMPILER_NAME ": info: created temporary: {0}\n",
-                                               objectFilename );
+                llvm::errs() << llvm::formatv( COMPILER_NAME ": info: created temporary: {0}\n", objectFilename );
             }
 
             createdTemporary = true;

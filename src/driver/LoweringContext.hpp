@@ -34,10 +34,9 @@ namespace silly
 
         /// Map from DeclareOp to AllocaOp for local variables.
         std::unordered_map<mlir::Operation*, mlir::Operation*> declareToAlloca;
-
-        /// Map a ScopeOp to a DILexicalBlockAttr
-        std::unordered_map<mlir::Operation*, mlir::LLVM::DILexicalBlockAttr> scopeOpToAttr;
     };
+
+    using DebugScopeMap = llvm::DenseMap<mlir::Operation*, mlir::LLVM::DILexicalBlockAttr>;
 
     /// Context object holding state and helper functions used during lowering
     /// of the Silly dialect to LLVM dialect.
@@ -156,6 +155,19 @@ namespace silly
         /// mlir::LLVM::FRemOp lowers to fmod (at least on some targets), so -lm will be required at link time.
         void markMathLibRequired();
 
+        /// Walk ops until hitting an ScopeBeginOp, and if found call processScopeBegin.
+        void processScopedOps( mlir::Block::iterator begin, mlir::Block::iterator end,
+                               mlir::LLVM::DIScopeAttr parentScope );
+
+        /// @brief process all the ops until a matching ScopeEndOp is found.
+        ///
+        /// Create a DILexicalBlockAttr for the scope.
+        /// Record the DILexicalBlockAttr that should apply to any DebugNameOps found.
+        /// Restamp the OP locations with a fused location that ties the OP to the DILexicalBlockAttr.
+        /// If an OP has any regions, process those recursively.
+        mlir::Block::iterator processScopeBegin( mlir::Block::iterator it, mlir::Block::iterator blockEnd,
+                                                 mlir::LLVM::DIScopeAttr parentScope );
+
        private:
         /// Returns the MLIR context.
         inline mlir::MLIRContext* getContext();
@@ -208,6 +220,8 @@ namespace silly
 
         /// Map from string literal content to its GlobalOp.
         StringLit2GlobalOp stringLiterals;
+
+        DebugScopeMap scopeMap;
 
         /// Prototype for __silly_print.
         mlir::func::FuncOp printFunc;

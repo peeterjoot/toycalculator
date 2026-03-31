@@ -3,13 +3,14 @@
 /// @author Peeter Joot <peeterjoot@pm.me>
 /// @brief Registration glue for the silly dialect dependencies
 ///
+#include "DialectContext.hpp"
+
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
 #include <mlir/Dialect/SCF/IR/SCF.h>
 
-#include "DialectContext.hpp"
 #include "SillyDialect.hpp"
 
 namespace silly

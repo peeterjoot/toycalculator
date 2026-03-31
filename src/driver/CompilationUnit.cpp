@@ -1,6 +1,8 @@
 /// @file    CompilationUnit.cpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Silly compiler handling of a single compilation unit.
+#include "CompilationUnit.hpp"
+
 #include <llvm/ADT/ArrayRef.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
@@ -33,7 +35,6 @@
 #include <format>
 #include <fstream>
 
-#include "CompilationUnit.hpp"
 #include "DialectContext.hpp"
 #include "DriverState.hpp"
 #include "OptLevel.hpp"
@@ -41,16 +42,15 @@
 #include "SillyDialect.hpp"
 #include "SillyPasses.hpp"
 #include "SourceManager.hpp"
-#include "helper.hpp"
 #include "createSillyToLLVMLoweringPass.hpp"
+#include "helper.hpp"
 
 #define DEBUG_TYPE "silly-cu"
 
 namespace silly
 {
     CompilationUnit::CompilationUnit( silly::SourceManager& s )
-        : sm{ s }, ds{ sm.getDriverState() }, context{ sm.getContext() },
-          targetTriple( llvm::sys::getProcessTriple() )
+        : sm{ s }, ds{ sm.getDriverState() }, context{ sm.getContext() }, targetTriple( llvm::sys::getProcessTriple() )
     {
         if ( ds.debugInfo )
         {

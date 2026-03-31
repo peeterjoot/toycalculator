@@ -21,6 +21,6 @@ namespace silly
         voidT = mlir::LLVM::LLVMVoidType::get( ctx );
         ptr = mlir::LLVM::LLVMPointerType::get( ctx );
     }
-}
+}    // namespace silly
 
 // vim: et ts=4 sw=4
