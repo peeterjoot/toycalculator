@@ -174,7 +174,7 @@ namespace silly
         void createIf( mlir::Location loc, mlir::Value predicate, bool saveIP, LocationStack &ls );
 
         /// mlir builder helper for IF/ELIF/ELSE (exit part)
-        void finishIfElifElse();
+        void finishIfElifElse( mlir::Location loc );
 
         /// mlir builder helper to enter a new variable-lookup scope
         void createNewVariableLookupScope( mlir::Location loc );

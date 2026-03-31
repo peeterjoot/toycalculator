@@ -1054,12 +1054,20 @@ namespace silly
         mlir::Region &elseRegion = ifOp.getElseRegion();
         mlir::Block &elseBlock = elseRegion.front();
         builder.setInsertionPointToStart( &elseBlock );
+
+        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
+        int scopeLevel = f.incrementScopeLevel();
+        silly::ScopeBeginOp::create( builder, loc, scopeLevel );
     }
 
-    void Builder::finishIfElifElse()
+    void Builder::finishIfElifElse( mlir::Location loc )
     {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         f.popFromInsertionPointStack( builder );
+
+        int scopeLevel = f.getScopeLevel();
+        silly::ScopeEndOp::create( builder, loc, scopeLevel );
+        f.decrementScopeLevel();
     }
 
     void Builder::createIf( mlir::Location loc, mlir::Value conditionPredicate, bool saveIP, LocationStack &ls )
@@ -1068,14 +1076,17 @@ namespace silly
         mlir::scf::IfOp ifOp = mlir::scf::IfOp::create( builder, loc, conditionPredicate,
                                                         /*withElseRegion=*/true );
 
+        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         if ( saveIP )
         {
-            ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
             f.pushToInsertionPointStack( ifOp.getOperation() );
         }
 
         mlir::Block &thenBlock = ifOp.getThenRegion().front();
         builder.setInsertionPointToStart( &thenBlock );
+
+        int scopeLevel = f.incrementScopeLevel();
+        silly::ScopeBeginOp::create( builder, loc, scopeLevel );
     }
 
     void Builder::createNewVariableLookupScope( mlir::Location loc )

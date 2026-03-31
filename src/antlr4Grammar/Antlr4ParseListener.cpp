@@ -293,8 +293,8 @@ namespace silly
 
         removeCurrentVariableLookupScope( loc );
 
-        bool isForBody = dynamic_cast<SillyParser::ForStatementContext *>( ctx->parent ) != nullptr;
-        if (isForBody)
+        bool isFunctionBody = dynamic_cast<SillyParser::FunctionStatementContext *>( ctx->parent ) != nullptr;
+        if (!isFunctionBody)
         {
             ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
             int scopeLevel = f.getScopeLevel();
@@ -635,6 +635,10 @@ namespace silly
 
         checkForReturnInScope( ctx->scopedStatements(), "IF block" );
 
+        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
+        int scopeLevel = f.incrementScopeLevel();
+        silly::ScopeBeginOp::create( builder, loc, scopeLevel );
+
         mlir::Value conditionPredicate = parseExpression( ctx->expression(), {}, ls );
         if ( !conditionPredicate )
         {
@@ -677,7 +681,9 @@ namespace silly
 
     void Antlr4ParseListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx )
     {
-        finishIfElifElse();
+        mlir::Location loc = getStartLocation( ctx );
+
+        finishIfElifElse( loc );
     }
 
     void Antlr4ParseListener::enterForStatement( SillyParser::ForStatementContext *ctx )
