@@ -1,0 +1,238 @@
+#!/usr/bin/perl
+
+#-----------------------------------------------------------------------------
+# POD Format Documentation.  Read "perldoc perlpod" for an example.
+# When done, check syntax with "podchecker".
+
+=head1 NAME
+
+normalize_ll - <one-line-description>
+
+=head1 SYNOPSIS
+
+normalize_ll [--help] [<options>]
+
+=head1 DESCRIPTION
+
+A perl script that normalizes some types of LLVM-IR, and normalizes it for comparision.
+
+=head1 SUPPORTED PLATFORMS
+
+ Unix (Linux verified)
+
+=head1 SUPPORT
+
+ Send email to peeterjoot@pm.me
+
+=head1 AUTHORS
+
+ Peeter Joot
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+use strict ;
+use warnings ;
+use Getopt::Long ;
+use Pod::Usage ;
+
+# Suppress sourcing of users' .bashrc files in invoked shells
+delete $ENV{'ENV'} ;
+delete $ENV{'BASH_ENV'} ;
+
+# Set STDOUT and STDERR to unbuffered
+select STDERR ; $| = 1 ;
+select STDOUT ; $| = 1 ;
+
+my $myName = '' ;
+
+($myName = $0) =~ s@.*[/\\]@@ ;
+
+#Getopt::Long::Configure( 'pass_through' ) ;
+GetOptions (
+   'help'               => sub { pod2usage(-verbose => 2) ; },
+) or pod2usage(-verbose => 0) ;
+
+# Validate/handle options, and everything else...
+
+# Read entire file
+my $content = do { local $/; <STDIN> };
+
+# Split into code section and metadata section
+# Metadata starts at the first line beginning with !
+my ($code, $meta) = ('', '');
+my $in_meta = 0;
+my @meta_lines;
+my @code_lines;
+
+for my $line (split /\n/, $content) {
+    if (!$in_meta && $line =~ /^!/) {
+        $in_meta = 1;
+    }
+    if ($in_meta) {
+        push @meta_lines, $line;
+    } else {
+        push @code_lines, $line;
+    }
+}
+
+# Parse metadata nodes into a hash: number -> full definition
+my %meta_def;    # !N -> definition string
+my %meta_refs;   # !N -> list of !M it references
+
+for my $line (@meta_lines) {
+    if ($line =~ /^(!(\d+))\s*=\s*(.*)$/) {
+        my ($tag, $num, $def) = ($1, $2, $3);
+        $meta_def{$num} = $def;
+        # collect references
+        my @refs = ($def =~ /!(\d+)/g);
+        $meta_refs{$num} = \@refs;
+    }
+}
+
+# Build human-readable names for each metadata node
+my %name;   # num -> new name string (without leading !)
+
+sub make_name {
+    my ($num) = @_;
+    return $name{$num} if exists $name{$num};
+
+    my $def = $meta_def{$num} // return "unk_$num";
+
+    # DIFile
+    if ($def =~ /!DIFile\(filename:\s*"([^"]+)"/) {
+        my $base = $1;
+        $base =~ s{.*/}{};   # basename
+        $base =~ s/\./_/g;
+        $name{$num} = "difile_$base";
+        return $name{$num};
+    }
+
+    # DICompileUnit
+    if ($def =~ /!DICompileUnit\(/) {
+        $name{$num} = "dicu";
+        return $name{$num};
+    }
+
+    # DISubprogram
+    if ($def =~ /!DISubprogram\(.*?name:\s*"([^"]+)".*?line:\s*(\d+)/) {
+        my ($fname, $line) = ($1, $2);
+        $name{$num} = "disub_${fname}_l${line}";
+        return $name{$num};
+    }
+
+    # DILexicalBlock - need parent name for context
+    if ($def =~ /!DILexicalBlock\(scope:\s*!(\d+).*?line:\s*(\d+),\s*column:\s*(\d+)/) {
+        my ($parent_num, $line, $col) = ($1, $2, $3);
+        my $parent_name = make_name($parent_num);
+        $parent_name =~ s/^di(sub|lex|file)_//;  # strip prefix for brevity
+        $name{$num} = "dilex_p${parent_name}_${line}_${col}";
+        return $name{$num};
+    }
+
+    # DILocation
+    if ($def =~ /!DILocation\(line:\s*(\d+),\s*column:\s*(\d+),\s*scope:\s*!(\d+)/) {
+        my ($line, $col, $scope_num) = ($1, $2, $3);
+        my $scope_name = make_name($scope_num);
+        $scope_name =~ s/^di(sub|lex|file)_//;  # strip prefix for brevity
+        $name{$num} = "diloc_s${scope_name}_${line}_${col}";
+        return $name{$num};
+    }
+
+    # DILocalVariable
+    if ($def =~ /!DILocalVariable\(name:\s*"([^"]+)".*?line:\s*(\d+)/) {
+        my ($vname, $line) = ($1, $2);
+        $name{$num} = "divar_${vname}_l${line}";
+        return $name{$num};
+    }
+
+    # DISubroutineType
+    if ($def =~ /!DISubroutineType\(/) {
+        $name{$num} = "disubty_$num";
+        return $name{$num};
+    }
+
+    # DIBasicType
+    if ($def =~ /!DIBasicType\(name:\s*"([^"]+)"/) {
+        my $tname = $1;
+        $tname =~ s/\s+/_/g;
+        $name{$num} = "dibasic_$tname";
+        return $name{$num};
+    }
+
+    # DIGlobalVariableExpression
+    if ($def =~ /!DIGlobalVariableExpression\(/) {
+        $name{$num} = "diglobexpr_$num";
+        return $name{$num};
+    }
+
+    # DIGlobalVariable
+    if ($def =~ /!DIGlobalVariable\(.*?line:\s*(\d+)/) {
+        $name{$num} = "diglobvar_l$1";
+        return $name{$num};
+    }
+
+    # DICompositeType
+    if ($def =~ /!DICompositeType\(/) {
+        $name{$num} = "dicompty_$num";
+        return $name{$num};
+    }
+
+    # DISubrange
+    if ($def =~ /!DISubrange\(/) {
+        $name{$num} = "disubrange_$num";
+        return $name{$num};
+    }
+
+    # DIDerivedType
+    if ($def =~ /!DIDerivedType\(/) {
+        $name{$num} = "diderivedty_$num";
+        return $name{$num};
+    }
+
+    # Plain metadata list  {!N, ...}
+    if ($def =~ /^!{/) {
+        $name{$num} = "dimlist_$num";
+        return $name{$num};
+    }
+
+    # String metadata
+    if ($def =~ /^!\{!"/) {
+        $name{$num} = "dimstr_$num";
+        return $name{$num};
+    }
+
+    # Fallback
+    $name{$num} = "dimeta_$num";
+    return $name{$num};
+}
+
+# Force name generation for all nodes
+make_name($_) for keys %meta_def;
+
+# Substitute !N -> !name everywhere in a string
+sub subst {
+    my ($str) = @_;
+    # Replace !digits with !name, longest match first isn't needed since
+    # we do a single global pass with a regex that anchors on word boundary
+    $str =~ s/!(\d+)\b/exists $name{$1} ? "!$name{$1}" : "!$1"/ge;
+    return $str;
+}
+
+# Output substituted code section
+print join("\n", map { subst($_) } @code_lines), "\n";
+
+# Output substituted metadata section, with new lhs names
+for my $line (@meta_lines) {
+    if ($line =~ /^(!(\d+))\s*=\s*(.*)$/) {
+        my ($tag, $num, $def) = ($1, $2, $3);
+        my $new_lhs = "!" . ($name{$num} // $num);
+        my $new_def = subst($def);
+        print "$new_lhs = $new_def\n";
+    } else {
+        print subst($line), "\n";
+    }
+}
+
+# vim: et ts=4 sw=4

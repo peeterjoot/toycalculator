@@ -1,8 +1,6 @@
 /// @file    Builder.cpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Grammar agnostic subset of the MLIR builder for the silly language.
-#include "Builder.hpp"
-
 #include <llvm/Support/FormatVariadic.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
@@ -11,6 +9,7 @@
 #include <format>
 #include <fstream>
 
+#include "Builder.hpp"
 #include "DriverState.hpp"
 #include "LocationStack.hpp"
 #include "ModuleInsertionPointGuard.hpp"
@@ -958,9 +957,9 @@ namespace silly
         return ret;
     }
 
-    void Builder::createFor( mlir::Location loc, const std::string &varName, mlir::Type elemType, mlir::Location varLoc,
-                             mlir::Operation *retOp, mlir::Value start, mlir::Value end, mlir::Value step,
-                             LocationStack &ls )
+    void Builder::createFor( mlir::Location loc, mlir::Location sbloc, mlir::Location seloc, const std::string &varName,
+                             mlir::Type elemType, mlir::Location varLoc, mlir::Operation *retOp, mlir::Value start,
+                             mlir::Value end, mlir::Value step, LocationStack &ls )
     {
         bool declared = isDeclared( varName );
         if ( declared )
@@ -1009,8 +1008,8 @@ namespace silly
         silly::DebugNameOp::create( builder, varLoc, inductionVar, varName );
 
         int scopeLevel = f.incrementScopeLevel();
-        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, loc, scopeLevel );
-        silly::ScopeEndOp::create( builder, loc, scopeLevel );
+        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, sbloc, scopeLevel );
+        silly::ScopeEndOp::create( builder, seloc, scopeLevel );
         builder.setInsertionPointAfter( scopeBegin.getOperation() );
     }
 
@@ -1041,7 +1040,7 @@ namespace silly
         scopeEndHelper( loc, false );
     }
 
-    void Builder::selectElseBlock( mlir::Location loc )
+    void Builder::selectElseBlock( mlir::Location loc, mlir::Location sbLoc, mlir::Location seLoc )
     {
         mlir::Block *currentBlock = builder.getInsertionBlock();
         assert( currentBlock );
@@ -1067,13 +1066,13 @@ namespace silly
 
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         int scopeLevel = f.incrementScopeLevel();
-        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, loc, scopeLevel );
-        silly::ScopeEndOp::create( builder, loc, scopeLevel );
+        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, sbLoc, scopeLevel );
+        silly::ScopeEndOp::create( builder, seLoc, scopeLevel );
         builder.setInsertionPointAfter( scopeBegin.getOperation() );
     }
 
-    void Builder::createIf( mlir::Location loc, mlir::Value conditionPredicate, mlir::Operation *retOp,
-                            LocationStack &ls )
+    void Builder::createIf( mlir::Location loc, mlir::Location sbLoc, mlir::Location seLoc,
+                            mlir::Value conditionPredicate, mlir::Operation *retOp, LocationStack &ls )
     {
         // mlir::Location fusedLoc = ls.fuseLocations( );
         mlir::scf::IfOp ifOp = mlir::scf::IfOp::create( builder, loc, conditionPredicate,
@@ -1089,8 +1088,8 @@ namespace silly
         builder.setInsertionPointToStart( &thenBlock );
 
         int scopeLevel = f.incrementScopeLevel();
-        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, loc, scopeLevel );
-        silly::ScopeEndOp::create( builder, loc, scopeLevel );
+        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, sbLoc, scopeLevel );
+        silly::ScopeEndOp::create( builder, seLoc, scopeLevel );
         builder.setInsertionPointAfter( scopeBegin.getOperation() );
     }
 

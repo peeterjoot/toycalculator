@@ -3,8 +3,6 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   altlr4 parse tree listener and MLIR builder.
 ///
-#include "Antlr4ParseListener.hpp"
-
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/FormatVariadic.h>
 #include <llvm/Support/raw_ostream.h>
@@ -23,6 +21,7 @@
 #include <fstream>
 #include <string>
 
+#include "Antlr4ParseListener.hpp"
 #include "DriverState.hpp"
 #include "ModuleInsertionPointGuard.hpp"
 #include "ParserPerFunctionState.hpp"
@@ -640,7 +639,10 @@ namespace silly
             return;
         }
 
-        createIf( loc, conditionPredicate, scopeEnd.getOperation(), ls );
+        SillyParser::ScopedStatementsContext *ss = ctx->scopedStatements();
+        mlir::Location sbLoc = getTerminalLocation( ss->LEFT_CURLY_BRACKET_TOKEN() );
+        mlir::Location seLoc = getTerminalLocation( ss->RIGHT_CURLY_BRACKET_TOKEN() );
+        createIf( loc, sbLoc, seLoc, conditionPredicate, scopeEnd.getOperation(), ls );
     }
 
     void Antlr4ParseListener::enterElseStatement( SillyParser::ElseStatementContext *ctx )
@@ -650,7 +652,10 @@ namespace silly
 
         checkForReturnInScope( ctx->scopedStatements(), "ELSE block" );
 
-        selectElseBlock( loc );
+        SillyParser::ScopedStatementsContext *ss = ctx->scopedStatements();
+        mlir::Location sbLoc = getTerminalLocation( ss->LEFT_CURLY_BRACKET_TOKEN() );
+        mlir::Location seLoc = getTerminalLocation( ss->RIGHT_CURLY_BRACKET_TOKEN() );
+        selectElseBlock( loc, sbLoc, seLoc );
     }
 
     void Antlr4ParseListener::enterElifStatement( SillyParser::ElifStatementContext *ctx )
@@ -661,7 +666,7 @@ namespace silly
 
         checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
 
-        selectElseBlock( loc );
+        selectElseBlock( loc, loc, loc );
 
         mlir::Value conditionPredicate = parseExpression( ctx->expression(), {}, ls );
         if ( !conditionPredicate )
@@ -670,7 +675,10 @@ namespace silly
             return;
         }
 
-        createIf( loc, conditionPredicate, nullptr, ls );
+        SillyParser::ScopedStatementsContext *ss = ctx->scopedStatements();
+        mlir::Location sbLoc = getTerminalLocation( ss->LEFT_CURLY_BRACKET_TOKEN() );
+        mlir::Location seLoc = getTerminalLocation( ss->RIGHT_CURLY_BRACKET_TOKEN() );
+        createIf( loc, sbLoc, seLoc, conditionPredicate, nullptr, ls );
     }
 
     void Antlr4ParseListener::exitElifStatement( SillyParser::ElifStatementContext *ctx )
@@ -767,7 +775,10 @@ namespace silly
 
         mlir::Location varLoc = getTerminalLocation( ctx->IDENTIFIER() );
 
-        createFor( loc, varName, elemType, varLoc, scopeEnd.getOperation(), start, end, step, ls );
+        SillyParser::ScopedStatementsContext *ss = ctx->scopedStatements();
+        mlir::Location sbLoc = getTerminalLocation( ss->LEFT_CURLY_BRACKET_TOKEN() );
+        mlir::Location seLoc = getTerminalLocation( ss->RIGHT_CURLY_BRACKET_TOKEN() );
+        createFor( loc, sbLoc, seLoc, varName, elemType, varLoc, scopeEnd.getOperation(), start, end, step, ls );
     }
 
     void Antlr4ParseListener::exitForStatement( SillyParser::ForStatementContext *ctx )

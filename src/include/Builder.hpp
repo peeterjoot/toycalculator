@@ -156,15 +156,15 @@ namespace silly
                                 LocationStack &ls );
 
         /// mlir builder helper for FOR (enter part)
-        void createFor( mlir::Location loc, const std::string &varName, mlir::Type elemType, mlir::Location varLoc,
-                        mlir::Operation *retOp, mlir::Value start, mlir::Value end, mlir::Value step,
-                        LocationStack &ls );
+        void createFor( mlir::Location loc, mlir::Location sbloc, mlir::Location seloc, const std::string &varName,
+                        mlir::Type elemType, mlir::Location varLoc, mlir::Operation *retOp, mlir::Value start,
+                        mlir::Value end, mlir::Value step, LocationStack &ls );
 
         /// mlir builder helper for FOR (exit part)
         void finishFor( mlir::Location loc );
 
         /// Find the current scf.if condition and set the insertion point to the else region for that if.
-        void selectElseBlock( mlir::Location loc );
+        void selectElseBlock( mlir::Location loc, mlir::Location sbLoc, mlir::Location seLoc );
 
         /// For IF/ELIF, create an scf.if condition and set the insertion point to it's then region.
         ///
@@ -173,7 +173,8 @@ namespace silly
         /// @param retOp [in] for the insertionPointStack push for the scopeend op that is effectively after the IF. Use
         /// this for the initial if in an IF/ELIF/ELSE, but not for the internal IF created when processing an ELIF.
         /// @param ls [in] for fusion experiments.
-        void createIf( mlir::Location loc, mlir::Value predicate, mlir::Operation *retOp, LocationStack &ls );
+        void createIf( mlir::Location loc, mlir::Location sbLoc, mlir::Location seLoc, mlir::Value predicate,
+                       mlir::Operation *retOp, LocationStack &ls );
 
         /// mlir builder helper for IF/ELIF/ELSE (exit part)
         void finishIfElifElse( mlir::Location loc );
