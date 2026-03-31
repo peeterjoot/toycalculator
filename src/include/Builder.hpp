@@ -177,10 +177,10 @@ namespace silly
         void finishIfElifElse();
 
         /// mlir builder helper to enter a new variable-lookup scope
-        void enterScopedRegion( mlir::Location loc );
+        void createNewVariableLookupScope( mlir::Location loc );
 
         /// mlir builder helper to exit a new variable-lookup scope
-        void exitScopedRegion( mlir::Location loc );
+        void removeCurrentVariableLookupScope( mlir::Location loc );
 
         void createStringDeclare( mlir::Location loc, const std::string &varName, mlir::Location aloc,
                                   const std::string &arrayBoundsString, bool haveInit, const std::string &strLit,

@@ -1078,7 +1078,7 @@ namespace silly
         builder.setInsertionPointToStart( &thenBlock );
     }
 
-    void Builder::enterScopedRegion( mlir::Location loc )
+    void Builder::createNewVariableLookupScope( mlir::Location loc )
     {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
 
@@ -1086,7 +1086,7 @@ namespace silly
         f.createVariableLookupScope( );
     }
 
-    void Builder::exitScopedRegion( mlir::Location loc )
+    void Builder::removeCurrentVariableLookupScope( mlir::Location loc )
     {
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
 

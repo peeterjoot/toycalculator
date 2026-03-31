@@ -873,7 +873,7 @@ namespace silly
     {
         mlir::Location loc = getLocation( bLoc );
 
-        enterScopedRegion( loc, true );
+        createNewVariableLookupScope( loc, true );
 
         ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
         f.incrementScopeLevel();
@@ -883,7 +883,7 @@ namespace silly
     {
         ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
         f.decrementScopeLevel();
-        exitScopedRegion();
+        removeCurrentVariableLookupScope();
     }
 
     void BisonParseListener::emitParseError( const silly::BisonParser::location_type& bLoc, const std::string& msg )

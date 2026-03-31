@@ -284,14 +284,14 @@ namespace silly
     {
         mlir::Location loc = getStartLocation( ctx );
 
-        enterScopedRegion( loc );
+        createNewVariableLookupScope( loc );
     }
 
     void Antlr4ParseListener::exitScopedStatements( SillyParser::ScopedStatementsContext *ctx )
     {
         mlir::Location loc = getStartLocation( ctx );
 
-        exitScopedRegion( loc );
+        removeCurrentVariableLookupScope( loc );
 
         bool isForBody = dynamic_cast<SillyParser::ForStatementContext *>( ctx->parent ) != nullptr;
         if (isForBody)
