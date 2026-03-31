@@ -566,7 +566,7 @@ namespace silly
                 /*argNo=*/0, totalSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
 
             builder.setInsertionPointAfter( allocaOp );
-            mlir::LLVM::DbgDeclareOp::create( builder, fileLoc, allocaOp, diVar );
+            mlir::LLVM::DbgDeclareOp::create( builder, loc, allocaOp, diVar );
         }
         else
         {
@@ -582,7 +582,7 @@ namespace silly
             // Empty expression for direct value binding
             mlir::LLVM::DIExpressionAttr emptyExpr = mlir::LLVM::DIExpressionAttr::get( context, {} );
 
-            mlir::LLVM::DbgValueOp::create( rewriter, fileLoc, opValue, diVar, emptyExpr );
+            mlir::LLVM::DbgValueOp::create( rewriter, loc, opValue, diVar, emptyExpr );
         }
 
         return mlir::success();
