@@ -5,6 +5,7 @@
 ///
 #pragma once
 
+#include <llvm/Support/FormatVariadic.h>
 #include <mlir/Conversion/LLVMCommon/TypeConverter.h>    // LLVMTypeConverter
 #include <mlir/Dialect/Func/IR/FuncOps.h>                // mlir::func::FuncOp
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>             // mlir::LLVM::ConstantOp
