@@ -9,12 +9,12 @@
 // CHECK-NEXT: DW_AT_alignment             0x00000004
 // CHECK-NEXT: DW_AT_decl_file{{.*}}different-scoped-vars.silly
 // CHECK-NEXT: DW_AT_decl_line             0x00000019
-// CHECK-NEXT: DW_AT_type{{.*}}float
+// CHECK-NEXT: DW_AT_type{{.*}}FLOAT
 // CHECK: DW_AT_name{{.*}}aRepeatedVariable
 // CHECK-NEXT: DW_AT_alignment             0x00000008
 // CHECK-NEXT: DW_AT_decl_file{{.*}}different-scoped-vars.silly
 // CHECK-NEXT: DW_AT_decl_line             0x00000024
-// CHECK-NEXT: DW_AT_type{{.*}}int64_t
+// CHECK-NEXT: DW_AT_type{{.*}}INT64
 
 
 
