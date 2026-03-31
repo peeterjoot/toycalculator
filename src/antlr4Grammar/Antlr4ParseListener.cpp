@@ -679,6 +679,17 @@ namespace silly
         createIf( loc, conditionPredicate, false, ls );
     }
 
+    void Antlr4ParseListener::exitElifStatement( SillyParser::ElifStatementContext *ctx )
+    {
+        assert( ctx );
+        mlir::Location loc = getStartLocation( ctx );
+
+        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
+        int scopeLevel = f.getScopeLevel();
+        silly::ScopeEndOp::create( builder, loc, scopeLevel );
+        f.decrementScopeLevel();
+    }
+
     void Antlr4ParseListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx )
     {
         mlir::Location loc = getStartLocation( ctx );

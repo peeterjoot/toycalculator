@@ -80,6 +80,9 @@ namespace silly
         /// Antlr4 enter hook for an ELIF statement
         void enterElifStatement( SillyParser::ElifStatementContext *ctx ) override;
 
+        /// Antlr4 exit hook for an ELIF statement
+        void exitElifStatement( SillyParser::ElifStatementContext *ctx ) override;
+
         /// Antlr4 enter hook for an ELSE statement
         void enterElseStatement( SillyParser::ElseStatementContext *ctx ) override;
 
