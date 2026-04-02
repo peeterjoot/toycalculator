@@ -60,8 +60,6 @@ GetOptions (
 my $content = do { local $/; <STDIN> };
 
 # Split into code section and metadata section
-# Metadata starts at the first line beginning with !
-my ($code, $meta) = ('', '');
 my $in_meta = 0;
 my @meta_lines;
 my @code_lines;
@@ -78,144 +76,88 @@ for my $line (split /\n/, $content) {
 }
 
 # Parse metadata nodes into a hash: number -> full definition
-my %meta_def;    # !N -> definition string
-my %meta_refs;   # !N -> list of !M it references
-
+my %meta_def;
 for my $line (@meta_lines) {
-    if ($line =~ /^(!(\d+))\s*=\s*(.*)$/) {
-        my ($tag, $num, $def) = ($1, $2, $3);
-        $meta_def{$num} = $def;
-        # collect references
-        my @refs = ($def =~ /!(\d+)/g);
-        $meta_refs{$num} = \@refs;
+    if ($line =~ /^!(\d+)\s*=\s*(.*)$/) {
+        $meta_def{$1} = $2;
     }
 }
 
-# Build human-readable names for each metadata node
-my %name;   # num -> new name string (without leading !)
+# Assign names - single pass in numeric order so references are stable
+my %name;
+my $lex_counter  = 0;
+my $loc_counter  = 0;
+my $scope_index  = 0;  # monotonic integer for scopes (subprogram + lexical blocks)
+my %scope_num;         # num -> scope integer (for use in diloc names)
 
-sub make_name {
-    my ($num) = @_;
-    return $name{$num} if exists $name{$num};
+# First pass: assign scope integers to subprograms and lexical blocks,
+# and simple names to files, CUs, etc.
+for my $num (sort { $a <=> $b } keys %meta_def) {
+    my $def = $meta_def{$num};
 
-    my $def = $meta_def{$num} // return "unk_$num";
-
-    # DIFile
-    if ($def =~ /!DIFile\(filename:\s*"([^"]+)"/) {
-        my $base = $1;
-        $base =~ s{.*/}{};   # basename
-        $base =~ s/\./_/g;
-        $name{$num} = "difile_$base";
-        return $name{$num};
+    if ($def =~ /!DIFile\(/) {
+        $name{$num} = "difile";
     }
-
-    # DICompileUnit
-    if ($def =~ /!DICompileUnit\(/) {
+    elsif ($def =~ /!DICompileUnit\(/) {
         $name{$num} = "dicu";
-        return $name{$num};
     }
-
-    # DISubprogram
-    if ($def =~ /!DISubprogram\(.*?name:\s*"([^"]+)".*?line:\s*(\d+)/) {
-        my ($fname, $line) = ($1, $2);
-        $name{$num} = "disub_${fname}_l${line}";
-        return $name{$num};
+    elsif ($def =~ /!DISubprogram\(.*?name:\s*"([^"]+)"/) {
+        my $fname = $1;
+        $scope_num{$num} = $scope_index++;
+        $name{$num} = "disub_${fname}_s$scope_num{$num}";
     }
-
-    # DILexicalBlock - need parent name for context
-    if ($def =~ /!DILexicalBlock\(scope:\s*!(\d+).*?line:\s*(\d+),\s*column:\s*(\d+)/) {
-        my ($parent_num, $line, $col) = ($1, $2, $3);
-        my $parent_name = make_name($parent_num);
-        $parent_name =~ s/^di(sub|lex|file)_//;  # strip prefix for brevity
-        $name{$num} = "dilex_p${parent_name}_${line}_${col}";
-        return $name{$num};
+    elsif ($def =~ /!DILexicalBlock\(/) {
+        $scope_num{$num} = $scope_index++;
+        $name{$num} = "dilex_$lex_counter";
+        $lex_counter++;
     }
-
-    # DILocation
-    if ($def =~ /!DILocation\(line:\s*(\d+),\s*column:\s*(\d+),\s*scope:\s*!(\d+)/) {
-        my ($line, $col, $scope_num) = ($1, $2, $3);
-        my $scope_name = make_name($scope_num);
-        $scope_name =~ s/^di(sub|lex|file)_//;  # strip prefix for brevity
-        $name{$num} = "diloc_s${scope_name}_${line}_${col}";
-        return $name{$num};
+    elsif ($def =~ /!DILocalVariable\(name:\s*"([^"]+)"/) {
+        $name{$num} = "divar_$1";
     }
-
-    # DILocalVariable
-    if ($def =~ /!DILocalVariable\(name:\s*"([^"]+)".*?line:\s*(\d+)/) {
-        my ($vname, $line) = ($1, $2);
-        $name{$num} = "divar_${vname}_l${line}";
-        return $name{$num};
-    }
-
-    # DISubroutineType
-    if ($def =~ /!DISubroutineType\(/) {
-        $name{$num} = "disubty_$num";
-        return $name{$num};
-    }
-
-    # DIBasicType
-    if ($def =~ /!DIBasicType\(name:\s*"([^"]+)"/) {
+    elsif ($def =~ /!DIBasicType\(name:\s*"([^"]+)"/) {
         my $tname = $1;
         $tname =~ s/\s+/_/g;
         $name{$num} = "dibasic_$tname";
-        return $name{$num};
     }
-
-    # DIGlobalVariableExpression
-    if ($def =~ /!DIGlobalVariableExpression\(/) {
+    elsif ($def =~ /!DISubroutineType\(/) {
+        $name{$num} = "disubrty";
+    }
+    elsif ($def =~ /!DIGlobalVariableExpression\(/) {
         $name{$num} = "diglobexpr_$num";
-        return $name{$num};
     }
-
-    # DIGlobalVariable
-    if ($def =~ /!DIGlobalVariable\(.*?line:\s*(\d+)/) {
-        $name{$num} = "diglobvar_l$1";
-        return $name{$num};
+    elsif ($def =~ /!DIGlobalVariable\(/) {
+        $name{$num} = "diglobvar_$num";
     }
-
-    # DICompositeType
-    if ($def =~ /!DICompositeType\(/) {
+    elsif ($def =~ /!DICompositeType\(/) {
         $name{$num} = "dicompty_$num";
-        return $name{$num};
     }
-
-    # DISubrange
-    if ($def =~ /!DISubrange\(/) {
+    elsif ($def =~ /!DISubrange\(/) {
         $name{$num} = "disubrange_$num";
-        return $name{$num};
     }
-
-    # DIDerivedType
-    if ($def =~ /!DIDerivedType\(/) {
+    elsif ($def =~ /!DIDerivedType\(/) {
         $name{$num} = "diderivedty_$num";
-        return $name{$num};
     }
-
-    # Plain metadata list  {!N, ...}
-    if ($def =~ /^!{/) {
+    elsif ($def =~ /^!\{/ ) { #|| $def =~ /^!{/) {
         $name{$num} = "dimlist_$num";
-        return $name{$num};
     }
-
-    # String metadata
-    if ($def =~ /^!\{!"/) {
-        $name{$num} = "dimstr_$num";
-        return $name{$num};
+    else {
+        $name{$num} = "dimeta_$num";
     }
-
-    # Fallback
-    $name{$num} = "dimeta_$num";
-    return $name{$num};
 }
 
-# Force name generation for all nodes
-make_name($_) for keys %meta_def;
+# Second pass: assign DILocation names now that all scope integers are known
+for my $num (sort { $a <=> $b } keys %meta_def) {
+    my $def = $meta_def{$num};
+    if ($def =~ /!DILocation\(line:\s*(\d+),\s*column:\s*(\d+),\s*scope:\s*!(\d+)/) {
+        my ($line, $col, $scope_num) = ($1, $2, $3);
+        my $sidx = exists $scope_num{$scope_num} ? $scope_num{$scope_num} : "?";
+        $name{$num} = "diloc_${line}_${col}_s${sidx}";
+    }
+}
 
 # Substitute !N -> !name everywhere in a string
 sub subst {
     my ($str) = @_;
-    # Replace !digits with !name, longest match first isn't needed since
-    # we do a single global pass with a regex that anchors on word boundary
     $str =~ s/!(\d+)\b/exists $name{$1} ? "!$name{$1}" : "!$1"/ge;
     return $str;
 }
@@ -223,10 +165,10 @@ sub subst {
 # Output substituted code section
 print join("\n", map { subst($_) } @code_lines), "\n";
 
-# Output substituted metadata section, with new lhs names
+# Output substituted metadata section with new lhs names
 for my $line (@meta_lines) {
-    if ($line =~ /^(!(\d+))\s*=\s*(.*)$/) {
-        my ($tag, $num, $def) = ($1, $2, $3);
+    if ($line =~ /^!(\d+)\s*=\s*(.*)$/) {
+        my ($num, $def) = ($1, $2);
         my $new_lhs = "!" . ($name{$num} // $num);
         my $new_def = subst($def);
         print "$new_lhs = $new_def\n";

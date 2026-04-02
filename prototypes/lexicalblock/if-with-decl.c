@@ -2,14 +2,14 @@
 
 int main()
 {
-    int x = 3;
+    int x = 3; // 5
 
-    if( x < 4 )
+    if ( x < 4 ) // 7
     {
-        int y;
-        y = 42;
-        printf( "%d\n", y );
-    }
+        int y; // 9
+        y = 42; // 10
+        printf( "%d\n", y ); // 11
+    } // 12:5
 
-    printf( "Done.\n" );
+    printf( "Done.\n" ); // 14
 }

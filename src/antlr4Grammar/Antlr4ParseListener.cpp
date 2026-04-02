@@ -504,7 +504,8 @@ namespace silly
             }
         }
 
-        createDeclaration( loc, varName, ty, aLoc, arrayBoundsString, pExpressions ? true : false, initializers, ls );
+        mlir::Location vLoc = getTerminalLocation( identifier );
+        createDeclaration( vLoc, varName, ty, aLoc, arrayBoundsString, pExpressions ? true : false, initializers, ls );
     }
 
     void Antlr4ParseListener::enterBoolDeclareStatement( SillyParser::BoolDeclareStatementContext *ctx )
@@ -916,8 +917,10 @@ namespace silly
 
         SillyParser::ScalarOrArrayElementContext *lhs = ctx->scalarOrArrayElement();
         assert( lhs );
-        assert( lhs->IDENTIFIER() );
-        std::string currentVarName = lhs->IDENTIFIER()->getText();
+        tNode * id = lhs->IDENTIFIER();
+        assert( id );
+        mlir::Location aLoc = getTerminalLocation( id );
+        std::string currentVarName = id->getText();
 
         SillyParser::IndexExpressionContext *indexExpr = lhs->indexExpression();
         mlir::Value currentIndexExpr = mlir::Value{};
@@ -942,7 +945,6 @@ namespace silly
         }
 
         SillyParser::ExpressionContext *exprContext = ctx->expression();
-        mlir::Location aLoc = getStartLocation( exprContext );
         mlir::Value resultValue = parseExpression( exprContext, {}, ls );
         createAssignment( aLoc, resultValue, currentVarName, currentIndexExpr, ls );
     }
