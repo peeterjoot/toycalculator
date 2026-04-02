@@ -5,7 +5,7 @@
     INT32 x = 3; // 5
 
     IF ( x < 4 ) // 7
-    {  //  ^ icmp location (7:12), and branch location.  I'm using the IF position (7:5) for the branch location.  I also have sext i64 for icmp that clang doesn't have.
+    {  //  silly has sext i64 for icmp above that clang doesn't have (not easy to fix without introducing typed constants)
       INT32 y; // 9
       y = 42; // 10
       PRINT y; // 11

@@ -917,7 +917,7 @@ namespace silly
 
         SillyParser::ScalarOrArrayElementContext *lhs = ctx->scalarOrArrayElement();
         assert( lhs );
-        tNode * id = lhs->IDENTIFIER();
+        tNode *id = lhs->IDENTIFIER();
         assert( id );
         mlir::Location aLoc = getTerminalLocation( id );
         std::string currentVarName = id->getText();
@@ -1104,13 +1104,17 @@ namespace silly
                     return rhs;
                 }
 
-                if ( eqNeCtx->equalityOperator()->EQUALITY_TOKEN() )
+                SillyParser::EqualityOperatorContext *ectx = eqNeCtx->equalityOperator();
+                mlir::Location opLoc = loc;
+                if ( ectx->EQUALITY_TOKEN() )
                 {
-                    value = createBinaryCompare( loc, silly::CmpBinOpKind::Equal, value, rhs, ls );
+                    opLoc = getTerminalLocation( ectx->EQUALITY_TOKEN() );
+                    value = createBinaryCompare( opLoc, silly::CmpBinOpKind::Equal, value, rhs, ls );
                 }
-                else if ( eqNeCtx->equalityOperator()->NOTEQUAL_TOKEN() )
+                else if ( ectx->NOTEQUAL_TOKEN() )
                 {
-                    value = createBinaryCompare( loc, silly::CmpBinOpKind::NotEqual, value, rhs, ls );
+                    opLoc = getTerminalLocation( ectx->NOTEQUAL_TOKEN() );
+                    value = createBinaryCompare( opLoc, silly::CmpBinOpKind::NotEqual, value, rhs, ls );
                 }
                 else
                 {
@@ -1163,21 +1167,26 @@ namespace silly
                 SillyParser::RelationalOperatorContext *op = compareCtx->relationalOperator();
                 assert( op );
 
+                mlir::Location opLoc = loc;
                 if ( op->LESSTHAN_TOKEN() )
                 {
-                    value = createBinaryCompare( loc, silly::CmpBinOpKind::Less, value, rhs, ls );
+                    opLoc = getTerminalLocation( op->LESSTHAN_TOKEN() );
+                    value = createBinaryCompare( opLoc, silly::CmpBinOpKind::Less, value, rhs, ls );
                 }
                 else if ( op->GREATERTHAN_TOKEN() )
                 {
-                    value = createBinaryCompare( loc, silly::CmpBinOpKind::Less, rhs, value, ls );
+                    opLoc = getTerminalLocation( op->GREATERTHAN_TOKEN() );
+                    value = createBinaryCompare( opLoc, silly::CmpBinOpKind::Less, rhs, value, ls );
                 }
                 else if ( op->LESSEQUAL_TOKEN() )
                 {
-                    value = createBinaryCompare( loc, silly::CmpBinOpKind::LessEq, value, rhs, ls );
+                    opLoc = getTerminalLocation( op->LESSEQUAL_TOKEN() );
+                    value = createBinaryCompare( opLoc, silly::CmpBinOpKind::LessEq, value, rhs, ls );
                 }
                 else if ( op->GREATEREQUAL_TOKEN() )
                 {
-                    value = createBinaryCompare( loc, silly::CmpBinOpKind::LessEq, rhs, value, ls );
+                    opLoc = getTerminalLocation( op->GREATEREQUAL_TOKEN() );
+                    value = createBinaryCompare( opLoc, silly::CmpBinOpKind::LessEq, rhs, value, ls );
                 }
                 else
                 {
@@ -1235,13 +1244,16 @@ namespace silly
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
 
                 SillyParser::AdditionOperatorContext *op = ops[i - 1];
+                mlir::Location opLoc = loc;
                 if ( op->PLUSCHAR_TOKEN() )
                 {
-                    value = createBinaryArith( loc, silly::ArithBinOpKind::Add, ty, value, rhs, ls );
+                    opLoc = getTerminalLocation( op->PLUSCHAR_TOKEN() );
+                    value = createBinaryArith( opLoc, silly::ArithBinOpKind::Add, ty, value, rhs, ls );
                 }
                 else if ( op->MINUS_TOKEN() )
                 {
-                    value = createBinaryArith( loc, silly::ArithBinOpKind::Sub, ty, value, rhs, ls );
+                    opLoc = getTerminalLocation( op->MINUS_TOKEN() );
+                    value = createBinaryArith( opLoc, silly::ArithBinOpKind::Sub, ty, value, rhs, ls );
                 }
                 else
                 {
@@ -1299,17 +1311,21 @@ namespace silly
 
                 SillyParser::MultiplicativeOperatorContext *op = ops[i - 1];
 
+                mlir::Location opLoc = loc;
                 if ( op->TIMES_TOKEN() )
                 {
-                    value = createBinaryArith( loc, silly::ArithBinOpKind::Mul, ty, value, rhs, ls );
+                    opLoc = getTerminalLocation( op->TIMES_TOKEN() );
+                    value = createBinaryArith( opLoc, silly::ArithBinOpKind::Mul, ty, value, rhs, ls );
                 }
                 else if ( op->DIV_TOKEN() )
                 {
-                    value = createBinaryArith( loc, silly::ArithBinOpKind::Div, ty, value, rhs, ls );
+                    opLoc = getTerminalLocation( op->DIV_TOKEN() );
+                    value = createBinaryArith( opLoc, silly::ArithBinOpKind::Div, ty, value, rhs, ls );
                 }
                 else if ( op->MOD_TOKEN() )
                 {
-                    value = createBinaryArith( loc, silly::ArithBinOpKind::Mod, ty, value, rhs, ls );
+                    opLoc = getTerminalLocation( op->MOD_TOKEN() );
+                    value = createBinaryArith( opLoc, silly::ArithBinOpKind::Mod, ty, value, rhs, ls );
                 }
                 else
                 {
