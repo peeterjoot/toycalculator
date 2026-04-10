@@ -82,7 +82,6 @@ namespace silly
             mlir::DenseI64ArrayAttr shapeAttr = varTy.getShape();
             llvm::ArrayRef<int64_t> shape = shapeAttr.asArrayRef();
 
-            mlir::Value sizeVal;
             mlir::Value bytesVal;
             int64_t arraySize = 1;
             if ( !shape.empty() )
@@ -96,21 +95,22 @@ namespace silly
                                                   arraySize, shape.size() ) );
                 }
 
-                sizeVal = mlir::LLVM::ConstantOp::create( rewriter, loc, lState.typ.i64,
-                                                          rewriter.getI64IntegerAttr( arraySize ) );
                 bytesVal = mlir::LLVM::ConstantOp::create( rewriter, loc, lState.typ.i64,
                                                            rewriter.getI64IntegerAttr( arraySize * elemSizeInBytes ) );
             }
             else
             {
-                sizeVal = lState.getI64one( loc, rewriter );
+                arraySize = 0;
                 bytesVal = mlir::LLVM::ConstantOp::create( rewriter, loc, lState.typ.i64,
                                                            rewriter.getI64IntegerAttr( elemSizeInBytes ) );
             }
 
-            mlir::Location uloc = rewriter.getUnknownLoc();
-            mlir::LLVM::AllocaOp allocaOp =
-                mlir::LLVM::AllocaOp::create( rewriter, uloc, lState.typ.ptr, elemType, sizeVal, alignment );
+            mlir::LLVM::AllocaOp allocaOp;
+            {
+                mlir::OpBuilder::InsertionGuard guard( rewriter );
+
+                allocaOp = lState.createAlloca( rewriter, op, elemType, arraySize, alignment );
+            }
 
             auto init = declareOp.getInitializers();
             if ( init.size() )
@@ -975,6 +975,42 @@ namespace silly
         }
     };
 
+#if 0
+    // This is a hack to tag the last BB branch after lowering with a fused DILexicalBlockAttr location
+    // if it doesn't already have one.
+    //
+    // t/c: if-with-decl.silly
+    static void fixBranchDebugLocs( mlir::func::FuncOp funcOp )
+    {
+        funcOp.walk(
+            []( mlir::Block* block )
+            {
+                // Find the terminator
+                mlir::Operation* terminator = block->getTerminator();
+                if ( !terminator )
+                    return;
+
+                // Walk backwards from just before the terminator to find
+                // the last op with a FusedLoc carrying a DILexicalBlockAttr
+                mlir::Location bestLoc = terminator->getLoc();
+                for ( auto it = block->rbegin(); it != block->rend(); ++it )
+                {
+                    mlir::Operation& op = *it;
+                    if ( &op == terminator )
+                        continue;
+                    auto fusedLoc = mlir::dyn_cast<mlir::FusedLoc>( op.getLoc() );
+                    if ( fusedLoc && mlir::isa<mlir::LLVM::DILexicalBlockAttr>( fusedLoc.getMetadata() ) )
+                    {
+                        bestLoc = op.getLoc();
+                        break;
+                    }
+                }
+
+                terminator->setLoc( bestLoc );
+            } );
+    }
+#endif
+
     /// Orchestrate the lowering of the Silly dialect.
     ///
     /// When this is done, if successful, we will be left with LLVM mlir dialect Ops
@@ -1087,6 +1123,13 @@ namespace silly
                     llvm::dbgs() << '\n';
                 } );
             }
+
+#if 0
+            for ( mlir::func::FuncOp funcOp : mod.getBodyRegion().getOps<mlir::func::FuncOp>() )
+            {
+                fixBranchDebugLocs( funcOp );
+            }
+#endif
 
             LLVM_DEBUG( {
                 llvm::dbgs() << "After successful SillyToLLVMLoweringPass:\n";

@@ -34,6 +34,8 @@ namespace silly
 
         /// Map from DeclareOp to AllocaOp for local variables.
         std::unordered_map<mlir::Operation*, mlir::Operation*> declareToAlloca;
+
+        mlir::Operation* lastAlloca{};
     };
 
     using DebugScopeMap = llvm::DenseMap<mlir::Operation*, mlir::LLVM::DILexicalBlockAttr>;
@@ -167,6 +169,9 @@ namespace silly
         /// If an OP has any regions, process those recursively.
         mlir::Block::iterator processScopeBegin( mlir::Block::iterator it, mlir::Block::iterator blockEnd,
                                                  mlir::LLVM::DIScopeAttr parentScope );
+
+        mlir::LLVM::AllocaOp createAlloca( mlir::ConversionPatternRewriter& rewriter, mlir::Operation* op,
+                                           mlir::Type elemType, int64_t arraySize, unsigned alignment );
 
        private:
         /// Returns the MLIR context.

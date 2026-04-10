@@ -3,8 +3,6 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   This file implements helper functions for silly dialect to LLVM-IR lowering.
 ///
-#include "LoweringContext.hpp"
-
 #include <llvm/BinaryFormat/Dwarf.h>
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/Support/FormatVariadic.h>
@@ -15,6 +13,7 @@
 #include <format>
 
 #include "DriverState.hpp"
+#include "LoweringContext.hpp"
 #include "ModuleInsertionPointGuard.hpp"
 #include "helper.hpp"
 
@@ -339,9 +338,12 @@ namespace silly
 
             builder.setInsertionPointToStart( entryBlock );
 
-            lookupFunctionState[funcName].printArgs = mlir::LLVM::AllocaOp::create(
+            mlir::LLVM::AllocaOp allocOp = mlir::LLVM::AllocaOp::create(
                 builder, loc, typ.ptr, printArgStructTy,
                 mlir::LLVM::ConstantOp::create( builder, loc, typ.i64, builder.getI64IntegerAttr( maxPrintArgs ) ) );
+
+            lookupFunctionState[funcName].printArgs = allocOp;
+            lookupFunctionState[funcName].lastAlloca = allocOp.getOperation();
         }
 
         return false;
@@ -364,25 +366,6 @@ namespace silly
     {
         lookupFunctionState[funcName].declareToAlloca[dclOp] = aOp;
     }
-
-#if 0    // rework.
-    mlir::LogicalResult LoweringContext::constructLexicalBlockDI( mlir::FileLineColLoc fileLoc,
-                                                                  mlir::ConversionPatternRewriter& rewriter,
-                                                                  mlir::Operation* op )
-    {
-        mlir::MLIRContext* context = builder.getContext();
-        std::string funcName = lookupFuncNameForOp( op );
-        auto& f = lookupFunctionState[funcName];
-        mlir::LLVM::DISubprogramAttr sub = f.subProgramDI;
-
-        mlir::LLVM::DILexicalBlockAttr lexicalBlock =
-            mlir::LLVM::DILexicalBlockAttr::get( context, sub, fileAttr, fileLoc.getLine(), fileLoc.getColumn() );
-
-        f.scopeOpToAttr[op] = lexicalBlock;
-
-        return mlir::success();
-    }
-#endif
 
     mlir::LogicalResult LoweringContext::constructVariableDI( mlir::ConversionPatternRewriter& rewriter,
                                                               silly::DebugNameOp debugNameOp )
@@ -1112,9 +1095,11 @@ namespace silly
     void LoweringContext::insertFill( mlir::Location loc, mlir::ConversionPatternRewriter& rewriter,
                                       mlir::LLVM::AllocaOp allocaOp, mlir::Value bytesVal )
     {
+#if 0
         loc = rewriter.getUnknownLoc();    // HACK: suppress location info for these implicit memset's, so that the line
                                            // numbers in gdb don't bounce around.  The re-ordering that I now do in the
                                            // DeclareOp builder is messing things up.
+#endif
 
         mlir::Value i8Ptr = mlir::LLVM::BitcastOp::create( rewriter, loc, typ.ptr, allocaOp );
 
@@ -1205,6 +1190,42 @@ namespace silly
             // Ops outside any scope marker are left alone
             ++it;
         }
+    }
+
+    mlir::LLVM::AllocaOp LoweringContext::createAlloca( mlir::ConversionPatternRewriter& rewriter, mlir::Operation* op,
+                                                        mlir::Type elemType, int64_t arraySize, unsigned alignment )
+    {
+        mlir::func::FuncOp funcOp = getEnclosingFuncOp( op );
+        std::string funcName = funcOp.getSymName().str();
+
+        auto& f = lookupFunctionState[funcName];
+        if ( f.lastAlloca )
+        {
+            rewriter.setInsertionPointAfter( f.lastAlloca );
+        }
+        else
+        {
+            mlir::Block& entryBlock = funcOp.getBody().front();
+            rewriter.setInsertionPointToStart( &entryBlock );
+        }
+
+        mlir::Location loc = rewriter.getUnknownLoc();
+        mlir::Value sizeVal;
+        if ( arraySize )
+        {
+            sizeVal = mlir::LLVM::ConstantOp::create( rewriter, loc, typ.i64, rewriter.getI64IntegerAttr( arraySize ) );
+        }
+        else
+        {
+            sizeVal = getI64one( loc, rewriter );
+        }
+
+        mlir::LLVM::AllocaOp allocaOp =
+            mlir::LLVM::AllocaOp::create( rewriter, loc, typ.ptr, elemType, sizeVal, alignment );
+
+        f.lastAlloca = allocaOp.getOperation();
+
+        return allocaOp;
     }
 }    // namespace silly
 
