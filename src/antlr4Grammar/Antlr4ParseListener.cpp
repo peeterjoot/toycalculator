@@ -630,7 +630,8 @@ namespace silly
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         int scopeLevel = f.incrementScopeLevel();
         silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, loc, scopeLevel );
-        silly::ScopeEndOp scopeEnd = silly::ScopeEndOp::create( builder, loc, scopeLevel );
+        mlir::Location peLoc = getTerminalLocation( ctx->BRACE_END_TOKEN() );
+        silly::ScopeEndOp scopeEnd = silly::ScopeEndOp::create( builder, peLoc, scopeLevel );
         builder.setInsertionPointAfter( scopeBegin.getOperation() );
 
         mlir::Value conditionPredicate = parseExpression( ctx->expression(), {}, ls );
@@ -726,7 +727,8 @@ namespace silly
         ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         int scopeLevel = f.incrementScopeLevel();
         silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, loc, scopeLevel );
-        silly::ScopeEndOp scopeEnd = silly::ScopeEndOp::create( builder, loc, scopeLevel );
+        mlir::Location feLoc = getTerminalLocation( ctx->BRACE_END_TOKEN(1) );
+        silly::ScopeEndOp scopeEnd = silly::ScopeEndOp::create( builder, feLoc, scopeLevel );
         builder.setInsertionPointAfter( scopeBegin.getOperation() );
 
         std::string s;
