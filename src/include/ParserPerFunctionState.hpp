@@ -89,6 +89,7 @@ namespace silly
         /// Any variables that had been declared in the current scope will no longer be visible.
         void destroyVariableLookupScope();
 
+#if 0
         /// Increase the level for scope_begin/scope_end
         /// @retval return the new scope-level
         int incrementScopeLevel()
@@ -111,6 +112,7 @@ namespace silly
         {
             return scopeLevel;
         }
+#endif
 
         /// For the bison front end.  Squirrel away the fact that there was a return statement.
         void setHaveReturn()
@@ -152,8 +154,10 @@ namespace silly
         /// Stack for scf.if/scf.for blocks.
         std::vector<mlir::Operation *> insertionPointStack;
 
-        /// For ScopeBeginOp/ScopeEndOp -- the scope level param.
+#if 0
+        /// scope level param -- may be used by the bison FE
         int scopeLevel{};
+#endif
 
         /// Bison FE only.
         bool haveReturn{};

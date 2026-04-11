@@ -1008,10 +1008,10 @@ namespace silly
 
         silly::DebugNameOp::create( builder, varLoc, inductionVar, varName );
 
-        int scopeLevel = f.incrementScopeLevel();
-        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, sbloc, scopeLevel );
-        silly::ScopeEndOp::create( builder, seloc, scopeLevel );
-        builder.setInsertionPointAfter( scopeBegin.getOperation() );
+        mlir::Location floc = builder.getFusedLoc( { loc, seloc } );
+        silly::ScopeOp scopeOp = silly::ScopeOp::create( builder, floc );
+        mlir::Block *entryBlock = builder.createBlock( &scopeOp.getBody() );
+        builder.setInsertionPointToStart( entryBlock );
     }
 
     void Builder::scopeEndHelper( mlir::Location loc, bool isFor )
@@ -1051,8 +1051,16 @@ namespace silly
 
         // Verify it's inside an scf.if by checking the parent op.
         mlir::Operation *parentOp = parentRegion->getParentOp();
-        mlir::scf::IfOp ifOp = dyn_cast<mlir::scf::IfOp>( parentOp );
+        silly::ScopeOp predScopeOp = dyn_cast<silly::ScopeOp>( parentOp );
 
+        if ( !predScopeOp )
+        {
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               "Current insertion point must be inside a ScopeOp region", currentFuncName );
+            return;
+        }
+
+        mlir::scf::IfOp ifOp = dyn_cast<mlir::scf::IfOp>( predScopeOp->getParentOp() );
         if ( !ifOp )
         {
             emitInternalError( loc, __FILE__, __LINE__, __func__,
@@ -1065,11 +1073,10 @@ namespace silly
         mlir::Block &elseBlock = elseRegion.front();
         builder.setInsertionPointToStart( &elseBlock );
 
-        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
-        int scopeLevel = f.incrementScopeLevel();
-        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, sbLoc, scopeLevel );
-        silly::ScopeEndOp::create( builder, seLoc, scopeLevel );
-        builder.setInsertionPointAfter( scopeBegin.getOperation() );
+        mlir::Location floc = builder.getFusedLoc( { sbLoc, seLoc } );
+        silly::ScopeOp scopeOp = silly::ScopeOp::create( builder, floc );
+        mlir::Block *entryBlock = builder.createBlock( &scopeOp.getBody() );
+        builder.setInsertionPointToStart( entryBlock );
     }
 
     void Builder::createIf( mlir::Location loc, mlir::Location sbLoc, mlir::Location seLoc,
@@ -1088,10 +1095,10 @@ namespace silly
         mlir::Block &thenBlock = ifOp.getThenRegion().front();
         builder.setInsertionPointToStart( &thenBlock );
 
-        int scopeLevel = f.incrementScopeLevel();
-        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, sbLoc, scopeLevel );
-        silly::ScopeEndOp::create( builder, seLoc, scopeLevel );
-        builder.setInsertionPointAfter( scopeBegin.getOperation() );
+        mlir::Location floc = builder.getFusedLoc( { sbLoc, seLoc } );
+        silly::ScopeOp scopeOp = silly::ScopeOp::create( builder, floc );
+        mlir::Block *entryBlock = builder.createBlock( &scopeOp.getBody() );
+        builder.setInsertionPointToStart( entryBlock );
     }
 
     void Builder::createNewVariableLookupScope( mlir::Location loc )

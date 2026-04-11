@@ -1114,71 +1114,27 @@ namespace silly
         driverState.needsMathLib = true;
     }
 
-    mlir::Block::iterator LoweringContext::processScopeBegin( mlir::Block::iterator it, mlir::Block::iterator blockEnd,
-                                                              mlir::LLVM::DIScopeAttr parentScope )
+    void LoweringContext::processScopeOp( silly::ScopeOp scopeOp, mlir::LLVM::DIScopeAttr parentScope )
     {
         mlir::MLIRContext* context = builder.getContext();
 
-        auto scopeBegin = mlir::cast<silly::ScopeBeginOp>( *it );
-        uint32_t targetId = scopeBegin.getId();
+        // Extract open and close brace locations from the FusedLoc on the ScopeOp
+        auto fusedLoc = mlir::cast<mlir::FusedLoc>( scopeOp.getLoc() );
+        auto openLoc = mlir::cast<mlir::FileLineColLoc>( fusedLoc.getLocations()[0] );
+        auto closeLoc = fusedLoc.getLocations()[1];
 
-        // Build the DILexicalBlockAttr for this scope, parented to the current scope
-        auto loc = mlir::cast<mlir::FileLineColLoc>( scopeBegin.getLoc() );
-        auto thisScope =
-            mlir::LLVM::DILexicalBlockAttr::get( context, parentScope, fileAttr, loc.getLine(), loc.getColumn() );
+        auto thisScope = mlir::LLVM::DILexicalBlockAttr::get( context, parentScope, fileAttr, openLoc.getLine(),
+                                                              openLoc.getColumn() );
 
-        ++it;    // move past the ScopeBeginOp itself
+        // Record the closing brace location for fixBranchDebugLocs
+        mlir::Location closingLoc = mlir::FusedLoc::get( context, { closeLoc }, thisScope );
+        blockClosingLoc[&scopeOp.getBody().front()] = closingLoc;
 
-        while ( it != blockEnd )
+        // Walk the body region
+        for ( auto& block : scopeOp.getBody() )
         {
-            mlir::Operation& op = *it;
-
-            if ( auto endOp = mlir::dyn_cast<silly::ScopeEndOp>( op ) )
-            {
-                if ( endOp.getId() == targetId )
-                {
-                    // Record the closing brace location for any region-bearing op
-                    // that was stamped with thisScope — its entry block's terminator
-                    // should carry this closing location
-                    mlir::Location closingLoc = mlir::FusedLoc::get( context, { endOp.getLoc() }, thisScope );
-                    blockClosingLoc[scopeBegin->getBlock()] = closingLoc;
-
-                    ++it;    // move past the ScopeEndOp without erasing it
-                    return it;
-                }
-            }
-
-            if ( mlir::dyn_cast<silly::ScopeBeginOp>( op ) )
-            {
-                it = processScopeBegin( it, blockEnd, thisScope );
-                continue;
-            }
-
-            // Record the scope for DebugNameOps
-            if ( auto debugName = mlir::dyn_cast<silly::DebugNameOp>( op ) )
-            {
-                scopeMap[debugName.getOperation()] = thisScope;
-            }
-
-            // Restamp this op's location with thisScope
-            mlir::Location origLoc = op.getLoc();
-            op.setLoc( mlir::FusedLoc::get( context, { origLoc }, thisScope ) );
-
-            // If the op has regions (e.g. scf.for, scf.if), recurse into them
-            for ( auto& region : op.getRegions() )
-            {
-                for ( auto& block : region )
-                {
-                    // Record this region's entry block as needing the closing loc
-                    blockClosingLoc[&block] = mlir::FusedLoc::get( context, { op.getLoc() }, thisScope );
-                    processScopedOps( block.begin(), block.end(), thisScope );
-                }
-            }
-
-            ++it;
+            processScopedOps( block.begin(), block.end(), thisScope );
         }
-
-        llvm_unreachable( "ScopeBeginOp with no matching ScopeEndOp" );
     }
 
     void LoweringContext::processScopedOps( mlir::Block::iterator begin, mlir::Block::iterator end,
@@ -1189,13 +1145,34 @@ namespace silly
         {
             mlir::Operation& op = *it;
 
-            if ( mlir::dyn_cast<silly::ScopeBeginOp>( op ) )
+            if ( auto scopeOp = mlir::dyn_cast<silly::ScopeOp>( op ) )
             {
-                it = processScopeBegin( it, end, parentScope );
+                processScopeOp( scopeOp, parentScope );
+                ++it;
                 continue;
             }
 
-            // Ops outside any scope marker are left alone
+            // Record the scope for DebugNameOps
+            if ( auto debugName = mlir::dyn_cast<silly::DebugNameOp>( op ) )
+            {
+                scopeMap[debugName.getOperation()] = parentScope;
+            }
+
+            // Restamp this op's location with parentScope
+            mlir::Location origLoc = op.getLoc();
+            mlir::MLIRContext* context = builder.getContext();
+            op.setLoc( mlir::FusedLoc::get( context, { origLoc }, parentScope ) );
+
+            // If the op has regions (e.g. scf.for, scf.if), recurse into them
+            for ( auto& region : op.getRegions() )
+            {
+                for ( auto& block : region )
+                {
+                    blockClosingLoc[&block] = mlir::FusedLoc::get( context, { op.getLoc() }, parentScope );
+                    processScopedOps( block.begin(), block.end(), parentScope );
+                }
+            }
+
             ++it;
         }
     }

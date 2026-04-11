@@ -123,23 +123,21 @@ def Silly_AssignOp : Op<Silly_Dialect, "assign"> {
   }];
 }
 
-def Silly_ScopeBeginOp : Op<Silly_Dialect, "scope_begin", [NoMemoryEffect]> {
-  let summary = "Marks the start of a lexical scope.";
+def Silly_ScopeOp : Op<Silly_Dialect, "scope", [NoTerminator]> {
+  let regions = (region AnyRegion:$body);
 
   let description = [{
-    This operation has no runtime effect and exists solely to instruct lowering when to create
-    a new !DILexicalBlock.   Ops between this scope_begin and the subsequent matching scope_end
-    will be visited recursively (creating new !DILexicalBlock whenever a new scope_begin is encountered),
-    restamping the op Location with a fused location built from the original location and the matching !DILexicalBlock.
+    This operation has no runtime effect and exists solely to instruct lowering when creating
+    a new !DILexicalBlock.   Ops contained in this region will be visited recursively
+    (creating new !DILexicalBlock whenever a new ScopeOp is encountered), restamping
+    the op Location with a fused location built from the original location and the
+    matching !DILexicalBlock.
+
+    This ScopeOp must itself use a fused location, with the opening and closing brace positions
+    specified.
   }];
 
-  let arguments = (ins I32Attr:$id);
-}
-
-def Silly_ScopeEndOp : Op<Silly_Dialect, "scope_end", [NoMemoryEffect]> {
-  let summary = "Marks the end of a lexical scope.";
-
-  let arguments = (ins I32Attr:$id);
+  let hasVerifier = 1;
 }
 
 def Silly_DebugNameOp : Op<Silly_Dialect, "debug_name", [NoMemoryEffect]> {

@@ -105,6 +105,22 @@ namespace silly
 
         return mlir::success();
     }
+
+    mlir::LogicalResult ScopeOp::verify()
+    {
+        auto fused = mlir::dyn_cast<mlir::FusedLoc>( getLoc() );
+
+        if ( !fused || ( fused.getLocations().size() != 2 ) )
+            return emitOpError( "location must be a FusedLoc with two locations" );
+
+        if ( !mlir::isa<mlir::FileLineColLoc>( fused.getLocations()[0] ) )
+            return emitOpError( "first fused location must be a FileLineColLoc (open brace)" );
+
+        if ( !mlir::isa<mlir::FileLineColLoc>( fused.getLocations()[1] ) )
+            return emitOpError( "second fused location must be a FileLineColLoc (close brace)" );
+
+        return mlir::success();
+    }
 }    // namespace silly
 
 #include "SillyDialectDefs.cpp.inc"

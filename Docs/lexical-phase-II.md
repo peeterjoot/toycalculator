@@ -1,8 +1,18 @@
 # Silly Compiler: Debug Infrastructure Implementation Plan
+
 ## Phase 2 — CF Emission, Structured Scope Regions, and Control Flow Extensions
 
 *Document date: April 2026*
 *Status: Planning — supersedes the SCF-based proof-of-concept work completed March–April 2026*
+
+## Completed so far:
+
+* 2.2 Replace id-matched ScopeBegin/ScopeEnd with region-bearing scope op
+* 2.3 Unify FusedLoc usage for scope metadata
+* 3.1.2 Update the ANTLR4 frontend to emit `ScopeOp`**
+* 3.1.3 Update `processScopeBegin` to handle `ScopeOp`**
+* 3.1.4 Add `ScopeOpLowering` — inline the region**
+* 3.1.5 Scope Verifier**
 
 ---
 

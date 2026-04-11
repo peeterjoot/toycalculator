@@ -378,11 +378,50 @@ namespace silly
         }
     };
 
-    /// ScopeBeginOp handled early (where the DILexicalBlockAttrs are created)
-    using ScopeBeginOpLowering = LowerByDeletion<ScopeBeginOp>;
+    class ScopeOpLowering : public mlir::ConversionPattern
+    {
+       private:
+        LoweringContext& lState;    ///< lowering context (including DriverState)
 
-    /// ScopeEndOp handled early (where the DILexicalBlockAttrs are created)
-    using ScopeEndOpLowering = LowerByDeletion<ScopeEndOp>;
+       public:
+        /// Constructor boilerplate
+        ScopeOpLowering( LoweringContext& loweringState, mlir::MLIRContext* context, mlir::PatternBenefit benefit )
+            : mlir::ConversionPattern( silly::ScopeOp::getOperationName(), benefit, context ), lState{ loweringState }
+        {
+        }
+
+        /// Lowering workhorse -- inline the region and delete the Op
+        mlir::LogicalResult matchAndRewrite( mlir::Operation* op, mlir::ArrayRef<mlir::Value> operands,
+                                             mlir::ConversionPatternRewriter& rewriter ) const override
+        {
+            LLVM_DEBUG( llvm::dbgs() << "Lowering (by inline): " << *op << '\n' );
+            silly::ScopeOp scopeOp = mlir::cast<silly::ScopeOp>( op );
+
+#if 0
+            // Insert all blocks of the scope region before the block containing the ScopeOp
+            mlir::Block* parentBlock = op->getBlock();
+            rewriter.inlineRegionBefore( scopeOp.getBody(), *parentBlock->getParent(), parentBlock->getIterator() );
+
+            mlir::Location loc = op->getLoc();
+#else
+            // Splice the entry block's ops into the parent block at the ScopeOp position
+            rewriter.inlineBlockBefore( &scopeOp.getBody().front(), op, {} );
+#endif
+            rewriter.eraseOp( op );
+
+#if 0
+            // If the parent block now has no terminator (e.g. we're inside an
+            // scf.for or scf.if region), insert scf.yield
+            if ( parentBlock->empty() || !parentBlock->back().hasTrait<mlir::OpTrait::IsTerminator>() )
+            {
+                rewriter.setInsertionPointToEnd( parentBlock );
+                mlir::scf::YieldOp::create( rewriter, loc );
+            }
+#endif
+
+            return mlir::success();
+        }
+    };
 
     /// Lower silly::DebugNameOp
     class DebugNameOpLowering : public mlir::ConversionPattern
@@ -1068,7 +1107,7 @@ namespace silly
                 target.addLegalDialect<mlir::LLVM::LLVMDialect>();
                 target.addIllegalOp<silly::AssignOp, silly::DeclareOp, silly::LoadOp, silly::NegOp, silly::PrintOp,
                                     silly::GetOp, silly::StringLiteralOp, silly::AbortOp, silly::DebugNameOp,
-                                    silly::ArithBinOp, silly::CmpBinOp, silly::ScopeBeginOp, silly::ScopeEndOp>();
+                                    silly::ArithBinOp, silly::CmpBinOp, silly::ScopeOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
 
                 target.addIllegalDialect<mlir::scf::SCFDialect>();
@@ -1077,7 +1116,7 @@ namespace silly
                 mlir::RewritePatternSet patterns( &getContext() );
                 patterns.add<AssignOpLowering, LoadOpLowering, NegOpLowering, PrintOpLowering, AbortOpLowering,
                              GetOpLowering, StringLiteralOpLowering, ArithBinOpLowering, CmpBinOpLowering,
-                             DeclareOpLowering, DebugNameOpLowering, ScopeBeginOpLowering, ScopeEndOpLowering>(
+                             DeclareOpLowering, DebugNameOpLowering, ScopeOpLowering>(
                     lState, &getContext(), 1 );
 
                 // SCF -> CF
@@ -1087,6 +1126,20 @@ namespace silly
 
                 // CF -> LLVM
                 mlir::cf::populateControlFlowToLLVMConversionPatterns( lState.getTypeConverter(), patterns );
+
+#if 0
+                // Remove dead blocks left by ScopeOp region inlining
+                for ( mlir::func::FuncOp funcOp : mod.getBodyRegion().getOps<mlir::func::FuncOp>() )
+                {
+                    for ( mlir::Block& block : llvm::make_early_inc_range( funcOp.getBody() ) )
+                    {
+                        if ( !block.isEntryBlock() && block.hasNoPredecessors() )
+                        {
+                            block.erase();
+                        }
+                    }
+                }
+#endif
 
                 if ( failed( applyFullConversion( mod, target, std::move( patterns ) ) ) )
                 {

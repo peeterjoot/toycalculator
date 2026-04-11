@@ -628,12 +628,11 @@ namespace silly
 
         checkForReturnInScope( ctx->scopedStatements(), "IF block" );
 
-        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
-        int scopeLevel = f.incrementScopeLevel();
-        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, loc, scopeLevel );
         mlir::Location peLoc = getTerminalLocation( ctx->BRACE_END_TOKEN() );
-        silly::ScopeEndOp scopeEnd = silly::ScopeEndOp::create( builder, peLoc, scopeLevel );
-        builder.setInsertionPointAfter( scopeBegin.getOperation() );
+        mlir::Location floc = builder.getFusedLoc( { loc, peLoc } );
+        silly::ScopeOp scopeOp = silly::ScopeOp::create( builder, floc );
+        mlir::Block *entryBlock = builder.createBlock( &scopeOp.getBody() );
+        builder.setInsertionPointToStart( entryBlock );
 
         mlir::Value conditionPredicate = parseExpression( ctx->expression(), {}, ls );
         if ( !conditionPredicate )
@@ -645,7 +644,7 @@ namespace silly
         SillyParser::ScopedStatementsContext *ss = ctx->scopedStatements();
         mlir::Location sbLoc = getTerminalLocation( ss->LEFT_CURLY_BRACKET_TOKEN() );
         mlir::Location seLoc = getTerminalLocation( ss->RIGHT_CURLY_BRACKET_TOKEN() );
-        createIf( loc, sbLoc, seLoc, conditionPredicate, scopeEnd.getOperation(), ls );
+        createIf( loc, sbLoc, seLoc, conditionPredicate, scopeOp.getOperation(), ls );
     }
 
     void Antlr4ParseListener::enterElseStatement( SillyParser::ElseStatementContext *ctx )
@@ -727,12 +726,11 @@ namespace silly
 
         mlir::Type elemType = integerDeclarationType( loc, ctx->intType() );
 
-        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
-        int scopeLevel = f.incrementScopeLevel();
-        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, loc, scopeLevel );
-        mlir::Location feLoc = getTerminalLocation( ctx->BRACE_END_TOKEN(1) );
-        silly::ScopeEndOp scopeEnd = silly::ScopeEndOp::create( builder, feLoc, scopeLevel );
-        builder.setInsertionPointAfter( scopeBegin.getOperation() );
+        mlir::Location feLoc = getTerminalLocation( ctx->BRACE_END_TOKEN( 1 ) );
+        mlir::Location floc = builder.getFusedLoc( { loc, feLoc } );
+        silly::ScopeOp scopeOp = silly::ScopeOp::create( builder, floc );
+        mlir::Block *entryBlock = builder.createBlock( &scopeOp.getBody() );
+        builder.setInsertionPointToStart( entryBlock );
 
         std::string s;
         if ( pStart )
@@ -784,7 +782,7 @@ namespace silly
         SillyParser::ScopedStatementsContext *ss = ctx->scopedStatements();
         mlir::Location sbLoc = getTerminalLocation( ss->LEFT_CURLY_BRACKET_TOKEN() );
         mlir::Location seLoc = getTerminalLocation( ss->RIGHT_CURLY_BRACKET_TOKEN() );
-        createFor( loc, sbLoc, seLoc, varName, elemType, varLoc, scopeEnd.getOperation(), start, end, step, ls );
+        createFor( loc, sbLoc, seLoc, varName, elemType, varLoc, scopeOp.getOperation(), start, end, step, ls );
     }
 
     void Antlr4ParseListener::exitForStatement( SillyParser::ForStatementContext *ctx )

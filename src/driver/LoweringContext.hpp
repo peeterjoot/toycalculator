@@ -38,7 +38,7 @@ namespace silly
         mlir::Operation* lastAlloca{};
     };
 
-    using DebugScopeMap = llvm::DenseMap<mlir::Operation*, mlir::LLVM::DILexicalBlockAttr>;
+    using DebugScopeMap = llvm::DenseMap<mlir::Operation*, mlir::LLVM::DIScopeAttr>;
 
     /// Context object holding state and helper functions used during lowering
     /// of the Silly dialect to LLVM dialect.
@@ -157,9 +157,8 @@ namespace silly
         /// mlir::LLVM::FRemOp lowers to fmod (at least on some targets), so -lm will be required at link time.
         void markMathLibRequired();
 
-        /// Walk ops until hitting an ScopeBeginOp, and if found call processScopeBegin.
-        void processScopedOps( mlir::Block::iterator begin, mlir::Block::iterator end,
-                               mlir::LLVM::DIScopeAttr parentScope );
+        /// Walk ops until hitting a ScopeOp, and if found call processScopedOps.
+        void processScopeOp( silly::ScopeOp scopeOp, mlir::LLVM::DIScopeAttr parentScope );
 
         /// @brief process all the ops until a matching ScopeEndOp is found.
         ///
@@ -167,8 +166,8 @@ namespace silly
         /// Record the DILexicalBlockAttr that should apply to any DebugNameOps found.
         /// Restamp the OP locations with a fused location that ties the OP to the DILexicalBlockAttr.
         /// If an OP has any regions, process those recursively.
-        mlir::Block::iterator processScopeBegin( mlir::Block::iterator it, mlir::Block::iterator blockEnd,
-                                                 mlir::LLVM::DIScopeAttr parentScope );
+        void processScopedOps( mlir::Block::iterator begin, mlir::Block::iterator end,
+                                                mlir::LLVM::DIScopeAttr parentScope );
 
         /// Set the IP to the funcOp start position, or just after the last alloca, then create the AllocaOp
         /// and save that AllocaOp's Operation* to lastAlloca.
