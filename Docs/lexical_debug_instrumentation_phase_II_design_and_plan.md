@@ -235,6 +235,13 @@ class ScopeOpLowering : public mlir::ConversionPattern {
 };
 ```
 
+*Grok suggests*: In ScopeOpLowering, inlineBlockBefore is correct, but consider using rewriter.inlineRegionBefore if you ever add multiple blocks per scope region.
+
+The distinction is:
+
+* inlineBlockBefore(block, op, args) — moves a single block's ops before op
+* inlineRegionBefore(region, block) — moves all blocks of a region before a given block in the parent region
+
 **3.1.5 Verify**
 
 - MLIR output should show `silly.scope { ... }` blocks in the correct positions
@@ -242,6 +249,25 @@ class ScopeOpLowering : public mlir::ConversionPattern {
   / `ScopeEndOp` output
 - `fixBranchDebugLocs` should still be required at this step (it will be removed
   in Step 3)
+
+**3.1.5 Scope Verifier**
+
+- scopeOp verifier should check that the location is a fused location with start/end locations
+  available (each of those a FLC)
+
+```
+mlir::LogicalResult ScopeOp::verify()
+{
+    auto fused = mlir::dyn_cast<mlir::FusedLoc>( getLoc() );
+    if ( !fused || ( fused.getLocations().size() != 2 ) )
+        return emitOpError( "location must be a FusedLoc with two locations" );
+    if ( !mlir::isa<mlir::FileLineColLoc>( fused.getLocations()[0] ) )
+        return emitOpError( "first fused location must be a FileLineColLoc (open brace)" );
+    if ( !mlir::isa<mlir::FileLineColLoc>( fused.getLocations()[1] ) )
+        return emitOpError( "second fused location must be a FileLineColLoc (close brace)" );
+    return mlir::success();
+}
+```
 
 ---
 
