@@ -668,7 +668,9 @@ namespace silly
 
         checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
 
-        selectElseBlock( loc, loc, loc );
+        mlir::Location pbLoc = getTerminalLocation( ctx->BRACE_START_TOKEN() );
+        mlir::Location peLoc = getTerminalLocation( ctx->BRACE_END_TOKEN() );
+        selectElseBlock( loc, pbLoc, peLoc );
 
         mlir::Value conditionPredicate = parseExpression( ctx->expression(), {}, ls );
         if ( !conditionPredicate )
