@@ -1,0 +1,44 @@
+// Check that we DI for both x and y variables
+// RUN: %ExeSilly -g %s -o %t.exe
+// RUN: dwarfdump %t.exe > %t.dd
+// RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
+// RUN: %FileCheck %s --input-file=%t.dd
+// EXEC: 42
+// CHECK: DW_TAG_variable
+// CHECK-NEXT: DW_AT_location
+// CHECK-NEXT: DW_OP_fbreg
+// CHECK-NEXT: DW_AT_name{{.*}}x
+// CHECK-NEXT: DW_AT_alignment
+// CHECK-NEXT: DW_AT_decl_file{{.*}}if-debug-decl.silly
+// CHECK-NEXT: DW_AT_decl_line             0x00000021
+// CHECK-NEXT: DW_AT_type{{.*}}INT32
+// CHECK: DW_TAG_lexical_block
+// CHECK-NEXT: DW_AT_low_pc
+// CHECK-NEXT: DW_AT_high_pc
+// CHECK-NEXT: DW_TAG_variable
+// CHECK-NEXT: DW_AT_location
+// CHECK-NEXT: DW_OP_fbreg
+// CHECK-NEXT: DW_AT_name{{.*}}y
+// CHECK-NEXT: DW_AT_alignment
+// CHECK-NEXT: DW_AT_decl_file{{.*}}if-debug-decl.silly
+// CHECK-NEXT: DW_AT_decl_line             0x00000025
+// CHECK-NEXT: DW_AT_type{{.*}}INT32
+
+
+
+
+
+
+
+    INT32 x = 3; // 33
+
+    IF ( x < 4 )
+    {
+      INT32 y; // 37
+      y = 42;
+      PRINT y;
+    };
+
+    PRINT "Done.";
+
+

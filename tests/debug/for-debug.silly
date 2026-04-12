@@ -1,0 +1,23 @@
+// Check that we DI for x variable
+// RUN: %ExeSilly -g %s -o %t.exe
+// RUN: dwarfdump %t.exe > %t.dd
+// RUN: %t.exe | %FileCheck %s --check-prefix=EXEC
+// RUN: %FileCheck %s --input-file=%t.dd
+// EXEC: 1
+// EXEC-NEXT: 2
+// CHECK: DW_TAG_lexical_block
+// CHECK-NEXT: DW_AT_low_pc
+// CHECK-NEXT: DW_AT_high_pc
+// CHECK-NEXT: DW_TAG_variable
+// CHECK: DW_AT_name{{.*}}x
+// CHECK-NEXT: DW_AT_alignment
+// CHECK-NEXT: DW_AT_decl_file{{.*}}for-debug.silly
+// CHECK-NEXT: DW_AT_decl_line             0x00000014
+// CHECK-NEXT: DW_AT_type{{.*}}INT32
+
+
+
+FOR ( INT32 x : (1, 3) )
+{
+    PRINT x;
+};
