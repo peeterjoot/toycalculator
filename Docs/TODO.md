@@ -41,18 +41,6 @@ syntax-error/nested-if.silly
 * fedoravm: branch: DebugScopeOp-no-type -- tried making DebugScopeOp not have a type.  Revisit this -- end up not knowing how to convert to mlir::Value to be able to pass as arg to DebugNameOp::create.
 * fused-loc experimentation in branch: fused-loc-hacking -- need to tackle lexical scoping first (that's now done, for all but induction variables.)
 * Implementing lexical block wasn't enough: different-scoped-vars.silly -- dwarfdump looks okay, but gdb lookup fails to find the right var!
-* I've changed binary comparison location references to match clang LLVM-IR:
-```
-    IF ( x < 4 )
-        // ^
-        // here.
-```
-(i.e.: the icmp that gets generated for this)
-However, I didn't do that for chains of createBinaryArith expressions (or, xor, and).  Do I have token locations for those?  YES: Example:
-```
-    std::vector<antlr4::tree::TerminalNode *> BOOLEANOR_TOKEN();
-    antlr4::tree::TerminalNode* BOOLEANOR_TOKEN(size_t i);
-```
 
 #### ctest/lit:
 

@@ -1,0 +1,11 @@
+INT32 x = 1;
+
+INT32 y;
+y = x OR 2 OR 4;
+PRINT y;
+
+y = x AND 3 AND 1;
+PRINT y;
+
+y = x XOR 1 XOR 1;
+PRINT y;

@@ -1,0 +1,94 @@
+#!/usr/bin/perl
+
+#-----------------------------------------------------------------------------
+# POD Format Documentation.  Read "perldoc perlpod" for an example.
+# When done, check syntax with "podchecker".
+
+=head1 NAME
+
+summarize_locs - Resolve MLIR loc references for matching ops
+
+=head1 SYNOPSIS
+
+summarize_locs --input <pattern> [--help]
+
+=head1 DESCRIPTION
+
+Reads MLIR from stdin, finds all op lines matching the given pattern,
+resolves their loc references to file:line:col, and prints the results.
+
+Options:
+
+=over 4
+
+=item --input pattern
+
+=back
+
+=head1 EXAMPLES
+
+  silly --emit-mlir -g -c foo.silly | summarize_locs --input silly.arith_binop
+
+=head1 SUPPORTED PLATFORMS
+
+ Unix (Linux verified)
+
+=head1 SUPPORT
+
+ Send email to peeterjoot@pm.me
+
+=head1 AUTHORS
+
+ Peeter Joot
+
+=cut
+
+#-----------------------------------------------------------------------------
+
+use strict ;
+use warnings ;
+use Getopt::Long ;
+use Pod::Usage ;
+
+# Suppress sourcing of users' .bashrc files in invoked shells
+delete $ENV{'ENV'} ;
+delete $ENV{'BASH_ENV'} ;
+
+# Set STDOUT and STDERR to unbuffered
+select STDERR ; $| = 1 ;
+select STDOUT ; $| = 1 ;
+
+my $myName = '' ;
+my $pattern;
+
+($myName = $0) =~ s@.*[/\\]@@ ;
+
+GetOptions(
+    'input=s' => \my $pattern,
+    'help'    => sub { pod2usage( -verbose => 2 ) },
+) or pod2usage( -verbose => 0 );
+
+die unless ( defined $pattern );
+
+my $content = do { local $/; <STDIN> };
+
+# Build loc reference -> "line:col" map from definitions at bottom of file
+my %loc_def;
+while ( $content =~ /^(#loc\d+)\s*=\s*loc\("[^"]*":(\d+):(\d+)\)/mg )
+{
+    $loc_def{$1} = "$2:$3";
+}
+
+# Find all op lines matching the pattern and resolve their loc references
+while ( $content =~ /^([^\n]*\Q$pattern\E[^\n]*loc\((#loc\d+)\))/mg )
+{
+    my ( $line, $ref ) = ( $1, $2 );
+    my $loc = $loc_def{$ref} // "unknown($ref)";
+
+    # Extract just the op portion for display (trim leading whitespace)
+    ( my $op = $line ) =~ s/^\s+//;
+    # Trim everything after the op kind and its first operand for brevity
+    $op =~ s/\s+loc\(.*//;
+
+    printf "%s -> %s\n", $loc, $op;
+}

@@ -10,6 +10,7 @@ import os
 #%T	temp dir
 
 config.substitutions.append(('%OptSilly', "@CMAKE_SOURCE_DIR@/bin/silly-opt --plugin @CMAKE_BINARY_DIR@/lib"))
+config.substitutions.append(('%LocFilter', "@CMAKE_SOURCE_DIR@/bin/summarize_locs"))
 config.substitutions.append(('%FileCheck', "@LLVM_PREFIX@/bin/FileCheck"))
 config.substitutions.append(('%LlvmDis', "@LLVM_PREFIX@/bin/llvm-dis"))
 config.substitutions.append(('%Not', "@LLVM_PREFIX@/bin/not"))

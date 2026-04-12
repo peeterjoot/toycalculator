@@ -1,0 +1,30 @@
+// Check that location info for chained OR, XOR, AND is at the expected locations
+// RUN: %ExeSilly -g -c --emit-mlir %s -o %t.mlir
+// RUN: cat %t.mlir | %LocFilter --input silly.arith_binop | %FileCheck %s
+// CHECK: 20:7 -> {{.*}} = silly.arith_binop
+// CHECK: 20:12 -> {{.*}} = silly.arith_binop
+// CHECK: 24:7 -> {{.*}} = silly.arith_binop
+// CHECK: 24:13 -> {{.*}} = silly.arith_binop
+// CHECK: 28:7 -> {{.*}} = silly.arith_binop
+// CHECK: 28:13 -> {{.*}} = silly.arith_binop
+
+
+
+
+
+
+
+INT32 x = 1;
+
+INT32 y;
+y = x OR 2 OR 4; // 20
+//    7    12
+PRINT y;
+
+y = x AND 3 AND 1; // 24
+//    7     13
+PRINT y;
+
+y = x XOR 1 XOR 1; // 28
+//    7     13
+PRINT y;

@@ -982,8 +982,9 @@ namespace silly
                 }
 
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
+                mlir::Location bLoc = getTerminalLocation( orCtx->BOOLEANOR_TOKEN( i - 1 ) );
 
-                value = createBinaryArith( loc, silly::ArithBinOpKind::Or, ty, value, rhs, ls );
+                value = createBinaryArith( bLoc, silly::ArithBinOpKind::Or, ty, value, rhs, ls );
             }
 
             return value;
@@ -1021,8 +1022,9 @@ namespace silly
                 }
 
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
+                mlir::Location bLoc = getTerminalLocation( xorCtx->BOOLEANXOR_TOKEN( i - 1 ) );
 
-                value = createBinaryArith( loc, silly::ArithBinOpKind::Xor, ty, value, rhs, ls );
+                value = createBinaryArith( bLoc, silly::ArithBinOpKind::Xor, ty, value, rhs, ls );
             }
 
             return value;
@@ -1065,8 +1067,9 @@ namespace silly
                 }
 
                 mlir::Type ty = biggestTypeOf( value.getType(), rhs.getType() );
+                mlir::Location bLoc = getTerminalLocation( andCtx->BOOLEANAND_TOKEN( i - 1 ) );
 
-                value = createBinaryArith( loc, silly::ArithBinOpKind::And, ty, value, rhs, ls );
+                value = createBinaryArith( bLoc, silly::ArithBinOpKind::And, ty, value, rhs, ls );
             }
 
             return value;
