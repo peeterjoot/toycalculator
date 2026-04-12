@@ -786,4 +786,338 @@ Each step is independently verifiable. Steps 1–3 are purely refactoring with
 no user-visible behaviour change. Steps 4–5 add new language features. Step 6
 hardens the implementation. Step 7 restores a broken component.
 
+# Appendix: Control Flow Representation — Direct CF Emission vs Structured MLIR Ops
+
+## Context
+
+When implementing `IF`/`ELIF`/`ELSE`, `FOR`, `BREAK`, `CONTINUE`, and early
+`RETURN`, there are two architectural approaches available:
+
+**Option A:** Define custom structured MLIR ops (`silly.if`, `silly.for`,
+`silly.break`, etc.) with region bodies, and lower them to `mlir::cf` in a
+dedicated pass.
+
+**Option B:** Emit `cf.cond_br` and `cf.br` ops directly from the builder,
+managing block structure explicitly in `ParserPerFunctionState`.
+
+This appendix documents the tradeoffs considered when choosing between these
+approaches, including the cost of retrofitting a structured representation
+later if Option B is chosen first.
+
+---
+
+## Option A: Custom Structured Ops with Lowering Pass
+
+### What this looks like
+
+```tablegen
+def Silly_IfOp : Op<Silly_Dialect, "if", [...]> {
+    let regions = (region SizedRegion<1>:$thenRegion,
+                   SizedRegion<1>:$elseRegion);
+}
+
+def Silly_ForOp : Op<Silly_Dialect, "for", [...]> {
+    let regions = (region SizedRegion<1>:$body);
+}
+
+def Silly_BreakOp    : Op<Silly_Dialect, "break",    [...]> { }
+def Silly_ContinueOp : Op<Silly_Dialect, "continue", [...]> { }
+def Silly_ReturnOp   : Op<Silly_Dialect, "return",   [...]> { }
+```
+
+A `SillyControlFlowLoweringPass` converts these to `cf.cond_br` / `cf.br`
+before the existing LLVM lowering pass runs.
+
+### Advantages
+
+- **Readable `.mlir` output.** The intermediate representation directly
+  reflects the source language structure. `silly.for` in the IR means a `FOR`
+  loop in the source — no reconstruction required.
+
+- **Structural verification at the MLIR level.** A verifier on `silly.break`
+  can enforce that it only appears inside a `silly.for` body region. A
+  verifier on `silly.return` can check that the return type matches the
+  enclosing function type. These errors surface before lowering with clear
+  source locations.
+
+- **Natural target for future analysis and optimisation passes.** Loop
+  unrolling, loop-invariant code motion, dead branch elimination — all of
+  these are significantly easier to implement against a structured
+  representation than against raw CF blocks. Reconstructing loop structure
+  from `cf.br` / `cf.cond_br` is possible but unpleasant.
+
+- **Clean separation of concerns.** The builder emits structured ops. The
+  lowering pass handles all CF plumbing in one place. Bugs in control flow
+  lowering are localised to the lowering pass and don't affect the builder.
+
+- **Better round-trip testability.** A `.mlir` file with `silly.for` and
+  `silly.if` is a stable, hand-editable intermediate that can be fed directly
+  to `mlir-opt` for isolated testing of the lowering pass.
+
+- **`ScopeOp` fits naturally.** `ScopeOp` regions can nest inside `silly.if`
+  and `silly.for` regions cleanly. The structured op regions provide natural
+  scope boundaries.
+
+- **Better foundation for multiple backends.** If a second backend
+  (WebAssembly, SPIR-V, interpreter) is ever added, the structured ops are
+  a better starting point than raw CF blocks.
+
+### Disadvantages
+
+- **Higher upfront implementation cost.** Each new control flow construct
+  requires: tablegen definition, verifier, builder integration, lowering
+  pattern, and tests. This is substantial work to do correctly before the
+  feature is usable.
+
+- **Two representations of the same concept exist simultaneously during
+  development.** During the transition period, both the structured op and
+  its lowered CF form exist, which can cause confusion about which layer a
+  bug lives in.
+
+- **The lowering pass is non-trivial.** `break` inside nested `for` inside
+  `if`, early `return` inside `for`, `elif` chains — the lowering pass must
+  handle all combinations correctly. This is the same complexity as direct CF
+  emission, just deferred to a different file.
+
+- **Block argument threading is deferred, not eliminated.** CF requires block
+  arguments for loop induction variables and merge block results. In the
+  structured approach this threading is computed in the lowering pass rather
+  than being explicit in the builder — the complexity exists either way.
+
+- **Debugging a lowering pass failure requires understanding both layers.**
+  Wrong CF output from the lowering pass requires inspecting both the
+  structured input IR and the CF output IR simultaneously.
+
+- **Risk of spreading effort too thin.** Doing tablegen, verifiers, region
+  management, lowering pass, and DWARF instrumentation simultaneously
+  introduces many moving parts. A bug in the lowering pass produces wrong CF
+  which produces wrong DWARF, with one additional layer to rule out.
+
+---
+
+## Option B: Direct CF Emission from the Builder
+
+### What this looks like
+
+```cpp
+void Builder::createIf( mlir::Location predLoc,
+                         mlir::Location openBraceLoc,
+                         mlir::Location closeBraceLoc,
+                         mlir::Value cond, LocationStack& ls )
+{
+    mlir::Region& funcRegion = getCurrentFuncOp().getBody();
+    mlir::Block* thenBlock  = builder.createBlock( &funcRegion );
+    mlir::Block* elseBlock  = builder.createBlock( &funcRegion );
+    mlir::Block* mergeBlock = builder.createBlock( &funcRegion );
+
+    cf::CondBranchOp::create( builder, predLoc, cond, thenBlock, elseBlock );
+
+    f.pushMergeBlock( mergeBlock );
+    builder.setInsertionPointToStart( thenBlock );
+    emitScopeOp( openBraceLoc, closeBraceLoc );
+}
+```
+
+`break` lowers to `cf.br ^endBlock`. `continue` lowers to `cf.br ^incBlock`.
+Early `return` lowers to `cf.br ^exitBlock`. All emitted directly in the
+builder at the point of the source construct.
+
+### Advantages
+
+- **Full control over every branch location and scope at construction time.**
+  This directly solves the `fixBranchDebugLocs` problem — every branch is
+  stamped with the correct `FusedLoc` and `DILexicalBlock` scope at the
+  moment it is created. No post-lowering fixup pass is needed.
+
+- **`break`, `continue`, and early `return` are trivial.** They are single
+  `cf.br` ops to a pre-recorded block pointer. No lowering pass needs to
+  understand nesting structure — the builder already has the right block
+  pointer on its stack.
+
+- **Fewer pipeline stages.** The pipeline is: builder → silly ops + CF →
+  LLVM dialect. There is no intermediate structured CF lowering pass to
+  maintain or debug.
+
+- **Less total code** if the lowering pass would have covered the same ground
+  as the builder, since the block management logic only needs to exist in one
+  place.
+
+- **What you see in the `.mlir` output is the final structure.** No
+  transformation occurs between the CF blocks in the output and the CF blocks
+  that reach LLVM lowering.
+
+- **Builder complexity follows an established pattern.** `ParserPerFunctionState`
+  already manages insertion point stacks. Adding loop block stacks
+  (`endBlock`, `incBlock`, `condBlock`) and a merge block stack follows
+  exactly the same pattern.
+
+### Disadvantages
+
+- **`.mlir` output is harder to read.** `^bb3`, `^bb7`, `^bb12` with no
+  indication of what source construct they came from. Debugging requires
+  mentally reconstructing the control flow graph.
+
+- **Structural invariants must be enforced in the builder or frontend.**
+  There is no MLIR verifier to catch `break` outside a loop — the check
+  must happen in `createBreak` before the `cf.br` is emitted. Errors are
+  reported at a slightly higher level but with less MLIR infrastructure
+  backing them.
+
+- **No structured representation for future analysis passes.** Reconstructing
+  loop structure from raw CF blocks for a future optimisation pass is
+  possible but requires a separate analysis. This is not a problem today but
+  becomes one if optimisation is ever a goal.
+
+- **The builder becomes more stateful.** Block pointers for the current
+  loop's `condBlock`, `incBlock`, `endBlock`, the function exit block, and
+  if/elif/else merge blocks must all be tracked on explicit stacks. This is
+  manageable but increases the surface area of `ParserPerFunctionState`.
+
+- **`elif` chains require careful pre-creation of blocks.** Each `elif` arm
+  needs its predicate block and body block pre-created before the previous
+  arm is complete. Getting the predecessor edges right across multiple `elif`
+  arms is the most error-prone part of the direct emission approach.
+
+- **No round-trip stability at the control flow level.** A hand-edited
+  `.mlir` file with raw CF blocks can be fed to the compiler, but it is much
+  harder to write and verify by inspection than one with `silly.for` and
+  `silly.if`.
+
+---
+
+## Retrofitting Structured Ops Later
+
+If Option B is chosen now, the question is what it costs to introduce
+structured ops later.
+
+### What carries over unchanged
+
+- **The frontend listener code.** The ANTLR4 and Bison listeners call
+  `Builder::createIf`, `Builder::createFor`, etc. Their call sites do not
+  change — only the builder method bodies change.
+
+- **The `ScopeOp` machinery and all DWARF instrumentation.** `processScopedOps`,
+  `fixBranchDebugLocs`, `scopeMap`, `blockClosingLoc` — none of this is
+  affected by whether the surrounding control flow is structured or raw CF.
+  `ScopeOp` operates above that boundary.
+
+- **All LIT tests.** Tests verify observable behaviour: DWARF output,
+  `dwarfdump` content, gdb stepping, runtime correctness. None of these
+  depend on the internal IR representation.
+
+- **The lowering pass infrastructure.** A new `SillyControlFlowLoweringPass`
+  stage would be added before the existing LLVM lowering pass, not replacing
+  it.
+
+- **`ParserPerFunctionState` conceptually.** The block stacks become region
+  management, but the same state (current loop's exit target, current merge
+  point, function exit) needs to be tracked either way.
+
+### What requires rewriting
+
+- **The builder method bodies** for `createIf`, `createFor`, `selectElseBlock`,
+  `finishFor`, `finishIfElifElse`, `createBreak`, `createContinue`,
+  `createReturn`. These are already being rewritten for the CF transition, so
+  this would be a second rewrite of the same methods. The signatures do not
+  change.
+
+- **`ParserPerFunctionState` block stacks** become region management — a
+  moderate refactor with no impact outside the builder.
+
+### What is genuinely new work
+
+- **Tablegen definitions and verifiers** for `Silly_IfOp`, `Silly_ForOp`,
+  `Silly_BreakOp`, `Silly_ContinueOp`, `Silly_ReturnOp`.
+
+- **The `SillyControlFlowLoweringPass`** — this covers the same ground as the
+  direct CF builder methods, just in a different file. The block management
+  logic moves from the builder into the lowering pass. The total complexity
+  is approximately the same.
+
+### Honest cost estimate
+
+The retrofit cost is roughly **one additional rewrite of the builder control
+flow methods** plus **tablegen and lowering pass work** that would have been
+done upfront in Option A anyway. It is not a ground-up rewrite. The frontend,
+DWARF machinery, tests, and overall pipeline structure all survive intact.
+
+Importantly, the retrofit is **not harder to do after the fact** than it
+would be now, because:
+
+1. By the time structured ops are wanted, the exact invariants the verifiers
+   should enforce will be clearer — the structured ops will be written better
+   with hindsight from having implemented the feature directly.
+2. The LIT test suite provides a safety net for the retrofit that does not
+   exist today.
+3. The builder interface can be kept clean now (see below) to minimise the
+   retrofit cost.
+
+---
+
+## The Key Discipline for Keeping the Retrofit Option Open
+
+Regardless of which approach is chosen, one discipline makes the future
+retrofit significantly cheaper:
+
+> **The frontend sees control flow concepts, not blocks.**
+
+Concretely: raw `mlir::Block*` pointers to then-blocks, else-blocks,
+merge-blocks, loop end-blocks, and loop increment-blocks must never appear
+in the public builder API or in the frontend listener code. They belong
+inside `ParserPerFunctionState` and behind the builder methods.
+
+The frontend should call:
+
+```cpp
+builder.createIf( predLoc, openBraceLoc, closeBraceLoc, cond, ls );
+builder.selectElseBlock( loc, openBraceLoc, closeBraceLoc );
+builder.finishIfElifElse( loc );
+builder.createBreak( loc, ls );
+```
+
+not:
+
+```cpp
+cf::CondBranchOp::create( builder, loc, cond, thenBlock, elseBlock );
+builder.setInsertionPointToStart( thenBlock );
+```
+
+If this boundary is maintained, the entire control flow implementation can
+be swapped between Option A and Option B by changing only the builder method
+bodies and adding or removing a lowering pass stage. The frontend listeners,
+the DWARF machinery, and the tests are untouched.
+
+---
+
+## Conclusion and Recommendation
+
+**Direct CF emission (Option B) is the recommended approach for the current
+phase of development**, for the following reasons:
+
+1. **The immediate goal is correct DWARF instrumentation.** Direct CF emission
+   eliminates `fixBranchDebugLocs` and gives precise control over every
+   branch location and scope. The structured op approach defers this control
+   to a lowering pass that introduces an additional debugging layer.
+
+2. **`break`, `continue`, and early `return` are simpler to implement
+   correctly** with direct emission, since the block targets are on the
+   builder's stack at exactly the right moment.
+
+3. **The upfront cost is lower.** No tablegen, no verifiers, no lowering pass
+   for control flow — just builder methods and block stacks following an
+   already-established pattern in `ParserPerFunctionState`.
+
+4. **The retrofit cost is bounded and deferred safely.** The LIT test suite
+   will be in place before the retrofit, the DWARF machinery is completely
+   decoupled, and the only material rewrite is the builder method bodies plus
+   new tablegen and lowering pass work.
+
+5. **Effort is not spread too thin.** Completing the DWARF instrumentation
+   correctly is more valuable than having a structured IR representation that
+   no existing pass exploits.
+
+The one investment worth making now to keep the retrofit cheap is maintaining
+the builder API boundary described above: control flow concepts in the
+interface, block pointers hidden in the implementation.
+
 <!-- vim: set tw=100 ts=4 sw=4 et: -->
