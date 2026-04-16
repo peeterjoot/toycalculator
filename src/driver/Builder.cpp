@@ -514,7 +514,7 @@ namespace silly
                 }
                 else if ( desiredType.isF32() )
                 {
-                    newValue = mlir::LLVM::FPExtOp::create( builder, loc, desiredType, value );
+                    newValue = mlir::LLVM::FPTruncOp::create( builder, loc, desiredType, value );
                 }
             }
             else if ( valType.isF32() )

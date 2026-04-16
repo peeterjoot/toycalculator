@@ -98,7 +98,6 @@ or
 * Implement support for .ll suffixes? -- would be a dumb feature (complexity for little value.), but kind of fun to have, as a for-hacking compiler.
 
 #### misc
-* tests/endtoend/expressions/modfloat.silly broken with mix of float32/float64's
 * Run include-what-you-use on lowering.cpp/driver.cpp/CompilationUnit.cpp (post refactoring cleanup.)  Will probably have to build it.
 * Consider an error if prototype and definition have mismatched signatures (types, return, etc.) — currently probably crashes or silent mismatch; add sema check later (right now only check number of parameters, not return, nor types.)
 * What were the test dependencies on `--emit-llvm --emit-mlir` in add_endtoend_compile_tests?  Would make more sense to only do that when desired (that's a holdover from the switch from testit as the test driver.)

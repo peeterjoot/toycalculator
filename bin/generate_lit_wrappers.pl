@@ -84,7 +84,6 @@ my %flags = (
 );
 
 my %skip = map { $_ => 1 } (qw(
-mod-float-all-types
 div-zero-int
 ));
 

@@ -680,7 +680,7 @@ namespace silly
         }
         else if ( allowFloat )
         {
-            // Floating-point addition: ensure both operands are f64.
+            // Floating-point operation: ensure both operands are floating point and compatible
             if ( mlir::IntegerType lTyI = mlir::dyn_cast<mlir::IntegerType>( lhs.getType() ) )
             {
                 unsigned width = lTyI.getWidth();
@@ -705,6 +705,22 @@ namespace silly
                 else
                 {
                     rhs = mlir::LLVM::SIToFPOp::create( rewriter, loc, resultType, rhs );
+                }
+            }
+
+            mlir::FloatType lTy = mlir::cast<mlir::FloatType>( lhs.getType() );
+            mlir::FloatType rTy = mlir::cast<mlir::FloatType>( rhs.getType() );
+            if ( lTy != rTy )
+            {
+                if ( lTy.isF64() )
+                {
+                    // convert rhs to double
+                    rhs = mlir::LLVM::FPExtOp::create( rewriter, loc, lTy, rhs );
+                }
+                else
+                {
+                    // convert lhs to double
+                    lhs = mlir::LLVM::FPExtOp::create( rewriter, loc, rTy, lhs );
                 }
             }
 
