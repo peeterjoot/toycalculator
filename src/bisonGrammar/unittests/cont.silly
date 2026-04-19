@@ -1,0 +1,3 @@
+PRINT "a literal = ", 42 CONTINUE;
+PRINT 42 CONTINUE;
+PRINT 42;

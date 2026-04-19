@@ -1,0 +1,7 @@
+INT32 x = 3;
+x = +x;
+PRINT x;
+x = -x;
+PRINT x;
+x = NOT x;
+PRINT x;

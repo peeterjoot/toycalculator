@@ -102,6 +102,7 @@ or
 * Consider an error if prototype and definition have mismatched signatures (types, return, etc.) — currently probably crashes or silent mismatch; add sema check later (right now only check number of parameters, not return, nor types.)
 * What were the test dependencies on `--emit-llvm --emit-mlir` in add_endtoend_compile_tests?  Would make more sense to only do that when desired (that's a holdover from the switch from testit as the test driver.)
 * sema check (eventually): enforce "RETURN must be last"
+* https://github.com/antlr/antlr4/blob/master/doc/faq/parse-trees.md -- has a way to get unmanagled text for error paths, but need access to the tokens.
 
 #### Lowering
 

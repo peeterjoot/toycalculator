@@ -3,6 +3,8 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   altlr4 parse tree listener and MLIR builder.
 ///
+#include "Antlr4ParseListener.hpp"
+
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/FormatVariadic.h>
 #include <llvm/Support/raw_ostream.h>
@@ -21,7 +23,6 @@
 #include <fstream>
 #include <string>
 
-#include "Antlr4ParseListener.hpp"
 #include "DriverState.hpp"
 #include "ModuleInsertionPointGuard.hpp"
 #include "ParserPerFunctionState.hpp"

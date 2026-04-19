@@ -1,0 +1,15 @@
+//INT32 x[3];
+//INT32 x[3]{7};
+INT32 x[3]{7,2};
+
+INT32 y;
+y = x[0];
+PRINT y;
+PRINT x[0];
+PRINT x[1];
+PRINT x[2];
+PRINT x[0], ", ", x[1], ", ", x[2];
+
+INT32 z{};
+//INT32 y[1]{};
+//PRINT y[0];

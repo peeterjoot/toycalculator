@@ -1,0 +1,3 @@
+FUNCTION foo( INT32 v );
+FUNCTION bar( INT32 v ) : INT32;
+FUNCTION two( INT32 v, FLOAT64 w );

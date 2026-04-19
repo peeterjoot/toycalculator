@@ -1,0 +1,12 @@
+FUNCTION bar( INT32 v ) : INT32
+{
+    RETURN v;
+};
+
+INT32 x = CALL bar( 3 );
+PRINT x;
+INT32 y;
+y = CALL bar( 3 );
+PRINT y;
+x = 3 + CALL bar( 3 );
+PRINT x;

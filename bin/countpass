@@ -1,0 +1,4 @@
+ctest
+grep PASS Testing/Temporary/LastTest.log | wc -l
+grep -e PASS -e FAIL Testing/Temporary/LastTest.log | wc -l
+grep FAIL Testing/Temporary/LastTest.log | sed 's/.*:: //;s/ .*//;' | sort -u

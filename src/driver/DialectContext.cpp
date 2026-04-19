@@ -10,6 +10,8 @@
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
 #include <mlir/Dialect/SCF/IR/SCF.h>
+#include <mlir/Dialect/ControlFlow/IR/ControlFlow.h>
+#include <mlir/Dialect/ControlFlow/IR/ControlFlowOps.h>
 
 #include "SillyDialect.hpp"
 
@@ -23,6 +25,7 @@ namespace silly
         context.getOrLoadDialect<mlir::memref::MemRefDialect>();
         context.getOrLoadDialect<mlir::LLVM::LLVMDialect>();
         context.getOrLoadDialect<mlir::scf::SCFDialect>();
+        context.getOrLoadDialect<mlir::cf::ControlFlowDialect>();
     }
 }    // namespace silly
 

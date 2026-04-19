@@ -57,8 +57,8 @@ namespace silly
         auto varType = mlir::dyn_cast<silly::varType>( getVar().getType() );
         if ( !varType )
         {
-            // TODO: no coverage -- not sure if we can get here.  Think that the MLIR infra enforces this before the verify.
-            // See: bad-declare-not-var-return.mlir
+            // TODO: no coverage -- not sure if we can get here.  Think that the MLIR infra enforces this before the
+            // verify. See: bad-declare-not-var-return.mlir
             return emitOpError( "result must be of type !silly.var" );
         }
 
@@ -69,7 +69,8 @@ namespace silly
         {
             if ( shape.size() != 1 )
             {
-                // TODO: no coverage -- not sure if we can get here.  See: bad-declare-2darray.mlir -- type parser raises error first
+                // TODO: no coverage -- not sure if we can get here.  See: bad-declare-2darray.mlir -- type parser
+                // raises error first
                 return emitOpError( "only 1D arrays are supported (rank must be 0 or 1)" );
             }
             if ( shape[0] <= 0 )

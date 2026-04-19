@@ -1,0 +1,13 @@
+FLANG=/usr/local/llvm-22.1.1/bin/flang-new
+#${FLANG} -g -O0 -fc1 -emit-hlfir $*.f90 -o $*.hlfir.mlir
+#${FLANG} -g -O0 -fc1 -emit-fir  $*.f90 -o $*.fir.mlir
+#${FLANG} -g -O0 -mmlir -mlir-print-debuginfo -emit-llvm $*.f90 -o $*.ll
+
+${FLANG} -fc1 -emit-fir $*.f90 -o $*.mlir
+
+#${FLANG} -fc1 -emit-fir -debug-info-kind=standalone \
+#    -mllvm -mlir-print-debuginfo \
+#    $*.f90 -o $*.mlir
+#${FLANG} --help
+
+#${FLANG} -fc1 -emit-fir -mlir-print-debuginfo $*.f90 -o $*.mlir

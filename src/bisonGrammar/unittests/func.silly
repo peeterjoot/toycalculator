@@ -1,0 +1,17 @@
+FUNCTION foo( INT32 v )
+{
+    PRINT v;
+    RETURN;
+};
+
+FUNCTION bar( INT32 v ) : INT32
+{
+    PRINT v;
+    RETURN v;
+};
+
+FUNCTION two( INT32 v, FLOAT64 w )
+{
+    PRINT v + w;
+    RETURN;
+};

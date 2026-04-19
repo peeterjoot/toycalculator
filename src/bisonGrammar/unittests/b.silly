@@ -1,0 +1,4 @@
+INT32 x;
+x = 40 + 2;
+PRINT x;
+PRINT 6 * 7;

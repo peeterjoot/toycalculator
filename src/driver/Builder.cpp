@@ -1,6 +1,8 @@
 /// @file    Builder.cpp
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Grammar agnostic subset of the MLIR builder for the silly language.
+#include "Builder.hpp"
+
 #include <llvm/Support/FormatVariadic.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
@@ -9,7 +11,6 @@
 #include <format>
 #include <fstream>
 
-#include "Builder.hpp"
 #include "DriverState.hpp"
 #include "LocationStack.hpp"
 #include "ModuleInsertionPointGuard.hpp"

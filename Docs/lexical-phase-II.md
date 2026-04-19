@@ -69,6 +69,8 @@ def Silly_ScopeOp : Op<Silly_Dialect, "scope", [SingleBlock]> {
 }
 ```
 
+(CORRECTION: SingleBlock is not appropriate after the conversion from SCF to CF.)
+
 The scope's begin location is the op's own location (set to the `{` token).
 The scope's end location is carried as a second location on the op — using the
 same `FusedLoc([begin_loc, end_loc])` pattern already used for `DISubprogramAttr`
@@ -240,7 +242,10 @@ class ScopeOpLowering : public mlir::ConversionPattern {
 The distinction is:
 
 * inlineBlockBefore(block, op, args) — moves a single block's ops before op
-* inlineRegionBefore(region, block) — moves all blocks of a region before a given block in the parent region
+* inlineRegionBefore(region, block) — moves all blocks of a region before a given block in the parent region.
+  Note that this requires care to get right, as applying this leaves orphaned BBs that have to be
+  merged with predecessors.  Defer any such region inlining for now, assuming that we have just one
+  block.
 
 **3.1.5 Verify**
 

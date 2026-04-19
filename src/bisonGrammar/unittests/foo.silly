@@ -1,0 +1,33 @@
+INT32 x{7};
+BOOL b{TRUE};
+FLOAT64 f{42.0};
+INT16 y[3];
+
+INT32 xx = 1;
+BOOL xb = TRUE;
+FLOAT64 xf = 42.0;
+
+PRINT 1;
+// hi there, this is a comment.
+PRINT 3;
+    PRINT
+       42; // hi there, this is also a comment.
+//PRINT 333333333333333333333311111111111111111111;
+PRINT 3.14;
+PRINT "Hello world";
+PRINT FALSE;
+PRINT TRUE;
+PRINT "a literal = ", 42, ", another: ", 42.0;
+ERROR "a literal = ", 42, ", another: ", 42.0;
+PRINT "a variable = ", x;
+
+xx = 3;
+PRINT xx;
+
+INT16 ys[2]{6};
+
+PRINT ys[0];
+ys[0] = 3;
+PRINT ys[0];
+ys[1] = 9;
+PRINT ys[1];

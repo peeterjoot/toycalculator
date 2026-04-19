@@ -1,0 +1,4 @@
+INT32 z{};
+PRINT z;
+INT32 y[1]{};
+PRINT y[0];
