@@ -18,4 +18,6 @@ SpacesInParentheses:                   true
 Standard:                              Cpp11
 TabWidth:                              4
 UseTab:                                Never
+DerivePointerAlignment:                false
+PointerAlignment:                      Left
 ...

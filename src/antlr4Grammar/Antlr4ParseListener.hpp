@@ -44,7 +44,7 @@ namespace silly
         /// Constructor.
         /// @param s [in] Owning SourceManager (used for IMPORT module lookup.)
         /// @param filename [in] Source filename for this module (used to construct Location info)
-        Antlr4ParseListener( silly::SourceManager &s, const std::string &filename );
+        Antlr4ParseListener( silly::SourceManager& s, const std::string& filename );
 
         /// Open the file stream, and walk the parse tree.
         ///
@@ -56,88 +56,88 @@ namespace silly
         mlir::OwningOpRef<mlir::ModuleOp> run();
 
         /// Override to throw on syntax errors.
-        void syntaxError( antlr4::Recognizer *recognizer, antlr4::Token *offendingSymbol, size_t line,
-                          size_t charPositionInLine, const std::string &msg, std::exception_ptr e ) override;
+        void syntaxError( antlr4::Recognizer* recognizer, antlr4::Token* offendingSymbol, size_t line,
+                          size_t charPositionInLine, const std::string& msg, std::exception_ptr e ) override;
 
         /// Antlr4 enter hook for the start rule.
-        void enterStartRule( SillyParser::StartRuleContext *ctx ) override;
+        void enterStartRule( SillyParser::StartRuleContext* ctx ) override;
 
         /// Antlr4 exit hook for the start rule.
-        void exitStartRule( SillyParser::StartRuleContext *ctx ) override;
+        void exitStartRule( SillyParser::StartRuleContext* ctx ) override;
 
         /// Antlr4 entry hook for the scopedStatements rule.
-        void enterScopedStatements( SillyParser::ScopedStatementsContext *ctx ) override;
+        void enterScopedStatements( SillyParser::ScopedStatementsContext* ctx ) override;
 
         /// Antlr4 exit hook for the scopedStatements rule.
-        void exitScopedStatements( SillyParser::ScopedStatementsContext *ctx ) override;
+        void exitScopedStatements( SillyParser::ScopedStatementsContext* ctx ) override;
 
         /// Antlr4 entry hook for the ImportStatementContext rule.
-        void enterImportStatement( SillyParser::ImportStatementContext *ctx ) override;
+        void enterImportStatement( SillyParser::ImportStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for an IF statement
-        void enterIfStatement( SillyParser::IfStatementContext *ctx ) override;
+        void enterIfStatement( SillyParser::IfStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for an ELIF statement
-        void enterElifStatement( SillyParser::ElifStatementContext *ctx ) override;
+        void enterElifStatement( SillyParser::ElifStatementContext* ctx ) override;
 
         /// Antlr4 exit hook for an ELIF statement
-        void exitElifStatement( SillyParser::ElifStatementContext *ctx ) override;
+        void exitElifStatement( SillyParser::ElifStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for an ELSE statement
-        void enterElseStatement( SillyParser::ElseStatementContext *ctx ) override;
+        void enterElseStatement( SillyParser::ElseStatementContext* ctx ) override;
 
         /// Antlr4 exit hook for an IF-ELIF-ELSE statement.
         ///
         /// Restore EXACTLY where we were before creating the scf.if
         /// This places new ops right AFTER the scf.if
-        void exitIfElifElseStatement( SillyParser::IfElifElseStatementContext *ctx ) override;
+        void exitIfElifElseStatement( SillyParser::IfElifElseStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for a functionStatement rule.
-        void enterFunctionStatement( SillyParser::FunctionStatementContext *ctx ) override;
+        void enterFunctionStatement( SillyParser::FunctionStatementContext* ctx ) override;
         /// Antlr4 exit hook for a functionStatement rule.
-        void exitFunctionStatement( SillyParser::FunctionStatementContext *ctx ) override;
+        void exitFunctionStatement( SillyParser::FunctionStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for a callStatement rule.
-        void enterCallStatement( SillyParser::CallStatementContext *ctx ) override;
+        void enterCallStatement( SillyParser::CallStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for a returnStatement rule.
-        void enterReturnStatement( SillyParser::ReturnStatementContext *ctx ) override;
+        void enterReturnStatement( SillyParser::ReturnStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for a boolDeclareStatement rule.
-        void enterBoolDeclareStatement( SillyParser::BoolDeclareStatementContext *ctx ) override;
+        void enterBoolDeclareStatement( SillyParser::BoolDeclareStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for an intDeclareStatement rule.
-        void enterIntDeclareStatement( SillyParser::IntDeclareStatementContext *ctx ) override;
+        void enterIntDeclareStatement( SillyParser::IntDeclareStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for a floatDeclareStatement rule.
-        void enterFloatDeclareStatement( SillyParser::FloatDeclareStatementContext *ctx ) override;
+        void enterFloatDeclareStatement( SillyParser::FloatDeclareStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for a stringDeclareStatement rule.
-        void enterStringDeclareStatement( SillyParser::StringDeclareStatementContext *ctx ) override;
+        void enterStringDeclareStatement( SillyParser::StringDeclareStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for a printStatement rule.
-        void enterPrintStatement( SillyParser::PrintStatementContext *ctx ) override;
+        void enterPrintStatement( SillyParser::PrintStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for an errorStatement rule.
-        void enterErrorStatement( SillyParser::ErrorStatementContext *ctx ) override;
+        void enterErrorStatement( SillyParser::ErrorStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for an abortStatement rule.
-        void enterAbortStatement( SillyParser::AbortStatementContext *ctx ) override;
+        void enterAbortStatement( SillyParser::AbortStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for a getStatement rule.
-        void enterGetStatement( SillyParser::GetStatementContext *ctx ) override;
+        void enterGetStatement( SillyParser::GetStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for a forStatement rule.
-        void enterForStatement( SillyParser::ForStatementContext *ctx ) override;
+        void enterForStatement( SillyParser::ForStatementContext* ctx ) override;
 
         /// Antlr4 exit hook for a forStatement rule.
-        void exitForStatement( SillyParser::ForStatementContext *ctx ) override;
+        void exitForStatement( SillyParser::ForStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for an assignmentStatement rule.
-        void enterAssignmentStatement( SillyParser::AssignmentStatementContext *ctx ) override;
+        void enterAssignmentStatement( SillyParser::AssignmentStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for an exitStatement rule.
-        void enterExitStatement( SillyParser::ExitStatementContext *ctx ) override;
+        void enterExitStatement( SillyParser::ExitStatementContext* ctx ) override;
 
        private:
         ////////////////////////////////////////////////////////////////////////
@@ -146,50 +146,50 @@ namespace silly
         ///
         ////////////////////////////////////////////////////////////////////////
 
-        mlir::Value parseReturnExpression( mlir::Location loc, SillyParser::ExpressionContext *expression,
-                                           LocationStack &ls );
+        mlir::Value parseReturnExpression( mlir::Location loc, SillyParser::ExpressionContext* expression,
+                                           LocationStack& ls );
 
         /// @brief check for inappropriate RETURN
         ///
         /// Grammar now allows for RETURN in IF/ELIF/ELSE/FOR blocks, (as well as FUNCTION)
         /// but that is not supported.  Check for that explicitly, and raise a user error,
         /// instead of just letting this fail mysteriously in lowering.
-        void checkForReturnInScope( SillyParser::ScopedStatementsContext *scope, const char *what );
+        void checkForReturnInScope( SillyParser::ScopedStatementsContext* scope, const char* what );
 
         /// Lookup and validate a declareStatement variable name, and process the declaration.
-        void enterDeclareHelper( mlir::Location loc, tNode *identifier, bool hasInitializer,
-                                 const std::vector<SillyParser::ExpressionContext *> &expressions,
-                                 SillyParser::ArrayBoundsExpressionContext *arrayBoundsExpression, mlir::Type ty,
-                                 LocationStack &ls );
+        void enterDeclareHelper( mlir::Location loc, tNode* identifier, bool hasInitializer,
+                                 const std::vector<SillyParser::ExpressionContext*>& expressions,
+                                 SillyParser::ArrayBoundsExpressionContext* arrayBoundsExpression, mlir::Type ty,
+                                 LocationStack& ls );
 
         /// Construct locations from the getStart() and getStop() tokens.
-        inline LocPairs getLocations( antlr4::ParserRuleContext *ctx, bool unique = false );
+        inline LocPairs getLocations( antlr4::ParserRuleContext* ctx, bool unique = false );
 
         /// Computes start location from parser context.
-        inline mlir::Location getStartLocation( antlr4::ParserRuleContext *ctx );
+        inline mlir::Location getStartLocation( antlr4::ParserRuleContext* ctx );
 
         /// Computes stop location from parser context.
-        inline mlir::Location getStopLocation( antlr4::ParserRuleContext *ctx );
+        inline mlir::Location getStopLocation( antlr4::ParserRuleContext* ctx );
 
         /// Build a Location for an antlr4 Token.
-        inline mlir::Location getTokenLocation( antlr4::Token *token );
+        inline mlir::Location getTokenLocation( antlr4::Token* token );
 
         /// Build a Location for an antlr4 tNode
-        inline mlir::Location getTerminalLocation( tNode *node );
+        inline mlir::Location getTerminalLocation( tNode* node );
 
         /// Emits a CallOp for a function call.
-        mlir::Value parseCallStatementOrExpr( SillyParser::CallExpressionContext *ctx, bool callStatement,
-                                              LocationStack &ls );
+        mlir::Value parseCallStatementOrExpr( SillyParser::CallExpressionContext* ctx, bool callStatement,
+                                              LocationStack& ls );
 
         /// builder logic for print arguments (shared between PRINT and ERROR.)
-        void handlePrint( mlir::Location loc, const std::vector<SillyParser::ExpressionContext *> &args,
-                          const std::string &errorContextString, PrintFlags flags, LocationStack &ls );
+        void handlePrint( mlir::Location loc, const std::vector<SillyParser::ExpressionContext*>& args,
+                          const std::string& errorContextString, PrintFlags flags, LocationStack& ls );
 
         /// Map INT8_TOKEN, INT16_TOKEN, ... to a mlir::Type
-        mlir::Type integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext *ctx );
+        mlir::Type integerDeclarationType( mlir::Location loc, SillyParser::IntTypeContext* ctx );
 
         /// Parses scalar type string to MLIR type.
-        mlir::Type parseScalarType( const std::string &ty );
+        mlir::Type parseScalarType( const std::string& ty );
 
         /// Handle parsing of an expression (the top-level entry point for expressions).
         /// This function serves as the main entry point for parsing any rvalue expression.
@@ -197,10 +197,10 @@ namespace silly
         /// @param ctx The ExpressionContext from the parser (contains expression())
         /// @param ty Type override
         /// @return The MLIR Value representing the parsed expression
-        inline mlir::Value parseExpression( SillyParser::ExpressionContext *ctx, mlir::Type ty, LocationStack &ls );
+        inline mlir::Value parseExpression( SillyParser::ExpressionContext* ctx, mlir::Type ty, LocationStack& ls );
 
         /// calls parseOr, first actual expression level in the hierarchy
-        inline mlir::Value parseLowest( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
+        inline mlir::Value parseLowest( antlr4::ParserRuleContext* ctx, mlir::Type ty, LocationStack& ls );
 
         /// Parse the logical OR level (lowest precedence binary operator).
         /// Handles expressions of the form: expr OR expr OR expr ...
@@ -208,10 +208,10 @@ namespace silly
         /// @param ctx The ExpressionContext (usually ExprLowestContext)
         /// @param ty Type override
         /// @return The resulting Value (typically i1 for logical OR)
-        mlir::Value parseOr( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
+        mlir::Value parseOr( antlr4::ParserRuleContext* ctx, mlir::Type ty, LocationStack& ls );
 
         /// Look for a XorExprContext, and handle it if found.
-        mlir::Value parseXor( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
+        mlir::Value parseXor( antlr4::ParserRuleContext* ctx, mlir::Type ty, LocationStack& ls );
 
         /// Parse the logical AND level.
         /// Handles expressions of the form: term AND term AND term ...
@@ -219,7 +219,7 @@ namespace silly
         /// @param ctx BinaryExpressionAndContext from the parser
         /// @param ty type override
         /// @return The resulting Value (typically i1 for logical AND)
-        mlir::Value parseAnd( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
+        mlir::Value parseAnd( antlr4::ParserRuleContext* ctx, mlir::Type ty, LocationStack& ls );
 
         /// Parse the equality/inequality level (== and != operators).
         /// Handles expressions of the form: cmp == cmp != cmp ...
@@ -227,7 +227,7 @@ namespace silly
         /// @param ctx BinaryExpressionCompareContext (may be EqNeExprContext when operators present)
         /// @param ty type override
         /// @return The resulting Value (typically i1 for comparisons)
-        mlir::Value parseEquality( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
+        mlir::Value parseEquality( antlr4::ParserRuleContext* ctx, mlir::Type ty, LocationStack& ls );
 
         /// Parse the comparison level (< > <= >=).
         /// Handles expressions of the form: add < add > add <= add ...
@@ -235,7 +235,7 @@ namespace silly
         /// @param ctx BinaryExpressionCompareContext (CompareExprContext when operators present)
         /// @param ty type override
         /// @return The resulting Value (typically i1)
-        mlir::Value parseComparison( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
+        mlir::Value parseComparison( antlr4::ParserRuleContext* ctx, mlir::Type ty, LocationStack& ls );
 
         /// Parse the additive level (+ and - operators).
         /// Handles expressions of the form: mul + mul - mul ...
@@ -243,7 +243,7 @@ namespace silly
         /// @param ctx BinaryExpressionAddSubContext
         /// @param ty type override
         /// @return The resulting Value
-        mlir::Value parseAdditive( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
+        mlir::Value parseAdditive( antlr4::ParserRuleContext* ctx, mlir::Type ty, LocationStack& ls );
 
         /// Parse the multiplicative level (* and / operators).
         /// Handles expressions of the form: unary * unary / unary ...
@@ -251,7 +251,7 @@ namespace silly
         /// @param ctx BinaryExpressionMulDivContext
         /// @param ty type override
         /// @return The resulting Value
-        mlir::Value parseMultiplicative( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
+        mlir::Value parseMultiplicative( antlr4::ParserRuleContext* ctx, mlir::Type ty, LocationStack& ls );
 
         /// Parse unary operators (negation, NOT, etc.).
         /// Handles expressions of the form: - unary, NOT unary, or primary.
@@ -259,7 +259,7 @@ namespace silly
         /// @param ctx UnaryExpressionContext
         /// @param ty type override
         /// @return The resulting Value
-        mlir::Value parseUnary( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
+        mlir::Value parseUnary( antlr4::ParserRuleContext* ctx, mlir::Type ty, LocationStack& ls );
 
         /// Parse primary expressions (literals, variables, calls, parenthesized expressions).
         /// The leaves of the expression tree:
@@ -270,7 +270,7 @@ namespace silly
         /// @param ctx PrimaryExpressionContext
         /// @param ty type override
         /// @return The resulting Value
-        mlir::Value parsePrimary( antlr4::ParserRuleContext *ctx, mlir::Type ty, LocationStack &ls );
+        mlir::Value parsePrimary( antlr4::ParserRuleContext* ctx, mlir::Type ty, LocationStack& ls );
     };
 }    // namespace silly
 

@@ -238,7 +238,7 @@ namespace silly
         DebugScopeMap scopeMap;
 
         /// Map from the first op after a scope_begin to the scope's closing location
-        llvm::DenseMap<mlir::Block *, std::optional<mlir::Location>> blockClosingLoc;
+        llvm::DenseMap<mlir::Block*, std::optional<mlir::Location>> blockClosingLoc;
 
         /// Prototype for __silly_print.
         mlir::func::FuncOp printFunc;

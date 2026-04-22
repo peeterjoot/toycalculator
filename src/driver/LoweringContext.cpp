@@ -3,6 +3,8 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   This file implements helper functions for silly dialect to LLVM-IR lowering.
 ///
+#include "LoweringContext.hpp"
+
 #include <llvm/BinaryFormat/Dwarf.h>
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/Support/FormatVariadic.h>
@@ -13,7 +15,6 @@
 #include <format>
 
 #include "DriverState.hpp"
-#include "LoweringContext.hpp"
 #include "ModuleInsertionPointGuard.hpp"
 #include "helper.hpp"
 

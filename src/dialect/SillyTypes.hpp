@@ -6,8 +6,8 @@
 #pragma once
 
 #include <llvm/ADT/ArrayRef.h>
-#include <mlir/IR/Types.h>
 #include <mlir/IR/OpDefinition.h>
+#include <mlir/IR/Types.h>
 
 // Generated type class definitions (Silly_VarType)
 #define GET_TYPEDEF_CLASSES

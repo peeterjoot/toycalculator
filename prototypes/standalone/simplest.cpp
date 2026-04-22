@@ -69,10 +69,10 @@
 #define TARGET_INT_SIZE_IN_BITS ( TARGET_INT_SIZE_IN_BYTES * 8 )
 #define TARGET_LONG_SIZE_IN_BYTES sizeof( long )
 #define TARGET_LONG_SIZE_IN_BITS ( TARGET_LONG_SIZE_IN_BYTES * 8 )
-#define TARGET_POINTER_SIZE_IN_BYTES sizeof( char * )
+#define TARGET_POINTER_SIZE_IN_BYTES sizeof( char* )
 #define TARGET_POINTER_SIZE_IN_BITS ( TARGET_POINTER_SIZE_IN_BYTES * 8 )
 
-int main( int argc, char **argv )
+int main( int argc, char** argv )
 {
     llvm::InitLLVM init( argc, argv );
     llvm::cl::ParseCommandLineOptions( argc, argv, "Minimal MLIR to LLVM-IR debug test\n" );
@@ -89,7 +89,7 @@ int main( int argc, char **argv )
     assert( triple.isArch64Bit() && triple.isOSLinux() );
 
     std::string error;
-    const llvm::Target *target = llvm::TargetRegistry::lookupTarget( targetTriple, error );
+    const llvm::Target* target = llvm::TargetRegistry::lookupTarget( targetTriple, error );
     assert( target );
     llvm::TargetOptions options;
     auto targetMachine = std::unique_ptr<llvm::TargetMachine>( target->createTargetMachine(
@@ -143,7 +143,7 @@ int main( int argc, char **argv )
     auto i32Type = builder.getI32Type();
     auto funcType = builder.getFunctionType( {}, i32Type );
     auto func = builder.create<mlir::func::FuncOp>( mainLoc, "main", funcType );
-    auto &block = *func.addEntryBlock();
+    auto& block = *func.addEntryBlock();
     builder.setInsertionPointToStart( &block );
 
     // Debug info for the compilation unit and subprogram:

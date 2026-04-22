@@ -3,13 +3,14 @@
 /// @brief   Silly compiler handling of a set of sources or objects.
 #pragma once
 
-#include <vector>
-#include <unordered_map>
-#include <mlir/IR/BuiltinOps.h> // ModuleOp
 #include <llvm/ADT/SmallString.h>
+#include <mlir/IR/BuiltinOps.h>    // ModuleOp
 
-#include "ReturnCodes.hpp"
+#include <unordered_map>
+#include <vector>
+
 #include "DriverState.hpp"
+#include "ReturnCodes.hpp"
 
 namespace silly
 {
@@ -35,18 +36,20 @@ namespace silly
         /// A filename and CompilationUnit (pointer) pair.
         struct FileNameAndCU
         {
-            std::string filename{}; ///< indexing the map by stem.
-            silly::CompilationUnit* pCU{}; ///< compilation state for a single named source file.
+            std::string filename{};           ///< indexing the map by stem.
+            silly::CompilationUnit* pCU{};    ///< compilation state for a single named source file.
 
             /// specify a filename and raw-pointer to a CompilationUnit.
-            FileNameAndCU( const std::string & f = "", silly::CompilationUnit* p = nullptr ) : filename{f}, pCU{p} {}
+            FileNameAndCU( const std::string& f = "", silly::CompilationUnit* p = nullptr ) : filename{ f }, pCU{ p }
+            {
+            }
         };
 
         /// Create a CompilationUnit for this file
-        ReturnCodes createCU( const std::string& filename, SourceManager::FileNameAndCU *& cup );
+        ReturnCodes createCU( const std::string& filename, SourceManager::FileNameAndCU*& cup );
 
         /// Find and return the CompilationUnit for this file
-        ReturnCodes findCU( const std::string& filename, SourceManager::FileNameAndCU *& cup );
+        ReturnCodes findCU( const std::string& filename, SourceManager::FileNameAndCU*& cup );
 
         /// Extract the stem from filename and look for a compiled module for it.
         mlir::ModuleOp findMOD( const std::string& filename );
@@ -58,15 +61,18 @@ namespace silly
         ///
         /// @param cup [in] What to operate on.
         /// @param isDone [out] true if LLVM-IR was created (i.e.: more to do)
-        ReturnCodes createAndSerializeLLVM( FileNameAndCU& cup, bool & isDone );
+        ReturnCodes createAndSerializeLLVM( FileNameAndCU& cup, bool& isDone );
 
         /// Write out the object file to disk for the linker (if desired.)
         ReturnCodes serializeObject( FileNameAndCU& cup );
 
-        /// Take the current filename, grab the stem, and add the suffix.  This includes the --output-directory if specified.
+        /// Take the current filename, grab the stem, and add the suffix.  This includes the --output-directory if
+        /// specified.
         ///
-        /// Used to construct --emit-llvm/mlir output file names, as well as the executable file name (with empty suffix string)
-        void constructPathForStem( llvm::SmallString<128> & outputPath, const std::string & sourceName, const char * suffixWithDot );
+        /// Used to construct --emit-llvm/mlir output file names, as well as the executable file name (with empty suffix
+        /// string)
+        void constructPathForStem( llvm::SmallString<128>& outputPath, const std::string& sourceName,
+                                   const char* suffixWithDot );
 
         /// Invoke the system linker to create an executable.
         ReturnCodes link();

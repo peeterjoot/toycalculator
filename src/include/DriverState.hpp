@@ -3,8 +3,8 @@
 /// @brief   State to pass between driver and lowering pass.
 #pragma once
 
-#include <mlir/IR/Location.h>
 #include <llvm/Passes/OptimizationLevel.h>
+#include <mlir/IR/Location.h>
 
 #include <cstdint>
 #include <string>
@@ -21,33 +21,34 @@
 namespace silly
 {
     /// function pointer type for main.
-    using DriverMainFn = int(int, char**);
+    using DriverMainFn = int( int, char** );
 
     /// State to pass from the driver to CompilationUnit, parser/builder, lowering
     class DriverState
     {
        public:
         /// Construct a DriverState object, passing in argv[0] and &main for later lookup.
-        DriverState( const char * a, DriverMainFn m ) : argv0{a}, mainSymbol{m} {
+        DriverState( const char* a, DriverMainFn m ) : argv0{ a }, mainSymbol{ m }
+        {
         }
 
-        bool compileOnly{}; ///< -c
-        bool keepTemps{}; ///< --keep-temp
-        bool emitMLIR{}; ///< --emit-mlir
-        bool emitMLIRBC{}; ///< --emit-mlirbc
-        bool emitLLVM{}; ///< --emit-llvm
-        bool emitLLVMBC{}; ///< --emit-llvmbc
-        bool noAbortPath{}; ///< --no-abort-path
-        bool debugInfo{}; ///< True if -g is passed.
-        bool verboseLink{}; ///< --verbose-link
-        bool noVerboseParseError{}; ///< --no-verbose-parse-error
-        bool llvmDEBUG{}; ///< --debug-llvm
-        bool noColorErrors{}; ///< --no-color-errors
+        bool compileOnly{};            ///< -c
+        bool keepTemps{};              ///< --keep-temp
+        bool emitMLIR{};               ///< --emit-mlir
+        bool emitMLIRBC{};             ///< --emit-mlirbc
+        bool emitLLVM{};               ///< --emit-llvm
+        bool emitLLVMBC{};             ///< --emit-llvmbc
+        bool noAbortPath{};            ///< --no-abort-path
+        bool debugInfo{};              ///< True if -g is passed.
+        bool verboseLink{};            ///< --verbose-link
+        bool noVerboseParseError{};    ///< --no-verbose-parse-error
+        bool llvmDEBUG{};              ///< --debug-llvm
+        bool noColorErrors{};          ///< --no-color-errors
 
-        std::string outDir{}; ///< --output-directory
-        std::string oName{}; ///< -o
-        uint8_t initFillValue{}; ///< --init-fill value if specified (zero otherwise.)
-        llvm::OptimizationLevel opt{}; ///< -O[0123], mapped from silly::OptLevel to llvm::OptimizationLevel
+        std::string outDir{};             ///< --output-directory
+        std::string oName{};              ///< -o
+        uint8_t initFillValue{};          ///< --init-fill value if specified (zero otherwise.)
+        llvm::OptimizationLevel opt{};    ///< -O[0123], mapped from silly::OptLevel to llvm::OptimizationLevel
 
         /// Signal that -lm will be required when the program is linked (set by lowering)
         bool needsMathLib{};
@@ -56,10 +57,10 @@ namespace silly
         bool openFailed{};
 
         /// Driver name
-        const char * argv0;
+        const char* argv0;
 
         /// &main for the driver
-        DriverMainFn * mainSymbol;
+        DriverMainFn* mainSymbol;
     };
 }    // namespace silly
 

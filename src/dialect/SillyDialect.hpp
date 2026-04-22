@@ -5,13 +5,13 @@
 ///
 #pragma once
 
-#include <mlir/IR/OpDefinition.h>
-#include <mlir/IR/Dialect.h>
-#include <mlir/IR/OperationSupport.h>
-#include <mlir/Interfaces/SideEffectInterfaces.h> // NoMemoryEffect
-#include <mlir/Support/TypeID.h>
 #include <mlir/Bytecode/BytecodeOpInterface.h>
+#include <mlir/IR/Dialect.h>
+#include <mlir/IR/OpDefinition.h>
+#include <mlir/IR/OperationSupport.h>
 #include <mlir/IR/SymbolTable.h>
+#include <mlir/Interfaces/SideEffectInterfaces.h>    // NoMemoryEffect
+#include <mlir/Support/TypeID.h>
 
 // Generated: dialect class forward declaration + getDialectNamespace()
 #include "SillyDialectDecls.hpp.inc"

@@ -5,9 +5,9 @@
 ///
 #pragma once
 
+#include <mlir/Dialect/LLVMIR/LLVMTypes.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/BuiltinTypes.h>
-#include <mlir/Dialect/LLVMIR/LLVMTypes.h>
 
 namespace silly
 {
@@ -15,7 +15,7 @@ namespace silly
     struct MlirTypeCache
     {
         /// Initialize all the cached types.
-        void initialize( mlir::OpBuilder &builder, mlir::MLIRContext *ctx );
+        void initialize( mlir::OpBuilder& builder, mlir::MLIRContext* ctx );
 
         /// i1 type.
         mlir::IntegerType i1;
@@ -44,6 +44,6 @@ namespace silly
         /// LLVM void type.
         mlir::LLVM::LLVMVoidType voidT;
     };
-}
+}    // namespace silly
 
 // vim: et ts=4 sw=4

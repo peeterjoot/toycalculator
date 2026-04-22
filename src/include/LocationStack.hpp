@@ -16,7 +16,7 @@ namespace silly
     {
        public:
         /// Construct a location stack
-        LocationStack( mlir::OpBuilder &b, mlir::Location loc );
+        LocationStack( mlir::OpBuilder& b, mlir::Location loc );
 
         /// Push another location to the back of the location stack
         void push_back( mlir::Location loc );
@@ -26,11 +26,11 @@ namespace silly
 
        private:
         /// Cached reference to the builder that we need to fuse locations.
-        mlir::OpBuilder &builder;
+        mlir::OpBuilder& builder;
 
         /// locations that should be fused when the current statement processing is complete.
         llvm::SmallVector<mlir::Location, 4> locs{};
     };
-}
+}    // namespace silly
 
 // vim: et ts=4 sw=4

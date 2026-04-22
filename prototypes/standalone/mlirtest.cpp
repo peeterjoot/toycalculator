@@ -47,17 +47,17 @@ class myDIBuilder
 
     // The memory for all these pointers is tied to the DIBuilder builder above, and gets freed at the finalize call
     // later:
-    llvm::DIFile *file;
-    llvm::DICompileUnit *cu;
-    llvm::DISubroutineType *subprogramType;
-    llvm::DISubprogram *subprogram;
-    llvm::DIType *diTypeI64;
-    llvm::Function *llvmFunc;
+    llvm::DIFile* file;
+    llvm::DICompileUnit* cu;
+    llvm::DISubroutineType* subprogramType;
+    llvm::DISubprogram* subprogram;
+    llvm::DIType* diTypeI64;
+    llvm::Function* llvmFunc;
 
-    llvm::BasicBlock &entryBlock;
+    llvm::BasicBlock& entryBlock;
     llvm::IRBuilder<> llvmBuilder;
 
-    myDIBuilder( std::unique_ptr<llvm::Module> &llvmModule )
+    myDIBuilder( std::unique_ptr<llvm::Module>& llvmModule )
         : diBuilder{ *llvmModule },
           file{ diBuilder.createFile( FAKE_PROGRAM_SOURCE_NAME, "" ) },
           cu{ diBuilder.createCompileUnit( llvm::dwarf::DW_LANG_C, file, "MLIR Compiler", false, "", 0 ) },
@@ -71,12 +71,12 @@ class myDIBuilder
     {
     }
 
-    void instrumentVariable( const char *varname, unsigned line, unsigned column, llvm::Value *allocaPtr )
+    void instrumentVariable( const char* varname, unsigned line, unsigned column, llvm::Value* allocaPtr )
     {
-        auto *var =
+        auto* var =
             diBuilder.createAutoVariable( subprogram, varname, file, line, diTypeI64, true /* force emission */ );
 
-        auto *dbgLoc = llvm::DILocation::get( allocaPtr->getContext(), line, 3, subprogram );
+        auto* dbgLoc = llvm::DILocation::get( allocaPtr->getContext(), line, 3, subprogram );
 
         llvmBuilder.SetInsertPoint( &entryBlock, entryBlock.begin() );
 
@@ -86,7 +86,7 @@ class myDIBuilder
 
 // 2:   x = 6;
 // 3:   PRINT x;
-void buildAssignmentAndPrint( mlir::OpBuilder &builder, mlir::MLIRContext *context, unsigned aline, int value )
+void buildAssignmentAndPrint( mlir::OpBuilder& builder, mlir::MLIRContext* context, unsigned aline, int value )
 {
     auto varLoc = mlir::FileLineColLoc::get( builder.getStringAttr( FAKE_PROGRAM_SOURCE_NAME ), aline, 3 );
     auto printLoc = mlir::FileLineColLoc::get( builder.getStringAttr( FAKE_PROGRAM_SOURCE_NAME ), aline + 1, 3 );
@@ -103,7 +103,7 @@ void buildAssignmentAndPrint( mlir::OpBuilder &builder, mlir::MLIRContext *conte
     builder.create<mlir::func::CallOp>( printLoc, "__silly_print_i64", mlir::TypeRange{}, mlir::ValueRange{ val } );
 }
 
-int main( int argc, char **argv )
+int main( int argc, char** argv )
 {
     llvm::InitLLVM init( argc, argv );
     llvm::cl::ParseCommandLineOptions( argc, argv, "Standalone MLIR to LLVM-IR code (builder+lowering)\n" );
@@ -132,7 +132,7 @@ int main( int argc, char **argv )
 
     auto funcType = builder.getFunctionType( {}, builder.getI32Type() );
     auto func = builder.create<mlir::func::FuncOp>( loc, "main", funcType );
-    auto &block = *func.addEntryBlock();
+    auto& block = *func.addEntryBlock();
     builder.setInsertionPointToStart( &block );
 
     // 2:   x = 6;
@@ -196,9 +196,9 @@ int main( int argc, char **argv )
     // Add debug locations to instructions
     int assignIndex = 0;
     int printIndex = 0;
-    for ( auto &block : *mainFunc )
+    for ( auto& block : *mainFunc )
     {
-        for ( auto &inst : block )
+        for ( auto& inst : block )
         {
             if ( ( inst.getOpcode() == llvm::Instruction::Call ) || ( inst.getOpcode() == llvm::Instruction::Load ) )
             {
@@ -227,7 +227,7 @@ int main( int argc, char **argv )
                       ( inst.getOpcode() == llvm::Instruction::Store ) )
             {
                 int line = 0;
-                const char *v{};
+                const char* v{};
                 switch ( assignIndex )
                 {
                     case 0:

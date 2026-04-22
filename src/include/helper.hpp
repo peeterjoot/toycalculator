@@ -5,8 +5,8 @@
 ///
 #pragma once
 
-#include <mlir/IR/Location.h>
 #include <mlir/Dialect/Func/IR/FuncOps.h>
+#include <mlir/IR/Location.h>
 
 namespace silly
 {
@@ -36,7 +36,7 @@ namespace silly
     class SourceManager;
 
     /// Run the parser, returning an MLIR ModuleOp if the parse/build was successful.
-    mlir::OwningOpRef<mlir::ModuleOp> runParseListener( silly::SourceManager &s, const std::string &filename );
-}
+    mlir::OwningOpRef<mlir::ModuleOp> runParseListener( silly::SourceManager& s, const std::string& filename );
+}    // namespace silly
 
 // vim: et ts=4 sw=4

@@ -5,7 +5,7 @@
 
 namespace silly
 {
-    LocationStack::LocationStack( mlir::OpBuilder &b, mlir::Location loc ) : builder{ b }
+    LocationStack::LocationStack( mlir::OpBuilder& b, mlir::Location loc ) : builder{ b }
     {
         locs.push_back( loc );
     }

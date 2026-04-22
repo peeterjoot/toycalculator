@@ -4,19 +4,19 @@
 /// @brief   silly::varType custom printer
 ///
 
+#include "SillyTypes.hpp"
+
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/StringRef.h>
 #include <mlir/IR/Builders.h>
 #include <mlir/IR/OpImplementation.h>
 
-#include "SillyTypes.hpp"
-
 namespace silly
 {
     /// Custom assembly printer for silly::varType
-    void varType::print( ::mlir::AsmPrinter &printer ) const
+    void varType::print( ::mlir::AsmPrinter& printer ) const
     {
-        llvm::raw_ostream &os = printer.getStream();
+        llvm::raw_ostream& os = printer.getStream();
 
         os << "<";
         printer.printType( getElementType() );
@@ -33,7 +33,7 @@ namespace silly
     }
 
     /// Custom assembly parser for silly::varType
-    ::mlir::Type varType::parse( ::mlir::AsmParser &parser )
+    ::mlir::Type varType::parse( ::mlir::AsmParser& parser )
     {
         // '<'
         if ( parser.parseLess() )
@@ -92,8 +92,8 @@ namespace silly
         }
 
         // build the type
-        ::mlir::Builder &b = parser.getBuilder();
-        ::mlir::MLIRContext *context = parser.getContext();
+        ::mlir::Builder& b = parser.getBuilder();
+        ::mlir::MLIRContext* context = parser.getContext();
         auto shapeAttr = b.getDenseI64ArrayAttr( dims );
 
         return get( context, elementType, shapeAttr );

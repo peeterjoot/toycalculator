@@ -12,11 +12,11 @@ namespace silly
     {
     }
 
-    mlir::Value ParserPerFunctionState::searchForInduction( const std::string &varName )
+    mlir::Value ParserPerFunctionState::searchForInduction( const std::string& varName )
     {
         mlir::Value r{};
 
-        for ( auto &p : inductionVariables )
+        for ( auto& p : inductionVariables )
         {
             if ( p.first == varName )
             {
@@ -28,7 +28,7 @@ namespace silly
         return r;
     }
 
-    void ParserPerFunctionState::pushInductionVariable( const std::string &varName, mlir::Value i )
+    void ParserPerFunctionState::pushInductionVariable( const std::string& varName, mlir::Value i )
     {
         inductionVariables.emplace_back( varName, i );
     }
@@ -38,15 +38,15 @@ namespace silly
         inductionVariables.pop_back();
     }
 
-    mlir::Value ParserPerFunctionState::searchForParameter( const std::string &varName )
+    mlir::Value ParserPerFunctionState::searchForParameter( const std::string& varName )
     {
         auto it = parameters.find( varName );
         return ( it != parameters.end() ) ? it->second : nullptr;
     }
 
-    mlir::Value ParserPerFunctionState::searchForVariable( const std::string &varName )
+    mlir::Value ParserPerFunctionState::searchForVariable( const std::string& varName )
     {
-        for ( auto &vars : variables )
+        for ( auto& vars : variables )
         {
             auto it = vars.find( varName );
 
@@ -59,12 +59,12 @@ namespace silly
         return nullptr;
     }
 
-    void ParserPerFunctionState::recordParameterValue( const std::string &varName, mlir::Value i )
+    void ParserPerFunctionState::recordParameterValue( const std::string& varName, mlir::Value i )
     {
         parameters[varName] = i;
     }
 
-    void ParserPerFunctionState::recordVariableValue( const std::string &varName, mlir::Value i )
+    void ParserPerFunctionState::recordVariableValue( const std::string& varName, mlir::Value i )
     {
         if ( variables.size() == 0 )
         {
@@ -87,12 +87,12 @@ namespace silly
         }
     }
 
-    void ParserPerFunctionState::pushToInsertionPointStack( mlir::Operation *op )
+    void ParserPerFunctionState::pushToInsertionPointStack( mlir::Operation* op )
     {
         insertionPointStack.push_back( op );
     }
 
-    void ParserPerFunctionState::popFromInsertionPointStack( mlir::OpBuilder &builder )
+    void ParserPerFunctionState::popFromInsertionPointStack( mlir::OpBuilder& builder )
     {
         builder.setInsertionPointAfter( insertionPointStack.back() );
         insertionPointStack.pop_back();

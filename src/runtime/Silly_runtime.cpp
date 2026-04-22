@@ -4,6 +4,7 @@
 /// @brief   Runtime functions for the silly compiler and language.
 ///
 #include <inttypes.h>
+
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -45,7 +46,7 @@ extern "C"
 
                 case silly::PrintKind::F64:
                     double d;
-                    memcpy(&d, &arg.i, sizeof(d));
+                    memcpy( &d, &arg.i, sizeof( d ) );
                     fprintf( where, "%f%s", d, newline );
                     break;
 

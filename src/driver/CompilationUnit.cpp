@@ -103,7 +103,7 @@ namespace silly
                 llvm::errs() << COMPILER_NAME ": error: MLIR failed verification\n";
                 mlir::OpPrintingFlags flags;
                 flags.enableDebugInfo( true );
-                (*rmod).print( llvm::errs(), flags );
+                ( *rmod ).print( llvm::errs(), flags );
                 llvm::errs() << '\n';
                 return ReturnCodes::verifyError;
             }

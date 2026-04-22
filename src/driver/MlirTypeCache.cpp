@@ -7,7 +7,7 @@
 
 namespace silly
 {
-    void MlirTypeCache::initialize( mlir::OpBuilder &builder, mlir::MLIRContext *ctx )
+    void MlirTypeCache::initialize( mlir::OpBuilder& builder, mlir::MLIRContext* ctx )
     {
         i1 = builder.getI1Type();
         i8 = builder.getI8Type();

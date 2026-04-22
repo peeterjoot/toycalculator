@@ -3,6 +3,8 @@
 /// @author  Peeter Joot <peeterjoot@pm.me>
 /// @brief   Includes the source headers generated from SillyDialect.td
 ///
+#include "SillyDialect.hpp"
+
 #include <llvm/ADT/StringRef.h>
 #include <llvm/ADT/TypeSwitch.h>
 #include <llvm/Support/raw_ostream.h>
@@ -13,8 +15,6 @@
 #include <mlir/IR/DialectRegistry.h>
 #include <mlir/IR/Types.h>
 #include <mlir/Tools/Plugins/DialectPlugin.h>
-
-#include "SillyDialect.hpp"
 
 // Pull in generated type method bodies (parse, print, etc. if any)
 #define GET_TYPEDEF_CLASSES
@@ -110,7 +110,7 @@ namespace silly
 #include "SillyDialectDefs.cpp.inc"
 
 /// Glue code for Silly dialect registration
-extern "C" void registerSillyDialect( mlir::DialectRegistry &registry )
+extern "C" void registerSillyDialect( mlir::DialectRegistry& registry )
 {
     registry.insert<silly::SillyDialect>();
 }
@@ -121,7 +121,7 @@ extern "C" LLVM_ATTRIBUTE_WEAK ::mlir::DialectPluginLibraryInfo mlirGetDialectPl
     return { /*.apiVersion =*/MLIR_PLUGIN_API_VERSION,
              /*.pluginName =*/"silly",
              /*.pluginVersion =*/"0.7",
-             /*.registerDialects =*/[]( mlir::DialectRegistry *registry )
+             /*.registerDialects =*/[]( mlir::DialectRegistry* registry )
              { registry->insert<silly::SillyDialect>(); } };
 }
 
