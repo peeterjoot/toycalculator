@@ -1,0 +1,14 @@
+// Wierd alignment to match up with one-iter.c, for dwarf and LLVM-IR dumps.
+
+
+
+    PRINT           0; // 5
+    printf( "%d\n", 0); // 5
+
+    FOR ( INT32 i: (1, 2) ) // 7
+    {
+        PRINT           i; // 9
+    };
+
+    PRINT           2; // 12
+
