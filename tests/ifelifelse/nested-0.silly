@@ -1,0 +1,7 @@
+// Auto-generated lit wrapper for Samples/ifelifelse/nested-0.silly
+// Regenerate with: generate-lit-wrappers.pl
+// Do not edit manually
+
+// RUN: %ExeSilly -g  %Examples/ifelifelse/nested-0.silly -o %t.exe
+// RUN: %t.exe > %t.out 2> %t.err
+// RUN: diff -up %Examples/ifelifelse/expected/nested-0.out %t.out

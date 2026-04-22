@@ -83,11 +83,6 @@ namespace silly
                                    const std::string& varName, mlir::LLVM::AllocaOp value, mlir::Type elemType,
                                    int paramIndex, const std::string& funcName );
 
-        /// Emits lexical scope DI for a for, if, else, elif block
-        // mlir::LogicalResult constructLexicalBlockDI( mlir::FileLineColLoc fileLoc,
-        //                                              mlir::ConversionPatternRewriter& rewriter, mlir::Operation* op
-        //                                              );
-
         /// Return the PRINT args allocation for this function, big enough for the biggest PRINT list in the function.
         mlir::LLVM::AllocaOp getPrintArgs( const std::string& funcName );
 
@@ -158,8 +153,7 @@ namespace silly
         void markMathLibRequired();
 
         /// Walk ops until hitting an ScopeBeginOp, and if found call processScopeBegin.
-        void processScopedOps( mlir::Block::iterator begin, mlir::Block::iterator end,
-                               mlir::LLVM::DIScopeAttr parentScope );
+        void processScopedOps( mlir::func::FuncOp funcOp, mlir::LLVM::DIScopeAttr rootScope );
 
         /// @brief process all the ops until a matching ScopeEndOp is found.
         ///
@@ -174,12 +168,6 @@ namespace silly
         /// and save that AllocaOp's Operation* to lastAlloca.
         mlir::LLVM::AllocaOp createAlloca( mlir::ConversionPatternRewriter& rewriter, mlir::Operation* op,
                                            mlir::Type elemType, int64_t arraySize, unsigned alignment );
-
-        /// This is a hack to tag the last BB branch after lowering with a fused DILexicalBlockAttr location
-        /// associated with the ScopeEndOp
-        ///
-        /// t/c: if-elif-taken.silly, if-with-decl.silly
-        void fixBranchDebugLocs( mlir::func::FuncOp funcOp );
 
        private:
         /// Returns the MLIR context.

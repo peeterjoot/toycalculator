@@ -1,16 +1,21 @@
-INT32 x = 3;
+// weird spacing to match up with prototypes/lexicalblock/if-elif-else.c
 
-IF ( x < 4 )
-{
-   PRINT x;
-}
-ELIF ( x > 5 )
-{
-   PRINT "Bug if we get here.";
-}
-ELSE
-{
-   PRINT "Bug if we get here too.";
-};
 
-PRINT 42;
+
+    INT32 x = 3;
+
+    IF ( x < 4 )
+    {
+       PRINT           x;
+    }
+    ELIF    ( x > 5 )
+    {
+       PRINT   "Bug if we get here.";
+    }
+    ELSE
+    {
+       PRINT   "Bug if we get here too.";
+    };
+
+    PRINT           42;
+

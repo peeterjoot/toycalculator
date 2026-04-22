@@ -10,6 +10,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
+#include <mlir/Dialect/ControlFlow/IR/ControlFlowOps.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/MemRef/IR/MemRef.h>
 #include <mlir/Dialect/SCF/IR/SCF.h>
@@ -36,6 +37,21 @@
 
 namespace silly
 {
+    /* General ANTLR4 ancestor lookup.  Not needed for simple child->parent lookup.
+    template <typename TargetCtx, typename SourceCtx>
+    static TargetCtx* findAncestor( SourceCtx* ctx )
+    {
+        antlr4::ParserRuleContext* p = ctx->parent;
+        while ( p )
+        {
+            if ( auto* found = dynamic_cast<TargetCtx*>( p ) )
+                return found;
+            p = p->parent;
+        }
+        return nullptr;
+    }
+    */
+
     //--------------------------------------------------------------------------
     // Antlr4ParseListener members
     //
@@ -619,82 +635,295 @@ namespace silly
         }
     }
 
-    void Antlr4ParseListener::enterIfStatement( SillyParser::IfStatementContext* ctx )
+    void Antlr4ParseListener::handleIfScopedStatements( InsertionPointState& ips, ParserPerFunctionState& f,
+                                                        SillyParser::ScopedStatementsContext* ss,
+                                                        const char* scopeCheckString, mlir::Block* bodyBlock,
+                                                        mlir::Block* targetBlock )
+    {
+        checkForReturnInScope( ss, scopeCheckString );
+        mlir::Location sbLoc = getTerminalLocation( ss->LEFT_CURLY_BRACKET_TOKEN() );
+        mlir::Location seLoc = getTerminalLocation( ss->RIGHT_CURLY_BRACKET_TOKEN() );
+
+        createIfBodyScope( ips, f, sbLoc, seLoc, bodyBlock, targetBlock );
+    }
+
+    bool Antlr4ParseListener::createIfPredicate( SillyParser::ExpressionContext* ctx, silly::ScopeEndOp scopeEnd,
+                                                 mlir::Block* ifBlock, mlir::Block* elseBlock, LocationStack& ls )
+    {
+        mlir::Value conditionPredicate = parseExpression( ctx, {}, ls );
+        if ( !conditionPredicate )
+        {
+            mlir::Location loc = getStartLocation( ctx );
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
+            return true;
+        }
+
+        createIfBranch( scopeEnd.getOperation(), conditionPredicate, ifBlock, elseBlock );
+
+        return false;
+    }
+
+    static mlir::Block* splitOrCreateTailBlock( mlir::OpBuilder& builder, mlir::Region* funcRegion )
+    {
+        mlir::Block* currentBlock = builder.getInsertionBlock();
+        mlir::Block::iterator ip = builder.getInsertionPoint();
+
+        if ( ip != currentBlock->end() )
+        {
+            // There are ops after the insertion point — split there.
+            // Those ops land in the tail block.
+            return currentBlock->splitBlock( ip );
+        }
+        else
+        {
+            // Nothing after the insertion point — just create a fresh block.
+            return builder.createBlock( funcRegion );
+        }
+    }
+
+    void Antlr4ParseListener::enterIfElifElseStatement( SillyParser::IfElifElseStatementContext* ctx )
     {
         assert( ctx );
-
         mlir::Location loc = getStartLocation( ctx );
         LocationStack ls( builder, loc );
 
-        checkForReturnInScope( ctx->scopedStatements(), "IF block" );
+        SillyParser::IfStatementContext* ifCtx = ctx->ifStatement();
+        checkForReturnInScope( ifCtx->scopedStatements(), "IF block" );
+
+        // Example output for the first block:
+        //
+        // // Outer IF predicate block — scope 1 wraps condition + branch
+        // "silly.scope_begin"() <{id = 1 : i32}> : () -> () loc(#loc5)
+        // %2 = silly.load %1 : <i32> : i32 loc(#loc6)
+        // %c4_i64 = arith.constant 4 : i64 loc(#loc7)
+        // %3 = silly.cmp less %2 : i32, %c4_i64 : i64 -> i1 loc(#loc8)
+        // "silly.scope_end"() <{id = 1 : i32}> : () -> () loc(#loc27)
+        // cf.cond_br %3, ^then0, ^else0 loc(#loc5)
 
         ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
-        int scopeLevel = f.incrementScopeLevel();
-        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, loc, scopeLevel );
-        mlir::Location peLoc = getTerminalLocation( ctx->BRACE_END_TOKEN() );
-        silly::ScopeEndOp scopeEnd = silly::ScopeEndOp::create( builder, peLoc, scopeLevel );
-        builder.setInsertionPointAfter( scopeBegin.getOperation() );
+        LocPairs plocs = getLocations( ifCtx->expression() );
 
-        mlir::Value conditionPredicate = parseExpression( ctx->expression(), {}, ls );
+        mlir::Location sbLoc = plocs.first;
+        mlir::Location seLoc = plocs.second;
+        int scopeLevel = f.incrementScopeLevel();
+        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, sbLoc, scopeLevel );
+        silly::ScopeEndOp scopeEnd = silly::ScopeEndOp::create( builder, seLoc, scopeLevel );
+        // builder.setInsertionPointAfter( scopeBegin.getOperation() );
+
+        // silly::ScopeEndOp scopeEnd = createNewPredicateScope( f, plocs.first, plocs.second );
+
+        // The current insertion point is somewhere inside the function's entry
+        // block (or whatever block is currently active).  We need to split that
+        // block at the current IP so that ops after the IF go into ^merge.
+        mlir::OpBuilder::InsertPoint ip = builder.saveInsertionPoint();
+        mlir::Block* currentBlock = ip.getBlock();
+        mlir::Region* funcRegion = currentBlock->getParent();
+
+        std::vector<SillyParser::ElifStatementContext*> elifStatement = ctx->elifStatement();
+
+        InsertionPointState& ips = f.createNewInsertionPointState();
+        std::vector<mlir::Block*> blocks;
+        size_t haveElse = ( ctx->elseStatement() != nullptr );
+        size_t numElifs = elifStatement.size();
+        size_t n = 2 + haveElse + numElifs * 2;    // blocks for each of (then, merge) + (else) + 2x num-ELIFs
+
+        for ( size_t i = 0; i < ( n - 1 ); i++ )
+        {
+            blocks.push_back( builder.createBlock( funcRegion ) );
+        }
+
+        builder.setInsertionPointAfter( scopeBegin.getOperation() );
+        mlir::Value conditionPredicate = parseExpression( ifCtx->expression(), {}, ls );
         if ( !conditionPredicate )
         {
             emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
             return;
+            // return true;
         }
 
-        SillyParser::ScopedStatementsContext* ss = ctx->scopedStatements();
-        mlir::Location sbLoc = getTerminalLocation( ss->LEFT_CURLY_BRACKET_TOKEN() );
-        mlir::Location seLoc = getTerminalLocation( ss->RIGHT_CURLY_BRACKET_TOKEN() );
-        createIf( loc, sbLoc, seLoc, conditionPredicate, scopeEnd.getOperation(), ls );
+        // bool error = createIfPredicate( ifCtx->expression(), scopeEnd, blocks[0], blocks[1], ls );
+        // bool error = createIfPredicate( ifCtx->expression(), scopeEnd, nullptr, nullptr, ls );
+        // if ( error )
+        //{
+        //     return;
+        // }
+
+        builder.setInsertionPointAfter( scopeEnd.getOperation() );
+
+        // mlir::arith::ConstantIntOp::create( builder, loc, 41, 32 );
+
+        mlir::Block* merge = splitOrCreateTailBlock( builder, funcRegion );
+        blocks.push_back( merge );
+
+        // mlir::arith::ConstantIntOp::create( builder, loc, 42, 32 );    // should be in the split/new-merge block.
+
+        {
+            mlir::Location predLoc = conditionPredicate.getDefiningOp()->getLoc();
+            builder.setInsertionPointToEnd( currentBlock );
+            mlir::cf::CondBranchOp::create( builder, predLoc, conditionPredicate, blocks[0], blocks[1] );
+        }
+        // createIfBranch( scopeEnd.getOperation(), conditionPredicate, blocks[0], blocks[1], elseBlock );
+        LLVM_DEBUG( {
+            llvm::errs() << "block split and predicate creation done: module dump:\n";
+            rmod->dump();
+        } );
+
+        /*
+         * Examples of the block numbers:
+         *
+        IF     if ()       //     cond.br 0,1
+                  then()   // 0   br 1 (1+2*0+0)
+               merge()     // 1
+
+        IF     if ()       //     cond.br 0,1
+                  then()   // 0   br 2 (1+2*0+1)
+        ELSE   else()      // 1   br 2
+               merge()     // 2
+
+        IF     if ()       //     cond.br 0,1
+                  then()   // 0   br 7 (1+2*3+0)
+        ELIF   if()        // 1   cond.br 2,3
+                 then()    // 2   br 7
+        ELIF   if()        // 3   cond.br 4,5
+                 then()    // 4   br 7
+        ELIF   if()        // 5   cond.br 6,7
+                 then()    // 6   br 7
+               merge()     // 7
+
+        IF     if ()       //     cond.br 0,1
+                  then()   // 0   br 8 (1+2*3+1)
+        ELIF   if()        // 1   cond.br 2,3
+                 then()    // 2   br 8
+        ELIF   if()        // 3   cond.br 4,5
+                 then()    // 4   br 8
+        ELIF   if()        // 5   cond.br 6,7
+                 then()    // 6   br 8
+        ELSE   else()      // 7   br 8
+               merge()     // 8
+        */
+
+        SillyParser::ScopedStatementsContext* ss = ifCtx->scopedStatements();
+        assert( ss );
+
+        // Example output for the THEN block:
+        //
+        // Each of the then-blocks needs scope and branch statements, with insertion point selected later just after the
+        // scope begin op: ^then0:
+        // // Then-body — scope 2
+        // "silly.scope_begin"() <{id = 2 : i32}> : () -> () loc(#loc9)
+        // ...
+        // "silly.scope_end"() <{id = 2 : i32}> : () -> () loc(#loc12)
+        // cf.br ^merge0 loc(#loc12)
+        if ( ss )
+        {
+            // Now handle the then block for the IF
+            handleIfScopedStatements( ips, f, ss, "THEN block", blocks[0], blocks[n - 1] );
+        }
+
+        size_t i = 0;
+        for ( SillyParser::ElifStatementContext* e : elifStatement )
+        {
+            mlir::Location eloc = getStartLocation( e );
+            LocationStack ls2( builder, eloc );
+
+            size_t b = 1 + i * 2;
+            assert( b < n );
+            builder.setInsertionPointToStart( blocks[b] );
+
+            checkForReturnInScope( e->scopedStatements(), "IF block" );
+
+            plocs = getLocations( e->expression() );
+            scopeEnd = createNewPredicateScope( f, plocs.first, plocs.second );
+            assert( b + 2 < n );
+
+            bool error = createIfPredicate( e->expression(), scopeEnd, blocks[b + 1], blocks[b + 2], ls2 );
+            if ( error )
+            {
+                return;
+            }
+
+            // Now handle the then block for the ELIF
+            assert( b + 1 < n );
+            ss = e->scopedStatements();
+            handleIfScopedStatements( ips, f, ss, "ELIF block", blocks[b + 1], blocks[n - 1] );
+
+            i++;
+        }
+
+        if ( SillyParser::ElseStatementContext* e = ctx->elseStatement() )
+        {
+            ss = e->scopedStatements();
+            handleIfScopedStatements( ips, f, ss, "ELSE block", blocks[n - 2], blocks[n - 1] );
+        }
+
+        ips.mergeBlock = blocks[n - 1];
+        builder.setInsertionPointAfter( ips.beginScopeOps[0] );
     }
 
     void Antlr4ParseListener::enterElseStatement( SillyParser::ElseStatementContext* ctx )
     {
         assert( ctx );
-        mlir::Location loc = getStartLocation( ctx );
 
-        checkForReturnInScope( ctx->scopedStatements(), "ELSE block" );
+        SillyParser::IfElifElseStatementContext* ifCtx =
+            dynamic_cast<SillyParser::IfElifElseStatementContext*>( ctx->parent );
+        if ( !ifCtx )
+        {
+            mlir::Location loc = getStartLocation( ctx );
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               "Unexpected grammar context.  cannot find ifelifelse parent for else context",
+                               currentFuncName );
+            return;
+        }
 
-        SillyParser::ScopedStatementsContext* ss = ctx->scopedStatements();
-        mlir::Location sbLoc = getTerminalLocation( ss->LEFT_CURLY_BRACKET_TOKEN() );
-        mlir::Location seLoc = getTerminalLocation( ss->RIGHT_CURLY_BRACKET_TOKEN() );
-        selectElseBlock( loc, sbLoc, seLoc );
+        size_t numElifs = ifCtx->elifStatement().size();
+        ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
+        InsertionPointState& ips = f.currentInsertionPointState();
+
+        builder.setInsertionPointAfter( ips.beginScopeOps[1 + numElifs] );
     }
 
     void Antlr4ParseListener::enterElifStatement( SillyParser::ElifStatementContext* ctx )
     {
         assert( ctx );
         mlir::Location loc = getStartLocation( ctx );
-        LocationStack ls( builder, loc );
 
-        checkForReturnInScope( ctx->scopedStatements(), "ELIF block" );
-
-        mlir::Location pbLoc = getTerminalLocation( ctx->BRACE_START_TOKEN() );
-        mlir::Location peLoc = getTerminalLocation( ctx->BRACE_END_TOKEN() );
-        selectElseBlock( loc, pbLoc, peLoc );
-
-        mlir::Value conditionPredicate = parseExpression( ctx->expression(), {}, ls );
-        if ( !conditionPredicate )
+        SillyParser::IfElifElseStatementContext* ifCtx =
+            dynamic_cast<SillyParser::IfElifElseStatementContext*>( ctx->parent );
+        if ( !ifCtx )
         {
-            emitInternalError( loc, __FILE__, __LINE__, __func__, "parseExpression failed", currentFuncName );
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               "Unexpected grammar context.  cannot find ifelifelse parent for else context",
+                               currentFuncName );
             return;
         }
 
-        SillyParser::ScopedStatementsContext* ss = ctx->scopedStatements();
-        mlir::Location sbLoc = getTerminalLocation( ss->LEFT_CURLY_BRACKET_TOKEN() );
-        mlir::Location seLoc = getTerminalLocation( ss->RIGHT_CURLY_BRACKET_TOKEN() );
-        createIf( loc, sbLoc, seLoc, conditionPredicate, nullptr, ls );
-    }
+        std::vector<SillyParser::ElifStatementContext*> elifStatement = ifCtx->elifStatement();
+        size_t i{};
+        bool success{ false };
+        for ( SillyParser::ElifStatementContext* e : elifStatement )
+        {
+            if ( e == ctx )
+            {
+                ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
+                InsertionPointState& ips = f.currentInsertionPointState();
 
-    void Antlr4ParseListener::exitElifStatement( SillyParser::ElifStatementContext* ctx )
-    {
+                builder.setInsertionPointAfter( ips.beginScopeOps[1 + i] );
+                success = true;
+                break;
+            }
+            i++;
+        }
+
+        if ( !success )
+        {
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "Failed to find elif position", currentFuncName );
+        }
     }
 
     void Antlr4ParseListener::exitIfElifElseStatement( SillyParser::IfElifElseStatementContext* ctx )
     {
-        mlir::Location loc = getStartLocation( ctx );
-
-        finishIfElifElse( loc );
+        ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
+        f.popInsertionPointState( builder );
     }
 
     void Antlr4ParseListener::enterForStatement( SillyParser::ForStatementContext* ctx )

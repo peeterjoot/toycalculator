@@ -8,7 +8,7 @@ namespace silly
     //--------------------------------------------------------------------------
     // ParserPerFunctionState members
     ParserPerFunctionState::ParserPerFunctionState()
-        : lastDeclareOp{}, op{}, inductionVariables{}, parameters{}, variables{}, insertionPointStack{}
+        : lastDeclareOp{}, op{}, inductionVariables{}, parameters{}, variables{}, insertionPointStates{}
     {
     }
 
@@ -87,20 +87,26 @@ namespace silly
         }
     }
 
-    void ParserPerFunctionState::pushToInsertionPointStack( mlir::Operation* op )
+    InsertionPointState& ParserPerFunctionState::createNewInsertionPointState()
     {
-        insertionPointStack.push_back( op );
+        insertionPointStates.push_back( {} );
+        return insertionPointStates.back();
     }
 
-    void ParserPerFunctionState::popFromInsertionPointStack( mlir::OpBuilder& builder )
+    InsertionPointState& ParserPerFunctionState::currentInsertionPointState()
     {
-        builder.setInsertionPointAfter( insertionPointStack.back() );
-        insertionPointStack.pop_back();
+        return insertionPointStates.back();
     }
 
-    bool ParserPerFunctionState::haveInsertionPointStack()
+    void ParserPerFunctionState::popInsertionPointState( mlir::OpBuilder& builder )
     {
-        return ( insertionPointStack.size() != 0 );
+        builder.setInsertionPointToStart( insertionPointStates.back().mergeBlock );
+        insertionPointStates.pop_back();
+    }
+
+    bool ParserPerFunctionState::haveInsertionPointState()
+    {
+        return ( insertionPointStates.size() != 0 );
     }
 }    // namespace silly
 

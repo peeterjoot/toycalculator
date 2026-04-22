@@ -74,17 +74,14 @@ namespace silly
         /// Antlr4 entry hook for the ImportStatementContext rule.
         void enterImportStatement( SillyParser::ImportStatementContext* ctx ) override;
 
-        /// Antlr4 enter hook for an IF statement
-        void enterIfStatement( SillyParser::IfStatementContext* ctx ) override;
-
         /// Antlr4 enter hook for an ELIF statement
         void enterElifStatement( SillyParser::ElifStatementContext* ctx ) override;
 
-        /// Antlr4 exit hook for an ELIF statement
-        void exitElifStatement( SillyParser::ElifStatementContext* ctx ) override;
-
         /// Antlr4 enter hook for an ELSE statement
         void enterElseStatement( SillyParser::ElseStatementContext* ctx ) override;
+
+        /// Antlr4 enter hook for an IF-ELIF-ELSE statement.
+        void enterIfElifElseStatement( SillyParser::IfElifElseStatementContext* ctx ) override;
 
         /// Antlr4 exit hook for an IF-ELIF-ELSE statement.
         ///
@@ -140,11 +137,19 @@ namespace silly
         void enterExitStatement( SillyParser::ExitStatementContext* ctx ) override;
 
        private:
-        ////////////////////////////////////////////////////////////////////////
-        ///
-        /// Helper functions
-        ///
-        ////////////////////////////////////////////////////////////////////////
+        //----------------------------------------------------------------------
+        //
+        // Helper functions
+        //
+        //----------------------------------------------------------------------
+
+        /// @retval true if error.
+        bool createIfPredicate( SillyParser::ExpressionContext* ctx, silly::ScopeEndOp scopeEnd, mlir::Block* ifBlock,
+                                mlir::Block* elseBlock, LocationStack& ls );
+
+        void handleIfScopedStatements( InsertionPointState& ips, ParserPerFunctionState& f,
+                                       SillyParser::ScopedStatementsContext* ss, const char* scopeCheckString,
+                                       mlir::Block* bodyBlock, mlir::Block* targetBlock );
 
         mlir::Value parseReturnExpression( mlir::Location loc, SillyParser::ExpressionContext* expression,
                                            LocationStack& ls );

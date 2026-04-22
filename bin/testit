@@ -209,7 +209,7 @@ sub runone
     verbose_system("cat ${outdir}/$stem.compile.out");
 
     verbose_system( qq(dwarfdump ${outdir}/${stem} > ${outdir}/${stem}.dd) );
-    verbose_system( qq(objdump -dr --no-show-raw-insn ${outdir}/${stem}.o > ${outdir}/${stem}.s) );
+    verbose_system( qq(objdump -dr --no-show-raw-insn ${outdir}/${stem} > ${outdir}/${stem}.s) );
 
     if ( $assembly )
     {

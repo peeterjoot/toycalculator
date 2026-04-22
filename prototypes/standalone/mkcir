@@ -1,1 +1,1 @@
-/usr/local/llvm-22.1.1/bin/clang -emit-cir -g $*
+/usr/local/llvm-22.1.3/bin/clang -emit-cir -g $*

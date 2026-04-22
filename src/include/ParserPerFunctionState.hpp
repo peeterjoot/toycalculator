@@ -12,6 +12,17 @@
 
 namespace silly
 {
+    /// State required to manage CF-dialect managed IF/ELIF/ELSE insertion points and restoration points
+    /// (hopefully also good for CF managed FOR -- TBD.)
+    struct InsertionPointState
+    {
+        /// Position then and else body statements after the BeginScopeOp
+        std::vector<mlir::Operation*> beginScopeOps{};
+
+        /// restoration point for the completion of the IF/(ELIF*)/ELSE
+        mlir::Block* mergeBlock{};
+    };
+
     /// Per-function state tracked during parsing.
     class ParserPerFunctionState
     {
@@ -32,7 +43,7 @@ namespace silly
         }
 
         /// Setter for op, matching getFuncOp (which hides the casting)
-        void setFuncOp( mlir::Operation *funcOp )
+        void setFuncOp( mlir::Operation* funcOp )
         {
             op = funcOp;
         }
@@ -40,45 +51,47 @@ namespace silly
         /// Search the inductionVariables stack for the named variable.
         ///
         /// This variable is pushed in enterForStatement, and popped in exitForStatement.
-        mlir::Value searchForInduction( const std::string &varName );
+        mlir::Value searchForInduction( const std::string& varName );
 
         /// Add the mlir::Value for a named FOR loop variable to inductionVariables stack.
-        void pushInductionVariable( const std::string &varName, mlir::Value i );
+        void pushInductionVariable( const std::string& varName, mlir::Value i );
 
         /// Remove the top-most name/value pair from the inductionVariables stack.
         void popInductionVariable();
 
         /// Search parameters for the named variable.
-        mlir::Value searchForParameter( const std::string &varName );
+        mlir::Value searchForParameter( const std::string& varName );
 
         /// Search variables for the named variable.
-        mlir::Value searchForVariable( const std::string &varName );
+        mlir::Value searchForVariable( const std::string& varName );
 
         /// Add the mlir::Value for a parameter variable to the parameter list.
-        void recordParameterValue( const std::string &varName, mlir::Value i );
+        void recordParameterValue( const std::string& varName, mlir::Value i );
 
         /// Add the mlir::Value for a variable variable to the variable list.
-        void recordVariableValue( const std::string &varName, mlir::Value i );
+        void recordVariableValue( const std::string& varName, mlir::Value i );
 
         /// Is there an insertion point stack yet for this function?
-        bool haveInsertionPointStack();
+        bool haveInsertionPointState();
 
         /// Add to the insertion point stack for this function.
-        void pushToInsertionPointStack( mlir::Operation *op );
+        InsertionPointState& createNewInsertionPointState();
+
+        InsertionPointState& currentInsertionPointState();
 
         /// Remove last insertion point from the stack for this function.
-        void popFromInsertionPointStack( mlir::OpBuilder &builder );
+        void popInsertionPointState( mlir::OpBuilder& builder );
 
         /// Location of the last declaration for this function
         ///
         /// Declarations will all be inserted back to back before the function body statements.
-        mlir::Operation *getLastDeclared()
+        mlir::Operation* getLastDeclared()
         {
             return lastDeclareOp;
         }
 
         /// Set this operation (a declaration) as the last one for this function.
-        void setLastDeclared( mlir::Operation *op )
+        void setLastDeclared( mlir::Operation* op )
         {
             lastDeclareOp = op;
         }
@@ -129,10 +142,10 @@ namespace silly
         ///
         /// The next declaration in the function will be placed after this, and
         /// this point updated accordingly.
-        mlir::Operation *lastDeclareOp{};
+        mlir::Operation* lastDeclareOp{};
 
         /// Associated func::FuncOp.
-        mlir::Operation *op{};
+        mlir::Operation* op{};
 
         /// Induction variable name to Value mapping type
         using ValueList = std::vector<std::pair<std::string, mlir::Value>>;
@@ -149,8 +162,8 @@ namespace silly
         /// Variable name/value pairs.
         std::vector<ValueMap> variables;
 
-        /// Stack for scf.if/scf.for blocks.
-        std::vector<mlir::Operation *> insertionPointStack;
+        /// Stack for scf.if blocks
+        std::vector<InsertionPointState> insertionPointStates;
 
         /// For ScopeBeginOp/ScopeEndOp -- the scope level param.
         int scopeLevel{};

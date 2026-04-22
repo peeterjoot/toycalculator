@@ -3,11 +3,13 @@ INT32 x = 5;
 
 IF (TRUE)
 {
-    PRINT "Outer IF executed";
+    x = x + 1;
+    PRINT "Outer IF executed.  x = ", x;
 
     IF (x > 0)
     {
-        PRINT "Inner IF executed";
+        x = x + 1;
+        PRINT "Inner IF executed.  x = ", x;
     };
 };
 

@@ -1,0 +1,9 @@
+// A simple program to inspect generated CF dialect blocks
+PRINT 7;
+
+IF (TRUE)
+{
+    PRINT 8;
+};
+
+PRINT 9;

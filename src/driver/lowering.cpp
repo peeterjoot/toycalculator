@@ -1104,11 +1104,6 @@ namespace silly
                 } );
             }
 
-            for ( mlir::func::FuncOp funcOp : mod.getBodyRegion().getOps<mlir::func::FuncOp>() )
-            {
-                lState.fixBranchDebugLocs( funcOp );
-            }
-
             LLVM_DEBUG( {
                 llvm::dbgs() << "After successful SillyToLLVMLoweringPass:\n";
                 for ( mlir::Operation& op : mod->getRegion( 0 ).front() )

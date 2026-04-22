@@ -5,6 +5,7 @@
 
 #include <llvm/Support/FormatVariadic.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
+#include <mlir/Dialect/ControlFlow/IR/ControlFlowOps.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
 #include <mlir/Dialect/SCF/IR/SCF.h>
 
@@ -962,6 +963,7 @@ namespace silly
                              mlir::Type elemType, mlir::Location varLoc, mlir::Operation* retOp, mlir::Value start,
                              mlir::Value end, mlir::Value step, LocationStack& ls )
     {
+#if 0
         bool declared = isDeclared( varName );
         if ( declared )
         {
@@ -971,7 +973,7 @@ namespace silly
             return;
         }
 
-        ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
+        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
         mlir::Value p = f.searchForInduction( varName );
         if ( p )
         {
@@ -999,7 +1001,7 @@ namespace silly
         mlir::scf::ForOp forOp = mlir::scf::ForOp::create( builder, loc, start, end, step );
         f.pushToInsertionPointStack( retOp );
 
-        mlir::Block& loopBody = forOp.getRegion().front();
+        mlir::Block &loopBody = forOp.getRegion().front();
         mlir::Value inductionVar = loopBody.getArgument( 0 );
 
         builder.setInsertionPointToStart( &loopBody );
@@ -1012,86 +1014,56 @@ namespace silly
         silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, sbloc, scopeLevel );
         silly::ScopeEndOp::create( builder, seloc, scopeLevel );
         builder.setInsertionPointAfter( scopeBegin.getOperation() );
+#endif
     }
 
     void Builder::scopeEndHelper( mlir::Location loc, bool isFor )
     {
         ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
-        if ( f.haveInsertionPointStack() )
+        if ( isFor )
         {
-            f.popFromInsertionPointStack( builder );
-            if ( isFor )
-            {
-                f.popInductionVariable();
-            }
-        }
-        else
-        {
-            emitInternalError( loc, __FILE__, __LINE__, __func__, "empty insertionPointStack", currentFuncName );
+            f.popInductionVariable();
         }
     }
 
     void Builder::finishFor( mlir::Location loc )
     {
-        scopeEndHelper( loc, true );
+        // scopeEndHelper( loc, true );
     }
 
-    void Builder::finishIfElifElse( mlir::Location loc )
+    void Builder::createIfBodyScope( InsertionPointState& ips, ParserPerFunctionState& f, mlir::Location sbLoc,
+                                     mlir::Location seLoc, mlir::Block* bodyBlock, mlir::Block* targetBlock )
     {
-        scopeEndHelper( loc, false );
+        int scopeLevel = f.incrementScopeLevel();
+
+        builder.setInsertionPointToStart( bodyBlock );
+
+        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, sbLoc, scopeLevel );
+
+        ips.beginScopeOps.push_back( scopeBegin.getOperation() );
+
+        silly::ScopeEndOp::create( builder, seLoc, scopeLevel );
+
+        mlir::cf::BranchOp::create( builder, seLoc, targetBlock );
     }
 
-    void Builder::selectElseBlock( mlir::Location loc, mlir::Location sbLoc, mlir::Location seLoc )
+    silly::ScopeEndOp Builder::createNewPredicateScope( ParserPerFunctionState& f, mlir::Location sbLoc,
+                                                        mlir::Location seLoc )
     {
-        mlir::Block* currentBlock = builder.getInsertionBlock();
-        assert( currentBlock );
-
-        // Get the parent region of the current block (the then region).
-        mlir::Region* parentRegion = currentBlock->getParent();
-
-        // Verify it's inside an scf.if by checking the parent op.
-        mlir::Operation* parentOp = parentRegion->getParentOp();
-        mlir::scf::IfOp ifOp = dyn_cast<mlir::scf::IfOp>( parentOp );
-
-        if ( !ifOp )
-        {
-            emitInternalError( loc, __FILE__, __LINE__, __func__,
-                               "Current insertion point must be inside an scf.if then region", currentFuncName );
-            return;
-        }
-
-        // Set the insertion point to the start of the else region's (first) block.
-        mlir::Region& elseRegion = ifOp.getElseRegion();
-        mlir::Block& elseBlock = elseRegion.front();
-        builder.setInsertionPointToStart( &elseBlock );
-
-        ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
         int scopeLevel = f.incrementScopeLevel();
         silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, sbLoc, scopeLevel );
-        silly::ScopeEndOp::create( builder, seLoc, scopeLevel );
+        silly::ScopeEndOp scopeEnd = silly::ScopeEndOp::create( builder, seLoc, scopeLevel );
         builder.setInsertionPointAfter( scopeBegin.getOperation() );
+
+        return scopeEnd;
     }
 
-    void Builder::createIf( mlir::Location loc, mlir::Location sbLoc, mlir::Location seLoc,
-                            mlir::Value conditionPredicate, mlir::Operation* retOp, LocationStack& ls )
+    void Builder::createIfBranch( mlir::Operation* endOp, mlir::Value conditionPredicate, mlir::Block* ifBlock,
+                                  mlir::Block* elseBlock )
     {
-        // mlir::Location fusedLoc = ls.fuseLocations( );
-        mlir::scf::IfOp ifOp = mlir::scf::IfOp::create( builder, loc, conditionPredicate,
-                                                        /*withElseRegion=*/true );
-
-        ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
-        if ( retOp )
-        {
-            f.pushToInsertionPointStack( retOp );
-        }
-
-        mlir::Block& thenBlock = ifOp.getThenRegion().front();
-        builder.setInsertionPointToStart( &thenBlock );
-
-        int scopeLevel = f.incrementScopeLevel();
-        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, sbLoc, scopeLevel );
-        silly::ScopeEndOp::create( builder, seLoc, scopeLevel );
-        builder.setInsertionPointAfter( scopeBegin.getOperation() );
+        builder.setInsertionPointAfter( endOp );
+        mlir::Location predLoc = conditionPredicate.getDefiningOp()->getLoc();
+        mlir::cf::CondBranchOp::create( builder, predLoc, conditionPredicate, ifBlock, elseBlock );
     }
 
     void Builder::createNewVariableLookupScope( mlir::Location loc )

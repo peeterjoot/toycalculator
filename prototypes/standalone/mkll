@@ -58,12 +58,12 @@ my $n = scalar @ARGV;
 die if ($n ne 1);
 
 my $filename = "@ARGV";
-system(qq(/usr/local/llvm-22.1.1/bin/clang -emit-llvm -g -c $filename));
+system(qq(/usr/local/llvm-22.1.3/bin/clang -emit-llvm -g -c $filename));
 
 my $bc = $filename;
 $bc =~ s/\.cc/.bc/ ;
 $bc =~ s/\.c/.bc/ ;
 
-system(qq(/usr/local/llvm-22.1.1/bin/llvm-dis $bc -o -));
+system(qq(/usr/local/llvm-22.1.3/bin/llvm-dis $bc -o -));
 
 # vim: et ts=3 sw=3

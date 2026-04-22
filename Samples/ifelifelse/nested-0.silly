@@ -1,0 +1,19 @@
+
+
+
+
+PRINT 7; // line 5
+
+IF (TRUE) // 7
+{
+    PRINT 8; // 9
+
+    IF (TRUE) // 11
+    {
+        PRINT 9; // 13
+    };
+
+    PRINT 10; // 16
+};
+
+PRINT 11; // 19
