@@ -9,7 +9,11 @@ BOOL lt2 = (y < 10);
 
 Had inappropriate i1 narrowing for the literal creation in bowls of parseExpression (both front ends.)
 
-## FOR step direction.
+## IF/ELIF/ELSE/FOR converted from SCF dialect to CF.
+
+* This provides infrastructure to allow for early return/exit, and FOR break/continue.  It also gives more control for FOR step direction, and will allow for an easy implementation of DO or WHILE loops.
+
+### FOR step direction.
 
 * Negative step sizes are now supported.  A simple constant folding for step expressions was implemented, supporting
   only negation.  If that folding "fails" to match expectations (i.e.: constant or negated constant) an error is raised.
