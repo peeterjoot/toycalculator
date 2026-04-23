@@ -1655,18 +1655,16 @@ namespace silly
             else if ( tNode* integerNode = lit->INTEGER_PATTERN() )
             {
                 unsigned width{ 64 };
-
-#if 0    // This is no good if the destination type is narrower than the input value.  See for example lt.silly
+                int typeWidth{};
                 if ( ty )
                 {
                     if ( mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( ty ) )
                     {
-                        width = ity.getWidth();
+                        typeWidth = ity.getWidth();
                     }
                 }
-#endif
 
-                value = createIntegerFromString( loc, width, integerNode->getText(), ls );
+                value = createIntegerFromString( loc, typeWidth, width, integerNode->getText(), ls );
             }
             else if ( tNode* floatNode = lit->FLOAT_PATTERN() )
             {

@@ -200,7 +200,7 @@ namespace silly
         return mlir::arith::ConstantIntOp::create( builder, loc, val, 1 );
     }
 
-    mlir::Value Builder::createIntegerFromString( mlir::Location loc, int width, const std::string& s,
+    mlir::Value Builder::createIntegerFromString( mlir::Location loc, int typeWidth, int width, const std::string& s,
                                                   LocationStack& ls )
     {
         int64_t val{};
@@ -218,6 +218,28 @@ namespace silly
         }
 
         ls.push_back( loc );
+        if ( typeWidth )
+        {
+            // Be careful to make sure that we don't create a constant with a width that is narrower than the value
+            // to be represented.  See, lt.silly for an example where this matters.
+            if ( ( typeWidth == 32 ) and ( val <= INT32_MAX ) && ( val >= INT32_MIN ) )
+            {
+                return mlir::arith::ConstantIntOp::create( builder, loc, val, typeWidth );
+            }
+            else if ( ( typeWidth == 16 ) and ( val <= INT16_MAX ) && ( val >= INT16_MIN ) )
+            {
+                return mlir::arith::ConstantIntOp::create( builder, loc, val, typeWidth );
+            }
+            else if ( ( typeWidth == 8 ) and ( val <= INT8_MAX ) && ( val >= INT8_MIN ) )
+            {
+                return mlir::arith::ConstantIntOp::create( builder, loc, val, typeWidth );
+            }
+            else if ( ( typeWidth == 1 ) and ( ( val == 0 ) || ( val == 1 ) ) )
+            {
+                return mlir::arith::ConstantIntOp::create( builder, loc, val, typeWidth );
+            }
+        }
+
         return mlir::arith::ConstantIntOp::create( builder, loc, val, width );
     }
 
@@ -327,7 +349,7 @@ namespace silly
                 else if ( mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( ty ) )
                 {
                     int width = ity.getWidth();
-                    fill = createIntegerFromString( loc, width, "0", ls );
+                    fill = createIntegerFromString( loc, 0, width, "0", ls );
                 }
                 else if ( mlir::FloatType fty = mlir::dyn_cast<mlir::FloatType>( ty ) )
                 {
@@ -963,72 +985,107 @@ namespace silly
                              mlir::Type elemType, mlir::Location varLoc, mlir::Operation* retOp, mlir::Value start,
                              mlir::Value end, mlir::Value step, LocationStack& ls )
     {
-#if 0
-        bool declared = isDeclared( varName );
-        if ( declared )
-        {
-            // coverage: syntax-error/shadow-induction.silly
-            emitUserError( loc, std::format( "Induction variable {} clashes with declared variable", varName ),
-                           currentFuncName );
-            return;
-        }
-
-        ParserPerFunctionState &f = lookupFunctionState( currentFuncName );
-        mlir::Value p = f.searchForInduction( varName );
-        if ( p )
-        {
-            // coverage: syntax-error/triple-for-shadow.silly syntax-error/nested-induction-conflict.silly
-            emitUserError( loc, std::format( "Induction variable {} used by enclosing FOR", varName ),
-                           currentFuncName );
-            return;
-        }
-
-        std::string s;
+        ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
 
         if ( !step )
         {
             mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( elemType );
+            if ( !ity )
+            {
+                emitInternalError( loc, __FILE__, __LINE__, __func__, "FOR loop element type is not integer",
+                                   currentFuncName );
+                return;
+            }
+
             unsigned width = ity.getWidth();
 
             ls.push_back( loc );
-
-            //'scf.for' op failed to verify that all of {lowerBound, upperBound, step} have same type
             step = mlir::arith::ConstantIntOp::create( builder, loc, 1, width );
             step = createCastIfNeeded( loc, step, elemType, ls );
         }
 
-        // mlir::Location fusedLoc = ls.fuseLocations( );
-        mlir::scf::ForOp forOp = mlir::scf::ForOp::create( builder, loc, start, end, step );
-        f.pushToInsertionPointStack( retOp );
+        mlir::Block* headerBlock = builder.getInsertionBlock();
+        if ( !headerBlock )
+        {
+            emitInternalError( loc, __FILE__, __LINE__, __func__, "no insertion block for FOR header",
+                               currentFuncName );
+            return;
+        }
 
-        mlir::Block &loopBody = forOp.getRegion().front();
-        mlir::Value inductionVar = loopBody.getArgument( 0 );
+        mlir::Region* funcRegion = headerBlock->getParent();
+        assert( funcRegion );
 
-        builder.setInsertionPointToStart( &loopBody );
+        // Create the CF blocks for the loop structure.
+        mlir::Block* condBlock = builder.createBlock( funcRegion );
+        mlir::Block* bodyBlock = builder.createBlock( funcRegion );
+        mlir::Block* incBlock = builder.createBlock( funcRegion );
 
+        // Build the loop header in the current block, then split any trailing ops into mergeBlock.
+        builder.setInsertionPointAfter( retOp );
+        mlir::Block::iterator ip = builder.getInsertionPoint();
+        mlir::Block* mergeBlock = nullptr;
+        if ( ip != headerBlock->end() )
+        {
+            mergeBlock = headerBlock->splitBlock( ip );
+        }
+        else
+        {
+            mergeBlock = builder.createBlock( funcRegion );
+        }
+
+        // The header scope wraps the induction variable init and the branch into the loop condition.
+        builder.setInsertionPointToEnd( headerBlock );
+        mlir::Location branchLoc = retOp ? retOp->getLoc() : loc;
+        mlir::cf::BranchOp::create( builder, branchLoc, condBlock, start );
+
+        // Build the condition block and argument for the induction value.
+        builder.setInsertionPointToStart( condBlock );
+        condBlock->addArgument( elemType, loc );
+        mlir::Value condArg = condBlock->getArgument( 0 );
+        int predScopeLevel = f.incrementScopeLevel();
+        // silly::ScopeBeginOp predScopeBegin =
+        silly::ScopeBeginOp::create( builder, loc, predScopeLevel );
+        mlir::Value conditionValue = createBinaryCompare( loc, silly::CmpBinOpKind::Less, condArg, end, ls );
+
+        mlir::cf::CondBranchOp::create( builder, loc, conditionValue, bodyBlock, { condArg }, mergeBlock, {} );
+
+        // Build the body block, scoped to the FOR body.
+        bodyBlock->addArgument( elemType, loc );
+        builder.setInsertionPointToStart( bodyBlock );
+        mlir::Value inductionVar = bodyBlock->getArgument( 0 );
         f.pushInductionVariable( varName, inductionVar );
 
         silly::DebugNameOp::create( builder, varLoc, inductionVar, varName );
 
-        int scopeLevel = f.incrementScopeLevel();
-        silly::ScopeBeginOp scopeBegin = silly::ScopeBeginOp::create( builder, sbloc, scopeLevel );
-        silly::ScopeEndOp::create( builder, seloc, scopeLevel );
-        builder.setInsertionPointAfter( scopeBegin.getOperation() );
-#endif
-    }
+        int bodyScopeLevel = f.incrementScopeLevel();
+        silly::ScopeBeginOp bodyScopeBegin = silly::ScopeBeginOp::create( builder, sbloc, bodyScopeLevel );
+        silly::ScopeEndOp::create( builder, seloc, bodyScopeLevel );
+        mlir::cf::BranchOp::create( builder, seloc, incBlock, inductionVar );
 
-    void Builder::scopeEndHelper( mlir::Location loc, bool isFor )
-    {
-        ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
-        if ( isFor )
-        {
-            f.popInductionVariable();
-        }
+        // Build the increment block.
+        builder.setInsertionPointToStart( incBlock );
+        incBlock->addArgument( elemType, loc );
+        mlir::Value incArg = incBlock->getArgument( 0 );
+        mlir::Value nextInduction = createBinaryArith( loc, silly::ArithBinOpKind::Add, elemType, incArg, step, ls );
+        silly::ScopeEndOp::create( builder, loc, predScopeLevel );
+        mlir::cf::BranchOp::create( builder, loc, condBlock, nextInduction );
+
+        InsertionPointState& ips = f.createNewInsertionPointState();
+        ips.mergeBlock = mergeBlock;
+        ips.beginScopeOps.push_back( bodyScopeBegin.getOperation() );
+
+        builder.setInsertionPointAfter( bodyScopeBegin.getOperation() );
     }
 
     void Builder::finishFor( mlir::Location loc )
     {
-        // scopeEndHelper( loc, true );
+        ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
+        f.popInductionVariable();
+
+        if ( f.haveInsertionPointState() )
+        {
+            f.popInsertionPointState( builder );
+        }
     }
 
     void Builder::createIfBodyScope( InsertionPointState& ips, ParserPerFunctionState& f, mlir::Location sbLoc,

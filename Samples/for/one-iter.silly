@@ -3,7 +3,6 @@
 
 
     PRINT           0; // 5
-    printf( "%d\n", 0); // 5
 
     FOR ( INT32 i: (1, 2) ) // 7
     {

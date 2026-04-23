@@ -73,7 +73,8 @@ namespace silly
         mlir::Value createBooleanFromString( mlir::Location loc, const std::string& s, LocationStack& ls );
 
         /// Construct a Value for an integer literal string
-        mlir::Value createIntegerFromString( mlir::Location loc, int width, const std::string& s, LocationStack& ls );
+        mlir::Value createIntegerFromString( mlir::Location loc, int typeWidth, int width, const std::string& s,
+                                             LocationStack& ls );
 
         /// Construct a Value for a floating point literal string
         mlir::Value createFloatFromString( mlir::Location loc, mlir::FloatType ty, const std::string& s,
@@ -186,9 +187,6 @@ namespace silly
         void createStringDeclare( mlir::Location loc, const std::string& varName, mlir::Location aloc,
                                   const std::string& arrayBoundsString, bool haveInit, const std::string& strLit,
                                   LocationStack& ls );
-
-        /// pop inducation variables "scope", create a ScopeEndOp
-        void scopeEndHelper( mlir::Location loc, bool isFor );
 
        protected:
         /// construct state for creation of a silly dialect ModuleOp

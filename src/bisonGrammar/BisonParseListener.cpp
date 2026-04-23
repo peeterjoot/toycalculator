@@ -327,18 +327,17 @@ namespace silly
                 case Expr::Kind::Int:
                 {
                     unsigned width{ 64 };
+                    int typeWidth{};
 
-#if 0    // This is no good if the destination type is narrower than the input value.  See for example lt.silly
                     if ( ty )
                     {
                         if ( mlir::IntegerType ity = mlir::dyn_cast<mlir::IntegerType>( ty ) )
                         {
-                            width = ity.getWidth();
+                            typeWidth = ity.getWidth();
                         }
                     }
-#endif
 
-                    v = createIntegerFromString( loc, width, parg.sval, ls );
+                    v = createIntegerFromString( loc, typeWidth, width, parg.sval, ls );
                     break;
                 }
                 case Expr::Kind::Float:
