@@ -22,6 +22,11 @@ Had inappropriate i1 narrowing for the literal creation in bowls of parseExpress
 ## Bison FE.
 
 * Fixed all the non-debug/syntax-error testsuite failures.
+* But then broke the Bison FE completely with the LexicalBlock and SCF to CF conversion.  It's currently busted.
+
+## Integer literal constants
+
+* will now be created using the desired width if specified, streamlining the generated MLIR (no more truncation conversion operations from i64 if that wasn't the desired type.)
 
 ## Debugging.
 
