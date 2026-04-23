@@ -57,7 +57,8 @@ namespace silly
         void pushInductionVariable( const std::string& varName, mlir::Value i );
 
         /// Remove the top-most name/value pair from the inductionVariables stack.
-        void popInductionVariable();
+        /// @retval true if error
+        bool popInductionVariable();
 
         /// Search parameters for the named variable.
         mlir::Value searchForParameter( const std::string& varName );

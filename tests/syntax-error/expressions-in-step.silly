@@ -1,0 +1,30 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g expressions-in-step.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: expressions-in-step.silly:22:1: error: FOR step size must be constant
+// CHECK:    22 | FOR (INT64 i : (start, end, step))
+// CHECK:       | ^
+// CHECK: expressions-in-step.silly:27:1: error: FOR step size must be constant
+// CHECK:    27 | FOR (INT64 i : (2 - 0 * 42, 1 + 9 * 1, 2 + 1 + 0))
+// CHECK:       | ^
+
+
+
+
+
+
+
+
+
+INT64 start = 2;
+INT64 end   = 10;
+INT64 step  = 2 + 1;               // expr in step
+
+FOR (INT64 i : (start, end, step))
+{
+    PRINT i;                       // 2,5,8
+};
+
+FOR (INT64 i : (2 - 0 * 42, 1 + 9 * 1, 2 + 1 + 0))
+{
+    PRINT i;                       // 2,5,8
+};

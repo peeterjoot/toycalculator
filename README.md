@@ -260,8 +260,8 @@ It is currently mandatory.
 This is inconsistent with assignment to a `BOOL` variable, which will truncate without raising a runtime error.
 * The storage requirement of `BOOL` is currently one byte per element, even for `BOOL` arrays.
 Array `BOOL` values may use a packed bitmask representation in the future.
-* Negative `FOR` loop step sizes currently have implementation defined behaviour.
-`FOR` loops have no `BREAK` nor `CONTINUE` support.
+* `FOR` loop step sizes currently must be positive or negative literal constants, and not general expressions.
+* `FOR` loops have no `BREAK` nor `CONTINUE` support.
 
 ## Interesting Files
 

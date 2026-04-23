@@ -103,6 +103,7 @@ or
 * What were the test dependencies on `--emit-llvm --emit-mlir` in add_endtoend_compile_tests?  Would make more sense to only do that when desired (that's a holdover from the switch from testit as the test driver.)
 * sema check (eventually): enforce "RETURN must be last"
 * https://github.com/antlr/antlr4/blob/master/doc/faq/parse-trees.md -- has a way to get unmanagled text for error paths, but need access to the tokens.
+* FOR loop step sizes currently must be positive or negative literal constants, and not general expressions.  Would need constant folding support for anything fancier.  In Builder::createFor, implemented the very simplest folder with only negation supported.
 
 #### Lowering
 
@@ -137,7 +138,12 @@ tests/dialect/lit.cfg.py:15:    os.path.join(config.test_source_root, "..", ".."
 * Would be good to add a CALL verify that checks if the function has a return, to make sure it is not used as a standalone statement without assignment.
 * lowering error handling: Review all the notifys -- emitError may be more appropriate in some places.
 * `div_zero_int` -- different results on intel vs. arm.
-* `negative_step_for.silly` -- would be better to put in a (perhaps optional) runtime check for negative or zero step sizes in FOR statements.  test case for the zero step condition: `zero_step_for.silly` -- not included in automation, as it infinite loops (would be better if it did not.)
+* This message should flag the step size expression location, not the FOR start location (same for non-constant step):
+```
+for-zero-step.silly:12:1: error: FOR step size must be non-zero
+   12 | FOR ( INT32 x : (+a, -b, 0) )
+      | ^
+```
 * `error_invalid_unary` -- regression by tweaking the test. was triggering on y undeclared, not on the parse error -- which doesn't actually drive a compile error!
 * Forgetting RETURN in `array_elem_as_arg.silly` has a very confusing error.
 * Need a sema pass: For example, initializer-list shouldn't reference variables, only constant-expressions, or expressions with parameters.  t/c for this: `error_nonconst_init.silly`

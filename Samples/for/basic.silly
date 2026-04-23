@@ -1,14 +1,4 @@
-INT32 a = 1;
-INT32 b = -11;
-INT32 c = 2;
-INT32 z = 0;
-
 FOR ( INT32 x : (1, 11) )
-{
-    PRINT x;
-};
-
-FOR ( INT32 x : (+a, -b, c + z) )
 {
     PRINT x;
 };

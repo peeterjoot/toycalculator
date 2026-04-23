@@ -33,9 +33,17 @@ namespace silly
         inductionVariables.emplace_back( varName, i );
     }
 
-    void ParserPerFunctionState::popInductionVariable()
+    bool ParserPerFunctionState::popInductionVariable()
     {
-        inductionVariables.pop_back();
+        if ( inductionVariables.size() )
+        {
+            inductionVariables.pop_back();
+            return false;
+        }
+        else
+        {
+            return true; // error.
+        }
     }
 
     mlir::Value ParserPerFunctionState::searchForParameter( const std::string& varName )

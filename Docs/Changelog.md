@@ -9,6 +9,12 @@ BOOL lt2 = (y < 10);
 
 Had inappropriate i1 narrowing for the literal creation in bowls of parseExpression (both front ends.)
 
+## FOR step direction.
+
+* Negative step sizes are now supported.  A simple constant folding for step expressions was implemented, supporting
+  only negation.  If that folding "fails" to match expectations (i.e.: constant or negated constant) an error is raised.
+  Zero step size is now checked for, so such a program will no longer infinite loop.
+
 ## Bison FE.
 
 * Fixed all the non-debug/syntax-error testsuite failures.
@@ -45,13 +51,6 @@ for each ScopeBeginOp:
 ScopeBeginOp and ScopeEndOp are erased later via LowerByDeletion patterns in
 the conversion pass, keeping the pre-lowering walk non-mutating (other than
 location restamping).
-
-A post-lowering fixBranchDebugLocs pass walks all basic blocks and stamps each
-block's terminator with the closing brace location recorded in blockClosingLoc.
-This is required because SCF-to-CF branch emission tags branches with the scf.if
-location rather than the innermost lexical scope's closing brace, which causes
-LLVM's backend to compute incorrect address ranges for DILexicalBlock entries and
-drop scoped variables from the DWARF output entirely.
 
 ### Front end changes (ANTLR4 FE only; Bison FE known broken)
 

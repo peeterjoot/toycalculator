@@ -1,0 +1,15 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g for-zero-step.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: for-zero-step.silly:12:1: error: FOR step size must be non-zero
+// CHECK:    12 | FOR ( INT32 x : (+a, -b, 0) )
+// CHECK:       | ^
+
+
+
+INT32 a = 1;
+INT32 b = -11;
+
+FOR ( INT32 x : (+a, -b, 0) )
+{
+    PRINT x;
+};

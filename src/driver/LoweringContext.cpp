@@ -1152,6 +1152,13 @@ namespace silly
                 }
             } );
 
+        // avoid dominance walk for single region/block functions (any region with IF or FOR will have multiple 
+        // blocks and scopes)
+        if ( scopeRecords.size() == 0 )
+        {
+            return;
+        }
+
         // Walk all blocks in region order to determine parent/child relationships
         // by tracking a scope id stack — the top of the stack when a scope_begin
         // is encountered is that scope's parent.
@@ -1179,12 +1186,6 @@ namespace silly
             }
         }
 
-        // avoid dominance walk for single region/block functions
-        if ( scopeRecords.size() == 0 )
-        {
-            return;
-        }
-
         // Build DILexicalBlockAttr for each scope, resolving parent scopes first.
         // As ids are not guaranteed ordered, we use a recursive lambda with memoisation.
         std::function<mlir::LLVM::DILexicalBlockAttr( int32_t )> buildLexicalBlock =
@@ -1210,6 +1211,8 @@ namespace silly
         for ( auto& [id, record] : scopeRecords )
         {
             buildLexicalBlock( id );
+
+            LLVM_DEBUG( llvm::dbgs() << "scope: " << id << ", parent: " << record.parentId << "\n" );
         }
 
         // ----------------------------------------------------------------

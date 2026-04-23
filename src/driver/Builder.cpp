@@ -1001,7 +1001,40 @@ namespace silly
 
             ls.push_back( loc );
             step = mlir::arith::ConstantIntOp::create( builder, loc, 1, width );
-            step = createCastIfNeeded( loc, step, elemType, ls );
+            //step = createCastIfNeeded( loc, step, elemType, ls ); // shouldn't be necessary given width.
+        }
+
+        bool wasConstant{};
+        int64_t stepValue{};
+        if ( mlir::arith::ConstantIntOp stepOp = mlir::dyn_cast<mlir::arith::ConstantIntOp>( step.getDefiningOp() ) )
+        {
+            wasConstant = true;
+            stepValue = stepOp.value();
+        }
+        else if ( silly::NegOp negOp = mlir::dyn_cast<silly::NegOp>( step.getDefiningOp() ) )
+        {
+            // HACKY constant folding pass on one specific value.
+            mlir::Value negOperand = negOp->getOperands()[0];
+
+            if ( mlir::arith::ConstantIntOp valueOp = mlir::dyn_cast<mlir::arith::ConstantIntOp>( negOperand.getDefiningOp() ) )
+            {
+                wasConstant = true;
+                stepValue = - valueOp.value();
+            }
+        }
+
+        if ( !wasConstant )
+        {
+            // coverage: syntax-error/for-non-constant.silly
+            emitUserError( loc, "FOR step size must be constant", currentFuncName );
+            return;
+        }
+
+        if ( stepValue == 0 )
+        {
+            // coverage: syntax-error/for-zero-step.silly
+            emitUserError( loc, "FOR step size must be non-zero", currentFuncName );
+            return;
         }
 
         mlir::Block* headerBlock = builder.getInsertionBlock();
@@ -1043,9 +1076,16 @@ namespace silly
         condBlock->addArgument( elemType, loc );
         mlir::Value condArg = condBlock->getArgument( 0 );
         int predScopeLevel = f.incrementScopeLevel();
-        // silly::ScopeBeginOp predScopeBegin =
         silly::ScopeBeginOp::create( builder, loc, predScopeLevel );
-        mlir::Value conditionValue = createBinaryCompare( loc, silly::CmpBinOpKind::Less, condArg, end, ls );
+        mlir::Value conditionValue;
+        if ( stepValue < 0 )
+        {
+            conditionValue = createBinaryCompare( loc, silly::CmpBinOpKind::Less, end, condArg, ls );
+        }
+        else
+        {
+            conditionValue = createBinaryCompare( loc, silly::CmpBinOpKind::Less, condArg, end, ls );
+        }
 
         mlir::cf::CondBranchOp::create( builder, loc, conditionValue, bodyBlock, { condArg }, mergeBlock, {} );
 
@@ -1055,9 +1095,11 @@ namespace silly
         mlir::Value inductionVar = bodyBlock->getArgument( 0 );
         f.pushInductionVariable( varName, inductionVar );
 
+        // outside the for loop body (debug/for-debug.silly)
+        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName );
+
         int bodyScopeLevel = f.incrementScopeLevel();
         silly::ScopeBeginOp bodyScopeBegin = silly::ScopeBeginOp::create( builder, sbloc, bodyScopeLevel );
-        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName );
         silly::ScopeEndOp::create( builder, seloc, bodyScopeLevel );
         mlir::cf::BranchOp::create( builder, seloc, incBlock, inductionVar );
 
@@ -1079,7 +1121,12 @@ namespace silly
     void Builder::finishFor( mlir::Location loc )
     {
         ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
-        f.popInductionVariable();
+        bool error = f.popInductionVariable();
+        if ( error )
+        {
+            emitInternalError( loc, __FILE__, __LINE__, __func__,
+                               "Unexpected empty induction variable stack", currentFuncName );
+        }
 
         if ( f.haveInsertionPointState() )
         {

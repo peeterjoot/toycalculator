@@ -1,0 +1,17 @@
+// RUN: cd %S
+// RUN: %Not %ExeSilly -g for-non-constant.silly -o %t.exe 2>&1 | %FileCheck %s
+// CHECK: for-non-constant.silly:14:1: error: FOR step size must be constant
+// CHECK:    14 | FOR ( INT32 x : (+a, -b, c + z) )
+// CHECK:       | ^
+
+
+
+INT32 a = 1;
+INT32 b = -11;
+INT32 c = 2;
+INT32 z = 0;
+
+FOR ( INT32 x : (+a, -b, c + z) )
+{
+    PRINT x;
+};
