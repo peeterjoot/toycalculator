@@ -1055,10 +1055,9 @@ namespace silly
         mlir::Value inductionVar = bodyBlock->getArgument( 0 );
         f.pushInductionVariable( varName, inductionVar );
 
-        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName );
-
         int bodyScopeLevel = f.incrementScopeLevel();
         silly::ScopeBeginOp bodyScopeBegin = silly::ScopeBeginOp::create( builder, sbloc, bodyScopeLevel );
+        silly::DebugNameOp::create( builder, varLoc, inductionVar, varName );
         silly::ScopeEndOp::create( builder, seloc, bodyScopeLevel );
         mlir::cf::BranchOp::create( builder, seloc, incBlock, inductionVar );
 
