@@ -547,7 +547,7 @@ namespace silly
                 context, subOrLexicalBlock, builder.getStringAttr( varName ), fileAttr, fileLoc.getLine(),
                 /*argNo=*/0, totalSizeInBits, diType, mlir::LLVM::DIFlags::Zero );
 
-            builder.setInsertionPointAfter( allocaOp );
+            builder.setInsertionPointAfter( debugNameOp );
             mlir::LLVM::DbgDeclareOp::create( builder, loc, allocaOp, diVar );
         }
         else
