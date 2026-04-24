@@ -78,6 +78,7 @@ namespace silly
         /// Add to the insertion point stack for this function.
         InsertionPointState& createNewInsertionPointState();
 
+        /// Return the top of the insertionPointStates stack.
         InsertionPointState& currentInsertionPointState();
 
         /// Remove last insertion point from the stack for this function.

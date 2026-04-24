@@ -168,9 +168,15 @@ namespace silly
         void createIfBodyScope( InsertionPointState& ips, ParserPerFunctionState& f, mlir::Location sbLoc,
                                 mlir::Location seLoc, mlir::Block* bodyBlock, mlir::Block* targetBlock );
 
+        /// Create a scope begin/end pair, setting the insertion point to just after the begin.
+        ///
+        /// @retval the ScopeEndOp op that was created.
         silly::ScopeEndOp createNewPredicateScope( ParserPerFunctionState& f, mlir::Location sbLoc,
                                                    mlir::Location seLoc );
 
+        /// Create a conditional branch for an IF/ELIF, setting the location to the predicate location
+        ///
+        /// Side effect: changes the insertion position.
         void createIfBranch( mlir::Operation* endOp, mlir::Value conditionPredicate, mlir::Block* ifBlock,
                              mlir::Block* elseBlock );
 

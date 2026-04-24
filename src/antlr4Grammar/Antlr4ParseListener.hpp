@@ -143,14 +143,22 @@ namespace silly
         //
         //----------------------------------------------------------------------
 
+        /// Parse the IF/ELIF predicate, creating an mlir::Value, and create the conditional branch
+        ///
         /// @retval true if error.
         bool createIfPredicate( SillyParser::ExpressionContext* ctx, silly::ScopeEndOp scopeEnd, mlir::Block* ifBlock,
                                 mlir::Block* elseBlock, LocationStack& ls );
 
+        /// Check that there is no RETURN statement and create an IF body scope.
+        ///
+        /// Side effect: changes the insertion point.
         void handleIfScopedStatements( InsertionPointState& ips, ParserPerFunctionState& f,
                                        SillyParser::ScopedStatementsContext* ss, const char* scopeCheckString,
                                        mlir::Block* bodyBlock, mlir::Block* targetBlock );
 
+        /// Parse a RETURN expression, if there is one.
+        ///
+        /// Also checks that function is supposed to have a RETURN value, if the input return expression was provided.
         mlir::Value parseReturnExpression( mlir::Location loc, SillyParser::ExpressionContext* expression,
                                            LocationStack& ls );
 

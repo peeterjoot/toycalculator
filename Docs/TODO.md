@@ -5,15 +5,9 @@
 
 #### Lexical + CF dialect rework
 
-* regressions:
-```
-  syntax-error/nested-induction-conflict.silly
-  Silly-LitTests :: syntax-error/shadow-induction.silly
-  Silly-LitTests :: syntax-error/triple-for-shadow.silly
-```
+* Unit test and debug.  Do I have the restamper correct now?
 * Add more tests: gdb session tests too?
 * Fix dbg_declare for induction vars -- it shouldn't be hoisted to the alloca point: example: if-with-decl.silly
-* New doxygen audit.
 
 #### Bison parser experiment.
 * TODO:

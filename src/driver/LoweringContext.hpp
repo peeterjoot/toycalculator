@@ -35,17 +35,25 @@ namespace silly
         /// Map from DeclareOp to AllocaOp for local variables.
         std::unordered_map<mlir::Operation*, mlir::Operation*> declareToAlloca;
 
+        /// This is the last alloca that was created (either for PRINT/ERROR or for a user defined variable.)
+        ///
+        /// These are now hoisted to the top of the function scope, and will be created one after the other.
         mlir::Operation* lastAlloca{};
     };
 
+    /// Type for mapping DebugNameOps operation pointers to DILexicalBlockAttr
     using DebugScopeMap = llvm::DenseMap<mlir::Operation*, mlir::LLVM::DILexicalBlockAttr>;
 
     /// ScopeBeginOp, ScopeEndOp for a given level and it's parent level.
     struct ScopeRecord
     {
+        /// The ScopeBeginOp
         mlir::Operation* beginOp{};
+
+        /// The ScopeEndOp
         mlir::Operation* endOp{};
 
+        /// The DILexicalBlockAttr that will be created for the given pair of ScopeBeginOp,ScopeEndOp operations.
         mlir::LLVM::DILexicalBlockAttr lexicalBlock{};
 
         /// -1 means rooted at subprogram
@@ -177,6 +185,7 @@ namespace silly
                                                  mlir::LLVM::DIScopeAttr parentScope );
 
 
+        /// Walk the operations in a FuncOp and find all the ScopeBeginOp ScopeEndOp
         void collectScopeOps( mlir::func::FuncOp funcOp, llvm::DenseMap<int32_t, ScopeRecord>& scopeRecords );
 
         /// Returns the stack snapshot to propagate to successors.
