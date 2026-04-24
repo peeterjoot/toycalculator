@@ -12,8 +12,8 @@
   Silly-LitTests :: syntax-error/triple-for-shadow.silly
 ```
 * Add more tests: gdb session tests too?
-* fix dbg_declare for induction vars -- it shouldn't be hoisted to the alloca point: example: if-with-decl.silly
-* remove SCF dialect stuff.
+* Fix dbg_declare for induction vars -- it shouldn't be hoisted to the alloca point: example: if-with-decl.silly
+* New doxygen audit.
 
 #### Bison parser experiment.
 * TODO:

@@ -85,8 +85,8 @@ namespace silly
 
         /// Antlr4 exit hook for an IF-ELIF-ELSE statement.
         ///
-        /// Restore EXACTLY where we were before creating the scf.if
-        /// This places new ops right AFTER the scf.if
+        /// Restore EXACTLY where we were before creating the IF
+        /// This places new ops right AFTER the IF
         void exitIfElifElseStatement( SillyParser::IfElifElseStatementContext* ctx ) override;
 
         /// Antlr4 enter hook for a functionStatement rule.

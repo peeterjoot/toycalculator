@@ -15,7 +15,7 @@ namespace silly
         /// MLIR context with loaded dialects.
         mlir::MLIRContext context;
 
-        /// Loads required dialects (Silly, Func, Arith, MemRef, LLVM, SCF).
+        /// Loads required dialects (Silly, Func, Arith, MemRef, LLVM, CF).
         DialectContext();
     };
 }    // namespace silly

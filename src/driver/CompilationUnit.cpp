@@ -138,7 +138,6 @@ namespace silly
             } );
 
             pm.addPass( mlir::createSillyToLLVMLoweringPass( &ds ) );
-            pm.addPass( mlir::createSCFToControlFlowPass() );
             pm.addPass( mlir::createFinalizeMemRefToLLVMConversionPass() );
             pm.addPass( mlir::createConvertControlFlowToLLVMPass() );
 

@@ -16,11 +16,9 @@
 #include <mlir/Conversion/ControlFlowToLLVM/ControlFlowToLLVM.h>
 #include <mlir/Conversion/FuncToLLVM/ConvertFuncToLLVMPass.h>
 #include <mlir/Conversion/LLVMCommon/Pattern.h>
-#include <mlir/Conversion/SCFToControlFlow/SCFToControlFlow.h>
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/ControlFlow/IR/ControlFlow.h>
 #include <mlir/Dialect/LLVMIR/LLVMAttrs.h>
-#include <mlir/Dialect/SCF/IR/SCF.h>
 #include <mlir/IR/Block.h>
 #include <mlir/IR/BuiltinAttributes.h>
 #include <mlir/IR/OperationSupport.h>
@@ -1009,7 +1007,7 @@ namespace silly
         /// load dependent dialects
         void getDependentDialects( mlir::DialectRegistry& registry ) const override
         {
-            registry.insert<mlir::LLVM::LLVMDialect, mlir::arith::ArithDialect, mlir::scf::SCFDialect>();
+            registry.insert<mlir::LLVM::LLVMDialect, mlir::arith::ArithDialect, mlir::cf::ControlFlowDialect>();
         }
 
         /// do the lowering
@@ -1071,7 +1069,6 @@ namespace silly
                                     silly::ArithBinOp, silly::CmpBinOp, silly::ScopeBeginOp, silly::ScopeEndOp>();
                 target.addLegalOp<mlir::ModuleOp, mlir::func::FuncOp, mlir::func::CallOp, mlir::func::ReturnOp>();
 
-                target.addIllegalDialect<mlir::scf::SCFDialect>();
                 target.addIllegalDialect<mlir::cf::ControlFlowDialect>();    // forces lowering
 
                 mlir::RewritePatternSet patterns( &getContext() );
@@ -1079,9 +1076,6 @@ namespace silly
                              GetOpLowering, StringLiteralOpLowering, ArithBinOpLowering, CmpBinOpLowering,
                              DeclareOpLowering, DebugNameOpLowering, ScopeBeginOpLowering, ScopeEndOpLowering>(
                     lState, &getContext(), 1 );
-
-                // SCF -> CF
-                mlir::populateSCFToControlFlowConversionPatterns( patterns );
 
                 mlir::arith::populateArithToLLVMConversionPatterns( lState.getTypeConverter(), patterns );
 

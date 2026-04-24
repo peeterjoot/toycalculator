@@ -3,7 +3,7 @@
 ## Motivation
 
 The goal of this project was to gain concrete, hands-on experience with the MLIR ecosystem.
-It uses an MLIR builder, with lowering to LLVM IR, incorporating a custom dialect (silly) along with several existing MLIR dialects (scf, arith, memref, etc.).
+It uses an MLIR builder, with lowering to LLVM IR, incorporating a custom dialect (silly) along with several existing MLIR dialects (cf, arith, memref, etc.).
 
 There are two front ends, one using the original ANTLR4 grammar (requiring LLVM to be built without -fno-rtti), and another using an experimental Bison grammar (not yet feature complete, as measured by the test suite.)
 

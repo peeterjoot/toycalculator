@@ -14,7 +14,6 @@ def SillyToLLVMLowering : Pass<"silly-to-llvm-lowering", "mlir::ModuleOp"> {
   let dependentDialects = [
     "mlir::LLVM::LLVMDialect",
     "mlir::arith::ArithDialect",
-    "mlir::memref::MemRefDialect",
-    "mlir::scf::SCFDialect"
+    "mlir::memref::MemRefDialect"
   ];
 }

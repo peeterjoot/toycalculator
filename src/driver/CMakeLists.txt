@@ -102,7 +102,6 @@ target_link_libraries(silly
   MLIRFuncToLLVM
   MLIRLLVMToLLVMIRTranslation
   MLIRMemRefToLLVM
-  MLIRSCFToControlFlow
   MLIRTestIR
   ${GRAMMAR_LIBRARIES}
 )

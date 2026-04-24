@@ -163,7 +163,7 @@ namespace silly
         /// Variable name/value pairs.
         std::vector<ValueMap> variables;
 
-        /// Stack for scf.if blocks
+        /// Stack for IF/FOR blocks
         std::vector<InsertionPointState> insertionPointStates;
 
         /// For ScopeBeginOp/ScopeEndOp -- the scope level param.

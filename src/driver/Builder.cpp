@@ -7,7 +7,6 @@
 #include <mlir/Dialect/Arith/IR/Arith.h>
 #include <mlir/Dialect/ControlFlow/IR/ControlFlowOps.h>
 #include <mlir/Dialect/LLVMIR/LLVMDialect.h>
-#include <mlir/Dialect/SCF/IR/SCF.h>
 
 #include <format>
 #include <fstream>
