@@ -984,7 +984,24 @@ namespace silly
                              mlir::Type elemType, mlir::Location varLoc, mlir::Operation* retOp, mlir::Value start,
                              mlir::Value end, mlir::Value step, LocationStack& ls )
     {
+        bool declared = isDeclared( varName );
+        if ( declared )
+        {
+            // coverage: syntax-error/shadow-induction.silly
+            emitUserError( loc, std::format( "Induction variable {} clashes with declared variable", varName ),
+                           currentFuncName );
+            return;
+        }
+
         ParserPerFunctionState& f = lookupFunctionState( currentFuncName );
+        mlir::Value p = f.searchForInduction( varName );
+        if ( p )
+        {
+            // coverage: syntax-error/triple-for-shadow.silly syntax-error/nested-induction-conflict.silly
+            emitUserError( loc, std::format( "Induction variable {} used by enclosing FOR", varName ),
+                           currentFuncName );
+            return;
+        }
 
         if ( !step )
         {
