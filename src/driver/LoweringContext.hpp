@@ -40,6 +40,18 @@ namespace silly
 
     using DebugScopeMap = llvm::DenseMap<mlir::Operation*, mlir::LLVM::DILexicalBlockAttr>;
 
+    /// ScopeBeginOp, ScopeEndOp for a given level and it's parent level.
+    struct ScopeRecord
+    {
+        mlir::Operation* beginOp{};
+        mlir::Operation* endOp{};
+
+        mlir::LLVM::DILexicalBlockAttr lexicalBlock{};
+
+        /// -1 means rooted at subprogram
+        int32_t parentId{ -1 };
+    };
+
     /// Context object holding state and helper functions used during lowering
     /// of the Silly dialect to LLVM dialect.
     class LoweringContext
@@ -163,6 +175,14 @@ namespace silly
         /// If an OP has any regions, process those recursively.
         mlir::Block::iterator processScopeBegin( mlir::Block::iterator it, mlir::Block::iterator blockEnd,
                                                  mlir::LLVM::DIScopeAttr parentScope );
+
+
+        void collectScopeOps( mlir::func::FuncOp funcOp, llvm::DenseMap<int32_t, ScopeRecord>& scopeRecords );
+
+        /// Returns the stack snapshot to propagate to successors.
+        llvm::SmallVector<int32_t> processBlock( mlir::Block* block, llvm::SmallVector<int32_t> scopeStack,
+                                                 llvm::DenseMap<int32_t, ScopeRecord>& scopeRecords,
+                                                 mlir::LLVM::DIScopeAttr rootScope );
 
         /// Set the IP to the funcOp start position, or just after the last alloca, then create the AllocaOp
         /// and save that AllocaOp's Operation* to lastAlloca.

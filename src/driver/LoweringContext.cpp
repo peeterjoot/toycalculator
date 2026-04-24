@@ -1113,123 +1113,118 @@ namespace silly
         driverState.needsMathLib = true;
     }
 
-    /// ScopeBeginOp, ScopeEndOp for a given level and it's parent level.
-    struct ScopeRecord
+    void LoweringContext::collectScopeOps( mlir::func::FuncOp funcOp,
+                                           llvm::DenseMap<int32_t, ScopeRecord>& scopeRecords )
     {
-        mlir::Operation* beginOp{};
-        mlir::Operation* endOp{};
-
-        mlir::LLVM::DILexicalBlockAttr lexicalBlock{};
-
-        /// -1 means rooted at subprogram
-        int32_t parentId{ -1 };
-    };
-
-    void LoweringContext::processScopedOps( mlir::func::FuncOp funcOp, mlir::LLVM::DIScopeAttr rootScope )
-    {
-        mlir::MLIRContext* context = builder.getContext();
-
-        // ----------------------------------------------------------------
-        // Phase 1: collect all scope_begin/scope_end ops across all blocks
-        // and build a DILexicalBlockAttr for each scope id.
-        // ----------------------------------------------------------------
-        llvm::DenseMap<int32_t, ScopeRecord> scopeRecords;
-
         funcOp.walk(
             [&]( mlir::Operation* op )
             {
                 if ( silly::ScopeBeginOp begin = mlir::dyn_cast<silly::ScopeBeginOp>( op ) )
                 {
                     assert( scopeRecords[begin.getId()].beginOp == nullptr );
-
                     scopeRecords[begin.getId()].beginOp = op;
                 }
                 else if ( silly::ScopeEndOp end = mlir::dyn_cast<silly::ScopeEndOp>( op ) )
                 {
                     assert( scopeRecords[end.getId()].endOp == nullptr );
-
                     scopeRecords[end.getId()].endOp = op;
                 }
             } );
+    }
 
-        // avoid dominance walk for single region/block functions (any region with IF or FOR will have multiple 
-        // blocks and scopes)
-        if ( scopeRecords.size() == 0 )
+    llvm::SmallVector<int32_t> LoweringContext::processBlock( mlir::Block* block, llvm::SmallVector<int32_t> scopeStack,
+                                                              llvm::DenseMap<int32_t, ScopeRecord>& scopeRecords,
+                                                              mlir::LLVM::DIScopeAttr rootScope )
+    {
+        mlir::MLIRContext* context = builder.getContext();
+
+        llvm::SmallVector<int32_t> stackAtBranch = scopeStack;
+
+        for ( mlir::Operation& op : *block )
+        {
+            if ( mlir::isa<mlir::cf::BranchOp, mlir::cf::CondBranchOp>( op ) )
+            {
+                stackAtBranch = scopeStack;
+            }
+
+            if ( silly::ScopeBeginOp begin = mlir::dyn_cast<silly::ScopeBeginOp>( op ) )
+            {
+                int32_t id = begin.getId();
+                ScopeRecord& record = scopeRecords[id];
+
+                record.parentId = scopeStack.empty() ? -1 : scopeStack.back();
+
+                mlir::LLVM::DIScopeAttr parent =
+                    ( record.parentId == -1 ) ? rootScope
+                                              : mlir::LLVM::DIScopeAttr( scopeRecords[record.parentId].lexicalBlock );
+
+                mlir::FileLineColLoc flc = mlir::cast<mlir::FileLineColLoc>( record.beginOp->getLoc() );
+                record.lexicalBlock =
+                    mlir::LLVM::DILexicalBlockAttr::get( context, parent, fileAttr, flc.getLine(), flc.getColumn() );
+
+                scopeStack.push_back( id );
+                continue;
+            }
+
+            if ( silly::ScopeEndOp end = mlir::dyn_cast<silly::ScopeEndOp>( op ) )
+            {
+                if ( !scopeStack.empty() )
+                {
+                    int32_t closingId = scopeStack.back();
+                    mlir::LLVM::DILexicalBlockAttr lexBlock = scopeRecords[closingId].lexicalBlock;
+
+                    auto next = std::next( op.getIterator() );
+                    if ( next != block->end() && mlir::isa<mlir::cf::BranchOp, mlir::cf::CondBranchOp>( *next ) )
+                    {
+                        mlir::Location closingLoc = mlir::FusedLoc::get( context, { next->getLoc() }, lexBlock );
+                        next->setLoc( closingLoc );
+                        blockClosingLoc[block] = closingLoc;
+                    }
+                    else
+                    {
+                        blockClosingLoc[block] = mlir::FusedLoc::get( context, { end.getLoc() }, lexBlock );
+                    }
+
+                    scopeStack.pop_back();
+                }
+                continue;
+            }
+
+            if ( silly::DebugNameOp debugName = mlir::dyn_cast<silly::DebugNameOp>( op ) )
+            {
+                if ( !scopeStack.empty() )
+                {
+                    scopeMap[debugName.getOperation()] = scopeRecords[scopeStack.back()].lexicalBlock;
+                }
+            }
+
+            if ( !scopeStack.empty() )
+            {
+                op.setLoc(
+                    mlir::FusedLoc::get( context, { op.getLoc() }, scopeRecords[scopeStack.back()].lexicalBlock ) );
+            }
+        }
+
+        return stackAtBranch;
+    }
+
+    void LoweringContext::processScopedOps( mlir::func::FuncOp funcOp, mlir::LLVM::DIScopeAttr rootScope )
+    {
+        llvm::DenseMap<int32_t, ScopeRecord> scopeRecords;
+        collectScopeOps( funcOp, scopeRecords );
+
+        if ( scopeRecords.empty() )
         {
             return;
         }
 
-        // Walk all blocks in region order to determine parent/child relationships
-        // by tracking a scope id stack — the top of the stack when a scope_begin
-        // is encountered is that scope's parent.
-        {
-            llvm::SmallVector<int32_t> idStack;
-
-            for ( auto& block : funcOp.getBody() )
-            {
-                for ( auto& op : block )
-                {
-                    if ( silly::ScopeBeginOp begin = mlir::dyn_cast<silly::ScopeBeginOp>( op ) )
-                    {
-                        scopeRecords[begin.getId()].parentId = idStack.empty() ? -1 : idStack.back();
-
-                        idStack.push_back( begin.getId() );
-                    }
-                    else if ( silly::ScopeEndOp end = mlir::dyn_cast<silly::ScopeEndOp>( op ) )
-                    {
-                        if ( !idStack.empty() && ( idStack.back() == (int32_t)end.getId() ) )
-                        {
-                            idStack.pop_back();
-                        }
-                    }
-                }
-            }
-        }
-
-        // Build DILexicalBlockAttr for each scope, resolving parent scopes first.
-        // As ids are not guaranteed ordered, we use a recursive lambda with memoisation.
-        std::function<mlir::LLVM::DILexicalBlockAttr( int32_t )> buildLexicalBlock =
-            [&]( int32_t id ) -> mlir::LLVM::DILexicalBlockAttr
-        {
-            auto& record = scopeRecords[id];
-            if ( record.lexicalBlock )
-            {
-                return record.lexicalBlock;
-            }
-
-            mlir::LLVM::DIScopeAttr parent =
-                ( record.parentId == -1 ) ? rootScope : mlir::LLVM::DIScopeAttr( buildLexicalBlock( record.parentId ) );
-
-            mlir::FileLineColLoc flc = mlir::cast<mlir::FileLineColLoc>( record.beginOp->getLoc() );
-
-            record.lexicalBlock =
-                mlir::LLVM::DILexicalBlockAttr::get( context, parent, fileAttr, flc.getLine(), flc.getColumn() );
-
-            return record.lexicalBlock;
-        };
-
-        for ( auto& [id, record] : scopeRecords )
-        {
-            buildLexicalBlock( id );
-
-            LLVM_DEBUG( llvm::dbgs() << "scope: " << id << ", parent: " << record.parentId << "\n" );
-        }
-
-        // ----------------------------------------------------------------
-        // Phase 2: dominator-tree-order walk to restamp op locations and
-        // populate scopeMap / blockClosingLoc.
-        // ----------------------------------------------------------------
-
-        // Per-block entry scope-id stack, seeded for the entry block.
         llvm::DenseMap<mlir::Block*, llvm::SmallVector<int32_t>> blockEntryStacks;
         blockEntryStacks[&funcOp.getBody().front()] = {};
 
         mlir::DominanceInfo domInfo( funcOp );
         auto& domTree = domInfo.getDomTree( &funcOp.getBody() );
 
-        // Pre-order dominator tree traversal
         llvm::SmallVector<llvm::DomTreeNodeBase<mlir::Block>*> worklist;
-
         worklist.push_back( domTree.getRootNode() );
 
         while ( !worklist.empty() )
@@ -1237,82 +1232,24 @@ namespace silly
             auto* node = worklist.pop_back_val();
             mlir::Block* block = node->getBlock();
 
-            // Retrieve the scope stack at this block's entry — guaranteed to
-            // exist because we visit the idom before its children.
-            llvm::SmallVector<int32_t> scopeStack = blockEntryStacks[block];
+            llvm::SmallVector<int32_t> stackAtBranch =
+                processBlock( block, blockEntryStacks[block], scopeRecords, rootScope );
 
-            for ( mlir::Operation& op : *block )
-            {
-                if ( silly::ScopeBeginOp begin = mlir::dyn_cast<silly::ScopeBeginOp>( op ) )
-                {
-                    scopeStack.push_back( begin.getId() );
-                    continue;
-                }
-
-                if ( silly::ScopeEndOp end = mlir::dyn_cast<silly::ScopeEndOp>( op ) )
-                {
-                    if ( !scopeStack.empty() )
-                    {
-                        int32_t closingId = scopeStack.back();
-                        mlir::LLVM::DILexicalBlockAttr lexicalBlock = scopeRecords[closingId].lexicalBlock;
-
-                        // Peek at the next op — if it is a branch, stamp it
-                        // with this scope's closing location and record it.
-                        auto next = std::next( op.getIterator() );
-                        if ( next != block->end() && mlir::isa<mlir::cf::BranchOp, mlir::cf::CondBranchOp>( *next ) )
-                        {
-                            mlir::Location closingLoc =
-                                mlir::FusedLoc::get( context, { next->getLoc() }, lexicalBlock );
-
-                            next->setLoc( closingLoc );
-
-                            blockClosingLoc[block] = closingLoc;
-                        }
-                        else
-                        {
-                            blockClosingLoc[block] = mlir::FusedLoc::get( context, { end.getLoc() }, lexicalBlock );
-                        }
-
-                        scopeStack.pop_back();
-                    }
-
-                    continue;
-                }
-
-                // Record scope for DebugNameOps
-                if ( silly::DebugNameOp debugName = mlir::dyn_cast<silly::DebugNameOp>( op ) )
-                {
-                    if ( !scopeStack.empty() )
-                    {
-                        scopeMap[debugName.getOperation()] = scopeRecords[scopeStack.back()].lexicalBlock;
-                    }
-                }
-
-                // Restamp with the innermost active scope
-                if ( !scopeStack.empty() )
-                {
-                    op.setLoc(
-                        mlir::FusedLoc::get( context, { op.getLoc() }, scopeRecords[scopeStack.back()].lexicalBlock ) );
-                }
-            }
-
-            // Propagate scope stack to successors — first write wins, which is
-            // correct because all paths to a merge block have the same stack
-            // depth due to structured emission.
             for ( mlir::Block* succ : block->getSuccessors() )
             {
                 if ( !blockEntryStacks.count( succ ) )
-                {
-                    blockEntryStacks[succ] = scopeStack;
-                }
+                    blockEntryStacks[succ] = stackAtBranch;
             }
 
-            // Enqueue children in reverse order to process left-to-right
             for ( auto* child : llvm::reverse( node->children() ) )
             {
                 worklist.push_back( child );
             }
         }
+
+        LLVM_DEBUG( for ( auto& [id, record] : scopeRecords ) llvm::dbgs()
+                        << "scope: " << id << ", parent: " << record.parentId << ", lexblock: " << record.lexicalBlock
+                        << "\n"; );
     }
 
     mlir::LLVM::AllocaOp LoweringContext::createAlloca( mlir::ConversionPatternRewriter& rewriter, mlir::Operation* op,

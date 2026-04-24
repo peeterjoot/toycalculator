@@ -3,6 +3,18 @@
 ### running list of other issues and ideas, semi-randomly ordered
 ----------------------------------
 
+#### Lexical + CF dialect rework
+
+* regressions:
+```
+  syntax-error/nested-induction-conflict.silly
+  Silly-LitTests :: syntax-error/shadow-induction.silly
+  Silly-LitTests :: syntax-error/triple-for-shadow.silly
+```
+* Add more tests: gdb session tests too?
+* fix dbg_declare for induction vars -- it shouldn't be hoisted to the alloca point: example: if-with-decl.silly
+* remove SCF dialect stuff.
+
 #### Bison parser experiment.
 * TODO:
 - [ ] doxygen for BisonParseListener
