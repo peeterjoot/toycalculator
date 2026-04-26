@@ -134,7 +134,7 @@ if(SILLY_ENABLE_INSTALL)
     # Install documentation
     install(FILES
         ${CMAKE_SOURCE_DIR}/README.md
-        DESTINATION share/silly/docs
+        DESTINATION share/docs
     )
 
     file(GLOB CHANGELOG_FILES "${CMAKE_SOURCE_DIR}/Docs/Changelog*.md")
@@ -142,39 +142,26 @@ if(SILLY_ENABLE_INSTALL)
     install(FILES
         ${CHANGELOG_FILES}
         ${CMAKE_SOURCE_DIR}/Docs/TODO.md
-        DESTINATION share/silly/docs
+        DESTINATION share/docs
     )
 
     # Install sample programs
     # Helper function to install all .silly files from a directory
-    function(install_silly_samples SOURCE_DIR DEST_SUBDIR)
-        file(GLOB SILLY_FILES "${CMAKE_SOURCE_DIR}/${SOURCE_DIR}/*.silly")
+    function(install_silly_samples DIR)
+        file(GLOB SILLY_FILES "${CMAKE_SOURCE_DIR}/Samples/${DIR}/*.silly")
         if(SILLY_FILES)
             install(FILES ${SILLY_FILES}
-                DESTINATION share/silly/samples/${DEST_SUBDIR}
+                DESTINATION share/samples/${DIR}
             )
         endif()
     endfunction()
 
+    set(SAMPLE_DIRS array bool debug expressions for function ifelifelse init misc operators print simple string types)
+
     # Install samples from each category
-    install_silly_samples("tests/array" "array")
-    install_silly_samples("tests/bool" "bool")
-    install_silly_samples("tests/debug" "debug")
-    install_silly_samples("tests/driver" "driver")
-    install_silly_samples("tests/exit" "exit")
-    install_silly_samples("tests/expressions" "expressions")
-    install_silly_samples("tests/fatal" "fatal")
-    install_silly_samples("tests/for" "for")
-    install_silly_samples("tests/function" "function")
-    install_silly_samples("tests/get" "get")
-    install_silly_samples("tests/ifelifelse" "ifelifelse")
-    install_silly_samples("tests/init" "init")
-    install_silly_samples("tests/misc" "misc")
-    install_silly_samples("tests/operators" "operators")
-    install_silly_samples("tests/print" "print")
-    install_silly_samples("tests/simple" "simple")
-    install_silly_samples("tests/string" "string")
-    install_silly_samples("tests/types" "types")
+    foreach(DIR IN LISTS SAMPLE_DIRS)
+        install_silly_samples("${DIR}")
+    endforeach()
 
     # Install scripts
     install(PROGRAMS
